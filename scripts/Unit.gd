@@ -231,41 +231,116 @@ func _process_rout(delta: float) -> void:
 		queue_redraw()
 
 
-# --- Visuals (placeholder primitives; replace with a Sprite2D later) -------
+# --- Visuals ------------------------------------------------------------------
 
 func _draw() -> void:
 	var alpha: float = 0.45 if state == State.ROUTING else 1.0
-	var body: Color = team_color
-	body.a = alpha
+	var body_c := Color(team_color.r, team_color.g, team_color.b, alpha)
+	var dark_c := Color(body_c.r * 0.35, body_c.g * 0.35, body_c.b * 0.35, alpha)
+	var lite_c := Color(minf(body_c.r + 0.30, 1.0), minf(body_c.g + 0.30, 1.0),
+			minf(body_c.b + 0.30, 1.0), alpha)
 
-	# Regiment token.
+	# Rotate drawing so the sprite's "forward" aligns with the unit's facing direction.
+	draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5)
+
 	if is_cavalry:
-		draw_circle(Vector2.ZERO, RADIUS, body)
-		draw_arc(Vector2.ZERO, RADIUS, 0, TAU, 24, Color(1, 1, 1, alpha), 2.0)
+		_draw_cavalry_sprite(body_c, dark_c, lite_c)
+	elif anti_cavalry:
+		_draw_spear_sprite(body_c, dark_c, lite_c)
 	else:
-		var r := Rect2(-RADIUS, -RADIUS, RADIUS * 2.0, RADIUS * 2.0)
-		draw_rect(r, body)
-		draw_rect(r, Color(0, 0, 0, alpha * 0.6), false, 2.0)
+		_draw_infantry_sprite(body_c, dark_c, lite_c)
 
-	# Anti-cavalry marker (spear tip).
-	if anti_cavalry:
-		draw_line(Vector2(0, -2), facing * (RADIUS + 8.0), Color(0.9, 0.9, 0.7, alpha), 2.0)
+	# Reset to screen-space for HUD overlays (selection ring, health bar).
+	draw_set_transform(Vector2.ZERO, 0.0)
 
-	# Facing indicator.
-	draw_line(Vector2.ZERO, facing * (RADIUS + 4.0), Color(0, 0, 0, alpha * 0.7), 3.0)
-
-	# Selection ring.
 	if selected:
 		draw_arc(Vector2.ZERO, RADIUS + 5.0, 0, TAU, 28, Color(0.95, 0.95, 0.3), 2.5)
 
-	# Strength bar.
 	var bw: float = 38.0
 	var by: float = -RADIUS - 12.0
 	var frac: float = clampf(float(soldiers) / float(max_soldiers), 0.0, 1.0)
 	draw_rect(Rect2(-bw * 0.5, by, bw, 5.0), Color(0.15, 0.15, 0.15, alpha))
 	draw_rect(Rect2(-bw * 0.5, by, bw * frac, 5.0), Color(0.3, 0.8, 0.3, alpha))
 
-	# Soldier count.
 	var font := ThemeDB.fallback_font
 	draw_string(font, Vector2(-bw * 0.5, by - 3.0), str(soldiers),
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, alpha))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, alpha))
+
+
+## Infantry: kite (heater) shield with a cross motif and sword pommel.
+func _draw_infantry_sprite(body: Color, dark: Color, lite: Color) -> void:
+	var R := RADIUS
+	var metal := Color(0.78, 0.80, 0.85, body.a)
+	var pts := PackedVector2Array([
+		Vector2(0,          -R),
+		Vector2( R * 0.82, -R * 0.30),
+		Vector2( R * 0.90,  R * 0.42),
+		Vector2(0,           R),
+		Vector2(-R * 0.90,  R * 0.42),
+		Vector2(-R * 0.82, -R * 0.30),
+	])
+	draw_colored_polygon(pts, body)
+	draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3],
+			pts[4], pts[5], pts[0]]), dark, 2.0)
+	# Cross on shield face.
+	draw_line(Vector2(0,  -R + 5.0), Vector2(0,  R * 0.90), lite, 2.0)
+	draw_line(Vector2(-R * 0.72, R * 0.05), Vector2(R * 0.72, R * 0.05), lite, 2.0)
+	# Sword pommel / crossguard at the top of the shield.
+	draw_line(Vector2(-5.0, -R + 8.0), Vector2(5.0, -R + 8.0), metal, 2.5)
+	draw_line(Vector2(0, -R + 2.0), Vector2(0, -R + 9.0), metal, 2.0)
+
+
+## Spearmen: round hoplon shield with a forward-pointing spear.
+func _draw_spear_sprite(body: Color, dark: Color, lite: Color) -> void:
+	var R := RADIUS
+	var metal := Color(0.78, 0.80, 0.85, body.a)
+	var wood  := Color(0.62, 0.48, 0.30, body.a)
+	# Spear shaft (forward = up in rotated local space).
+	var shaft_y: float = -(R + 15.0)
+	draw_line(Vector2(0, -R * 0.05), Vector2(0, shaft_y), wood, 3.0)
+	# Spear blade.
+	var blade := PackedVector2Array([
+		Vector2(0,    shaft_y - 9.0),
+		Vector2( 3.5, shaft_y),
+		Vector2(-3.5, shaft_y),
+	])
+	draw_colored_polygon(blade, metal)
+	draw_polyline(PackedVector2Array([blade[0], blade[1], blade[2], blade[0]]), dark, 1.0)
+	# Hoplon (round shield).
+	draw_circle(Vector2.ZERO, R * 0.88, body)
+	draw_arc(Vector2.ZERO, R * 0.88, 0, TAU, 24, dark, 2.0)
+	# Shield boss.
+	draw_circle(Vector2.ZERO, R * 0.26, lite)
+	draw_arc(Vector2.ZERO, R * 0.26, 0, TAU, 12, dark, 1.5)
+	# Inner ring detail.
+	draw_arc(Vector2.ZERO, R * 0.60, 0, TAU, 20,
+			Color(dark.r, dark.g, dark.b, dark.a * 0.6), 1.0)
+
+
+## Cavalry: horse body (two overlapping ovals) with rider and lance.
+func _draw_cavalry_sprite(body: Color, dark: Color, lite: Color) -> void:
+	var R := RADIUS
+	var metal := Color(0.78, 0.80, 0.85, body.a)
+	# Horse body: forequarters + hindquarters bridged by a quad.
+	draw_circle(Vector2(0, -R * 0.30), R * 0.62, body)
+	draw_circle(Vector2(0,  R * 0.28), R * 0.68, body)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-R * 0.60, -R * 0.30),
+		Vector2(-R * 0.66,  R * 0.28),
+		Vector2( R * 0.66,  R * 0.28),
+		Vector2( R * 0.60, -R * 0.30),
+	]), body)
+	# Horse head / neck offset forward-right.
+	var head := Vector2(R * 0.20, -R * 0.88)
+	draw_circle(head, R * 0.28, lite)
+	draw_arc(head, R * 0.28, 0, TAU, 12, dark, 1.5)
+	# Four legs trailing behind.
+	draw_line(Vector2(-R * 0.35, R * 0.60), Vector2(-R * 0.48, R + 4.0), dark, 2.5)
+	draw_line(Vector2(-R * 0.12, R * 0.60), Vector2(-R * 0.18, R + 5.0), dark, 2.5)
+	draw_line(Vector2( R * 0.12, R * 0.60), Vector2( R * 0.18, R + 5.0), dark, 2.5)
+	draw_line(Vector2( R * 0.35, R * 0.60), Vector2( R * 0.48, R + 4.0), dark, 2.5)
+	# Rider torso.
+	draw_circle(Vector2(0, -R * 0.18), R * 0.42, lite)
+	draw_arc(Vector2(0, -R * 0.18), R * 0.42, 0, TAU, 14, dark, 1.5)
+	# Lance pointing forward-right.
+	draw_line(Vector2(R * 0.15, -R * 0.18), Vector2(R * 0.65, -R * 0.78), metal, 2.5)
