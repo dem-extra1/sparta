@@ -54,8 +54,8 @@ static func process_rout(unit: Unit, delta: float) -> void:
 
 static func tick_ai(unit: Unit, enemy: Unit, delta: float) -> void:
 	if enemy != null:
-		var dist: float = unit.position.distance_to(enemy.position)
-		if dist <= unit.attack_range + Unit.RADIUS:
+		var reach: float = unit.attack_range + Unit.RADIUS
+		if unit.position.distance_squared_to(enemy.position) <= reach * reach:
 			unit.state = Unit.State.FIGHTING
 			face(unit, enemy.position)
 			if unit._attack_cd <= 0.0:
