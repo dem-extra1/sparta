@@ -32,10 +32,11 @@ do not just report it as a dead end — use whichever of these is available:
    comments, CI completions, and reviews (the exact set depends on the
    deployment), which covers most babysitting needs.
    Two things a PR-activity subscription won't reliably hand you, so check them
-   actively rather than waiting on a webhook: a CI run that goes green *and*
-   needs you to act on it (e.g. auto-merge), and a **merge conflict appearing**
-   — poll `mergeable_state` for the latter. (A push does emit a `synchronize`
-   webhook, but the subscription may not surface it, so don't rely on it.)
+   actively rather than waiting on a webhook. First, a CI run that goes green
+   *and* needs you to act on it (e.g. auto-merge). Second, a **merge conflict
+   appearing** — poll the PR's `mergeable_state` (via the GitHub API) to catch
+   it. (A push does emit a `synchronize` webhook, but the subscription may not
+   surface it, so don't rely on it.)
 
 2. **`/loop` skill** (if available) — runs a prompt or slash command on an
    interval (e.g. `/loop 1h check PR #N CI and mergeability`). This is the
