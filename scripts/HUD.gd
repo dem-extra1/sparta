@@ -20,11 +20,14 @@ func _ready() -> void:
 	hint.add_theme_font_size_override("font_size", 14)
 	add_child(hint)
 
-	# Settings: edge-scroll toggle (top-right).
+	# Settings: edge-scroll toggle (top-right). Give it an explicit width so the
+	# placement is derived from that, not a font-metric-tuned magic offset.
 	var edge_toggle := CheckButton.new()
 	edge_toggle.text = "Mouse-edge scroll"
+	var toggle_width := 240.0
+	edge_toggle.custom_minimum_size = Vector2(toggle_width, 0)
 	edge_toggle.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	edge_toggle.position = Vector2(-260, 6)
+	edge_toggle.position = Vector2(-toggle_width - 6.0, 6)
 	edge_toggle.button_pressed = Settings.edge_scroll
 	edge_toggle.toggled.connect(func(on: bool) -> void: Settings.edge_scroll = on)
 	# Keep the checkbox in sync if the setting changes elsewhere.
