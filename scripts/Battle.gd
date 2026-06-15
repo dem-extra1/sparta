@@ -149,7 +149,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 		i += 1
 
 
-func _unit_by_uid(uid: int):
+func _unit_by_uid(uid: int) -> UnitRef:
 	var u = _by_uid.get(uid)
 	return u if (u != null and is_instance_valid(u)) else null
 

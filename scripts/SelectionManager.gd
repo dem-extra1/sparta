@@ -78,7 +78,7 @@ func _issue_order(world_pos: Vector2) -> void:
 
 # --- helpers ---------------------------------------------------------------
 
-func _unit_at(world_pos: Vector2, team: int):
+func _unit_at(world_pos: Vector2, team: int) -> UnitRef:
 	# Nearest unit on `team` under the cursor (callers pass whichever team they
 	# want — the player's own for selection, the enemy's for attack orders).
 	var best = null
