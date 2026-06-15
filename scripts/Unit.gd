@@ -74,8 +74,8 @@ func _physics_process(delta: float) -> void:
 				_strike(enemy)
 			queue_redraw()
 			return
-		elif target_enemy != null and not in_contact:
-			# Explicit attack order: chase even past move target.
+		elif target_enemy != null:
+			# Explicit attack order, not yet in contact: chase past any move target.
 			_move_to(enemy.position, delta)
 			queue_redraw()
 			return
