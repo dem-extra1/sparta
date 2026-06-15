@@ -64,8 +64,8 @@ The repo works well with Claude Code's cloud environment for editing GDScript an
 **Running Godot headlessly is possible** but requires installing it in the setup script. Add this to your environment's setup script (use Godot 4.6.x, or whatever version matches the project):
 
 ```bash
-#!/bin/bash
 wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O /tmp/godot.zip
+mkdir -p "$HOME/.local/bin/"
 unzip -q /tmp/godot.zip -d "$HOME/.local/bin/"
 mv "$HOME/.local/bin/Godot_v4.6-stable_linux.x86_64" "$HOME/.local/bin/godot"
 chmod +x "$HOME/.local/bin/godot"
