@@ -27,6 +27,13 @@ map and the integration between the two layers come in later milestones (see the
 
 You command the **blue** army (top). Defeat the **red** army (bottom).
 
+### Replays
+Every battle is recorded automatically (`● REC`, top-center). When it ends, hit
+**Watch Replay** to re-run it (`▶ REPLAY`). Logs are tiny deterministic
+seed-plus-orders files in `user://replays/` — the same approach Total War uses —
+so they're handy for both re-watching battles and debugging. See
+[REPLAY.md](REPLAY.md).
+
 ### Tactics that matter
 - **Flanking:** hitting a unit from the side (×1.5) or rear (×2) deals far more damage
   and morale loss. Maneuver behind the enemy line.
@@ -41,7 +48,8 @@ You command the **blue** army (top). Defeat the **red** army (bottom).
 project.godot          Godot project config (main scene = scenes/Battle.tscn)
 scenes/Battle.tscn     Main scene: camera + units container + selection + HUD
 scripts/
-  Battle.gd            Spawns armies, enemy AI, win/lose check
+  Battle.gd            Spawns armies, enemy AI, win/lose check, tick clock + replay orders
+  Replay.gd            Deterministic record/playback (autoload): seeded RNG + order log
   Unit.gd              Regiment: stats, movement, melee, flanking, morale, routing
   SelectionManager.gd  Click + drag-box selection, move/attack orders
   CameraController.gd  WASD / edge pan, wheel zoom

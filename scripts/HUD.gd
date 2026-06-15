@@ -8,6 +8,8 @@ var _info: Label
 var _overlay: ColorRect
 var _overlay_label: Label
 var _edge_toggle: CheckButton
+var _status: Label
+var _watch_button: Button
 
 
 func _ready() -> void:
@@ -20,6 +22,21 @@ func _ready() -> void:
 	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
 	hint.add_theme_font_size_override("font_size", 14)
 	add_child(hint)
+
+	# Recording / replay status (top-center).
+	_status = Label.new()
+	_status.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_status.position = Vector2(-90, 30)
+	_status.custom_minimum_size = Vector2(180, 0)
+	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_status.add_theme_font_size_override("font_size", 15)
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		_status.text = "▶ REPLAY"
+		_status.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
+	else:
+		_status.text = "● REC"
+		_status.add_theme_color_override("font_color", Color(1.0, 0.5, 0.45))
+	add_child(_status)
 
 	# Settings: edge-scroll toggle (top-right). Give it an explicit width so the
 	# placement is derived from that, not a font-metric-tuned magic offset.
@@ -84,6 +101,13 @@ func _ready() -> void:
 	restart.pressed.connect(_on_restart)
 	box.add_child(restart)
 
+	# Replay the battle that just finished (re-runs the saved log).
+	_watch_button = Button.new()
+	_watch_button.text = "Watch Again" if Replay.mode == Replay.Mode.PLAYBACK else "Watch Replay"
+	_watch_button.custom_minimum_size = Vector2(180, 44)
+	_watch_button.pressed.connect(_on_watch_replay)
+	box.add_child(_watch_button)
+
 
 func _exit_tree() -> void:
 	# Settings is a persistent autoload; drop our connection so it doesn't
@@ -118,5 +142,16 @@ func show_end(text: String) -> void:
 
 
 func _on_restart() -> void:
+	# Fresh battle: drop back to IDLE so Battle._ready starts a new recording.
+	Replay.mode = Replay.Mode.IDLE
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+
+func _on_watch_replay() -> void:
+	# Re-run the most recent battle from its saved log.
+	var path := Replay.latest_path()
+	if path == "" or not Replay.start_playback(path):
+		return
 	get_tree().paused = false
 	get_tree().reload_current_scene()
