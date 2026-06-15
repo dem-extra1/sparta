@@ -1,0 +1,25 @@
+# Validates the URLs in the repo's docs (README.md, ASSETS.md, etc.) with lychee.
+# Calls the reusable workflow in d-morrison/gha. On main it opens a tracking issue
+# when links break; on PRs add the `links checked by hand` label to skip.
+# NOTE: pinned to @main to match the verified reusable-workflow interface (the
+# v1 tag predates some of these inputs); bump to a tag once one is cut.
+name: Check Links
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 8 * * 1'   # weekly, Monday 08:00 UTC — catches link rot over time
+  workflow_dispatch:
+
+jobs:
+  links:
+    permissions:
+      contents: read
+      issues: write          # file/update the broken-links issue on main
+      pull-requests: read    # read the skip-label on PRs
+    uses: d-morrison/gha/.github/workflows/check-links.yml@main
+    # with:
+    #   lychee-args: '--verbose "**/*.md"'   # override the default glob set
+    #   create-issue-on-main: false          # don't auto-open an issue
