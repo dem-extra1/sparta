@@ -65,13 +65,15 @@ The repo works well with Claude Code's cloud environment for editing GDScript an
 
 ```bash
 #!/bin/bash
-wget -q https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip -O /tmp/godot.zip
+wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O /tmp/godot.zip
 unzip -q /tmp/godot.zip -d /usr/local/bin/
-mv /usr/local/bin/Godot_v4.4.1-stable_linux.x86_64 /usr/local/bin/godot
+mv /usr/local/bin/Godot_v4.6-stable_linux.x86_64 /usr/local/bin/godot
 chmod +x /usr/local/bin/godot
 ```
 
 Once installed, `godot --headless` can run exports or a GDScript test suite (e.g. [GUT](https://github.com/bitwes/Gut)). This project does not currently have a test suite configured.
+
+> **Note:** The snippet above targets Godot 4.6 to match the project. If the engine version changes, update both the download URL and the binary filename.
 
 **To actually play the game**, pull the branch locally and open it in the Godot 4.6 desktop editor — the cloud environment has no display.
 
