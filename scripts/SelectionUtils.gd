@@ -5,14 +5,14 @@ const UnitRef := preload("res://scripts/Unit.gd")
 
 static func unit_at(world_pos: Vector2, team: int, tree: SceneTree):
 	var best = null
-	var best_d: float = UnitRef.RADIUS + 6.0
+	var best_d_sq: float = (UnitRef.RADIUS + 6.0) * (UnitRef.RADIUS + 6.0)
 	for node in tree.get_nodes_in_group("units"):
 		var unit := node as UnitRef
 		if unit == null or unit.team != team:
 			continue
-		var d: float = unit.global_position.distance_to(world_pos)
-		if d < best_d:
-			best_d = d
+		var d_sq: float = unit.global_position.distance_squared_to(world_pos)
+		if d_sq < best_d_sq:
+			best_d_sq = d_sq
 			best = unit
 	return best
 

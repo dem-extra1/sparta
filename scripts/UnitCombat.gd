@@ -77,6 +77,6 @@ static func start_rout(unit: Unit) -> void:
 		var friend := u as Unit
 		if friend == null or friend.team != unit.team:
 			continue
-		if unit.position.distance_to(friend.position) < ROUT_SPREAD_RANGE:
+		if unit.position.distance_squared_to(friend.position) < ROUT_SPREAD_RANGE * ROUT_SPREAD_RANGE:
 			friend.morale -= 12.0
 	unit.queue_redraw()

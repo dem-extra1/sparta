@@ -9,7 +9,7 @@ static func spawn_line(
 	var loadout := _make_loadout()
 	var count: int = loadout.size()
 	var spacing: float = 150.0
-	var start_x: float = field.size.x * 0.5 - (count - 1) * spacing * 0.5
+	var start_x: float = field.position.x + field.size.x * 0.5 - (count - 1) * spacing * 0.5
 	for i in range(count):
 		var u := _make_unit(loadout[i], team, facing, i)
 		u.position = Vector2(start_x + i * spacing, y)
