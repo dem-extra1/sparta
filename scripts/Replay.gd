@@ -60,6 +60,9 @@ func start_recording() -> void:
 	_orders.clear()
 	_play_index = 0
 	loaded_path = ""
+	# Drop the previous battle's save path so a failed save() this battle can't
+	# fall back to replaying the wrong one.
+	last_saved_path = ""
 
 
 ## Load a saved replay and arm playback. Returns false if the file is unusable.
@@ -136,9 +139,8 @@ func save(result: String, duration_ticks: int) -> String:
 		return ""
 	if not _ensure_dir():
 		return ""
-	# ISO 8601-style with the 'T' kept (no space) and colons swapped for '-' so
-	# the filename is conventional and shell-friendly; alphabetical order stays
-	# chronological for _list_replays().
+	# ISO 8601-style with the 'T' kept (no space) and colons swapped for '-', so
+	# the filename is conventional and shell-friendly.
 	var stamp := Time.get_datetime_string_from_system(false, false).replace(":", "-")
 	var path := "%s/battle_%s.json" % [DIR, stamp]
 	var payload := {
@@ -160,33 +162,7 @@ func save(result: String, duration_ticks: int) -> String:
 	return path
 
 
-## Path of the most recently saved replay, or "" if there are none.
-func latest_path() -> String:
-	var files := _list_replays()
-	return files.back() if not files.is_empty() else ""
-
-
-func has_replays() -> bool:
-	return not _list_replays().is_empty()
-
-
 # --- internals -------------------------------------------------------------
-
-func _list_replays() -> Array:
-	var out: Array = []
-	var d := DirAccess.open(DIR)
-	if d == null:
-		return out
-	d.list_dir_begin()
-	var name := d.get_next()
-	while name != "":
-		if not d.current_is_dir() and name.ends_with(".json"):
-			out.append("%s/%s" % [DIR, name])
-		name = d.get_next()
-	d.list_dir_end()
-	out.sort()   # timestamped names sort chronologically
-	return out
-
 
 func _read_file(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
