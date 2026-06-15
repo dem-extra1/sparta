@@ -7,7 +7,7 @@ const ROUT_TIME: float = 6.0
 
 static func move_to(unit: Unit, point: Vector2, delta: float) -> void:
 	var to: Vector2 = point - unit.position
-	if to.length() < 1.0:
+	if to.length_squared() < 1.0:
 		return
 	var dir: Vector2 = to.normalized()
 	face_dir(unit, dir)
@@ -19,7 +19,7 @@ static func face(unit: Unit, point: Vector2) -> void:
 	face_dir(unit, point - unit.position)
 
 static func face_dir(unit: Unit, dir: Vector2) -> void:
-	if dir.length() > 0.01:
+	if dir.length_squared() > 0.0001:  # sqrt(0.0001) == 0.01
 		unit.facing = dir.normalized()
 
 static func separate(unit: Unit) -> void:
