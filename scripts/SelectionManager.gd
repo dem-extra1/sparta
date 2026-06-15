@@ -1,11 +1,7 @@
 extends Node2D
-## Mouse control for the player's army (team 0):
-##   Left click        — select one friendly unit
-##   Left click + drag — box-select friendly units
-##   Right click       — move there, or attack the enemy unit clicked
+## Mouse control for team 0: click/drag to select, RMB to move or attack.
 
-const UnitRef = preload("res://scripts/Unit.gd")  # avoid global-class-cache dependency
-
+const SelectionUtils := preload("res://scripts/SelectionUtils.gd")
 const CLICK_THRESHOLD: float = 6.0
 
 var _dragging: bool = false
@@ -17,11 +13,8 @@ var _selected: Array = []
 
 
 func _ready() -> void:
-	z_index = 100   # draw the selection box over the units
-	# Stay live during active pause so orders can be issued while the
-	# simulation (units + AI) is frozen.
+	z_index = 100
 	process_mode = Node.PROCESS_MODE_ALWAYS
-
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -35,76 +28,27 @@ func _unhandled_input(event: InputEvent) -> void:
 				_finish_selection()
 				queue_redraw()
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			_issue_order(get_global_mouse_position())
+			SelectionUtils.issue_order(_selected, get_global_mouse_position(), get_tree())
 	elif event is InputEventMouseMotion and _dragging:
 		_drag_cur = get_global_mouse_position()
 		queue_redraw()
 
-
 func _finish_selection() -> void:
 	_clear_selection()
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
-
 	if rect.size.length() < CLICK_THRESHOLD:
-		var u = _unit_at(_drag_start, 0, true)
+		var u = SelectionUtils.unit_at(_drag_start, 0, true, get_tree())
 		if u != null:
 			_select(u)
 	else:
-		for node in get_tree().get_nodes_in_group("units"):
-			var unit = node as UnitRef
-			if unit != null and unit.team == 0 and rect.has_point(unit.position):
-				_select(unit)
-
+		for u in SelectionUtils.box_select(rect, get_tree()):
+			_select(u)
 	_refresh_hud()
-
-
-func _issue_order(world_pos: Vector2) -> void:
-	if _selected.is_empty():
-		return
-	var enemy = _unit_at(world_pos, 1, false)
-	var i: int = 0
-	for unit in _selected:
-		if not is_instance_valid(unit):
-			continue
-		if enemy != null:
-			unit.target_enemy = enemy
-			unit.has_move_target = false
-		else:
-			# Spread the destination so units don't pile onto one point.
-			var cols: int = 4
-			var off := Vector2((i % cols) * 42 - 63, (i / cols) * 42)
-			unit.move_target = world_pos + off
-			unit.has_move_target = true
-			unit.target_enemy = null
-		i += 1
-
-
-# --- helpers ---------------------------------------------------------------
-
-func _unit_at(world_pos: Vector2, team_filter: int, friendly: bool):
-	# friendly=true matches team_filter; friendly=false matches that enemy team.
-	var best = null
-	var best_d: float = UnitRef.RADIUS + 6.0
-	for node in get_tree().get_nodes_in_group("units"):
-		var unit = node as UnitRef
-		if unit == null:
-			continue
-		if friendly and unit.team != team_filter:
-			continue
-		if not friendly and unit.team != team_filter:
-			continue
-		var d: float = unit.position.distance_to(world_pos)
-		if d < best_d:
-			best_d = d
-			best = unit
-	return best
-
 
 func _select(u) -> void:
 	u.selected = true
 	u.queue_redraw()
 	_selected.append(u)
-
 
 func _clear_selection() -> void:
 	for u in _selected:
@@ -113,26 +57,17 @@ func _clear_selection() -> void:
 			u.queue_redraw()
 	_selected.clear()
 
-
 func _refresh_hud() -> void:
 	if _hud == null:
 		return
-	# Drop any units that died/routed out of the selection.
-	var live: Array = []
-	for u in _selected:
-		if is_instance_valid(u):
-			live.append(u)
-	_selected = live
+	_selected = _selected.filter(func(u): return is_instance_valid(u))
 	if _selected.is_empty():
 		_hud.clear_unit()
 	else:
 		_hud.show_unit(_selected[0], _selected.size())
 
-
 func _process(_delta: float) -> void:
-	# Keep the panel current as the shown unit takes casualties.
 	_refresh_hud()
-
 
 func _draw() -> void:
 	if not _dragging:

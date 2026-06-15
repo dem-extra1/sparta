@@ -4,7 +4,6 @@ extends Camera2D
 
 @export var pan_speed: float = 700.0
 @export var edge_margin: float = 18.0
-@export var edge_scroll: bool = true
 @export var zoom_min: float = 0.45
 @export var zoom_max: float = 2.2
 
@@ -32,7 +31,7 @@ func _process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
 		dir.y += 1
 
-	if edge_scroll:
+	if Settings.edge_scroll:
 		var m: Vector2 = get_viewport().get_mouse_position()
 		var vp: Vector2 = get_viewport().get_visible_rect().size
 		if m.x < edge_margin:
