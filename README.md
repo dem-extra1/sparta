@@ -55,6 +55,26 @@ Units currently draw themselves in `Unit.gd`'s `_draw()`. To use real CC0 art, a
 remove the token-drawing lines from `_draw()` (keep the strength bar / selection ring).
 See [ASSETS.md](ASSETS.md) for where to get CC0 medieval sprites.
 
+## Cloud development (Claude Code on the web)
+
+The repo works well with Claude Code's cloud environment for editing GDScript and managing Git, with a few things to know:
+
+**No setup needed for code editing.** The environment requires no environment variables and no build step — just open a session and start editing.
+
+**Running Godot headlessly is possible** but requires installing it in the setup script. Add this to your environment's setup script (use Godot 4.4.x or whatever matches the project):
+
+```bash
+#!/bin/bash
+wget -q https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip -O /tmp/godot.zip
+unzip -q /tmp/godot.zip -d /usr/local/bin/
+mv /usr/local/bin/Godot_v4.4.1-stable_linux.x86_64 /usr/local/bin/godot
+chmod +x /usr/local/bin/godot
+```
+
+Once installed, `godot --headless` can run exports or a GDScript test suite (e.g. [GUT](https://github.com/bitwes/Gut)). This project does not currently have a test suite configured.
+
+**To actually play the game**, pull the branch locally and open it in the Godot 4.6 desktop editor — the cloud environment has no display.
+
 ## Roadmap
 - **M1 (here):** one playable tactical battle. ✅ scaffolded
 - **M2:** CK3-style campaign map — provinces, characters, turn-based diplomacy; battles auto-resolved.
