@@ -12,7 +12,7 @@ static func unit_at(world_pos: Vector2, team: int, friendly: bool, tree: SceneTr
 			continue
 		if friendly and unit.team != team:
 			continue
-		if not friendly and unit.team == team:
+		if not friendly and unit.team != team:
 			continue
 		var d: float = unit.position.distance_to(world_pos)
 		if d < best_d:

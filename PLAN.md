@@ -178,10 +178,10 @@ hand-authored GDScript that hasn't been engine-checked.
     flag), movement/path logic, and `SelectionManager.gd` if an explicit order is chosen.
 
 ## Pointers
-- Tune unit stats in `Battle.gd` → `_spawn_line()` `loadout` array.
+- Tune unit stats in `BattleSpawner.gd` → `_make_loadout()` array.
 - Tune collision spacing in `Unit.gd` → `separation_radius` (per-instance `@export`; center-to-center
   floor = sum of both units' radii; set per type at spawn for footprints). Soft-resolve logic in
-  `_separate()`. Tune spawn gaps via `spacing` in `_spawn_line()`.
-- Tune movement pace in `Battle.gd` → `SPEED_SCALE` constant (lower = slower).
-- Combat math in `Unit.gd` → `_strike()` / `take_casualties()` / `_flank_multiplier()`.
+  `UnitMovement.gd` → `separate()`. Tune spawn gaps via `spacing` in `BattleSpawner.gd` → `spawn_line()`.
+- Tune movement pace in `BattleSpawner.gd` → `SPEED_SCALE` constant (lower = slower).
+- Combat math in `UnitCombat.gd` → `strike()` / `apply_damage()` / `flank_multiplier()`.
 - Enemy AI in `Battle.gd` → `_run_enemy_ai()` (currently: advance on nearest player unit).
