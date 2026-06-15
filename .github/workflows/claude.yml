@@ -1,8 +1,11 @@
 # Copy to .github/workflows/claude.yml in your repo.
 # NOTE: requires the CLAUDE_CODE_OAUTH_TOKEN repository secret. The calling job
-# grants write permissions so Claude can push branches and open PRs; `secrets:
-# inherit` passes CLAUDE_CODE_OAUTH_TOKEN (and an optional SUBMODULES_TOKEN)
-# through to the reusable workflow.
+# grants write permissions so Claude can push branches and open PRs. Secrets are
+# passed explicitly (not via `secrets: inherit`) because the reusable workflow
+# lives in a different account's repo (d-morrison/gha) — `inherit` only forwards
+# secrets to reusable workflows within the SAME owner/org, so across owners it
+# silently passes an empty token. SUBMODULES_TOKEN is optional (only needed when
+# checkout-submodules is enabled) and resolves to empty when unset.
 name: Claude Code
 
 on:
@@ -29,7 +32,9 @@ jobs:
     # Pinned to @main: the Claude reusable workflows are not yet included in a
     # tagged release of d-morrison/gha (the v1 tag predates them).
     uses: d-morrison/gha/.github/workflows/claude.yml@main
-    secrets: inherit
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
     with:
       setup-r: false               # sparta is a Godot project, not an R package
     #   install-quarto: true        # for Quarto books
