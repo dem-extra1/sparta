@@ -53,7 +53,8 @@ func _physics_process(delta: float) -> void:
 
 	if state == State.ROUTING:
 		_process_rout(delta)
-		_separate()   # routers still shoulder past anyone in their path
+		if state != State.DEAD:   # the timer may have expired and freed us
+			_separate()   # routers still shoulder past anyone in their path
 		return
 
 	_attack_cd = max(0.0, _attack_cd - delta)
@@ -159,6 +160,7 @@ func _separate() -> void:
 	others.append_array(get_tree().get_nodes_in_group("routers"))
 	for o in others:
 		var other: Unit = o as Unit
+		# DEAD: queue_free'd but not yet removed from its group this frame.
 		if other == null or other == self or other.state == State.DEAD:
 			continue
 		var min_dist: float = RADIUS + other.RADIUS
