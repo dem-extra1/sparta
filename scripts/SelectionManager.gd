@@ -44,7 +44,7 @@ func _finish_selection() -> void:
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
 
 	if rect.size.length() < CLICK_THRESHOLD:
-		var u = _unit_at(_drag_start, 0, true)
+		var u = _unit_at(_drag_start, 0)
 		if u != null:
 			_select(u)
 	else:
@@ -66,7 +66,7 @@ func _issue_order(world_pos: Vector2) -> void:
 	# records it and applies it on the next physics tick (so live and replayed
 	# orders take exactly the same code path). Selection and camera stay live —
 	# only the simulation-affecting order is routed through the recorder.
-	var enemy = _unit_at(world_pos, 1, false)
+	var enemy = _unit_at(world_pos, 1)
 	var uids: Array = []
 	for unit in _selected:
 		if is_instance_valid(unit):
@@ -78,17 +78,16 @@ func _issue_order(world_pos: Vector2) -> void:
 
 # --- helpers ---------------------------------------------------------------
 
-func _unit_at(world_pos: Vector2, team_filter: int, friendly: bool):
-	# friendly=true matches team_filter; friendly=false matches that enemy team.
+func _unit_at(world_pos: Vector2, team: int):
+	# Nearest unit on `team` under the cursor (callers pass whichever team they
+	# want — the player's own for selection, the enemy's for attack orders).
 	var best = null
 	var best_d: float = UnitRef.RADIUS + 6.0
 	for node in get_tree().get_nodes_in_group("units"):
 		var unit = node as UnitRef
 		if unit == null:
 			continue
-		if friendly and unit.team != team_filter:
-			continue
-		if not friendly and unit.team != team_filter:
+		if unit.team != team:
 			continue
 		var d: float = unit.global_position.distance_to(world_pos)
 		if d < best_d:
