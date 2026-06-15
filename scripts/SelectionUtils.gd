@@ -14,7 +14,7 @@ static func unit_at(world_pos: Vector2, team: int, friendly: bool, tree: SceneTr
 			continue
 		if not friendly and unit.team == team:
 			continue
-		var d: float = unit.position.distance_to(world_pos)
+		var d: float = unit.global_position.distance_to(world_pos)
 		if d < best_d:
 			best_d = d
 			best = unit
@@ -23,7 +23,7 @@ static func unit_at(world_pos: Vector2, team: int, friendly: bool, tree: SceneTr
 static func box_select(rect: Rect2, tree: SceneTree) -> Array:
 	var out: Array = []
 	for node in tree.get_nodes_in_group("units"):
-		if node.team == 0 and rect.has_point(node.position):
+		if node.team == 0 and rect.has_point(node.global_position):
 			out.append(node)
 	return out
 
