@@ -7,6 +7,7 @@ extends CanvasLayer
 var _info: Label
 var _overlay: ColorRect
 var _overlay_label: Label
+var _edge_toggle: CheckButton
 
 
 func _ready() -> void:
@@ -19,6 +20,23 @@ func _ready() -> void:
 	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
 	hint.add_theme_font_size_override("font_size", 14)
 	add_child(hint)
+
+	# Settings: edge-scroll toggle (top-right). Give it an explicit width so the
+	# placement is derived from that, not a font-metric-tuned magic offset.
+	_edge_toggle = CheckButton.new()
+	_edge_toggle.text = "Mouse-edge scroll"
+	var toggle_width := 240.0
+	_edge_toggle.custom_minimum_size = Vector2(toggle_width, 0)
+	_edge_toggle.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_edge_toggle.position = Vector2(-toggle_width - 6.0, 6)
+	_edge_toggle.button_pressed = Settings.edge_scroll
+	_edge_toggle.toggled.connect(func(on: bool) -> void: Settings.edge_scroll = on)
+	# Keep the checkbox in sync if the setting changes elsewhere. Use a named
+	# method (not a lambda) so the connection is tied to this node's lifetime and
+	# torn down in _exit_tree() — otherwise it would dangle on the persistent
+	# Settings autoload after reload_current_scene() frees this HUD.
+	Settings.changed.connect(_sync_edge_toggle)
+	add_child(_edge_toggle)
 
 	# Selected-unit panel.
 	var panel := PanelContainer.new()
@@ -65,6 +83,17 @@ func _ready() -> void:
 	restart.custom_minimum_size = Vector2(180, 44)
 	restart.pressed.connect(_on_restart)
 	box.add_child(restart)
+
+
+func _exit_tree() -> void:
+	# Settings is a persistent autoload; drop our connection so it doesn't
+	# outlive this HUD (e.g. across reload_current_scene()).
+	if Settings.changed.is_connected(_sync_edge_toggle):
+		Settings.changed.disconnect(_sync_edge_toggle)
+
+
+func _sync_edge_toggle() -> void:
+	_edge_toggle.button_pressed = Settings.edge_scroll
 
 
 func show_unit(u, group_count: int) -> void:

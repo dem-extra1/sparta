@@ -49,7 +49,7 @@ func _finish_selection() -> void:
 	else:
 		for node in get_tree().get_nodes_in_group("units"):
 			var unit = node as UnitRef
-			if unit != null and unit.team == 0 and rect.has_point(unit.position):
+			if unit != null and unit.team == 0 and rect.has_point(unit.global_position):
 				_select(unit)
 
 	_refresh_hud()
@@ -90,7 +90,7 @@ func _unit_at(world_pos: Vector2, team_filter: int, friendly: bool):
 			continue
 		if not friendly and unit.team != team_filter:
 			continue
-		var d: float = unit.position.distance_to(world_pos)
+		var d: float = unit.global_position.distance_to(world_pos)
 		if d < best_d:
 			best_d = d
 			best = unit
