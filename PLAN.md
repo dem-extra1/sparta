@@ -94,6 +94,30 @@ hand-authored GDScript that hasn't been engine-checked.
   and returns a result (winner, casualties) to the campaign. This is where the two genres meet;
   the battle scene was kept self-contained specifically to make this hand-off clean.
 
+## Feature backlog (design goals — captured early, not yet scheduled)
+- **Unit merging — combine two units into one.** Player can merge two friendly units into a single
+  regiment. Two intended uses:
+  1. **Consolidation:** fold depleted units together after casualties so a thinned line becomes one
+     viable regiment instead of several near-broken ones.
+  2. **Formation locking:** deliberately bind units into a single wider, coordinated block that
+     moves and fights as one (ties directly into the collision/formation pillar — a merged unit has
+     a larger footprint and held shape).
+  - **"Strangers" debuff:** merging forces soldiers from different regiments together, so the result
+    starts with a penalty (e.g. reduced morale and/or attack/cohesion) representing unfamiliarity.
+    Lean toward a *temporary* debuff that decays over time as the merged unit "gels," rather than a
+    permanent tax — keeps merging worthwhile without making it free.
+  - **Open design questions (decide when scheduled):**
+    - Merged `max_soldiers` = sum, or capped at a regiment ceiling (excess lost/disbanded)?
+    - Restrictions: same team only? same/compatible unit types only (can cavalry merge into
+      infantry)? proximity required (must be adjacent)?
+    - Reversible? Can a merged unit later split back into sub-units?
+    - Stat blending: average attack/defense, weight by soldier count, or take the stronger?
+    - Debuff shape: flat % for N seconds, or a "cohesion" stat that ramps from low to full.
+  - **Code touch-points (current architecture):** `Unit.gd` (new merge method; `soldiers`/
+    `max_soldiers`/`morale` blending; a cohesion/debuff timer alongside the existing state machine),
+    `SelectionManager.gd` (a merge order/input), and the collision footprint (`SEPARATION_RADIUS`)
+    for the wider merged body.
+
 ## Pointers
 - Tune unit stats in `Battle.gd` → `_spawn_line()` `loadout` array.
 - Tune collision spacing in `Unit.gd` → `SEPARATION_RADIUS` (center-to-center floor = sum of both
