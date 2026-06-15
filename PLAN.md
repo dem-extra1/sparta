@@ -118,6 +118,28 @@ hand-authored GDScript that hasn't been engine-checked.
     `SelectionManager.gd` (a merge order/input), and the collision footprint (`SEPARATION_RADIUS`)
     for the wider merged body.
 
+- **Line relief — cycle tired units out of combat.** A fresh unit can "relieve" an already-engaged
+  friendly: the fresh unit moves into the front-line slot while the tired one peels back to the rear,
+  letting the player rotate exhausted regiments out and rest them.
+  - **Requires a new fatigue/stamina stat** (does not exist yet): accumulates while `FIGHTING`
+    (faster when taking casualties), recovers while idle/out of contact. Fatigue should bite into
+    combat performance (attack/defense/morale) so relief is a real tactical lever, not flavor.
+  - **Smooth swap mechanism (the hard part):** choreograph the exchange so it reads well and isn't
+    exploitable —
+    - The relieving unit advances into the slot *as* the relieved unit withdraws; ideally the fresh
+      unit arrives/screens before the tired one fully disengages so the enemy doesn't get a free
+      gap to pour through.
+    - The two units must **pass through each other** during the maneuver — directly exercises the
+      collision pillar. Plan: temporarily exempt the swapping pair from mutual `_separate()` (and/or
+      lane them past each other) until the swap completes, then re-enable.
+    - Define the window: brief protected/"relieving" state vs. fully simulated handoff with risk.
+  - **Open design questions:** relief only with adjacent/behind friendlies? same type only, or any?
+    can a routing/near-broken unit be relieved (rescue) or only steady ones? does the incoming unit
+    inherit the target enemy automatically? cooldown to prevent infinite fresh-unit churn?
+  - **Code touch-points:** `Unit.gd` (fatigue stat + recovery; a `RELIEVING`/handoff sub-state in the
+    state machine; per-pair collision exemption in `_separate()`), `SelectionManager.gd` (a relieve
+    order targeting an engaged friendly), and AI in `Battle.gd` (so the enemy also rotates lines).
+
 ## Pointers
 - Tune unit stats in `Battle.gd` → `_spawn_line()` `loadout` array.
 - Tune collision spacing in `Unit.gd` → `SEPARATION_RADIUS` (center-to-center floor = sum of both
