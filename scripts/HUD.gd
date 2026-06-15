@@ -7,6 +7,7 @@ extends CanvasLayer
 var _info: Label
 var _overlay: ColorRect
 var _overlay_label: Label
+var _paused_label: Label
 
 
 func _ready() -> void:
@@ -14,11 +15,22 @@ func _ready() -> void:
 
 	# Controls hint.
 	var hint := Label.new()
-	hint.text = "LMB select / drag-box   •   RMB move or attack   •   WASD pan   •   wheel zoom"
+	hint.text = "LMB select / drag-box   •   RMB move or attack   •   WASD pan   •   wheel zoom   •   Space pause"
 	hint.position = Vector2(14, 10)
 	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
 	hint.add_theme_font_size_override("font_size", 14)
 	add_child(hint)
+
+	# Active-pause indicator (top-center). Hidden until the player pauses;
+	# commands can still be issued while paused, so it reads as "PAUSED".
+	_paused_label = Label.new()
+	_paused_label.text = "❚❚ PAUSED — orders can still be given"
+	_paused_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_paused_label.position = Vector2(-150, 36)
+	_paused_label.add_theme_color_override("font_color", Color(1, 0.9, 0.4))
+	_paused_label.add_theme_font_size_override("font_size", 18)
+	_paused_label.visible = false
+	add_child(_paused_label)
 
 	# Selected-unit panel.
 	var panel := PanelContainer.new()
@@ -65,6 +77,17 @@ func _ready() -> void:
 	restart.custom_minimum_size = Vector2(180, 44)
 	restart.pressed.connect(_on_restart)
 	box.add_child(restart)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# Spacebar toggles active pause. Disabled once the battle is over (the
+	# end overlay owns the paused state and only "Fight Again" should resume).
+	if event is InputEventKey and event.pressed and not event.echo \
+			and event.keycode == KEY_SPACE and not _overlay.visible:
+		var paused: bool = not get_tree().paused
+		get_tree().paused = paused
+		_paused_label.visible = paused
+		get_viewport().set_input_as_handled()
 
 
 func show_unit(u, group_count: int) -> void:
