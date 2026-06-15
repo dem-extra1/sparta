@@ -23,8 +23,9 @@ static func unit_at(world_pos: Vector2, team: int, friendly: bool, tree: SceneTr
 static func box_select(rect: Rect2, tree: SceneTree) -> Array:
 	var out: Array = []
 	for node in tree.get_nodes_in_group("units"):
-		if node.team == 0 and rect.has_point(node.position):
-			out.append(node)
+		var unit := node as UnitRef
+		if unit != null and unit.team == 0 and rect.has_point(unit.position):
+			out.append(unit)
 	return out
 
 static func issue_order(selected: Array, world_pos: Vector2, tree: SceneTree) -> void:
