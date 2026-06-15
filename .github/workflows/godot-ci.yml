@@ -1,6 +1,6 @@
-# Project-specific CI for the Godot game. Imports every resource headlessly so
-# broken scene/resource references surface, then parse-checks each GDScript file.
-# No export presets exist yet, so this validates rather than exports a build.
+# Project-specific CI for the Godot game. Imports every resource headlessly in
+# full project context so broken scenes, resources, and script compile errors
+# surface. No export presets exist yet, so this validates rather than exports.
 name: Godot CI
 
 on:
@@ -27,19 +27,18 @@ jobs:
           version: ${{ env.GODOT_VERSION }}
           use-dotnet: false   # Standard build, not the .NET/C# build
 
-      - name: Import resources
-        # Generates the .godot import cache and reports import-time errors
-        # (e.g. scenes referencing missing scripts or resources).
-        run: godot --headless --import --verbose
-
-      - name: Parse-check GDScript
-        # `--check-only` parses each script and fails on syntax/parse errors
-        # without running the game.
+      - name: Import & validate project
+        # `--import` loads the whole project (autoloads, class_name globals and
+        # cross-script references all resolve) and reports compile/import errors.
+        # We deliberately do NOT parse-check each .gd file in isolation: a lone
+        # script can't see project-global identifiers (e.g. autoloads), which
+        # yields false "Identifier not found" failures even when the project is
+        # valid. Godot doesn't reliably exit non-zero on script errors, so we
+        # fail the job if any error marker shows up in the import log.
         run: |
-          status=0
-          while IFS= read -r -d '' f; do
-            echo "::group::$f"
-            godot --headless --check-only --script "$f" || status=1
-            echo "::endgroup::"
-          done < <(find scripts -name '*.gd' -print0)
-          exit $status
+          set -o pipefail
+          godot --headless --import --verbose 2>&1 | tee import.log
+          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
+            echo "::error::Godot reported script/resource errors during import"
+            exit 1
+          fi
