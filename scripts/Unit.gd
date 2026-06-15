@@ -173,10 +173,15 @@ func _separate() -> void:
 		if d > 0.01:
 			push = offset / d * ((min_dist - d) * 0.5)
 		else:
-			# Exactly co-located: shove apart along a per-unit deterministic
-			# angle (radians) so co-located units fan out instead of stacking.
-			var angle: float = float(get_instance_id() % 100) / 100.0 * TAU
-			push = Vector2.RIGHT.rotated(angle) * (min_dist * 0.5)
+			# Exactly co-located: both units of the pair derive the SAME angle
+			# (from the lower id, for determinism) and push in OPPOSITE
+			# directions, so they reliably fan apart instead of drifting
+			# together. Using each unit's own id here would push near-adjacent
+			# ids in almost the same direction and never separate them.
+			var lo: int = mini(get_instance_id(), other.get_instance_id())
+			var angle: float = float(lo % 100) / 100.0 * TAU
+			var dir: float = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
+			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * 0.5)
 		position += push
 
 
