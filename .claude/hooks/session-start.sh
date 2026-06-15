@@ -30,11 +30,21 @@ if [ ! -d "$CLAUDE_PROJECT_DIR/addons/gut" ]; then
   git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
   mkdir -p "$CLAUDE_PROJECT_DIR/addons"
   cp -r /tmp/gut/addons/gut "$CLAUDE_PROJECT_DIR/addons/gut"
+  rm -rf /tmp/gut
 fi
 
 # Pre-import the project: builds the .godot cache and imports assets so the
 # project can be run/checked/tested headlessly without opening the editor first.
+# `godot --import` exits 0 even on GDScript compile failures, so mirror CI and
+# fail the hook if the import log reports script errors.
 echo "[session-start] Importing Godot project..."
-godot --headless --import --path "$CLAUDE_PROJECT_DIR"
+import_log="$(mktemp)"
+godot --headless --import --verbose --path "$CLAUDE_PROJECT_DIR" 2>&1 | tee "$import_log"
+if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" "$import_log"; then
+  echo "[session-start] ERROR: import reported script errors (see above)"
+  rm -f "$import_log"
+  exit 1
+fi
+rm -f "$import_log"
 
 echo "[session-start] Done."
