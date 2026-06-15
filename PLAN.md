@@ -45,7 +45,7 @@ features that depend on it, then independent polish.
   - #12 M1 first run & verification in Godot — nothing below is validated until this passes.
   - #13 Spacebar active pause — implemented in PR #2, pending live confirm.
 - **P1 — Collision pillar (core, in dependency order):**
-  - #6 Per-type footprint (plumbing exists via `SEPARATION_RADIUS`; low effort).
+  - #6 Per-type footprint (plumbing exists via `separation_radius`; low effort).
   - #10 NavigationAgent2D pathfinding (decide path-vs-collision split here).
   - #9 Scale beyond O(n²) — pairs with #10.
   - #7 Formation cohesion (depends on #6).
@@ -136,7 +136,7 @@ hand-authored GDScript that hasn't been engine-checked.
     - Debuff shape: flat % for N seconds, or a "cohesion" stat that ramps from low to full.
   - **Code touch-points (current architecture):** `Unit.gd` (new merge method; `soldiers`/
     `max_soldiers`/`morale` blending; a cohesion/debuff timer alongside the existing state machine),
-    `SelectionManager.gd` (a merge order/input), and the collision footprint (`SEPARATION_RADIUS`)
+    `SelectionManager.gd` (a merge order/input), and the collision footprint (`separation_radius`)
     for the wider merged body.
 
 - **Line relief — cycle tired units out of combat.** A fresh unit can "relieve" an already-engaged
