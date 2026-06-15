@@ -170,8 +170,10 @@ func _separate() -> void:
 		if d > 0.01:
 			push = offset / d * ((min_dist - d) * 0.5)
 		else:
-			# Exactly co-located: shove apart along a deterministic axis.
-			push = Vector2.RIGHT.rotated(float(get_instance_id() % 360)) * (min_dist * 0.5)
+			# Exactly co-located: shove apart along a per-unit deterministic
+			# angle (radians) so co-located units fan out instead of stacking.
+			var angle: float = float(get_instance_id() % 100) / 100.0 * TAU
+			push = Vector2.RIGHT.rotated(angle) * (min_dist * 0.5)
 		position += push
 
 
