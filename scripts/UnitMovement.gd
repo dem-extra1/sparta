@@ -24,10 +24,11 @@ static func face_dir(unit: Unit, dir: Vector2) -> void:
 static func separate(unit: Unit) -> void:
 	var push: Vector2 = Vector2.ZERO
 	for u in unit.get_tree().get_nodes_in_group("units"):
-		if u == unit:
+		var other := u as Unit
+		if other == null or other == unit:
 			continue
-		var min_dist: float = unit.separation_radius + u.separation_radius
-		var offset: Vector2 = unit.position - u.position
+		var min_dist: float = unit.separation_radius + other.separation_radius
+		var offset: Vector2 = unit.position - other.position
 		var d_sq: float = offset.length_squared()
 		if d_sq >= min_dist * min_dist:
 			continue
