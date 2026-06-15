@@ -22,20 +22,23 @@ cause go unrecorded.
 
 ### Handling missing `send_later` (PR check-in scheduling)
 
-In some sessions (especially Claude Code on the web), the `send_later` tool from
-the `claude-code-remote` MCP server is **not available**, so you cannot schedule
-a delayed self check-in to re-poll a PR's CI/merge state. When you hit this, do
-not just report it as a dead end — use one of these instead:
+In some sessions (especially those where the `claude-code-remote` MCP server is
+not configured), the `send_later` tool is **not available**, so you cannot
+schedule a delayed self check-in to re-poll a PR's CI/merge state. This is a
+session/MCP-config condition, not specific to any one client. When you hit it,
+do not just report it as a dead end — use whichever of these is available:
 
-1. **`subscribe_pr_activity`** — available in these sessions. It wakes the session
-   on PR comments, CI completions, and reviews. This covers most babysitting needs.
-   The only gap is transitions webhooks never deliver (a green CI run needing no
-   action, a new push, or a merge-conflict appearing) — so actively re-check
-   `mergeable_state` rather than waiting for a webhook that won't come.
+1. **`subscribe_pr_activity`** (if available) — it wakes the session on PR
+   comments, CI completions, and reviews, which covers most babysitting needs.
+   Two things a PR-activity subscription won't reliably hand you, so check them
+   actively rather than waiting on a webhook: a CI run that goes green *and*
+   needs you to act on it (e.g. auto-merge), and a **merge conflict appearing**
+   — poll `mergeable_state` for the latter. (A push does emit a `synchronize`
+   webhook, but the subscription may not surface it, so don't rely on it.)
 
-2. **`/loop` skill** — runs a prompt or slash command on an interval
-   (e.g. `/loop 1h check PR #N CI and mergeability`). This is the practical
-   replacement for `send_later`'s self-scheduling: it gives periodic re-checks
+2. **`/loop` skill** (if available) — runs a prompt or slash command on an
+   interval (e.g. `/loop 1h check PR #N CI and mergeability`). This is the
+   practical replacement for `send_later`'s self-scheduling: periodic re-checks
    without the MCP tool.
 
 3. **On-demand** — while the session is alive, the user can ping at any time and
