@@ -36,7 +36,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _finish_selection() -> void:
 	_clear_selection()
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
-	if rect.size.length() < CLICK_THRESHOLD:
+	if rect.size.length_squared() < CLICK_THRESHOLD * CLICK_THRESHOLD:
 		var u = SelectionUtils.unit_at(_drag_start, 0, get_tree())
 		if u != null:
 			_select(u)
