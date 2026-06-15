@@ -31,12 +31,9 @@ on:
 
 jobs:
   claude-review:
-    # Cancel any in-progress review for the same PR when a new run starts.
-    # `cancel-in-progress: true` is safe because this workflow is read-only
-    # (it never pushes, so it can't cancel its own triggered run).
-    concurrency:
-      group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}
-      cancel-in-progress: true
+    # Concurrency is managed at the caller (claude-code-review.yml) workflow
+    # level. A job-level group here would share the same namespace and
+    # self-cancel the calling workflow.
 
     # Skip — don't fail — Dependabot, fork PRs (forks can't read the OAuth
     # token), and bot-triggered `synchronize` events (e.g. @claude pushing a
@@ -73,7 +70,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs['pr-number'] }}
         run: |
           HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
           echo "head_before=$HEAD_SHA" >> "$GITHUB_OUTPUT"
@@ -100,14 +97,14 @@ jobs:
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: |
-            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || inputs.pr-number }}
+            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || inputs['pr-number'] }}
 
             **Post line-specific findings as inline review comments** anchored
             to the relevant line(s) — use the inline-comment tool, not a prose
             list in the summary. Reserve the top-level summary comment for a
             brief overall verdict plus any finding not tied to a specific line;
             don't restate each inline comment there.
-            ${{ inputs.prompt-addendum }}
+            ${{ inputs['prompt-addendum'] }}
           # `track_progress` forces tag mode, which guarantees a tracking
           # comment even when the plugin scores the PR below its post
           # threshold. The action REJECTS `track_progress` for
@@ -130,7 +127,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs['pr-number'] }}
           CURRENT_RUN_ID: ${{ github.run_id }}
           REVIEW_WF: ${{ github.workflow_ref }}
         run: |
@@ -162,7 +159,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs['pr-number'] }}
           HEAD_BEFORE: ${{ steps.stash.outputs.head_before }}
           USERS_BEFORE: ${{ steps.stash.outputs.users }}
           TEAMS_BEFORE: ${{ steps.stash.outputs.teams }}
