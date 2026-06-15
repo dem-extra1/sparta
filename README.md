@@ -61,14 +61,15 @@ The repo works well with Claude Code's cloud environment for editing GDScript an
 
 **No setup needed for code editing.** The environment requires no environment variables and no build step — just open a session and start editing.
 
-**Running Godot headlessly is possible** but requires installing it in the setup script. Add this to your environment's setup script (use Godot 4.4.x or whatever matches the project):
+**Running Godot headlessly is possible** but requires installing it in the setup script. Add this to your environment's setup script (use Godot 4.6.x, or whatever version matches the project):
 
 ```bash
 #!/bin/bash
 wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O /tmp/godot.zip
-unzip -q /tmp/godot.zip -d /usr/local/bin/
-mv /usr/local/bin/Godot_v4.6-stable_linux.x86_64 /usr/local/bin/godot
-chmod +x /usr/local/bin/godot
+unzip -q /tmp/godot.zip -d "$HOME/.local/bin/"
+mv "$HOME/.local/bin/Godot_v4.6-stable_linux.x86_64" "$HOME/.local/bin/godot"
+chmod +x "$HOME/.local/bin/godot"
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Once installed, `godot --headless` can run exports or a GDScript test suite (e.g. [GUT](https://github.com/bitwes/Gut)). This project does not currently have a test suite configured.
