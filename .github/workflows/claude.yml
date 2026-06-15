@@ -29,9 +29,9 @@ jobs:
       issues: write
       id-token: write
       actions: write
-    # Pinned to @main: the Claude reusable workflows are not yet included in a
-    # tagged release of d-morrison/gha (the v1 tag predates them).
-    uses: d-morrison/gha/.github/workflows/claude.yml@main
+    # Pinned to the @v1 moving major tag — the upstream-recommended consumer pin
+    # (v1 now includes the Claude caller workflows).
+    uses: d-morrison/gha/.github/workflows/claude.yml@v1
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
