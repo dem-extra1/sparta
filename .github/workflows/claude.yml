@@ -1,3 +1,8 @@
+# Copy to .github/workflows/claude.yml in your repo.
+# NOTE: requires the CLAUDE_CODE_OAUTH_TOKEN repository secret. The calling job
+# grants write permissions so Claude can push branches and open PRs; `secrets:
+# inherit` passes CLAUDE_CODE_OAUTH_TOKEN (and an optional SUBMODULES_TOKEN)
+# through to the reusable workflow.
 name: Claude Code
 
 on:
@@ -6,45 +11,31 @@ on:
   pull_request_review_comment:
     types: [created]
   issues:
+    # `assigned` lets an issue that already mentions @claude kick off a run when
+    # it's assigned (handy with eager-pr). The trusted-author gate keys on the
+    # issue *author*, so this only fires for issues opened by a collaborator.
     types: [opened, assigned]
   pull_request_review:
     types: [submitted]
 
 jobs:
   claude:
-    if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
-    runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Run Claude Code
-        id: claude
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
-          # This is an optional setting that allows Claude to read CI results on PRs
-          additional_permissions: |
-            actions: read
-
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
-
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr *)'
-
+      actions: write
+    # Pinned to @main: the Claude reusable workflows are not yet included in a
+    # tagged release of d-morrison/gha (the v1 tag predates them).
+    uses: d-morrison/gha/.github/workflows/claude.yml@main
+    secrets: inherit
+    with:
+      setup-r: false               # sparta is a Godot project, not an R package
+    #   install-quarto: true        # for Quarto books
+    #   use-renv: true              # restore deps with renv instead of DESCRIPTION
+    #   checkout-submodules: true   # needs the SUBMODULES_TOKEN secret
+    #   eager-pr: true              # open the draft PR up front (Copilot-style)
+    #   reviewer: d-morrison        # re-requested when Claude pushes to a PR
+    #   prompt-addendum: |
+    #     This is the sparta Godot game project.
