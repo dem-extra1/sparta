@@ -140,6 +140,22 @@ hand-authored GDScript that hasn't been engine-checked.
     state machine; per-pair collision exemption in `_separate()`), `SelectionManager.gd` (a relieve
     order targeting an engaged friendly), and AI in `Battle.gd` (so the enemy also rotates lines).
 
+- **Move-through friendly units — coordinated pass-through.** Let one unit move *through* an idle
+  friendly unit smoothly (ranks interleave / the idle unit parts and reforms) instead of colliding,
+  shoving, or detouring around it. Ref: https://www.youtube.com/shorts/7VTVNe_C5No
+  - Shares the **collision-exemption** mechanism with line relief: while a unit is passing through a
+    designated friendly, suspend mutual `_separate()` between them (and/or lane them) so they
+    interpenetrate cleanly, then re-enable once clear. The idle unit may shuffle aside and reform to
+    sell the effect.
+  - Distinct from line relief: here the mover keeps going (transit), it doesn't take over the
+    friendly's slot. Relief, merging, and pass-through should likely share one underlying
+    "soft-pass / collision-exemption" primitive.
+  - **Open design questions:** automatic (any friendly in the path yields) vs. an explicit order?
+    only through *idle* friendlies, or moving ones too? does an enemy nearby cancel the courtesy?
+    how wide a corridor does the idle unit open?
+  - **Code touch-points:** `Unit.gd` (`_separate()` per-pair exemption; a transit/pass-through
+    flag), movement/path logic, and `SelectionManager.gd` if an explicit order is chosen.
+
 ## Pointers
 - Tune unit stats in `Battle.gd` → `_spawn_line()` `loadout` array.
 - Tune collision spacing in `Unit.gd` → `SEPARATION_RADIUS` (center-to-center floor = sum of both
