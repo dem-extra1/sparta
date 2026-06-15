@@ -1,12 +1,8 @@
-# Copy to .github/workflows/claude-code-review.yml in your repo.
-# NOTE: requires the CLAUDE_CODE_OAUTH_TOKEN repository secret. It is passed
-# explicitly (not via `secrets: inherit`) because the reusable workflow lives
-# in a different account's repo (d-morrison/gha) — `inherit` only forwards
-# secrets to reusable workflows within the SAME owner/org, so across owners it
-# silently passes an empty token and the action aborts. The workflow_dispatch
+# Requires the CLAUDE_CODE_OAUTH_TOKEN repository secret. The workflow_dispatch
 # path lets claude.yml re-dispatch a review after an @claude run pushes commits
 # — keep the file named claude-code-review.yml (or set claude.yml's
-# review-workflow-file to match).
+# review-workflow-file to match). The review logic lives in _claude-review.yml
+# (a local fork of d-morrison/gha's reusable workflow).
 name: Claude Code Review
 
 on:
@@ -19,6 +15,10 @@ on:
         required: true
         type: number
 
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: true
+
 jobs:
   review:
     permissions:
@@ -26,9 +26,10 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
-    # Pinned to @main: the Claude reusable workflows are not yet included in a
-    # tagged release of d-morrison/gha (the v1 tag predates them).
-    uses: d-morrison/gha/.github/workflows/claude-code-review.yml@main
+    # Inline local fork of the review reusable workflow so we can apply local
+    # policy (draft PRs included, cancel-in-progress). Forked from
+    # d-morrison/gha/.github/workflows/claude-code-review.yml.
+    uses: ./.github/workflows/_claude-review.yml
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     with:
