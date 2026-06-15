@@ -73,6 +73,9 @@ static func start_rout(unit: Unit) -> void:
 	unit.remove_from_group("units")
 	unit.add_to_group("routers")
 	for u in unit.get_tree().get_nodes_in_group("units"):
-		if u.team == unit.team and unit.position.distance_to(u.position) < ROUT_SPREAD_RANGE:
-			u.morale -= 12.0
+		var friend := u as Unit
+		if friend == null or friend.team != unit.team:
+			continue
+		if unit.position.distance_to(friend.position) < ROUT_SPREAD_RANGE:
+			friend.morale -= 12.0
 	unit.queue_redraw()
