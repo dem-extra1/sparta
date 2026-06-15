@@ -16,12 +16,13 @@ static func nearest_enemy(unit: Unit) -> Unit:
 	var best: Unit = null
 	var best_d: float = DETECTION_RANGE
 	for u in unit.get_tree().get_nodes_in_group("units"):
-		if u.team == unit.team or u.state == Unit.State.DEAD or u.state == Unit.State.ROUTING:
+		var e := u as Unit
+		if e == null or e.team == unit.team:
 			continue
-		var d: float = unit.position.distance_to(u.position)
+		var d: float = unit.position.distance_to(e.position)
 		if d < best_d:
 			best_d = d
-			best = u
+			best = e
 	return best
 
 static func strike(attacker: Unit, enemy: Unit) -> void:
