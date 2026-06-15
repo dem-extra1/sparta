@@ -1,0 +1,45 @@
+# Project-specific CI for the Godot game. Imports every resource headlessly so
+# broken scene/resource references surface, then parse-checks each GDScript file.
+# No export presets exist yet, so this validates rather than exports a build.
+name: Godot CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Keep in sync with `config/features` in project.godot. Standard (GDScript)
+# build — the project uses gl_compatibility and no C#/.NET.
+env:
+  GODOT_VERSION: 4.6.0
+
+jobs:
+  validate:
+    name: Import & validate project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }}
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false   # Standard build, not the .NET/C# build
+
+      - name: Import resources
+        # Generates the .godot import cache and reports import-time errors
+        # (e.g. scenes referencing missing scripts or resources).
+        run: godot --headless --import --verbose
+
+      - name: Parse-check GDScript
+        # `--check-only` parses each script and fails on syntax/parse errors
+        # without running the game.
+        run: |
+          status=0
+          while IFS= read -r -d '' f; do
+            echo "::group::$f"
+            godot --headless --check-only --script "$f" || status=1
+            echo "::endgroup::"
+          done < <(find scripts -name '*.gd' -print0)
+          exit $status
