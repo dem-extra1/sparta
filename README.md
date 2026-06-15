@@ -69,6 +69,7 @@ mkdir -p "$HOME/.local/bin/"
 unzip -q /tmp/godot.zip -d "$HOME/.local/bin/"
 mv "$HOME/.local/bin/Godot_v4.6-stable_linux.x86_64" "$HOME/.local/bin/godot"
 chmod +x "$HOME/.local/bin/godot"
+rm /tmp/godot.zip
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
