@@ -1,0 +1,15 @@
+# Godot 4 ignores
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+*.translation
+
+# Mono / .NET (unused now, here for later)
+.mono/
+data_*/
+mono_crash.*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

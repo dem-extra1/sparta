@@ -1,0 +1,25 @@
+; Engine configuration file.
+; Sparta — CK3 x Total War prototype, Milestone 1: one tactical battle.
+; Godot 4.6.x (Standard / GDScript build).
+
+config_version=5
+
+[application]
+
+config/name="Sparta"
+config/description="Milestone 1: a single 2D tactical battle (CK3 x Total War prototype)."
+run/main_scene="res://scenes/Battle.tscn"
+config/features=PackedStringArray("4.6", "GDScript")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
