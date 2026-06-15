@@ -36,6 +36,27 @@ then grow outward.
      5. Scale: replace the O(n²) neighbor scan with a spatial grid (and/or move to Godot
         `CharacterBody2D`/`move_and_slide`) before unit counts grow past a few dozen.
 
+## Prioritized roadmap (synced with GitHub issues)
+Tracked as issues on `dem-extra1/sparta` with `P0`–`P3` labels (a GitHub Project board groups them).
+Order reflects dependencies — validate the foundation, then build the collision pillar, then the
+features that depend on it, then independent polish.
+
+- **P0 — Foundation (do first):**
+  - #12 M1 first run & verification in Godot — nothing below is validated until this passes.
+  - #13 Spacebar active pause — implemented in PR #2, pending live confirm.
+- **P1 — Collision pillar (core, in dependency order):**
+  - #6 Per-type footprint (plumbing exists via `SEPARATION_RADIUS`; low effort).
+  - #10 NavigationAgent2D pathfinding (decide path-vs-collision split here).
+  - #9 Scale beyond O(n²) — pairs with #10.
+  - #7 Formation cohesion (depends on #6).
+  - #8 Hard blocking: spears stop cavalry (depends on solid collision + formations).
+- **P2 — Features on the shared "collision-exemption" primitive (build it once in #5, reuse):**
+  - #5 Friendly pass-through (simplest; establishes the primitive).
+  - #4 Line relief (adds fatigue stat + handoff).
+  - #3 Unit merging (stat blending + "strangers" debuff).
+- **P3 — Independent polish:**
+  - #11 Richer selection (double-click type-select, control groups).
+
 ## Current status — Milestone 1: SCAFFOLDED, not yet run in Godot
 All code written and committed to the repo. Runs with **zero downloaded art** (units are
 self-drawn colored tokens). **Not yet opened in the Godot editor**, so no live playtest has
