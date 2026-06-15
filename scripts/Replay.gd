@@ -33,7 +33,9 @@ const PHYSICS_TPS := 60
 # PLAYBACK while re-running a saved one.
 var mode: int = Mode.IDLE
 
-# The one seeded RNG the whole simulation draws from.
+# The one seeded RNG the whole simulation draws from. Its seed is set once per
+# battle by start_recording()/start_playback(); never call .randomize() or set
+# .seed on it elsewhere, or replays will silently desync.
 var rng := RandomNumberGenerator.new()
 var seed_value: int = 0
 
