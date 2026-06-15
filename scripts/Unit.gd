@@ -1,8 +1,8 @@
 extends Node2D
 class_name Unit
-## A regiment: one selectable token with a soldier count, morale, and a
-## simple state machine. Draws itself with primitives so the game runs before
-## any art is added. Swap _draw() for a Sprite2D later (see README).
+## A regiment: one selectable token with a soldier count and morale.
+## Renders itself via _draw() with per-type sprite shapes: infantry kite
+## shield, spearmen hoplon + spear, cavalry horse + rider.
 
 enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }
 
@@ -240,6 +240,20 @@ func _draw() -> void:
 	var lite_c := Color(minf(body_c.r + 0.30, 1.0), minf(body_c.g + 0.30, 1.0),
 			minf(body_c.b + 0.30, 1.0), alpha)
 
+	# Drop shadow (squished ellipse anchors the token to the ground).
+	draw_set_transform(Vector2(0, RADIUS * 0.60), 0.0, Vector2(1.15, 0.38))
+	draw_circle(Vector2.ZERO, RADIUS, Color(0, 0, 0, 0.28))
+	draw_set_transform(Vector2.ZERO, 0.0)
+
+	# State ring drawn behind the sprite: red = engaged, orange = routing.
+	match state:
+		State.FIGHTING:
+			draw_arc(Vector2.ZERO, RADIUS + 3.5, 0, TAU, 28,
+					Color(0.90, 0.15, 0.15, alpha), 3.5)
+		State.ROUTING:
+			draw_arc(Vector2.ZERO, RADIUS + 3.5, 0, TAU, 28,
+					Color(0.95, 0.50, 0.05, 1.0), 4.0)
+
 	# Rotate drawing so the sprite's "forward" aligns with the unit's facing direction.
 	draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5)
 
@@ -250,21 +264,34 @@ func _draw() -> void:
 	else:
 		_draw_infantry_sprite(body_c, dark_c, lite_c)
 
-	# Reset to screen-space for HUD overlays (selection ring, health bar).
+	# Reset to screen-space for HUD overlays.
 	draw_set_transform(Vector2.ZERO, 0.0)
 
 	if selected:
 		draw_arc(Vector2.ZERO, RADIUS + 5.0, 0, TAU, 28, Color(0.95, 0.95, 0.3), 2.5)
 
+	# Strength bar + morale bar stacked above the token.
 	var bw: float = 38.0
-	var by: float = -RADIUS - 12.0
+	var by: float = -RADIUS - 22.0
 	var frac: float = clampf(float(soldiers) / float(max_soldiers), 0.0, 1.0)
-	draw_rect(Rect2(-bw * 0.5, by, bw, 5.0), Color(0.15, 0.15, 0.15, alpha))
-	draw_rect(Rect2(-bw * 0.5, by, bw * frac, 5.0), Color(0.3, 0.8, 0.3, alpha))
+	var morale_frac: float = clampf(morale / 100.0, 0.0, 1.0)
+	var morale_color: Color
+	if morale_frac > 0.60:
+		morale_color = Color(0.30, 0.80, 0.30, alpha)
+	elif morale_frac > 0.30:
+		morale_color = Color(0.85, 0.75, 0.10, alpha)
+	else:
+		morale_color = Color(0.85, 0.20, 0.10, alpha)
 
 	var font := ThemeDB.fallback_font
 	draw_string(font, Vector2(-bw * 0.5, by - 3.0), str(soldiers),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, alpha))
+	# Strength (green).
+	draw_rect(Rect2(-bw * 0.5, by, bw, 5.0), Color(0.15, 0.15, 0.15, alpha))
+	draw_rect(Rect2(-bw * 0.5, by, bw * frac, 5.0), Color(0.30, 0.80, 0.30, alpha))
+	# Morale (green → yellow → red as it degrades).
+	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw, 4.0), Color(0.15, 0.15, 0.15, alpha))
+	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw * morale_frac, 4.0), morale_color)
 
 
 ## Infantry: kite (heater) shield with a cross motif and sword pommel.
