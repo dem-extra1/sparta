@@ -8,6 +8,9 @@ const UnitRef = preload("res://scripts/Unit.gd")
 
 const FIELD := Rect2(0, 0, 1600, 1000)
 
+# Global movement scale: lower = units move slower (relative speeds preserved).
+const SPEED_SCALE := 0.6
+
 @onready var _units: Node2D = $Units
 @onready var _hud = $HUD
 @onready var _camera: Camera2D = $Camera2D
@@ -57,7 +60,7 @@ func _spawn_line(team: int, facing: Vector2, y: float) -> void:
 		u.max_soldiers = d["soldiers"]
 		u.attack = d["atk"]
 		u.defense = d["def"]
-		u.move_speed = d["spd"]
+		u.move_speed = d["spd"] * SPEED_SCALE
 		u.facing = facing
 		u.position = Vector2(start_x + i * spacing, y)
 		_units.add_child(u)
