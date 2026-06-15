@@ -29,7 +29,8 @@ session/MCP-config condition, not specific to any one client. When you hit it,
 do not just report it as a dead end — use whichever of these is available:
 
 1. **`subscribe_pr_activity`** (if available) — it wakes the session on PR
-   comments, CI completions, and reviews, which covers most babysitting needs.
+   comments, CI completions, and reviews (the exact set depends on the
+   deployment), which covers most babysitting needs.
    Two things a PR-activity subscription won't reliably hand you, so check them
    actively rather than waiting on a webhook: a CI run that goes green *and*
    needs you to act on it (e.g. auto-merge), and a **merge conflict appearing**
@@ -48,5 +49,5 @@ do not just report it as a dead end — use whichever of these is available:
    server. If you truly need it, it must be configured for the environment; that's
    a settings/MCP-config change, not something to flip on mid-session.
 
-For most PR-babysitting, **#1 + #2 together** replicate what `send_later` was for.
+When both are available, **#1 + #2 together** replicate what `send_later` was for.
 Never use Bash `sleep` to wait for external events.
