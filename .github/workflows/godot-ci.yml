@@ -1,0 +1,62 @@
+# CI for the Godot game: imports the project (validating scripts/scenes in full
+# context) and runs the GUT unit-test suite headlessly. No export presets exist
+# yet, so this validates and tests rather than exporting a build.
+name: Godot CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# GODOT_VERSION: keep in sync with config/features in project.godot (Standard /
+# GDScript build — gl_compatibility, no C#/.NET).
+# GUT_VERSION:   pinned GUT release matching the Godot version.
+env:
+  GODOT_VERSION: 4.6.0
+  GUT_VERSION: v9.6.0
+
+jobs:
+  test:
+    name: Validate & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }}
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false   # Standard build, not the .NET/C# build
+
+      - name: Install GUT ${{ env.GUT_VERSION }}
+        # Vendored at run time (pinned tag) so the framework isn't committed to
+        # the repo. The project's test files extend GutTest, so GUT must be
+        # present before the import step below or validation would fail to
+        # resolve that class. Local dev installs it the same way (test/README.md).
+        run: |
+          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
+          mkdir -p addons
+          rm -rf addons/gut
+          cp -r /tmp/gut/addons/gut addons/gut
+
+      - name: Import & validate project
+        # `--import` loads the whole project (autoloads, class_name globals and
+        # cross-script references all resolve) and reports compile/import errors.
+        # Godot doesn't reliably exit non-zero on script errors, so we fail the
+        # job if any error marker shows up in the import log.
+        run: |
+          set -o pipefail
+          godot --headless --import --verbose 2>&1 | tee import.log
+          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
+            echo "::error::Godot reported script/resource errors during import"
+            exit 1
+          fi
+
+      - name: Run unit tests (GUT)
+        # gut_cmdln runs without enabling the editor plugin; -gexit sets a
+        # non-zero exit code if any test fails or errors.
+        run: |
+          godot --headless -s addons/gut/gut_cmdln.gd \
+            -gdir=res://test -ginclude_subdirs -gexit \
+            -gjunit_xml_file=res://test_results.xml
