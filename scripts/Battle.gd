@@ -8,6 +8,9 @@ const UnitRef = preload("res://scripts/Unit.gd")
 
 const FIELD := Rect2(0, 0, 1600, 1000)
 
+# Global movement scale: lower = units move slower (relative speeds preserved).
+const SPEED_SCALE: float = 0.6
+
 @onready var _units: Node2D = $Units
 @onready var _hud = $HUD
 @onready var _camera: Camera2D = $Camera2D
@@ -36,8 +39,6 @@ func _draw() -> void:
 
 func _spawn_line(team: int, facing: Vector2, y: float) -> void:
 	# Loadout: spearmen, infantry, infantry, cavalry, cavalry.
-	# Global movement scale: lower = units move slower (relative speeds preserved).
-	var speed_scale: float = 0.6
 	var loadout := [
 		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "spd": 80},
 		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "spd": 90},
@@ -59,7 +60,7 @@ func _spawn_line(team: int, facing: Vector2, y: float) -> void:
 		u.max_soldiers = d["soldiers"]
 		u.attack = d["atk"]
 		u.defense = d["def"]
-		u.move_speed = d["spd"] * speed_scale
+		u.move_speed = d["spd"] * SPEED_SCALE
 		u.facing = facing
 		u.position = Vector2(start_x + i * spacing, y)
 		_units.add_child(u)

@@ -109,6 +109,7 @@ func clear_unit() -> void:
 
 
 func show_end(text: String) -> void:
+	_paused_label.visible = false   # the end overlay owns the paused state now
 	_overlay_label.text = text
 	_overlay.visible = true
 	get_tree().paused = true

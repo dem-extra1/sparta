@@ -37,6 +37,11 @@ const RADIUS: float = 18.0
 const DETECTION_RANGE: float = 190.0
 const ATTACK_INTERVAL: float = 0.6
 const ROUT_TIME: float = 6.0
+# Cap on a single frame's separation correction. The melee buffer
+# (attack_range + RADIUS − sum of separation radii) is only a few pixels, so
+# accumulated ally push must stay under it or a fighting unit gets bumped out
+# of attack range and jitters in/out of FIGHTING. 3 px stays safely inside it.
+const MAX_SEPARATION_PUSH: float = 3.0
 
 var _attack_cd: float = 0.0
 var _rout_timer: float = 0.0
@@ -158,10 +163,13 @@ func _separate() -> void:
 			var d: float = sqrt(d_sq)
 			push += (offset / d) * (min_dist - d)
 		else:
-			# Exactly co-located: nudge apart in a random direction.
-			push += Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
+			# Exactly co-located: nudge apart in a random direction. Unit-length
+			# so the nudge can't come out near-zero and leave units overlapping.
+			push += Vector2.from_angle(randf() * TAU)
 	if push != Vector2.ZERO:
-		position += push * 0.5
+		# Halve (neighbor corrects the other half on its own pass), then cap so a
+		# crowd of allies can't shove a fighting unit out of melee contact.
+		position += (push * 0.5).limit_length(MAX_SEPARATION_PUSH)
 
 
 func _face(point: Vector2) -> void:
