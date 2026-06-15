@@ -34,6 +34,10 @@ You command the **blue** army (top). Defeat the **red** army (bottom).
   (flee, shown faded) and stop counting toward the battle. Routs spread to nearby allies.
 - **Rock-paper-scissors:** **Cavalry** are fast and get a charge bonus, but **Spearmen**
   (with the spear marker) blunt that charge. Use cavalry to flank, spears to screen.
+- **Disengaging:** right-click ground (a move order) to pull a unit *out* of melee —
+  handy for retreating a battered regiment or redeploying cavalry to a new flank.
+  It's risky: while marching away the unit shows its back, so the enemy it left gets
+  free rear hits (×2) until it's clear. Stop the unit and it re-engages anything nearby.
 
 ## Project layout
 
