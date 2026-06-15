@@ -1,7 +1,10 @@
 # CLAUDE.md — AI working instructions for Sparta
 
 Orientation and standing policies for any AI session working in this repo.
-For project vision, roadmap, architecture, and verification steps, read `PLAN.md` first.
+Sparta is a **Godot 4.6** (GDScript, Standard build — not .NET/C#) prototype
+fusing CK3-style grand strategy with Total War-style tactical battles. See
+`README.md` for layout and `PLAN.md` for project vision, roadmap, architecture,
+and verification steps — read `PLAN.md` first.
 
 ## Project at a glance
 - Godot **4.6.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.
@@ -25,6 +28,19 @@ When addressing review feedback (human or automated) on a PR, triage each findin
 A PR's scope is defined by its title/description. Keep the diff focused on that;
 push genuinely separate concerns to their own tracked issues rather than letting
 review rounds grow the change set unboundedly.
+
+### Findings that live in an upstream/external repo
+When a review raises an issue that actually lives in an **upstream/external
+repository** — a reusable workflow, a dependency, an action we call, etc. —
+rather than only working around it here:
+
+1. **File a follow-up issue in the upstream repo** describing the problem (link
+   back to this repo's PR/review for context).
+2. **Reply to the review comment with a link to that upstream issue**, so the
+   reviewer can see it's tracked at the source.
+
+Still apply any reasonable local mitigation, but do not let the upstream root
+cause go unrecorded.
 
 ## Git / branch conventions
 - Develop on the designated feature branch; never push to a different branch

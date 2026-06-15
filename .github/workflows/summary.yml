@@ -1,0 +1,19 @@
+# Posts an AI-generated summary comment on newly opened issues, via the reusable
+# workflow in d-morrison/gha. Uses GitHub Models (no extra secret required) — the
+# `models: read` permission is what grants inference access.
+#
+# Pinned to the @v1 moving major tag (not @main) — the upstream-recommended
+# consumer pin: it tracks reviewed v1 releases rather than every main commit.
+name: Issue Summary
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  summary:
+    permissions:
+      contents: read
+      issues: write     # post the summary comment
+      models: read      # GitHub Models inference
+    uses: d-morrison/gha/.github/workflows/summary.yml@v1
