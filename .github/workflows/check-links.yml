@@ -1,8 +1,11 @@
 # Validates the URLs in the repo's docs (README.md, ASSETS.md, etc.) with lychee.
-# Calls the reusable workflow in d-morrison/gha. On main it opens a tracking issue
-# when links break; on PRs add the `links checked by hand` label to skip.
-# NOTE: pinned to @main to match the verified reusable-workflow interface (the
-# v1 tag predates some of these inputs); bump to a tag once one is cut.
+# Calls the reusable workflow in d-morrison/gha. On main/scheduled runs it opens a
+# tracking issue when links break; on PRs add the `links checked by hand` label to
+# skip.
+#
+# Pinned to an immutable commit SHA (not @main) so upstream changes to the
+# reusable workflow are deliberate and reviewable — bump the SHA to update.
+# d-morrison/gha @ be85cbc617195d969ca0019c0532b0e945d51ca3 (main, 2026-06-15)
 name: Check Links
 
 on:
@@ -14,12 +17,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  links:
+  # PR runs only read the skip-label and the tree — no issue creation, so the
+  # token stays read-only (least privilege).
+  links-pr:
+    if: github.event_name == 'pull_request'
     permissions:
       contents: read
-      issues: write          # file/update the broken-links issue on main
       pull-requests: read    # read the skip-label on PRs
-    uses: d-morrison/gha/.github/workflows/check-links.yml@main
+    uses: d-morrison/gha/.github/workflows/check-links.yml@be85cbc617195d969ca0019c0532b0e945d51ca3
+
+  # main / scheduled / manual runs may file the broken-links tracking issue, so
+  # they get issues: write.
+  links-main:
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      issues: write          # file/update the broken-links issue
+    uses: d-morrison/gha/.github/workflows/check-links.yml@be85cbc617195d969ca0019c0532b0e945d51ca3
     # with:
     #   lychee-args: '--verbose "**/*.md"'   # override the default glob set
     #   create-issue-on-main: false          # don't auto-open an issue
