@@ -20,6 +20,15 @@ func _ready() -> void:
 	hint.add_theme_font_size_override("font_size", 14)
 	add_child(hint)
 
+	# Settings: edge-scroll toggle (top-right).
+	var edge_toggle := CheckButton.new()
+	edge_toggle.text = "Mouse-edge scroll"
+	edge_toggle.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	edge_toggle.position = Vector2(-260, 6)
+	edge_toggle.button_pressed = Settings.edge_scroll
+	edge_toggle.toggled.connect(func(on: bool) -> void: Settings.edge_scroll = on)
+	add_child(edge_toggle)
+
 	# Selected-unit panel.
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
