@@ -150,8 +150,9 @@ func _face_dir(dir: Vector2) -> void:
 
 
 ## Push out of any overlapping unit so regiments form a solid line instead of
-## passing through each other. Each pair shares the correction (half each), so
-## with every unit running this the overlap converges to zero within a frame.
+## passing through each other. Each pair shares the correction (half each).
+## Since units move sequentially (each only moves itself), one frame reduces an
+## overlap by ~75%; it converges to zero within a few frames.
 func _separate() -> void:
 	if state == State.DEAD:
 		return
