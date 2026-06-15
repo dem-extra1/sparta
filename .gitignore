@@ -10,6 +10,13 @@ export_presets.cfg
 data_*/
 mono_crash.*
 
+# Test framework (GUT) is vendored at CI/dev time, not committed — see test/README.md
+/addons/gut/
+
+# Test artifacts
+test_results.xml
+import.log
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db
