@@ -37,7 +37,7 @@ func _finish_selection() -> void:
 	_clear_selection()
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
 	if rect.size.length() < CLICK_THRESHOLD:
-		var u = SelectionUtils.unit_at(_drag_start, 0, true, get_tree())
+		var u = SelectionUtils.unit_at(_drag_start, 0, get_tree())
 		if u != null:
 			_select(u)
 	else:

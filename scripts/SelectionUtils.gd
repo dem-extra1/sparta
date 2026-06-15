@@ -3,16 +3,14 @@ extends RefCounted
 
 const UnitRef := preload("res://scripts/Unit.gd")
 
-static func unit_at(world_pos: Vector2, team: int, friendly: bool, tree: SceneTree):
+static func unit_at(world_pos: Vector2, team: int, tree: SceneTree):
 	var best = null
 	var best_d: float = UnitRef.RADIUS + 6.0
 	for node in tree.get_nodes_in_group("units"):
 		var unit := node as UnitRef
 		if unit == null:
 			continue
-		if friendly and unit.team != team:
-			continue
-		if not friendly and unit.team != team:
+		if unit.team != team:
 			continue
 		var d: float = unit.position.distance_to(world_pos)
 		if d < best_d:
@@ -31,7 +29,7 @@ static func box_select(rect: Rect2, tree: SceneTree) -> Array:
 static func issue_order(selected: Array, world_pos: Vector2, tree: SceneTree) -> void:
 	if selected.is_empty():
 		return
-	var enemy = unit_at(world_pos, 1, false, tree)
+	var enemy = unit_at(world_pos, 1, tree)
 	var i: int = 0
 	for unit in selected:
 		if not is_instance_valid(unit):
