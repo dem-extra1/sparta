@@ -4,12 +4,14 @@ extends Node2D
 ##   Left click + drag — box-select friendly units
 ##   Right click       — move there, or attack the enemy unit clicked
 
+const UnitRef = preload("res://scripts/Unit.gd")  # avoid global-class-cache dependency
+
 const CLICK_THRESHOLD: float = 6.0
 
 var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
 var _drag_cur: Vector2 = Vector2.ZERO
-var _selected: Array[Unit] = []
+var _selected: Array = []
 
 @onready var _hud = get_node_or_null("../HUD")
 
@@ -41,12 +43,12 @@ func _finish_selection() -> void:
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
 
 	if rect.size.length() < CLICK_THRESHOLD:
-		var u := _unit_at(_drag_start, 0, true)
+		var u = _unit_at(_drag_start, 0, true)
 		if u != null:
 			_select(u)
 	else:
 		for node in get_tree().get_nodes_in_group("units"):
-			var unit: Unit = node as Unit
+			var unit = node as UnitRef
 			if unit != null and unit.team == 0 and rect.has_point(unit.position):
 				_select(unit)
 
@@ -56,7 +58,7 @@ func _finish_selection() -> void:
 func _issue_order(world_pos: Vector2) -> void:
 	if _selected.is_empty():
 		return
-	var enemy := _unit_at(world_pos, 1, false)
+	var enemy = _unit_at(world_pos, 1, false)
 	var i: int = 0
 	for unit in _selected:
 		if not is_instance_valid(unit):
@@ -76,12 +78,12 @@ func _issue_order(world_pos: Vector2) -> void:
 
 # --- helpers ---------------------------------------------------------------
 
-func _unit_at(world_pos: Vector2, team_filter: int, friendly: bool) -> Unit:
+func _unit_at(world_pos: Vector2, team_filter: int, friendly: bool):
 	# friendly=true matches team_filter; friendly=false matches that enemy team.
-	var best: Unit = null
-	var best_d: float = Unit.RADIUS + 6.0
+	var best = null
+	var best_d: float = UnitRef.RADIUS + 6.0
 	for node in get_tree().get_nodes_in_group("units"):
-		var unit: Unit = node as Unit
+		var unit = node as UnitRef
 		if unit == null:
 			continue
 		if friendly and unit.team != team_filter:
@@ -95,7 +97,7 @@ func _unit_at(world_pos: Vector2, team_filter: int, friendly: bool) -> Unit:
 	return best
 
 
-func _select(u: Unit) -> void:
+func _select(u) -> void:
 	u.selected = true
 	u.queue_redraw()
 	_selected.append(u)
@@ -113,7 +115,7 @@ func _refresh_hud() -> void:
 	if _hud == null:
 		return
 	# Drop any units that died/routed out of the selection.
-	var live: Array[Unit] = []
+	var live: Array = []
 	for u in _selected:
 		if is_instance_valid(u):
 			live.append(u)
