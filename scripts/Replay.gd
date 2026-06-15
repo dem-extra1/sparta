@@ -81,6 +81,12 @@ func start_playback(path: String) -> bool:
 	if int(data.get("version", 0)) != FORMAT_VERSION:
 		push_warning("Replay format mismatch in %s; skipping." % path)
 		return false
+	# Replays are only valid at the tick rate they were recorded at: orders are
+	# stamped with physics ticks, so a different rate would replay them at the
+	# wrong wall-clock moments and desync the battle.
+	if int(data.get("physics_tps", 0)) != PHYSICS_TPS:
+		push_warning("Replay physics tick rate mismatch in %s; skipping." % path)
+		return false
 
 	# Seed is stored as a string: JSON numbers are float64 and would lose
 	# precision on a full 64-bit seed, silently desyncing the replay.
