@@ -63,6 +63,13 @@ Godot was **not installed** in the authoring environment, so only static checks 
 If any script error appears on first run, fix it before building further — this is expected for
 hand-authored GDScript that hasn't been engine-checked.
 
+## Added since scaffold
+- **Reproducible replays** (`scripts/Replay.gd`): deterministic sim + order log
+  (Total War-style). Every battle auto-records to `user://replays/`; "Watch
+  Replay" re-runs it. Made the sim deterministic (single seeded RNG via
+  `Replay.rng`; AI + orders on the fixed physics tick). Verified end-to-end:
+  a recorded battle replays bit-identically tick-for-tick. See `REPLAY.md`.
+
 ## Next milestones (not started)
 - **M1 polish (optional, after first run is fun):**
   - Swap token `_draw()` for real CC0 `Sprite2D` art (see README "Swapping placeholder art").

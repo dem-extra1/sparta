@@ -14,6 +14,7 @@ var _drag_cur: Vector2 = Vector2.ZERO
 var _selected: Array = []
 
 @onready var _hud = get_node_or_null("../HUD")
+@onready var _battle = get_parent()
 
 
 func _ready() -> void:
@@ -56,24 +57,23 @@ func _finish_selection() -> void:
 
 
 func _issue_order(world_pos: Vector2) -> void:
+	# Orders are replayed, so the player can't steer a playback.
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
 	if _selected.is_empty():
 		return
+	# Gather the selection as stable uids and hand the order to Battle, which
+	# records it and applies it on the next physics tick (so live and replayed
+	# orders take exactly the same code path). Selection and camera stay live —
+	# only the simulation-affecting order is routed through the recorder.
 	var enemy = _unit_at(world_pos, 1, false)
-	var i: int = 0
+	var uids: Array = []
 	for unit in _selected:
-		if not is_instance_valid(unit):
-			continue
-		if enemy != null:
-			unit.target_enemy = enemy
-			unit.has_move_target = false
-		else:
-			# Spread the destination so units don't pile onto one point.
-			var cols: int = 4
-			var off := Vector2((i % cols) * 42 - 63, (i / cols) * 42)
-			unit.move_target = world_pos + off
-			unit.has_move_target = true
-			unit.target_enemy = null
-		i += 1
+		if is_instance_valid(unit):
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_order(uids, world_pos, enemy.uid if enemy != null else -1)
 
 
 # --- helpers ---------------------------------------------------------------
