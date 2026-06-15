@@ -16,6 +16,12 @@ enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }
 @export var attack_range: float = 26.0
 @export var is_cavalry: bool = false
 @export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
+## Personal-space radius for soft collision. Center-to-center spacing between two
+## units settles at the sum of their radii, so a per-type footprint (e.g. wider
+## cavalry) is just a different value set at spawn (see issue #6). Keep it below
+## attack reach (attack_range + RADIUS) so units still press into melee contact
+## instead of bouncing apart.
+@export var separation_radius: float = 19.0
 
 # --- Runtime state ---
 var soldiers: int
@@ -28,11 +34,6 @@ var target_enemy: Unit = null
 var selected: bool = false
 
 const RADIUS: float = 18.0
-## Personal-space radius for soft collision. Center-to-center spacing between two
-## units settles at the sum of their radii, so per-type footprints (e.g. wider
-## cavalry) just override this. Kept below attack reach (attack_range + RADIUS)
-## so units still press into melee contact instead of bouncing apart.
-const SEPARATION_RADIUS: float = 19.0
 const DETECTION_RANGE: float = 190.0
 const ATTACK_INTERVAL: float = 0.6
 const ROUT_TIME: float = 6.0
@@ -147,12 +148,16 @@ func _separate() -> void:
 		var other: Unit = u as Unit
 		if other == null or other == self:
 			continue
-		var min_dist: float = SEPARATION_RADIUS + other.SEPARATION_RADIUS
+		var min_dist: float = separation_radius + other.separation_radius
 		var offset: Vector2 = position - other.position
-		var d: float = offset.length()
-		if d > 0.01 and d < min_dist:
-			push += offset.normalized() * (min_dist - d)
-		elif d <= 0.01:
+		# Compare squared distances first; only take the sqrt for actual overlaps.
+		var d_sq: float = offset.length_squared()
+		if d_sq >= min_dist * min_dist:
+			continue
+		if d_sq > 0.0001:
+			var d: float = sqrt(d_sq)
+			push += (offset / d) * (min_dist - d)
+		else:
 			# Exactly co-located: nudge apart in a random direction.
 			push += Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
 	if push != Vector2.ZERO:

@@ -25,8 +25,11 @@ func _ready() -> void:
 	# commands can still be issued while paused, so it reads as "PAUSED".
 	_paused_label = Label.new()
 	_paused_label.text = "❚❚ PAUSED — orders can still be given"
-	_paused_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_paused_label.position = Vector2(-150, 36)
+	# Span the top edge and center the text, so it stays centered across
+	# resolutions/font/text changes without a hardcoded offset.
+	_paused_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_paused_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_paused_label.offset_top = 36
 	_paused_label.add_theme_color_override("font_color", Color(1, 0.9, 0.4))
 	_paused_label.add_theme_font_size_override("font_size", 18)
 	_paused_label.visible = false

@@ -25,7 +25,7 @@ then grow outward.
    collision correctness/perf takes priority over new feature breadth.
    - **Current state:** soft separation in `Unit.gd` → `_separate()` — each frame a unit pushes
      out of any overlapping live unit by half the overlap (neighbor corrects the rest). Spacing is
-     `SEPARATION_RADIUS` (see Pointers). It is intentionally *soft* so regiments still press into
+     the per-instance `separation_radius` (see Pointers). It is intentionally *soft* so regiments still press into
      melee contact (attack reach > separation floor) instead of bouncing apart.
    - **Roadmap (in priority order):**
      1. ✅ No-stack soft separation between live units.
@@ -179,8 +179,9 @@ hand-authored GDScript that hasn't been engine-checked.
 
 ## Pointers
 - Tune unit stats in `Battle.gd` → `_spawn_line()` `loadout` array.
-- Tune collision spacing in `Unit.gd` → `SEPARATION_RADIUS` (center-to-center floor = sum of both
-  units' radii); soft-resolve logic in `_separate()`. Tune spawn gaps via `spacing` in `_spawn_line()`.
+- Tune collision spacing in `Unit.gd` → `separation_radius` (per-instance `@export`; center-to-center
+  floor = sum of both units' radii; set per type at spawn for footprints). Soft-resolve logic in
+  `_separate()`. Tune spawn gaps via `spacing` in `_spawn_line()`.
 - Tune movement pace in `Battle.gd` → `speed_scale` in `_spawn_line()` (lower = slower).
 - Combat math in `Unit.gd` → `_strike()` / `take_casualties()` / `_flank_multiplier()`.
 - Enemy AI in `Battle.gd` → `_run_enemy_ai()` (currently: advance on nearest player unit).
