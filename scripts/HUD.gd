@@ -67,7 +67,7 @@ func _ready() -> void:
 	box.add_child(restart)
 
 
-func show_unit(u: Unit, group_count: int) -> void:
+func show_unit(u, group_count: int) -> void:
 	if u == null or not is_instance_valid(u):
 		clear_unit()
 		return

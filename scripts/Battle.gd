@@ -2,6 +2,10 @@ extends Node2D
 ## Sets up the battlefield, spawns both armies, runs the enemy AI, and decides
 ## when the battle is won or lost.
 
+# Preload instead of relying on Unit's global class_name, so the project loads
+# without the editor-built global-class cache (works headless / first run / CI).
+const UnitRef = preload("res://scripts/Unit.gd")
+
 const FIELD := Rect2(0, 0, 1600, 1000)
 
 @onready var _units: Node2D = $Units
@@ -45,7 +49,7 @@ func _spawn_line(team: int, facing: Vector2, y: float) -> void:
 
 	for i in range(count):
 		var d: Dictionary = loadout[i]
-		var u := Unit.new()
+		var u := UnitRef.new()
 		u.unit_name = "%s %d" % [d["name"], i + 1]
 		u.team = team
 		u.anti_cavalry = d["anti_cav"]
@@ -77,9 +81,9 @@ func _run_enemy_ai() -> void:
 	if players.is_empty():
 		return
 	for u in _team_units(1):
-		if u.state == Unit.State.FIGHTING:
+		if u.state == UnitRef.State.FIGHTING:
 			continue
-		var nearest: Unit = null
+		var nearest = null
 		var best: float = INF
 		for p in players:
 			var d: float = u.position.distance_to(p.position)
@@ -90,10 +94,10 @@ func _run_enemy_ai() -> void:
 			u.target_enemy = nearest
 
 
-func _team_units(team: int) -> Array[Unit]:
-	var out: Array[Unit] = []
+func _team_units(team: int) -> Array:
+	var out: Array = []
 	for node in get_tree().get_nodes_in_group("units"):
-		var u: Unit = node as Unit
+		var u = node as UnitRef
 		if u != null and u.team == team:
 			out.append(u)
 	return out
