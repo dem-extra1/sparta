@@ -26,7 +26,9 @@ jobs:
       issues: write
       id-token: write
       actions: write
-    uses: d-morrison/gha/.github/workflows/claude.yml@v1
+    # Pinned to @main: the Claude reusable workflows are not yet included in a
+    # tagged release of d-morrison/gha (the v1 tag predates them).
+    uses: d-morrison/gha/.github/workflows/claude.yml@main
     secrets: inherit
     with:
       setup-r: false               # sparta is a Godot project, not an R package

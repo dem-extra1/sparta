@@ -22,7 +22,9 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
-    uses: d-morrison/gha/.github/workflows/claude-code-review.yml@v1
+    # Pinned to @main: the Claude reusable workflows are not yet included in a
+    # tagged release of d-morrison/gha (the v1 tag predates them).
+    uses: d-morrison/gha/.github/workflows/claude-code-review.yml@main
     secrets: inherit
     with:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
