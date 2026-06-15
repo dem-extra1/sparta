@@ -1,4 +1,5 @@
 extends RefCounted
+class_name UnitCombat
 ## Static combat helpers for Unit — targeting, striking, damage, death, routing.
 
 const DETECTION_RANGE: float = 190.0

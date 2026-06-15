@@ -1,4 +1,5 @@
 extends RefCounted
+class_name UnitMovement
 ## Static movement helpers for Unit — face, translate, separate, rout.
 
 const MAX_SEPARATION_PUSH: float = 3.0

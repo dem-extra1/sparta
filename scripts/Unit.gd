@@ -1,8 +1,6 @@
 extends Node2D
 class_name Unit
 
-const UnitCombat   := preload("res://scripts/UnitCombat.gd")
-const UnitMovement := preload("res://scripts/UnitMovement.gd")
 const UnitRenderer := preload("res://scripts/UnitRenderer.gd")
 
 enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }

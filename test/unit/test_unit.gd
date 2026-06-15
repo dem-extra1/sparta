@@ -1,7 +1,8 @@
 extends GutTest
-## Unit tests for the deterministic combat math in scripts/Unit.gd:
-## flanking multipliers and casualty/morale application. (The randomised
-## damage in _strike() is intentionally not tested here.)
+## Unit tests for the deterministic combat math:
+## flanking multipliers (UnitCombat.flank_multiplier) and casualty/morale
+## application (Unit.take_casualties -> UnitCombat.apply_damage). (The
+## randomised damage in UnitCombat.strike() is intentionally not tested here.)
 
 const FRONT := Vector2(0, 100)    # ahead of a unit facing DOWN
 const SIDE := Vector2(100, 0)     # to its flank
@@ -25,21 +26,21 @@ func _attacker_at(p: Vector2) -> Unit:
 	return a
 
 
-# --- _flank_multiplier -----------------------------------------------------
+# --- flank_multiplier ------------------------------------------------------
 
 func test_frontal_hit_is_1x() -> void:
 	var u := _make_unit()
-	assert_almost_eq(u._flank_multiplier(_attacker_at(FRONT)), 1.0, 0.001)
+	assert_almost_eq(UnitCombat.flank_multiplier(u, _attacker_at(FRONT)), 1.0, 0.001)
 
 
 func test_flank_hit_is_1_5x() -> void:
 	var u := _make_unit()
-	assert_almost_eq(u._flank_multiplier(_attacker_at(SIDE)), 1.5, 0.001)
+	assert_almost_eq(UnitCombat.flank_multiplier(u, _attacker_at(SIDE)), 1.5, 0.001)
 
 
 func test_rear_hit_is_2x() -> void:
 	var u := _make_unit()
-	assert_almost_eq(u._flank_multiplier(_attacker_at(REAR)), 2.0, 0.001)
+	assert_almost_eq(UnitCombat.flank_multiplier(u, _attacker_at(REAR)), 2.0, 0.001)
 
 
 # --- take_casualties -------------------------------------------------------
