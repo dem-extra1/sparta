@@ -36,6 +36,8 @@ func _draw() -> void:
 
 func _spawn_line(team: int, facing: Vector2, y: float) -> void:
 	# Loadout: spearmen, infantry, infantry, cavalry, cavalry.
+	# Global movement scale: lower = units move slower (relative speeds preserved).
+	var speed_scale: float = 0.6
 	var loadout := [
 		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "spd": 80},
 		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "spd": 90},
@@ -57,7 +59,7 @@ func _spawn_line(team: int, facing: Vector2, y: float) -> void:
 		u.max_soldiers = d["soldiers"]
 		u.attack = d["atk"]
 		u.defense = d["def"]
-		u.move_speed = d["spd"]
+		u.move_speed = d["spd"] * speed_scale
 		u.facing = facing
 		u.position = Vector2(start_x + i * spacing, y)
 		_units.add_child(u)
