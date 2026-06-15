@@ -143,15 +143,20 @@ func show_end(text: String) -> void:
 
 func _on_restart() -> void:
 	# Fresh battle: drop back to IDLE so Battle._ready starts a new recording.
-	Replay.mode = Replay.Mode.IDLE
+	Replay.reset()
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
 
 func _on_watch_replay() -> void:
-	# Re-run the most recent battle from its saved log.
-	var path := Replay.latest_path()
+	# Re-run the battle just played. Prefer the path we actually saved this
+	# session; only fall back to a directory scan if that's unavailable, so a
+	# failed save can't silently replay an older battle.
+	var path := Replay.last_saved_path
+	if path == "":
+		path = Replay.latest_path()
 	if path == "" or not Replay.start_playback(path):
+		_overlay_label.text = "No replay available"
 		return
 	get_tree().paused = false
 	get_tree().reload_current_scene()

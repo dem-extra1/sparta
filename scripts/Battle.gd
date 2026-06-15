@@ -129,7 +129,8 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int) -> void:
 ## Apply one order (move or attack) to its units. Shared by live play and
 ## playback so both produce identical results.
 func _apply_order_cmd(cmd: Dictionary) -> void:
-	var enemy = _unit_by_uid(int(cmd["target"])) if int(cmd["target"]) >= 0 else null
+	var target_uid: int = int(cmd["target"])
+	var enemy = _unit_by_uid(target_uid) if target_uid >= 0 else null
 	var i: int = 0
 	for uid in cmd["units"]:
 		var u = _unit_by_uid(int(uid))

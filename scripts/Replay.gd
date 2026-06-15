@@ -43,11 +43,11 @@ var seed_value: int = 0
 var _orders: Array = []
 var _play_index: int = 0
 
-# Set true once playback has consumed every recorded order.
-var orders_exhausted: bool = false
-
 # Metadata about the source file, for the HUD.
 var loaded_path: String = ""
+# Path of the most recent successful save() this session. Preferred over a fresh
+# directory scan so a failed save can't silently replay a previous battle.
+var last_saved_path: String = ""
 
 
 ## Begin capturing a fresh live battle. Picks a random seed and clears history.
@@ -59,7 +59,6 @@ func start_recording() -> void:
 	rng.seed = seed_value
 	_orders.clear()
 	_play_index = 0
-	orders_exhausted = false
 	loaded_path = ""
 
 
@@ -92,10 +91,15 @@ func start_playback(path: String) -> bool:
 			"target": int(o.get("target", -1)),
 		})
 	_play_index = 0
-	orders_exhausted = _orders.is_empty()
 	loaded_path = path
 	mode = Mode.PLAYBACK
 	return true
+
+
+## Return to IDLE for a fresh battle (so the next Battle._ready re-records).
+## Keeps the state transition in one place instead of having callers poke `mode`.
+func reset() -> void:
+	mode = Mode.IDLE
 
 
 ## RECORD: append an order at the current tick. No-op otherwise.
@@ -123,8 +127,6 @@ func orders_for_tick(tick: int) -> Array:
 	# Skip any (shouldn't happen) orders whose tick we've already passed.
 	while _play_index < _orders.size() and int(_orders[_play_index]["tick"]) < tick:
 		_play_index += 1
-	if _play_index >= _orders.size():
-		orders_exhausted = true
 	return due
 
 
@@ -134,7 +136,10 @@ func save(result: String, duration_ticks: int) -> String:
 		return ""
 	if not _ensure_dir():
 		return ""
-	var stamp := Time.get_datetime_string_from_system(false, true).replace(":", "-")
+	# ISO 8601-style with the 'T' kept (no space) and colons swapped for '-' so
+	# the filename is conventional and shell-friendly; alphabetical order stays
+	# chronological for _list_replays().
+	var stamp := Time.get_datetime_string_from_system(false, false).replace(":", "-")
 	var path := "%s/battle_%s.json" % [DIR, stamp]
 	var payload := {
 		"version": FORMAT_VERSION,
@@ -151,6 +156,7 @@ func save(result: String, duration_ticks: int) -> String:
 		return ""
 	f.store_string(JSON.stringify(payload, "  "))
 	f.close()
+	last_saved_path = path
 	return path
 
 
