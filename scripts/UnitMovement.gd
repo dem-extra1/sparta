@@ -66,7 +66,7 @@ static func tick_ai(unit: Unit, enemy: Unit, delta: float) -> void:
 			move_to(unit, enemy.position, delta)
 			return
 	if unit.has_move_target:
-		if unit.position.distance_to(unit.move_target) > 5.0:
+		if unit.position.distance_squared_to(unit.move_target) > 25.0:  # 5.0 squared
 			move_to(unit, unit.move_target, delta)
 		else:
 			unit.has_move_target = false

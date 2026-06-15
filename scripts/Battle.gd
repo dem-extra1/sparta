@@ -44,11 +44,11 @@ func _run_enemy_ai() -> void:
 
 func _nearest_in(from: Vector2, candidates: Array):
 	var best = null
-	var best_d: float = INF
+	var best_d_sq: float = INF
 	for c in candidates:
-		var d: float = from.distance_to(c.position)
-		if d < best_d:
-			best_d = d
+		var d_sq: float = from.distance_squared_to(c.position)
+		if d_sq < best_d_sq:
+			best_d_sq = d_sq
 			best = c
 	return best
 

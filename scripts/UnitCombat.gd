@@ -15,14 +15,14 @@ static func current_target(unit: Unit) -> Unit:
 
 static func nearest_enemy(unit: Unit) -> Unit:
 	var best: Unit = null
-	var best_d: float = DETECTION_RANGE
+	var best_d_sq: float = DETECTION_RANGE * DETECTION_RANGE
 	for u in unit.get_tree().get_nodes_in_group("units"):
 		var e := u as Unit
 		if e == null or e.team == unit.team:
 			continue
-		var d: float = unit.position.distance_to(e.position)
-		if d < best_d:
-			best_d = d
+		var d_sq: float = unit.position.distance_squared_to(e.position)
+		if d_sq < best_d_sq:
+			best_d_sq = d_sq
 			best = e
 	return best
 
