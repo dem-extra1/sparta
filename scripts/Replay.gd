@@ -42,6 +42,9 @@ var seed_value: int = 0
 #               "target": int (enemy uid, or -1 for a move order) }.
 var _orders: Array = []
 var _play_index: int = 0
+# Bumped per save so two battles finishing in the same wall-clock second don't
+# overwrite each other (the timestamp only has second precision).
+var _save_counter: int = 0
 
 # Metadata about the source file, for the HUD.
 var loaded_path: String = ""
@@ -140,9 +143,11 @@ func save(result: String, duration_ticks: int) -> String:
 	if not _ensure_dir():
 		return ""
 	# ISO 8601-style with the 'T' kept (no space) and colons swapped for '-', so
-	# the filename is conventional and shell-friendly.
+	# the filename is conventional and shell-friendly. A counter suffix keeps it
+	# unique even when two battles end in the same second.
 	var stamp := Time.get_datetime_string_from_system(false, false).replace(":", "-")
-	var path := "%s/battle_%s.json" % [DIR, stamp]
+	var path := "%s/battle_%s_%02d.json" % [DIR, stamp, _save_counter]
+	_save_counter += 1
 	var payload := {
 		"version": FORMAT_VERSION,
 		"seed": str(seed_value),   # string to preserve full 64-bit precision

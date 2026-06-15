@@ -154,7 +154,9 @@ func _on_watch_replay() -> void:
 	# there's nothing to play — say so rather than replaying a different battle.
 	var path := Replay.last_saved_path
 	if path == "" or not Replay.start_playback(path):
-		_overlay_label.text = "No replay available"
+		# Report on the button itself so the battle result label is preserved.
+		_watch_button.text = "No replay available"
+		_watch_button.disabled = true
 		return
 	get_tree().paused = false
 	get_tree().reload_current_scene()
