@@ -1,6 +1,6 @@
-# Project-specific CI for the Godot game. Imports every resource headlessly in
-# full project context so broken scenes, resources, and script compile errors
-# surface. No export presets exist yet, so this validates rather than exports.
+# CI for the Godot game: imports the project (validating scripts/scenes in full
+# context) and runs the GUT unit-test suite headlessly. No export presets exist
+# yet, so this validates and tests rather than exporting a build.
 name: Godot CI
 
 on:
@@ -9,14 +9,16 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Keep in sync with `config/features` in project.godot. Standard (GDScript)
-# build — the project uses gl_compatibility and no C#/.NET.
+# GODOT_VERSION: keep in sync with config/features in project.godot (Standard /
+# GDScript build — gl_compatibility, no C#/.NET).
+# GUT_VERSION:   pinned GUT release matching the Godot version.
 env:
   GODOT_VERSION: 4.6.0
+  GUT_VERSION: v9.6.0
 
 jobs:
-  validate:
-    name: Import & validate project
+  test:
+    name: Validate & test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,14 +29,22 @@ jobs:
           version: ${{ env.GODOT_VERSION }}
           use-dotnet: false   # Standard build, not the .NET/C# build
 
+      - name: Install GUT ${{ env.GUT_VERSION }}
+        # Vendored at run time (pinned tag) so the framework isn't committed to
+        # the repo. The project's test files extend GutTest, so GUT must be
+        # present before the import step below or validation would fail to
+        # resolve that class. Local dev installs it the same way (test/README.md).
+        run: |
+          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
+          mkdir -p addons
+          rm -rf addons/gut
+          cp -r /tmp/gut/addons/gut addons/gut
+
       - name: Import & validate project
         # `--import` loads the whole project (autoloads, class_name globals and
         # cross-script references all resolve) and reports compile/import errors.
-        # We deliberately do NOT parse-check each .gd file in isolation: a lone
-        # script can't see project-global identifiers (e.g. autoloads), which
-        # yields false "Identifier not found" failures even when the project is
-        # valid. Godot doesn't reliably exit non-zero on script errors, so we
-        # fail the job if any error marker shows up in the import log.
+        # Godot doesn't reliably exit non-zero on script errors, so we fail the
+        # job if any error marker shows up in the import log.
         run: |
           set -o pipefail
           godot --headless --import --verbose 2>&1 | tee import.log
@@ -42,3 +52,11 @@ jobs:
             echo "::error::Godot reported script/resource errors during import"
             exit 1
           fi
+
+      - name: Run unit tests (GUT)
+        # gut_cmdln runs without enabling the editor plugin; -gexit sets a
+        # non-zero exit code if any test fails or errors.
+        run: |
+          godot --headless -s addons/gut/gut_cmdln.gd \
+            -gdir=res://test -ginclude_subdirs -gexit \
+            -gjunit_xml_file=res://test_results.xml
