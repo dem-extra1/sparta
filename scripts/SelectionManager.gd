@@ -18,6 +18,9 @@ var _selected: Array = []
 
 func _ready() -> void:
 	z_index = 100   # draw the selection box over the units
+	# Stay live during active pause so orders can be issued while the
+	# simulation (units + AI) is frozen.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
 func _unhandled_input(event: InputEvent) -> void:
