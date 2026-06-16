@@ -93,6 +93,11 @@ func _physics_process(_delta: float) -> void:
 	if _ended:
 		return
 
+	# Rebuild the shared spatial hash once per tick, before the Units process, so
+	# every unit's _separate() this frame queries a current grid (O(n) bucketing
+	# instead of an O(n^2) all-pairs scan).
+	SpatialHash.rebuild(get_tree(), Engine.get_physics_frames())
+
 	# Apply this tick's orders: recorded ones during playback, queued live input
 	# (also recorded) otherwise.
 	if Replay.mode == Replay.Mode.PLAYBACK:

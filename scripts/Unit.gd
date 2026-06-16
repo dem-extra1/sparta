@@ -187,9 +187,7 @@ func _separate() -> void:
 	if state == State.DEAD:
 		return
 	# Consider living units and routers alike: nobody gets walked through.
-	var others: Array = get_tree().get_nodes_in_group("units")
-	others.append_array(get_tree().get_nodes_in_group("routers"))
-	for o in others:
+	for o in _separation_candidates():
 		var other: Unit = o as Unit
 		# DEAD: queue_free'd but not yet removed from its group this frame.
 		if other == null or other == self or other.state == State.DEAD:
@@ -213,6 +211,18 @@ func _separate() -> void:
 			var dir: float = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
 			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * 0.5)
 		position += push
+
+
+## Neighbours to test for overlap. Uses the per-frame spatial hash that Battle
+## rebuilds at the start of each tick (an O(1) local block lookup); falls back to
+## a full units+routers group scan when no grid is current for this frame — e.g.
+## a unit test that calls _separate() directly with no Battle running.
+func _separation_candidates() -> Array:
+	if SpatialHash.is_current(Engine.get_physics_frames()):
+		return SpatialHash.query(position)
+	var all: Array = get_tree().get_nodes_in_group("units")
+	all.append_array(get_tree().get_nodes_in_group("routers"))
+	return all
 
 
 # --- Combat ----------------------------------------------------------------
