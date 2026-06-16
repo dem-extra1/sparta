@@ -16,10 +16,9 @@ var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
 var _drag_cur: Vector2 = Vector2.ZERO
 var _selected: Array = []
-# Tracks the overlay-visible state last frame (anything selected, or Space held
-# to survey all orders), so the overlay is redrawn one final time after that
-# clears — wiping the last frame's order lines.
-var _had_selection: bool = false
+# Tracks whether the order overlay was visible last frame (Space held to survey
+# all orders), so it's redrawn one final time after Space is released — wiping
+# the last frame's order lines.
 var _was_showing_orders: bool = false
 
 @onready var _hud = get_node_or_null("../HUD")
@@ -140,14 +139,12 @@ func _refresh_hud() -> void:
 func _process(_delta: float) -> void:
 	# Keep the panel current as the shown unit takes casualties.
 	_refresh_hud()
-	# Order overlays track units as they march, so redraw while anything is
-	# selected or while the player holds Space to survey all orders; one extra
-	# redraw the frame after either clears wipes the stale lines.
-	var has_selection := not _selected.is_empty()
+	# Order overlays only render while Space is held (see _draw_orders), so redraw
+	# while it's held to track marching units, plus one extra frame after release
+	# to wipe the last frame's lines. Selection alone draws nothing here.
 	var showing_orders := Input.is_key_pressed(KEY_SPACE)
-	if has_selection or showing_orders or _had_selection or _was_showing_orders:
+	if showing_orders or _was_showing_orders:
 		queue_redraw()
-	_had_selection = has_selection
 	_was_showing_orders = showing_orders
 
 
