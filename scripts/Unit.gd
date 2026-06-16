@@ -261,6 +261,7 @@ func _draw() -> void:
 			draw_arc(Vector2.ZERO, RADIUS + 3.5, 0, TAU, 28,
 					Color(0.90, 0.15, 0.15, alpha), 3.5)
 		State.ROUTING:
+			# alpha=1.0 intentional: ring stays fully visible on the faded routing token.
 			draw_arc(Vector2.ZERO, RADIUS + 3.5, 0, TAU, 28,
 					Color(0.95, 0.50, 0.05, 1.0), 4.0)
 
@@ -381,5 +382,16 @@ func _draw_cavalry_sprite(body: Color, dark: Color, lite: Color) -> void:
 	# Rider torso.
 	draw_circle(Vector2(0, -R * 0.18), R * 0.42, lite)
 	draw_arc(Vector2(0, -R * 0.18), R * 0.42, 0, TAU, 14, dark, 1.5)
-	# Lance pointing forward-right.
-	draw_line(Vector2(R * 0.15, -R * 0.18), Vector2(R * 0.65, -R * 0.78), metal, 2.5)
+	# Lance pointing forward-right with a triangular blade tip.
+	var lance_tip := Vector2(R * 0.65, -R * 0.78)
+	draw_line(Vector2(R * 0.15, -R * 0.18), lance_tip, metal, 2.5)
+	var lance_dir := Vector2(R * 0.50, -R * 0.60).normalized()
+	var lance_perp := Vector2(-lance_dir.y, lance_dir.x)
+	var tip_blade := PackedVector2Array([
+		lance_tip + lance_dir * 7.0,
+		lance_tip + lance_perp * 3.0,
+		lance_tip - lance_perp * 3.0,
+	])
+	draw_colored_polygon(tip_blade, metal)
+	draw_polyline(PackedVector2Array([tip_blade[0], tip_blade[1], tip_blade[2], tip_blade[0]]),
+			dark, 1.0)
