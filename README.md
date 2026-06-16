@@ -1,7 +1,7 @@
 # Sparta
 
-A prototype that fuses **Crusader Kings 3**-style grand strategy with **Total War**-style
-real-time tactical battles. Built in **Godot 4.6** with GDScript.
+A prototype that fuses grand strategy with real-time tactical battles. 
+Built in **Godot 4.6** with GDScript.
 
 This repo currently contains **Milestone 1: a single, self-contained tactical battle** —
 the hardest and most differentiating piece, built first as a vertical slice. The campaign
