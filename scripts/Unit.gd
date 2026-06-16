@@ -61,8 +61,12 @@ func _physics_process(delta: float) -> void:
 	var enemy: Unit = _current_target()
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
-		if dist <= attack_range + RADIUS:
-			# In contact -> fight.
+		var in_contact: bool = dist <= attack_range + RADIUS
+		# Fight when in contact, UNLESS the player gave a plain move order with no
+		# explicit attack target — that's a disengage command, so march off and let
+		# the unit break contact. (Pulling out exposes the rear; the enemy chasing
+		# it strikes for the ×2 flank bonus, which is the cost of disengaging.)
+		if in_contact and (target_enemy != null or not has_move_target):
 			state = State.FIGHTING
 			_face(enemy.position)
 			if _attack_cd <= 0.0:
@@ -71,12 +75,12 @@ func _physics_process(delta: float) -> void:
 			queue_redraw()
 			return
 		elif target_enemy != null:
-			# Explicit attack order: chase even past move target.
+			# Explicit attack order, not yet in contact: chase past any move target.
 			_move_to(enemy.position, delta)
 			queue_redraw()
 			return
 
-	# No one in contact: obey move order, else auto-advance on a near enemy.
+	# Obey a move order (disengaging if needed), else auto-advance on a near enemy.
 	if has_move_target:
 		if position.distance_to(move_target) > 5.0:
 			_move_to(move_target, delta)
