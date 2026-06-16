@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "seed": "12345",
+  "physics_tps": 60,
+  "created": 0,
+  "result": "",
+  "duration_ticks": 0,
+  "orders": []
+}
