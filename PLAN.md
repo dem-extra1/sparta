@@ -24,9 +24,9 @@ then grow outward.
    stack on one another. Every movement/combat feature is designed around this constraint, and
    collision correctness/perf takes priority over new feature breadth.
    - **Current state:** soft separation in `Unit.gd` → `_separate()` — each frame a unit pushes
-     out of any overlapping live unit by half the overlap (neighbor corrects the rest). Spacing is
-     the per-instance `separation_radius` (see Pointers). It is intentionally *soft* so regiments still press into
-     melee contact (attack reach > separation floor) instead of bouncing apart.
+     out of any overlapping unit (live or routing) by half the overlap (neighbor corrects the rest).
+     Spacing is the center-to-center floor `RADIUS + other.RADIUS`. It is intentionally *soft* so
+     regiments still press into melee contact (attack reach > separation floor) instead of bouncing apart.
    - **Roadmap (in priority order):**
      1. ✅ No-stack soft separation between live units.
      2. Per-type footprint (cavalry wider than infantry) so charges and screens read correctly.
@@ -45,7 +45,7 @@ features that depend on it, then independent polish.
   - #12 M1 first run & verification in Godot — nothing below is validated until this passes.
   - #13 Spacebar active pause — implemented in PR #2, pending live confirm.
 - **P1 — Collision pillar (core, in dependency order):**
-  - #6 Per-type footprint (plumbing exists via `separation_radius`; low effort).
+  - #6 Per-type footprint (`_separate()` currently uses the shared `RADIUS`; make it per-type).
   - #10 NavigationAgent2D pathfinding (decide path-vs-collision split here).
   - #9 Scale beyond O(n²) — pairs with #10.
   - #7 Formation cohesion (depends on #6).
@@ -143,7 +143,7 @@ hand-authored GDScript that hasn't been engine-checked.
     - Debuff shape: flat % for N seconds, or a "cohesion" stat that ramps from low to full.
   - **Code touch-points (current architecture):** `Unit.gd` (new merge method; `soldiers`/
     `max_soldiers`/`morale` blending; a cohesion/debuff timer alongside the existing state machine),
-    `SelectionManager.gd` (a merge order/input), and the collision footprint (`separation_radius`)
+    `SelectionManager.gd` (a merge order/input), and the collision footprint (`RADIUS` in `_separate()`)
     for the wider merged body.
 
 - **Line relief — cycle tired units out of combat.** A fresh unit can "relieve" an already-engaged
@@ -186,9 +186,8 @@ hand-authored GDScript that hasn't been engine-checked.
 
 ## Pointers
 - Tune unit stats / loadout in `Battle.gd` → `_spawn_line()` array.
-- Tune collision spacing in `Unit.gd` → `separation_radius` (per-instance `@export`; center-to-center
-  floor = sum of both units' radii; set per type at spawn for footprints). Soft-resolve logic in
-  `Unit.gd` → `_separate()`. Tune spawn gaps via `spacing` in `Battle.gd` → `_spawn_line()`.
+- Collision spacing / soft-resolve logic in `Unit.gd` → `_separate()` (center-to-center floor =
+  `RADIUS + other.RADIUS`). Tune spawn gaps via `spacing` in `Battle.gd` → `_spawn_line()`.
 - Tune movement pace in `Battle.gd` → `SPEED_SCALE` constant (lower = slower).
 - Combat math in `Unit.gd` → `_strike()` / `take_casualties()` / `_flank_multiplier()`.
 - Active pause: `HUD.gd` → `_toggle_pause()` (Space); selection/camera stay live via `PROCESS_MODE_ALWAYS`.

@@ -1,8 +1,8 @@
 extends Node2D
 class_name Unit
-## A regiment: one selectable token with a soldier count, morale, and a
-## simple state machine. Draws itself with primitives so the game runs before
-## any art is added. Swap _draw() for a Sprite2D later (see README).
+## A regiment: one selectable token with a soldier count and morale.
+## Renders itself via _draw() with per-type sprite shapes: infantry kite
+## shield, spearmen hoplon + spear, cavalry horse + rider.
 
 enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }
 
@@ -20,9 +20,6 @@ var uid: int = -1
 @export var attack_range: float = 26.0
 @export var is_cavalry: bool = false
 @export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
-## Center-to-center separation floor = sum of both units' radii. Kept below
-## attack_range + RADIUS so units press into melee instead of bouncing apart.
-@export var separation_radius: float = 19.0
 
 # --- Runtime state ---
 var soldiers: int
@@ -38,7 +35,6 @@ const RADIUS: float = 18.0
 const DETECTION_RANGE: float = 190.0
 const ATTACK_INTERVAL: float = 0.6
 const ROUT_TIME: float = 6.0
-const MAX_SEPARATION_PUSH: float = 3.0   # cap per-frame separation nudge
 
 var _attack_cd: float = 0.0
 var _rout_timer: float = 0.0
@@ -61,17 +57,30 @@ func _physics_process(delta: float) -> void:
 
 	if state == State.ROUTING:
 		_process_rout(delta)
+		if state != State.DEAD:   # the timer may have expired and freed us
+			_separate()   # routers still shoulder past anyone in their path
 		return
 
 	_attack_cd = max(0.0, _attack_cd - delta)
 	_moved_last_frame = false
 
+	_think(delta)
+
+	# Units are solid: resolve any overlap so an advancing regiment can't
+	# walk straight through (or over) the one in front of it.
 	_separate()
 
+	if not _moved_last_frame and state != State.FIGHTING:
+		_charge_ready = true   # rearm charge once disengaged
+	queue_redraw()
+
+
+## Decide what to do this frame: fight if in contact, otherwise move.
+func _think(delta: float) -> void:
 	var enemy: Unit = _current_target()
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
-		var in_contact: bool = dist <= attack_range + RADIUS
+		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
 		# Fight when in contact, UNLESS the player gave a plain move order with no
 		# explicit attack target — that's a disengage command, so march off and let
 		# the unit break contact. (Pulling out exposes the rear; the enemy chasing
@@ -82,12 +91,10 @@ func _physics_process(delta: float) -> void:
 			if _attack_cd <= 0.0:
 				_attack_cd = ATTACK_INTERVAL
 				_strike(enemy)
-			queue_redraw()
 			return
 		elif target_enemy != null:
 			# Explicit attack order, not yet in contact: chase past any move target.
 			_move_to(enemy.position, delta)
-			queue_redraw()
 			return
 
 	# Obey a move order (disengaging if needed), else auto-advance on a near enemy.
@@ -101,10 +108,6 @@ func _physics_process(delta: float) -> void:
 		_move_to(enemy.position, delta)
 	else:
 		state = State.IDLE
-
-	if not _moved_last_frame and state != State.FIGHTING:
-		_charge_ready = true   # rearm charge once disengaged
-	queue_redraw()
 
 
 # --- Targeting -------------------------------------------------------------
@@ -154,32 +157,40 @@ func _face_dir(dir: Vector2) -> void:
 		facing = dir.normalized()
 
 
+## Push out of any overlapping unit so regiments form a solid line instead of
+## passing through each other. Each pair shares the correction (half each).
+## Since units move sequentially (each only moves itself), one frame reduces an
+## overlap by ~75%; it converges to zero within a few frames.
 func _separate() -> void:
-	# Soft no-stack: push out of any overlapping live unit by half the overlap;
-	# the neighbour corrects the rest on its own pass. The push is capped by
-	# MAX_SEPARATION_PUSH, well below melee reach, so units still press into
-	# contact. Uses only positions and the stable uid (no wall-clock, no RNG),
-	# so it stays part of the deterministic, replayable simulation. Routing units
-	# have left the "units" group, so flight is never impeded.
-	var push: Vector2 = Vector2.ZERO
-	for u in get_tree().get_nodes_in_group("units"):
-		var other: Unit = u as Unit
-		if other == null or other == self:
+	if state == State.DEAD:
+		return
+	# Consider living units and routers alike: nobody gets walked through.
+	var others: Array = get_tree().get_nodes_in_group("units")
+	others.append_array(get_tree().get_nodes_in_group("routers"))
+	for o in others:
+		var other: Unit = o as Unit
+		# DEAD: queue_free'd but not yet removed from its group this frame.
+		if other == null or other == self or other.state == State.DEAD:
 			continue
-		var min_dist: float = separation_radius + other.separation_radius
+		var min_dist: float = RADIUS + other.RADIUS
 		var offset: Vector2 = position - other.position
-		var d_sq: float = offset.length_squared()
-		if d_sq >= min_dist * min_dist:
+		var d: float = offset.length()
+		if d >= min_dist:
 			continue
-		if d_sq > 0.0001:
-			var d: float = sqrt(d_sq)
-			push += (offset / d) * (min_dist - d)
+		var push: Vector2
+		if d > 0.01:
+			push = offset / d * ((min_dist - d) * 0.5)
 		else:
-			# Exactly co-located: nudge along a stable per-unit direction so the
-			# tie-break is deterministic (replays reproduce it bit-for-bit).
-			push += Vector2.from_angle(float(uid))
-	if push != Vector2.ZERO:
-		position += (push * 0.5).limit_length(MAX_SEPARATION_PUSH)
+			# Exactly co-located: both units of the pair derive the SAME angle
+			# (from the lower id, for determinism) and push in OPPOSITE
+			# directions, so they reliably fan apart instead of drifting
+			# together. Using each unit's own id here would push near-adjacent
+			# ids in almost the same direction and never separate them.
+			var lo: int = mini(get_instance_id(), other.get_instance_id())
+			var angle: float = float(lo % 100) / 100.0 * TAU
+			var dir: float = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
+			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * 0.5)
+		position += push
 
 
 # --- Combat ----------------------------------------------------------------
@@ -275,41 +286,157 @@ func _process_rout(delta: float) -> void:
 		queue_redraw()
 
 
-# --- Visuals (placeholder primitives; replace with a Sprite2D later) -------
+# --- Visuals ------------------------------------------------------------------
 
 func _draw() -> void:
 	var alpha: float = 0.45 if state == State.ROUTING else 1.0
-	var body: Color = team_color
-	body.a = alpha
+	var body_c := Color(team_color.r, team_color.g, team_color.b, alpha)
+	var dark_c := Color(body_c.r * 0.35, body_c.g * 0.35, body_c.b * 0.35, alpha)
+	var lite_c := Color(minf(body_c.r + 0.30, 1.0), minf(body_c.g + 0.30, 1.0),
+			minf(body_c.b + 0.30, 1.0), alpha)
 
-	# Regiment token.
+	# Drop shadow (squished ellipse anchors the token to the ground).
+	draw_set_transform(Vector2(0, RADIUS * 0.60), 0.0, Vector2(1.15, 0.38))
+	draw_circle(Vector2.ZERO, RADIUS, Color(0, 0, 0, 0.28))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# State ring drawn behind the sprite: red = engaged, orange = routing.
+	match state:
+		State.FIGHTING:
+			draw_arc(Vector2.ZERO, RADIUS + 3.5, 0, TAU, 28,
+					Color(0.90, 0.15, 0.15, alpha), 3.5)
+		State.ROUTING:
+			# alpha=1.0 intentional: ring stays fully visible on the faded routing token.
+			draw_arc(Vector2.ZERO, RADIUS + 3.5, 0, TAU, 28,
+					Color(0.95, 0.50, 0.05, 1.0), 4.0)
+
+	# Rotate drawing so the sprite's "forward" aligns with the unit's facing direction.
+	draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5, Vector2.ONE)
+
 	if is_cavalry:
-		draw_circle(Vector2.ZERO, RADIUS, body)
-		draw_arc(Vector2.ZERO, RADIUS, 0, TAU, 24, Color(1, 1, 1, alpha), 2.0)
+		_draw_cavalry_sprite(body_c, dark_c, lite_c)
+	elif anti_cavalry:
+		_draw_spear_sprite(body_c, dark_c, lite_c)
 	else:
-		var r := Rect2(-RADIUS, -RADIUS, RADIUS * 2.0, RADIUS * 2.0)
-		draw_rect(r, body)
-		draw_rect(r, Color(0, 0, 0, alpha * 0.6), false, 2.0)
+		_draw_infantry_sprite(body_c, dark_c, lite_c)
 
-	# Anti-cavalry marker (spear tip).
-	if anti_cavalry:
-		draw_line(Vector2(0, -2), facing * (RADIUS + 8.0), Color(0.9, 0.9, 0.7, alpha), 2.0)
+	# Reset to screen-space for HUD overlays.
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	# Facing indicator.
-	draw_line(Vector2.ZERO, facing * (RADIUS + 4.0), Color(0, 0, 0, alpha * 0.7), 3.0)
-
-	# Selection ring.
 	if selected:
 		draw_arc(Vector2.ZERO, RADIUS + 5.0, 0, TAU, 28, Color(0.95, 0.95, 0.3), 2.5)
 
-	# Strength bar.
+	# Strength bar + morale bar stacked above the token.
 	var bw: float = 38.0
-	var by: float = -RADIUS - 12.0
+	var by: float = -RADIUS - 22.0
 	var frac: float = clampf(float(soldiers) / float(max_soldiers), 0.0, 1.0)
-	draw_rect(Rect2(-bw * 0.5, by, bw, 5.0), Color(0.15, 0.15, 0.15, alpha))
-	draw_rect(Rect2(-bw * 0.5, by, bw * frac, 5.0), Color(0.3, 0.8, 0.3, alpha))
+	var morale_frac: float = clampf(morale / 100.0, 0.0, 1.0)
+	var morale_color: Color
+	if morale_frac > 0.60:
+		morale_color = Color(0.30, 0.80, 0.30, alpha)
+	elif morale_frac > 0.30:
+		morale_color = Color(0.85, 0.75, 0.10, alpha)
+	else:
+		morale_color = Color(0.85, 0.20, 0.10, alpha)
 
-	# Soldier count.
 	var font := ThemeDB.fallback_font
 	draw_string(font, Vector2(-bw * 0.5, by - 3.0), str(soldiers),
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, alpha))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, alpha))
+	# Strength (green).
+	draw_rect(Rect2(-bw * 0.5, by, bw, 5.0), Color(0.15, 0.15, 0.15, alpha))
+	draw_rect(Rect2(-bw * 0.5, by, bw * frac, 5.0), Color(0.30, 0.80, 0.30, alpha))
+	# Morale (green → yellow → red as it degrades).
+	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw, 4.0), Color(0.15, 0.15, 0.15, alpha))
+	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw * morale_frac, 4.0), morale_color)
+
+
+## Infantry: kite (heater) shield with a cross motif and sword pommel.
+func _draw_infantry_sprite(body: Color, dark: Color, lite: Color) -> void:
+	var R := RADIUS
+	var metal := Color(0.78, 0.80, 0.85, body.a)
+	var pts := PackedVector2Array([
+		Vector2(0,          -R),
+		Vector2( R * 0.82, -R * 0.30),
+		Vector2( R * 0.90,  R * 0.42),
+		Vector2(0,           R),
+		Vector2(-R * 0.90,  R * 0.42),
+		Vector2(-R * 0.82, -R * 0.30),
+	])
+	draw_colored_polygon(pts, body)
+	draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3],
+			pts[4], pts[5], pts[0]]), dark, 2.0)
+	# Cross on shield face.
+	draw_line(Vector2(0,  -R + 5.0), Vector2(0,  R * 0.90), lite, 2.0)
+	draw_line(Vector2(-R * 0.72, R * 0.05), Vector2(R * 0.72, R * 0.05), lite, 2.0)
+	# Sword pommel / crossguard at the top of the shield.
+	draw_line(Vector2(-5.0, -R + 8.0), Vector2(5.0, -R + 8.0), metal, 2.5)
+	draw_line(Vector2(0, -R + 2.0), Vector2(0, -R + 9.0), metal, 2.0)
+
+
+## Spearmen: round hoplon shield with a forward-pointing spear.
+func _draw_spear_sprite(body: Color, dark: Color, lite: Color) -> void:
+	var R := RADIUS
+	var metal := Color(0.78, 0.80, 0.85, body.a)
+	var wood := Color(0.62, 0.48, 0.30, body.a)
+	# Spear shaft (forward = up in rotated local space).
+	var shaft_y: float = -(R + 15.0)
+	draw_line(Vector2(0, -R * 0.05), Vector2(0, shaft_y), wood, 3.0)
+	# Spear blade.
+	var blade := PackedVector2Array([
+		Vector2(0,    shaft_y - 9.0),
+		Vector2( 3.5, shaft_y),
+		Vector2(-3.5, shaft_y),
+	])
+	draw_colored_polygon(blade, metal)
+	draw_polyline(PackedVector2Array([blade[0], blade[1], blade[2], blade[0]]), dark, 1.0)
+	# Hoplon (round shield).
+	draw_circle(Vector2.ZERO, R * 0.88, body)
+	draw_arc(Vector2.ZERO, R * 0.88, 0, TAU, 24, dark, 2.0)
+	# Shield boss.
+	draw_circle(Vector2.ZERO, R * 0.26, lite)
+	draw_arc(Vector2.ZERO, R * 0.26, 0, TAU, 12, dark, 1.5)
+	# Inner ring detail.
+	draw_arc(Vector2.ZERO, R * 0.60, 0, TAU, 20,
+			Color(dark.r, dark.g, dark.b, dark.a * 0.6), 1.0)
+
+
+## Cavalry: horse body (two overlapping ovals) with rider and lance.
+func _draw_cavalry_sprite(body: Color, dark: Color, lite: Color) -> void:
+	var R := RADIUS
+	var metal := Color(0.78, 0.80, 0.85, body.a)
+	# Horse body: forequarters + hindquarters bridged by a quad.
+	draw_circle(Vector2(0, -R * 0.30), R * 0.62, body)
+	draw_circle(Vector2(0,  R * 0.28), R * 0.68, body)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-R * 0.60, -R * 0.30),
+		Vector2(-R * 0.66,  R * 0.28),
+		Vector2( R * 0.66,  R * 0.28),
+		Vector2( R * 0.60, -R * 0.30),
+	]), body)
+	draw_arc(Vector2(0, -R * 0.30), R * 0.62, 0, TAU, 16, dark, 1.5)
+	draw_arc(Vector2(0,  R * 0.28), R * 0.68, 0, TAU, 16, dark, 1.5)
+	# Horse head / neck offset forward-right.
+	var head := Vector2(R * 0.20, -R * 0.88)
+	draw_circle(head, R * 0.28, lite)
+	draw_arc(head, R * 0.28, 0, TAU, 12, dark, 1.5)
+	# Four legs trailing behind.
+	draw_line(Vector2(-R * 0.35, R * 0.60), Vector2(-R * 0.48, R + 4.0), dark, 2.5)
+	draw_line(Vector2(-R * 0.12, R * 0.60), Vector2(-R * 0.18, R + 5.0), dark, 2.5)
+	draw_line(Vector2( R * 0.12, R * 0.60), Vector2( R * 0.18, R + 5.0), dark, 2.5)
+	draw_line(Vector2( R * 0.35, R * 0.60), Vector2( R * 0.48, R + 4.0), dark, 2.5)
+	# Rider torso.
+	draw_circle(Vector2(0, -R * 0.18), R * 0.42, lite)
+	draw_arc(Vector2(0, -R * 0.18), R * 0.42, 0, TAU, 14, dark, 1.5)
+	# Lance pointing forward-right with a triangular blade tip.
+	var lance_tip := Vector2(R * 0.65, -R * 0.78)
+	draw_line(Vector2(R * 0.15, -R * 0.18), lance_tip, metal, 2.5)
+	var lance_dir := Vector2(0.50, -0.60).normalized()
+	var lance_perp := Vector2(-lance_dir.y, lance_dir.x)
+	var tip_blade := PackedVector2Array([
+		lance_tip + lance_dir * 7.0,
+		lance_tip + lance_perp * 3.0,
+		lance_tip - lance_perp * 3.0,
+	])
+	draw_colored_polygon(tip_blade, metal)
+	draw_polyline(PackedVector2Array([tip_blade[0], tip_blade[1], tip_blade[2], tip_blade[0]]),
+			dark, 1.0)
