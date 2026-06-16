@@ -70,13 +70,23 @@ func _issue_order(world_pos: Vector2) -> void:
 	# orders take exactly the same code path). Selection and camera stay live —
 	# only the simulation-affecting order is routed through the recorder.
 	var enemy = _unit_at(world_pos, 1)
+	var target_uid: int = -1
+	if enemy != null:
+		target_uid = enemy.uid
+	else:
+		# Right-clicking an engaged friendly that isn't part of the selection is a
+		# line-relief order (#4): the selected unit swaps into its fight. Plain
+		# ground stays an ordinary move.
+		var friend = _unit_at(world_pos, 0)
+		if friend != null and friend.state == UnitRef.State.FIGHTING and not _selected.has(friend):
+			target_uid = friend.uid
 	var uids: Array = []
 	for unit in _selected:
 		if is_instance_valid(unit):
 			uids.append(unit.uid)
 	if uids.is_empty():
 		return
-	_battle.enqueue_order(uids, world_pos, enemy.uid if enemy != null else -1)
+	_battle.enqueue_order(uids, world_pos, target_uid)
 
 
 # --- helpers ---------------------------------------------------------------

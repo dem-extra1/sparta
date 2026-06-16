@@ -249,3 +249,44 @@ func test_enemy_infantry_still_separates_softly_from_spearman() -> void:
 	spear._separate()
 	assert_lt(spear.position.x, 0.0,
 		"a spearman is only a hard wall to cavalry — infantry shoves it normally")
+
+
+# --- fatigue + line relief (issue #4) --------------------------------------
+
+func test_fatigue_builds_while_fighting() -> void:
+	var u := _make_unit()
+	u.state = Unit.State.FIGHTING
+	u.tick_fatigue(1.0)
+	assert_almost_eq(u.fatigue, 8.0, 0.001, "a fighting unit accrues fatigue")
+
+
+func test_fatigue_recovers_while_resting() -> void:
+	var u := _make_unit()
+	u.fatigue = 20.0
+	u.state = Unit.State.IDLE
+	u.tick_fatigue(1.0)
+	assert_almost_eq(u.fatigue, 15.0, 0.001, "a resting unit recovers fatigue")
+
+
+func test_fatigue_reduces_attack_factor() -> void:
+	var u := _make_unit()
+	u.fatigue = 0.0
+	assert_almost_eq(u.fatigue_attack_factor(), 1.0, 0.001, "fresh = full attack")
+	u.fatigue = 100.0
+	assert_almost_eq(u.fatigue_attack_factor(), 0.6, 0.001, "spent = 60% attack")
+
+
+func test_relief_swaps_the_fight_and_exempts_the_pair() -> void:
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	var foe := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	foe.team = 1
+	tired.target_enemy = foe
+	fresh.begin_relief(tired)
+	assert_eq(fresh.target_enemy, foe, "the reliever takes over the tired unit's fight")
+	assert_null(tired.target_enemy, "the tired unit disengages")
+	assert_true(tired.has_move_target, "the tired unit peels back to the rear")
+	assert_true(fresh._separation_exempt(tired), "the swapping pair passes through")
+	assert_true(tired._separation_exempt(fresh), "the relief exemption is mutual")
