@@ -176,10 +176,12 @@ func _draw_orders() -> void:
 	var show_enemy: bool = Replay.mode == Replay.Mode.PLAYBACK
 	for node in get_tree().get_nodes_in_group("units"):
 		var u = node as UnitRef
-		if u == null or not is_instance_valid(u):
+		# A unit that dies mid-march stays valid (and keeps has_move_target) for a
+		# frame before queue_free() prunes it; skip it so it doesn't flash a stale
+		# order line — consistent with order_summary()'s DEAD skip.
+		if u == null or not is_instance_valid(u) or u.state == UnitRef.State.DEAD:
 			continue
 		if u.team != 0 and not show_enemy:
-			continue
 		var origin: Vector2 = u.global_position
 		# Only a player-issued attack (stored in target_enemy) draws a red line. A
 		# unit auto-fighting its nearest foe has no stored target, so it draws no
