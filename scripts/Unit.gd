@@ -6,6 +6,10 @@ class_name Unit
 
 enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }
 
+# Stable per-battle id (assigned by Battle.gd at spawn). Replays reference units
+# by this so recorded orders survive scene reloads.
+var uid: int = -1
+
 # --- Tunable stats (set by Battle.gd when spawning) ---
 @export var unit_name: String = "Spearmen"
 @export var team: int = 0
@@ -61,8 +65,12 @@ func _physics_process(delta: float) -> void:
 	var enemy: Unit = _current_target()
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
-		if dist <= attack_range + RADIUS:
-			# In contact -> fight.
+		var in_contact: bool = dist <= attack_range + RADIUS
+		# Fight when in contact, UNLESS the player gave a plain move order with no
+		# explicit attack target — that's a disengage command, so march off and let
+		# the unit break contact. (Pulling out exposes the rear; the enemy chasing
+		# it strikes for the ×2 flank bonus, which is the cost of disengaging.)
+		if in_contact and (target_enemy != null or not has_move_target):
 			state = State.FIGHTING
 			_face(enemy.position)
 			if _attack_cd <= 0.0:
@@ -71,12 +79,12 @@ func _physics_process(delta: float) -> void:
 			queue_redraw()
 			return
 		elif target_enemy != null:
-			# Explicit attack order: chase even past move target.
+			# Explicit attack order, not yet in contact: chase past any move target.
 			_move_to(enemy.position, delta)
 			queue_redraw()
 			return
 
-	# No one in contact: obey move order, else auto-advance on a near enemy.
+	# Obey a move order (disengaging if needed), else auto-advance on a near enemy.
 	if has_move_target:
 		if position.distance_to(move_target) > 5.0:
 			_move_to(move_target, delta)
@@ -144,7 +152,9 @@ func _face_dir(dir: Vector2) -> void:
 
 func _strike(enemy: Unit) -> void:
 	var base: float = float(max(1, attack - enemy.defense))
-	var dmg: float = base * randf_range(0.6, 1.4)
+	# Draw from the seeded replay RNG (one stream, stable order) so battles are
+	# reproducible. This is the simulation's only source of randomness.
+	var dmg: float = base * Replay.rng.randf_range(0.6, 1.4)
 
 	# Cavalry charge bonus on first contact, blunted by anti-cavalry spears.
 	if is_cavalry and _charge_ready and not enemy.is_cavalry:
