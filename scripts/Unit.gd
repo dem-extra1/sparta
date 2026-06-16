@@ -354,12 +354,17 @@ func fatigue_attack_factor() -> float:
 func begin_relief(tired: Unit) -> void:
 	_relief_partner = tired
 	tired._relief_partner = self
-	# Take over the tired unit's fight so the front isn't left open.
-	target_enemy = tired.target_enemy
-	if target_enemy != null:
+	# Take over the tired unit's fight so the front isn't left open. A unit can be
+	# FIGHTING an auto-acquired foe with target_enemy still null, so fall back to
+	# its nearest enemy rather than just walking onto an empty slot.
+	var foe: Unit = tired.target_enemy
+	if foe == null:
+		foe = tired._nearest_enemy()
+	target_enemy = foe
+	if foe != null:
 		has_move_target = false
 	else:
-		move_target = tired.position   # no explicit foe: advance onto its slot
+		move_target = tired.position   # truly no foe: advance onto its slot
 		has_move_target = true
 	# Tired unit disengages and falls back toward its own back edge.
 	tired.target_enemy = null
@@ -377,14 +382,18 @@ func _rear_point() -> Vector2:
 func _update_relief() -> void:
 	if _relief_partner == null:
 		return
-	if not is_instance_valid(_relief_partner) or _relief_partner.state == State.DEAD:
-		_relief_partner = null
-		return
-	var clear_dist: float = separation_radius + _relief_partner.separation_radius + 24.0
-	if position.distance_to(_relief_partner.position) > clear_dist:
+	# Drop the exemption if the partner is gone or has left the line (dead or
+	# routing), or once the swapping pair has moved clear of each other.
+	var gone: bool = not is_instance_valid(_relief_partner) \
+		or _relief_partner.state == State.DEAD \
+		or _relief_partner.state == State.ROUTING
+	var apart: bool = is_instance_valid(_relief_partner) \
+		and position.distance_to(_relief_partner.position) \
+			> separation_radius + _relief_partner.separation_radius + 24.0
+	if gone or apart:
 		var partner: Unit = _relief_partner
 		_relief_partner = null
-		if partner._relief_partner == self:
+		if is_instance_valid(partner) and partner._relief_partner == self:
 			partner._relief_partner = null
 
 
