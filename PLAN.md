@@ -37,7 +37,7 @@ then grow outward.
         `CharacterBody2D`/`move_and_slide`) before unit counts grow past a few dozen.
 
 ## Prioritized roadmap (synced with GitHub issues)
-Tracked as issues on `dem-extra1/sparta` with `P0`–`P3` labels (a GitHub Project board groups them).
+Tracked as issues on `Lacaedemon/sparta` with `P0`–`P3` labels (a GitHub Project board groups them).
 Order reflects dependencies — validate the foundation, then build the collision pillar, then the
 features that depend on it, then independent polish.
 
