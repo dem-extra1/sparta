@@ -135,7 +135,10 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int) -> void:
 ## playback so both produce identical results.
 func _apply_order_cmd(cmd: Dictionary) -> void:
 	var target_uid: int = int(cmd["target"])
-	var enemy = _unit_by_uid(target_uid) if target_uid >= 0 else null
+	# The target uid may be an enemy (attack) or a friendly (line relief, #4); a
+	# plain move has no target. Resolve it and dispatch per ordered unit by team.
+	var target_unit = _unit_by_uid(target_uid) if target_uid >= 0 else null
+	var is_move: bool = target_unit == null
 	var dest := Vector2(float(cmd["x"]), float(cmd["y"]))
 	# Formation cohesion: a move order translates the regiment as a block. Each
 	# unit keeps its offset from the group's current centroid, so the formation
@@ -143,22 +146,32 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	# into a fresh grid. Computed from live positions, so live play and playback
 	# (which reach the same positions at this tick) stay in lockstep.
 	var centroid := Vector2.ZERO
-	if enemy == null:
+	if is_move:
 		var ps: Array[Vector2] = []
 		for uid in cmd["units"]:
 			var cu = _unit_by_uid(int(uid))
 			if cu != null:
 				ps.append(cu.position)
 		centroid = formation_centroid(ps)
+	var relieved: bool = false
 	for uid in cmd["units"]:
 		var u = _unit_by_uid(int(uid))
 		if u == null:
 			continue
-		if enemy != null:
-			u.target_enemy = enemy
+		if target_unit != null and target_unit != u and target_unit.team != u.team:
+			u.target_enemy = target_unit   # attack an enemy
 			u.has_move_target = false
+		elif target_unit != null and target_unit != u and target_unit.team == u.team:
+			# Relief: the first reliever swaps with the tired unit; any others just
+			# advance on the same fight so they don't shove the retreating unit.
+			if not relieved:
+				u.begin_relief(target_unit)
+				relieved = true
+			else:
+				u.target_enemy = target_unit.target_enemy
+				u.has_move_target = false
 		else:
-			u.move_target = dest + (u.position - centroid)
+			u.move_target = dest + (u.position - centroid)   # formation move
 			u.has_move_target = true
 			u.target_enemy = null
 
