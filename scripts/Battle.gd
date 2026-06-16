@@ -154,6 +154,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				ps.append(cu.position)
 		centroid = formation_centroid(ps)
 	var relieved: bool = false
+	var relief_foe = null
 	for uid in cmd["units"]:
 		var u = _unit_by_uid(int(uid))
 		if u == null:
@@ -166,9 +167,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			# advance on the same fight so they don't shove the retreating unit.
 			if not relieved:
 				u.begin_relief(target_unit)
+				# Capture the foe begin_relief() resolved (it clears the tired
+				# unit's target_enemy, so later relievers can't read it from there).
+				relief_foe = u.target_enemy
 				relieved = true
 			else:
-				u.target_enemy = target_unit.target_enemy
+				u.target_enemy = relief_foe
 				u.has_move_target = false
 		else:
 			u.move_target = dest + (u.position - centroid)   # formation move

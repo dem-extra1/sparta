@@ -290,3 +290,34 @@ func test_relief_swaps_the_fight_and_exempts_the_pair() -> void:
 	assert_true(tired.has_move_target, "the tired unit peels back to the rear")
 	assert_true(fresh._separation_exempt(tired), "the swapping pair passes through")
 	assert_true(tired._separation_exempt(fresh), "the relief exemption is mutual")
+
+
+func test_relief_inherits_nearest_enemy_when_target_is_unset() -> void:
+	# A unit can be FIGHTING an auto-acquired foe with target_enemy still null.
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	var foe := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	foe.team = 1
+	tired.position = Vector2.ZERO
+	foe.position = Vector2(30.0, 0.0)   # within tired's detection range
+	tired.target_enemy = null
+	fresh.begin_relief(tired)
+	assert_eq(fresh.target_enemy, foe,
+		"the reliever inherits the tired unit's nearest enemy even when unset")
+
+
+func test_relief_exemption_clears_when_partner_routs() -> void:
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	fresh.position = Vector2.ZERO
+	tired.position = Vector2(5.0, 0.0)   # still adjacent, so it's not "apart"
+	fresh.begin_relief(tired)
+	assert_true(fresh._separation_exempt(tired), "exempt during the swap")
+	tired.state = Unit.State.ROUTING
+	fresh._update_relief()
+	assert_false(fresh._separation_exempt(tired),
+		"a routed partner is no longer exempt — it gets shouldered again")
