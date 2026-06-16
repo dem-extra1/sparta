@@ -1,0 +1,53 @@
+extends GutTest
+## PathField (issue #10): deterministic grid A* routing. With no obstacles the
+## path is a straight line (movement unchanged); with a wall, units route around.
+
+const FIELD := Rect2(0, 0, 640, 640)
+
+
+func test_clear_line_steps_straight_to_target() -> void:
+	var pf := PathField.new(FIELD)
+	var target := Vector2(600, 50)
+	assert_eq(pf.next_step(Vector2(50, 50), target), target,
+		"with no obstacles the next step is the target itself")
+
+
+func test_find_path_returns_a_route_between_distinct_cells() -> void:
+	var pf := PathField.new(FIELD)
+	# find_path always computes an A* route; the straight-line shortcut lives in
+	# next_step(), so units skip A* when the line is clear (tested above).
+	assert_gt(pf.find_path(Vector2(50, 50), Vector2(600, 50)).size(), 0,
+		"A* returns a cell route between two distinct free cells")
+
+
+func test_routes_around_a_wall_with_a_gap() -> void:
+	var pf := PathField.new(FIELD)
+	# A vertical wall across the upper field, leaving a gap along the bottom.
+	pf.block_rect(Rect2(300, 0, 64, 480))
+	var from := Vector2(50, 50)
+	var to := Vector2(600, 50)
+	# The straight line is blocked, so the next step must deviate from the target.
+	assert_ne(pf.next_step(from, to), to, "a blocked line forces a detour")
+	var path := pf.find_path(from, to)
+	assert_gt(path.size(), 0, "an A* route around the wall exists")
+	# Every waypoint avoids the wall.
+	for p in path:
+		assert_false(pf.is_blocked(p), "no waypoint sits inside the wall")
+
+
+func test_path_is_deterministic() -> void:
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(300, 0, 64, 480))
+	var a := pf.find_path(Vector2(50, 50), Vector2(600, 50))
+	var b := pf.find_path(Vector2(50, 50), Vector2(600, 50))
+	assert_eq(a, b, "the same query yields the same route (replay-safe)")
+
+
+func test_blocked_goal_falls_back_to_target() -> void:
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(560, 0, 80, 120))   # the goal cell is inside terrain
+	var to := Vector2(600, 50)
+	# No reachable cell route; next_step falls back to the raw target rather than
+	# stalling, so callers always make progress.
+	assert_eq(pf.next_step(Vector2(50, 50), to), to,
+		"an unreachable goal falls back to a straight step")

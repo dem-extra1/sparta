@@ -41,6 +41,12 @@ func _ready() -> void:
 	_camera.bounds = FIELD
 	_camera.position = FIELD.position + FIELD.size * 0.5
 
+	# Publish the pathfinding layer over the field. No terrain obstacles are
+	# registered yet, so routes are straight lines today; placing a block_rect()
+	# here (e.g. for a future rock/wall) is all it takes to make units route
+	# around it. Kept deterministic (grid A*) so replays stay reproducible.
+	PathField.active = PathField.new(FIELD)
+
 	# Player army (team 0) deploys along the top, facing down.
 	_spawn_line(0, Vector2.DOWN, 300)
 	# Enemy army (team 1) deploys along the bottom, facing up.
