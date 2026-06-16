@@ -132,7 +132,9 @@ jobs:
         run: |
           set -euo pipefail
           PR=${{ github.event.pull_request.number }}
-          SHA=$(git rev-parse --short HEAD)
+          # PR head commit (not the merge ref actions/checkout lands on) — meaningful
+          # to a reader and unique per push, so the raw URL changes and dodges cache.
+          SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
           DEST="pr-${PR}-${SHA}.gif"
           CAPTION=$(jq -r '.caption // "Gameplay demo for this PR."' demos/demo.json)
           REPLAY=$(jq -r '.replay // empty' demos/demo.json)
@@ -151,14 +153,21 @@ jobs:
               > /tmp/media/README.md
           fi
 
-          git -C /tmp/media config user.name "github-actions[bot]"
-          git -C /tmp/media config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Keep only the latest GIF per PR; the comment is always updated to the newest URL.
-          git -C /tmp/media rm -f "pr-${PR}-"*.gif >/dev/null 2>&1 || true
-          cp /tmp/demo.gif "/tmp/media/$DEST"
-          git -C /tmp/media add "$DEST" README.md 2>/dev/null || git -C /tmp/media add "$DEST"
-          git -C /tmp/media commit -m "demo: PR #${PR} @ ${SHA}"
-          git -C /tmp/media push origin "HEAD:$MEDIA_BRANCH"
+          cd /tmp/media   # so the prune glob below expands in the media checkout
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Keep only the latest GIF per PR; the comment is always repointed to the
+          # newest URL. nullglob so "no existing GIFs" yields an empty list, not a
+          # literal pattern.
+          shopt -s nullglob
+          for f in pr-${PR}-*.gif; do git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"; done
+          shopt -u nullglob
+          cp /tmp/demo.gif "$DEST"
+          git add "$DEST" README.md 2>/dev/null || git add "$DEST"
+          # On a manual re-run of the same commit the content is unchanged; tolerate it.
+          git commit -m "demo: PR #${PR} @ ${SHA}" || echo "nothing new to commit"
+          git push origin "HEAD:$MEDIA_BRANCH"
+          cd - >/dev/null
 
           RAW_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST}"
           MARKER="<!-- sparta-demo -->"
@@ -167,7 +176,7 @@ jobs:
 
           # Update the existing demo comment in place if present, else create one.
           CID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" --paginate \
-            --jq "map(select(.body | contains(\"$MARKER\"))) | .[0].id // empty")
+            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -n1 || true)
           if [ -n "$CID" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/${CID}" -f body="$BODY" >/dev/null
             echo "Updated demo comment $CID"
