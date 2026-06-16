@@ -16,7 +16,7 @@ GUT_VERSION="v9.6.0"
 # Pin gdtoolkit to a version validated against this project's Godot 4.6 GDScript
 # so a future breaking release can't silently break all web sessions.
 echo "[session-start] Installing gdtoolkit (gdlint/gdformat)..."
-python3 -m pip install --quiet --disable-pip-version-check "gdtoolkit==4.5.0"
+python3 -m pip install --quiet --disable-pip-version-check --break-system-packages "gdtoolkit==4.5.0"
 
 # Fail with a clear message if the Godot binary isn't available.
 command -v godot >/dev/null 2>&1 || { echo "[session-start] ERROR: godot not found in PATH"; exit 1; }
