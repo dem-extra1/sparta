@@ -6,6 +6,10 @@ class_name Unit
 
 enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }
 
+# Stable per-battle id (assigned by Battle.gd at spawn). Replays reference units
+# by this so recorded orders survive scene reloads.
+var uid: int = -1
+
 # --- Tunable stats (set by Battle.gd when spawning) ---
 @export var unit_name: String = "Spearmen"
 @export var team: int = 0
@@ -193,7 +197,9 @@ func _separate() -> void:
 
 func _strike(enemy: Unit) -> void:
 	var base: float = float(max(1, attack - enemy.defense))
-	var dmg: float = base * randf_range(0.6, 1.4)
+	# Draw from the seeded replay RNG (one stream, stable order) so battles are
+	# reproducible. This is the simulation's only source of randomness.
+	var dmg: float = base * Replay.rng.randf_range(0.6, 1.4)
 
 	# Cavalry charge bonus on first contact, blunted by anti-cavalry spears.
 	if is_cavalry and _charge_ready and not enemy.is_cavalry:
