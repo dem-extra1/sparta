@@ -99,11 +99,18 @@ func _ready() -> void:
 	_error_dialog.title = "Load Replay"
 	add_child(_error_dialog)
 
-	# Selected-unit panel.
+	# Selected-unit info panel, pinned above the bottom-left corner. The top
+	# offset is derived from the panel's own min-height + bottom margin (not a
+	# hand-tuned magic number), and grow_vertical = BEGIN lets it expand UPWARD
+	# if a content row or a larger font is added — so it never clips past the
+	# screen's bottom edge.
 	var panel := PanelContainer.new()
+	var panel_min := Vector2(240, 90)
+	var panel_bottom_margin := 20.0
+	panel.custom_minimum_size = panel_min
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	panel.position = Vector2(14, -110)
-	panel.custom_minimum_size = Vector2(240, 90)
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	panel.position = Vector2(14.0, -(panel_min.y + panel_bottom_margin))
 	add_child(panel)
 
 	var margin := MarginContainer.new()
