@@ -385,7 +385,7 @@ func _draw_cavalry_sprite(body: Color, dark: Color, lite: Color) -> void:
 	# Lance pointing forward-right with a triangular blade tip.
 	var lance_tip := Vector2(R * 0.65, -R * 0.78)
 	draw_line(Vector2(R * 0.15, -R * 0.18), lance_tip, metal, 2.5)
-	var lance_dir := Vector2(R * 0.50, -R * 0.60).normalized()
+	var lance_dir := Vector2(0.50, -0.60).normalized()
 	var lance_perp := Vector2(-lance_dir.y, lance_dir.x)
 	var tip_blade := PackedVector2Array([
 		lance_tip + lance_dir * 7.0,
