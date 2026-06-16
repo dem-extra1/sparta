@@ -94,5 +94,5 @@ Once installed, `godot --headless` can run exports or a GDScript test suite (e.g
 
 ## Roadmap
 - **M1 (here):** one playable tactical battle. ✅ scaffolded
-- **M2:** CK3-style campaign map — provinces, characters, turn-based diplomacy; battles auto-resolved.
+- **M2:** campaign map — provinces, characters, turn-based diplomacy; battles auto-resolved.
 - **M3:** integration — armies on the map launch into this battle scene and return a result.
