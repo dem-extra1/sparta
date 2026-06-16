@@ -9,6 +9,7 @@ var _overlay: ColorRect
 var _overlay_label: Label
 var _edge_toggle: CheckButton
 var _status: Label
+var _paused_label: Label
 var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
@@ -19,7 +20,7 @@ func _ready() -> void:
 
 	# Controls hint.
 	var hint := Label.new()
-	hint.text = "LMB select / drag-box   •   RMB move or attack   •   WASD pan   •   wheel zoom"
+	hint.text = "LMB select / drag-box   •   RMB move or attack   •   WASD pan   •   wheel zoom   •   Space pause"
 	hint.position = Vector2(14, 10)
 	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
 	hint.add_theme_font_size_override("font_size", 14)
@@ -39,6 +40,19 @@ func _ready() -> void:
 		_status.text = "● REC"
 		_status.add_theme_color_override("font_color", Color(1.0, 0.5, 0.45))
 	add_child(_status)
+
+	# Active-pause indicator (top-center, below the REC/REPLAY status). Hidden
+	# until the player toggles pause with Space.
+	_paused_label = Label.new()
+	_paused_label.text = "⏸ PAUSED"
+	_paused_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_paused_label.position = Vector2(-90, 54)
+	_paused_label.custom_minimum_size = Vector2(180, 0)
+	_paused_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_paused_label.add_theme_font_size_override("font_size", 18)
+	_paused_label.add_theme_color_override("font_color", Color(0.95, 0.9, 0.35))
+	_paused_label.visible = false
+	add_child(_paused_label)
 
 	# Settings: edge-scroll toggle (top-right). Give it an explicit width so the
 	# placement is derived from that, not a font-metric-tuned magic offset.
@@ -157,6 +171,27 @@ func _sync_edge_toggle() -> void:
 	_edge_toggle.button_pressed = Settings.edge_scroll
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	# Space toggles active pause: the sim freezes but selection and camera stay
+	# live (they run as PROCESS_MODE_ALWAYS), so orders can be queued while paused
+	# and apply on resume. Disabled once the end-of-battle overlay is up.
+	if _is_pause_keypress(event) and not _overlay.visible:
+		_toggle_pause()
+
+
+func _is_pause_keypress(event: InputEvent) -> bool:
+	return event is InputEventKey \
+		and event.pressed and not event.echo \
+		and event.keycode == KEY_SPACE
+
+
+func _toggle_pause() -> void:
+	var paused: bool = not get_tree().paused
+	get_tree().paused = paused
+	_paused_label.visible = paused
+	get_viewport().set_input_as_handled()
+
+
 func show_unit(u, group_count: int) -> void:
 	if u == null or not is_instance_valid(u):
 		clear_unit()
@@ -173,6 +208,7 @@ func clear_unit() -> void:
 
 
 func show_end(text: String) -> void:
+	_paused_label.visible = false   # the end overlay supersedes the pause banner
 	_overlay_label.text = text
 	_overlay.visible = true
 	get_tree().paused = true

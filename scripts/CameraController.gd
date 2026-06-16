@@ -14,6 +14,9 @@ var bounds: Rect2 = Rect2(0, 0, 1600, 1000)
 func _ready() -> void:
 	make_current()
 	position = bounds.position + bounds.size * 0.5
+	# Keep panning/zooming during active pause so the field can be surveyed
+	# while issuing orders.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
 func _process(delta: float) -> void:

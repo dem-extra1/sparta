@@ -19,6 +19,9 @@ var _selected: Array = []
 
 func _ready() -> void:
 	z_index = 100   # draw the selection box over the units
+	# Stay responsive during active pause: the player can survey, select, and
+	# queue orders while the simulation is frozen (orders apply on resume).
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
 func _unhandled_input(event: InputEvent) -> void:
