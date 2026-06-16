@@ -201,10 +201,11 @@ func _on_replay_chosen(path: String) -> void:
 
 
 func _on_watch_replay() -> void:
-	# Re-run the battle just played, using the path we actually saved (it persists
-	# through playback, so "Watch Again" works too). If this battle's save failed
-	# there's nothing to play — say so rather than replaying a different battle.
-	var path := Replay.last_saved_path
+	# Re-run the battle just shown. While watching a replay, "Watch Again" must
+	# re-run *that* file (loaded_path) — which may be an older one opened via the
+	# picker — not the last live battle. After a live battle, replay what we just
+	# saved. If neither exists, say so rather than playing the wrong battle.
+	var path := Replay.loaded_path if Replay.mode == Replay.Mode.PLAYBACK else Replay.last_saved_path
 	if path == "" or not Replay.start_playback(path):
 		# Report on the button itself so the battle result label is preserved.
 		_watch_button.text = "No replay available"
