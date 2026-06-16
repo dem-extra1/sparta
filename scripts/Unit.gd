@@ -57,15 +57,30 @@ func _physics_process(delta: float) -> void:
 
 	if state == State.ROUTING:
 		_process_rout(delta)
+		if state != State.DEAD:   # the timer may have expired and freed us
+			_separate()   # routers still shoulder past anyone in their path
 		return
 
 	_attack_cd = max(0.0, _attack_cd - delta)
 	_moved_last_frame = false
 
+	_think(delta)
+
+	# Units are solid: resolve any overlap so an advancing regiment can't
+	# walk straight through (or over) the one in front of it.
+	_separate()
+
+	if not _moved_last_frame and state != State.FIGHTING:
+		_charge_ready = true   # rearm charge once disengaged
+	queue_redraw()
+
+
+## Decide what to do this frame: fight if in contact, otherwise move.
+func _think(delta: float) -> void:
 	var enemy: Unit = _current_target()
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
-		var in_contact: bool = dist <= attack_range + RADIUS
+		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
 		# Fight when in contact, UNLESS the player gave a plain move order with no
 		# explicit attack target — that's a disengage command, so march off and let
 		# the unit break contact. (Pulling out exposes the rear; the enemy chasing
@@ -76,12 +91,10 @@ func _physics_process(delta: float) -> void:
 			if _attack_cd <= 0.0:
 				_attack_cd = ATTACK_INTERVAL
 				_strike(enemy)
-			queue_redraw()
 			return
 		elif target_enemy != null:
 			# Explicit attack order, not yet in contact: chase past any move target.
 			_move_to(enemy.position, delta)
-			queue_redraw()
 			return
 
 	# Obey a move order (disengaging if needed), else auto-advance on a near enemy.
@@ -95,10 +108,6 @@ func _physics_process(delta: float) -> void:
 		_move_to(enemy.position, delta)
 	else:
 		state = State.IDLE
-
-	if not _moved_last_frame and state != State.FIGHTING:
-		_charge_ready = true   # rearm charge once disengaged
-	queue_redraw()
 
 
 # --- Targeting -------------------------------------------------------------
@@ -146,6 +155,42 @@ func _face(point: Vector2) -> void:
 func _face_dir(dir: Vector2) -> void:
 	if dir.length() > 0.01:
 		facing = dir.normalized()
+
+
+## Push out of any overlapping unit so regiments form a solid line instead of
+## passing through each other. Each pair shares the correction (half each).
+## Since units move sequentially (each only moves itself), one frame reduces an
+## overlap by ~75%; it converges to zero within a few frames.
+func _separate() -> void:
+	if state == State.DEAD:
+		return
+	# Consider living units and routers alike: nobody gets walked through.
+	var others: Array = get_tree().get_nodes_in_group("units")
+	others.append_array(get_tree().get_nodes_in_group("routers"))
+	for o in others:
+		var other: Unit = o as Unit
+		# DEAD: queue_free'd but not yet removed from its group this frame.
+		if other == null or other == self or other.state == State.DEAD:
+			continue
+		var min_dist: float = RADIUS + other.RADIUS
+		var offset: Vector2 = position - other.position
+		var d: float = offset.length()
+		if d >= min_dist:
+			continue
+		var push: Vector2
+		if d > 0.01:
+			push = offset / d * ((min_dist - d) * 0.5)
+		else:
+			# Exactly co-located: both units of the pair derive the SAME angle
+			# (from the lower id, for determinism) and push in OPPOSITE
+			# directions, so they reliably fan apart instead of drifting
+			# together. Using each unit's own id here would push near-adjacent
+			# ids in almost the same direction and never separate them.
+			var lo: int = mini(get_instance_id(), other.get_instance_id())
+			var angle: float = float(lo % 100) / 100.0 * TAU
+			var dir: float = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
+			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * 0.5)
+		position += push
 
 
 # --- Combat ----------------------------------------------------------------
