@@ -16,9 +16,11 @@ var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
 var _drag_cur: Vector2 = Vector2.ZERO
 var _selected: Array = []
-# Tracks whether anything was selected last frame, so the overlay is redrawn one
-# final time after the selection clears (wiping the last frame's order lines).
+# Tracks the overlay-visible state last frame (anything selected, or Space held
+# to survey all orders), so the overlay is redrawn one final time after that
+# clears — wiping the last frame's order lines.
 var _had_selection: bool = false
+var _was_showing_orders: bool = false
 
 @onready var _hud = get_node_or_null("../HUD")
 @onready var _battle = get_parent()
@@ -139,12 +141,14 @@ func _process(_delta: float) -> void:
 	# Keep the panel current as the shown unit takes casualties.
 	_refresh_hud()
 	# Order overlays track units as they march, so redraw while anything is
-	# selected; one extra redraw the frame after a selection clears wipes the
-	# stale lines.
+	# selected or while the player holds Space to survey all orders; one extra
+	# redraw the frame after either clears wipes the stale lines.
 	var has_selection := not _selected.is_empty()
-	if has_selection or _had_selection:
+	var showing_orders := Input.is_key_pressed(KEY_SPACE)
+	if has_selection or showing_orders or _had_selection or _was_showing_orders:
 		queue_redraw()
 	_had_selection = has_selection
+	_was_showing_orders = showing_orders
 
 
 func _draw() -> void:
@@ -156,20 +160,25 @@ func _draw() -> void:
 	draw_rect(rect, Color(0.5, 1.0, 0.5, 0.9), false, 1.5)
 
 
-## Draw each selected unit's current order on the field (Total War style): a
-## dashed line to its destination or to the enemy it's attacking, with a marker
-## at the far end. SelectionManager sits at the world origin with no parent
-## transform — the same assumption the drag-box selection relies on — so unit
-## world positions can be drawn directly in _draw()'s local space.
+## Draw units' current orders on the field (Total War style): a dashed line to
+## each unit's destination or to the enemy it's attacking, with a marker at the
+## far end. SelectionManager sits at the world origin with no parent transform —
+## the same assumption the drag-box selection relies on — so unit world
+## positions can be drawn directly in _draw()'s local space.
 ##
-## Orders are a "hold to reveal" survey aid: only shown while the player holds
-## Space (works paused too, since this node is PROCESS_MODE_ALWAYS). P toggles
-## pause. Keeps the field uncluttered the rest of the time.
+## Orders are a "hold to reveal" survey aid: shown for all of the player's units
+## while Space is held (works paused too, since this node is PROCESS_MODE_ALWAYS;
+## P or Ctrl+Space toggles pause). Enemy (team 1) orders are revealed only during
+## replay playback — in live play the enemy's intentions stay hidden.
 func _draw_orders() -> void:
 	if not Input.is_key_pressed(KEY_SPACE):
 		return
-	for u in _selected:
-		if not is_instance_valid(u):
+	var show_enemy: bool = Replay.mode == Replay.Mode.PLAYBACK
+	for node in get_tree().get_nodes_in_group("units"):
+		var u = node as UnitRef
+		if u == null or not is_instance_valid(u):
+			continue
+		if u.team != 0 and not show_enemy:
 			continue
 		var origin: Vector2 = u.global_position
 		# Only a player-issued attack (stored in target_enemy) draws a red line. A
