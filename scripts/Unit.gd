@@ -192,6 +192,9 @@ func _separate() -> void:
 		# DEAD: queue_free'd but not yet removed from its group this frame.
 		if other == null or other == self or other.state == State.DEAD:
 			continue
+		# A moving unit and an idle friendly pass cleanly through each other.
+		if _separation_exempt(other):
+			continue
 		var min_dist: float = separation_radius + other.separation_radius
 		var offset: Vector2 = position - other.position
 		var d: float = offset.length()
@@ -211,6 +214,21 @@ func _separate() -> void:
 			var dir: float = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
 			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * 0.5)
 		position += push
+
+
+## Shared "collision-exemption" primitive: a moving unit may pass cleanly through
+## an IDLE friendly (and vice versa), so the pair interpenetrates instead of
+## shoving. Re-enables on its own once the mover stops (both IDLE) or the friendly
+## moves off. Enemies are never exempt; two non-idle friendlies are not exempt;
+## routers (a separate state/group) are never exempt and still get shouldered.
+## Line relief (#4) and merging (#3) build on this same exemption.
+func _separation_exempt(other: Unit) -> bool:
+	if other.team != team:
+		return false
+	# FIGHTING and ROUTING are implicitly non-exempt (neither is IDLE/MOVING), so
+	# only a moving unit and a stationary idle friendly pass through each other.
+	return (state == State.MOVING and other.state == State.IDLE) \
+		or (state == State.IDLE and other.state == State.MOVING)
 
 
 ## Neighbours to test for overlap. Uses the per-frame spatial hash that Battle

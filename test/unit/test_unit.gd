@@ -140,3 +140,75 @@ func test_spearmen_pair_overlap_at_38px_pushed_apart() -> void:
 	b.position = Vector2(38.0, 0.0)
 	a._separate()
 	assert_lt(a.position.x, 0.0, "spearmen at 38px overlap by footprint and push apart")
+
+
+# --- friendly pass-through (issue #5) --------------------------------------
+
+func test_mover_passes_through_idle_friendly() -> void:
+	var mover := _make_unit()
+	var idle := _make_unit()
+	mover.team = 0
+	idle.team = 0
+	mover.state = Unit.State.MOVING
+	idle.state = Unit.State.IDLE
+	mover.position = Vector2.ZERO
+	idle.position = Vector2(10.0, 0.0)        # deep overlap (infantry floor 36)
+	mover._separate()
+	assert_almost_eq(mover.position.x, 0.0, 0.001,
+		"a moving unit is not pushed off an idle friendly — it passes through")
+
+
+func test_two_idle_friendlies_still_separate() -> void:
+	var a := _make_unit()
+	var b := _make_unit()
+	a.team = 0
+	b.team = 0
+	a.state = Unit.State.IDLE
+	b.state = Unit.State.IDLE
+	a.position = Vector2.ZERO
+	b.position = Vector2(10.0, 0.0)
+	a._separate()
+	assert_lt(a.position.x, 0.0, "two idle friendlies are solid and push apart")
+
+
+func test_mover_does_not_pass_through_idle_enemy() -> void:
+	var mover := _make_unit()
+	var enemy := _make_unit()
+	mover.team = 0
+	enemy.team = 1
+	mover.state = Unit.State.MOVING
+	enemy.state = Unit.State.IDLE
+	mover.position = Vector2.ZERO
+	enemy.position = Vector2(10.0, 0.0)
+	mover._separate()
+	assert_lt(mover.position.x, 0.0, "an enemy is never exempt — the mover is blocked")
+
+
+func test_idle_friendly_does_not_push_the_mover_either() -> void:
+	# The exemption is symmetric: the idle unit's own _separate() must also leave
+	# the passing mover untouched.
+	var mover := _make_unit()
+	var idle := _make_unit()
+	mover.team = 0
+	idle.team = 0
+	mover.state = Unit.State.MOVING
+	idle.state = Unit.State.IDLE
+	mover.position = Vector2.ZERO
+	idle.position = Vector2(10.0, 0.0)
+	idle._separate()
+	assert_almost_eq(idle.position.x, 10.0, 0.001,
+		"the idle unit does not shove the passing mover — exemption is symmetric")
+
+
+func test_mover_does_not_pass_through_fighting_friendly() -> void:
+	# Only IDLE friendlies are passed through; a FIGHTING friendly is solid.
+	var mover := _make_unit()
+	var fighter := _make_unit()
+	mover.team = 0
+	fighter.team = 0
+	mover.state = Unit.State.MOVING
+	fighter.state = Unit.State.FIGHTING
+	mover.position = Vector2.ZERO
+	fighter.position = Vector2(10.0, 0.0)
+	mover._separate()
+	assert_lt(mover.position.x, 0.0, "a moving unit cannot pass through a fighting friendly")
