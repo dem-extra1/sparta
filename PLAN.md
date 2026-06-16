@@ -104,6 +104,13 @@ Godot was **not installed** in the authoring environment, so only static checks 
 If any script error appears on first run, fix it before building further — this is expected for
 hand-authored GDScript that hasn't been engine-checked.
 
+## Added since scaffold
+- **Reproducible replays** (`scripts/Replay.gd`): deterministic sim + order log
+  (Total War-style). Every battle auto-records to `user://replays/`; "Watch
+  Replay" re-runs it. Made the sim deterministic (single seeded RNG via
+  `Replay.rng`; AI + orders on the fixed physics tick). Verified end-to-end:
+  a recorded battle replays bit-identically tick-for-tick. See `REPLAY.md`.
+
 ## Next milestones (not started)
 - **M1 polish (optional, after first run is fun):**
   - Swap token `_draw()` for real CC0 `Sprite2D` art (see README "Swapping placeholder art").
@@ -178,10 +185,11 @@ hand-authored GDScript that hasn't been engine-checked.
     flag), movement/path logic, and `SelectionManager.gd` if an explicit order is chosen.
 
 ## Pointers
-- Tune unit stats in `BattleSpawner.gd` → `_make_loadout()` array.
+- Tune unit stats / loadout in `Battle.gd` → `_spawn_line()` array.
 - Tune collision spacing in `Unit.gd` → `separation_radius` (per-instance `@export`; center-to-center
   floor = sum of both units' radii; set per type at spawn for footprints). Soft-resolve logic in
-  `UnitMovement.gd` → `separate()`. Tune spawn gaps via `spacing` in `BattleSpawner.gd` → `spawn_line()`.
-- Tune movement pace in `BattleSpawner.gd` → `SPEED_SCALE` constant (lower = slower).
-- Combat math in `UnitCombat.gd` → `strike()` / `apply_damage()` / `flank_multiplier()`.
+  `Unit.gd` → `_separate()`. Tune spawn gaps via `spacing` in `Battle.gd` → `_spawn_line()`.
+- Tune movement pace in `Battle.gd` → `SPEED_SCALE` constant (lower = slower).
+- Combat math in `Unit.gd` → `_strike()` / `take_casualties()` / `_flank_multiplier()`.
+- Active pause: `HUD.gd` → `_toggle_pause()` (Space); selection/camera stay live via `PROCESS_MODE_ALWAYS`.
 - Enemy AI in `Battle.gd` → `_run_enemy_ai()` (currently: advance on nearest player unit).
