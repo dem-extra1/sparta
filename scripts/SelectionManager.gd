@@ -160,7 +160,13 @@ func _draw() -> void:
 ## dashed line to its destination or to the enemy it's attacking, with a marker
 ## at the far end. SelectionManager sits at the world origin, so unit world
 ## positions can be drawn directly here.
+##
+## Orders are a "hold to reveal" survey aid: only shown while the player holds
+## Space (works paused too, since this node is PROCESS_MODE_ALWAYS). P toggles
+## pause. Keeps the field uncluttered the rest of the time.
 func _draw_orders() -> void:
+	if not Input.is_key_pressed(KEY_SPACE):
+		return
 	for u in _selected:
 		if not is_instance_valid(u):
 			continue
