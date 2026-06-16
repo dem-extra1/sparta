@@ -1,0 +1,201 @@
+# Records a gameplay demo for Claude-authored PRs that change the game, and posts
+# it as an inline GIF in the PR conversation. See demos/README.md for the author
+# contract (commit a demos/demo.json pointing at a replay that shows your change).
+#
+# Why a separate workflow (not claude.yml): claude.yml only *calls* an external
+# reusable workflow (d-morrison/gha), so recording steps can't be added there.
+#
+# How the GIF gets inline without GitHub's browser-only attachment CDN: the GIF is
+# pushed to a long-lived media branch ($MEDIA_BRANCH) and embedded by raw URL. That
+# never touches the PR's own head commit (so it can't disturb required checks) and
+# survives the PR branch being deleted on merge. The filename carries the commit
+# SHA so the raw URL changes each push and GitHub's image cache never serves a
+# stale frame.
+name: Demo video
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    # "User-visible change" = something that affects what the game looks/plays
+    # like. Docs/CI/test-only diffs don't qualify and won't trigger a recording.
+    paths:
+      - 'scenes/**'
+      - 'scripts/**'
+      - 'assets/**'
+      - 'project.godot'
+
+# One recording per PR; a newer push cancels an in-flight one.
+concurrency:
+  group: demo-video-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write        # push the GIF to the media branch
+  pull-requests: write   # post / update the demo comment
+
+env:
+  GODOT_VERSION: 4.6.0
+  GUT_VERSION: v9.6.0
+  MEDIA_BRANCH: demo-media
+
+jobs:
+  demo:
+    # Only same-repo, Claude-authored branches: a fork PR can't be pushed to (and
+    # the media branch lives in this repo), and demos are scoped to Claude's work.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'claude/')
+    runs-on: ubuntu-latest
+    # Backstop for the whole job; the record step has a tighter guard of its own.
+    # Godot under headless OpenGL/Xvfb can deadlock and would otherwise hold a
+    # runner for GitHub's 6 h default.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Look for a demo manifest
+        id: manifest
+        run: |
+          if [ -f demos/demo.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No demos/demo.json on this PR — nothing to record. (See demos/README.md.)"
+          fi
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }}
+        if: steps.manifest.outputs.present == 'true'
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+
+      - name: Install GUT ${{ env.GUT_VERSION }}
+        # The project's test files extend GutTest, so GUT must be present or the
+        # import below fails to resolve that class (same as godot-ci.yml).
+        if: steps.manifest.outputs.present == 'true'
+        run: |
+          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
+          mkdir -p addons
+          rm -rf addons/gut
+          cp -r /tmp/gut/addons/gut addons/gut
+
+      - name: Install Xvfb + ffmpeg
+        # Movie Maker renders frames (software GL via Xvfb is fine — no GPU needed);
+        # ffmpeg turns the AVI into a compact GIF.
+        if: steps.manifest.outputs.present == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb ffmpeg
+
+      - name: Import & validate project
+        if: steps.manifest.outputs.present == 'true'
+        run: |
+          set -o pipefail
+          godot --headless --import --verbose 2>&1 | tee import.log
+          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
+            echo "::error::Godot reported script/resource errors during import"
+            exit 1
+          fi
+
+      - name: Record demo
+        if: steps.manifest.outputs.present == 'true'
+        id: record
+        # Tighter guard than the job backstop: headless Godot/Xvfb can deadlock on
+        # driver init before --quit-after ever takes effect. Recording is seconds;
+        # 10 min is generous.
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          REPLAY=$(jq -r '.replay // empty' demos/demo.json)
+          FIXED_FPS=$(jq -r '.fixed_fps // 30' demos/demo.json)
+          MAX_FRAMES=$(jq -r '.max_frames // 300' demos/demo.json)
+          GIF_FPS=$(jq -r '.fps // 12' demos/demo.json)
+          WIDTH=$(jq -r '.width // 640' demos/demo.json)
+
+          if [ -z "$REPLAY" ] || [ ! -f "$REPLAY" ]; then
+            echo "::error::demos/demo.json must set \"replay\" to a committed replay file (got: '${REPLAY:-}')"
+            exit 1
+          fi
+          echo "Recording $MAX_FRAMES frames of res://$REPLAY"
+
+          export SPARTA_DEMO_REPLAY="res://$REPLAY"
+          xvfb-run -a godot --rendering-driver opengl3 \
+            --write-movie /tmp/demo.avi --fixed-fps "$FIXED_FPS" \
+            --quit-after "$MAX_FRAMES" res://tools/demo/DemoRunner.tscn
+          [ -s /tmp/demo.avi ] || { echo "::error::Movie Maker produced no output"; exit 1; }
+
+          # Two-pass palette gives a sharp, small GIF.
+          ffmpeg -y -i /tmp/demo.avi \
+            -vf "fps=$GIF_FPS,scale=$WIDTH:-1:flags=lanczos,palettegen" /tmp/pal.png
+          ffmpeg -y -i /tmp/demo.avi -i /tmp/pal.png \
+            -lavfi "fps=$GIF_FPS,scale=$WIDTH:-1:flags=lanczos[x];[x][1:v]paletteuse" /tmp/demo.gif
+          [ -s /tmp/demo.gif ] || { echo "::error::GIF conversion failed"; exit 1; }
+          ls -la /tmp/demo.gif
+
+      - name: Publish GIF and comment
+        if: steps.manifest.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          PR=${{ github.event.pull_request.number }}
+          # PR head commit (not the merge ref actions/checkout lands on) — meaningful
+          # to a reader and unique per push, so the raw URL changes and dodges cache.
+          SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
+          DEST="pr-${PR}-${SHA}.gif"
+          CAPTION=$(jq -r '.caption // "Gameplay demo for this PR."' demos/demo.json)
+          REPLAY=$(jq -r '.replay // empty' demos/demo.json)
+
+          # Publish onto the long-lived media branch. An isolated clone keeps the PR
+          # checkout untouched. Different PRs share this branch, so a concurrent push
+          # can reject ours as non-fast-forward — retry the whole clone→commit→push so
+          # each attempt rebuilds on the latest tip. This covers both first-time
+          # branch creation and the cross-PR move race with no data loss; a blind
+          # --force would instead drop another PR's just-pushed GIF.
+          REPO_URL="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          publish_once() {
+            rm -rf /tmp/media
+            if ! git clone -q --depth 1 --branch "$MEDIA_BRANCH" "$REPO_URL" /tmp/media 2>/dev/null; then
+              echo "Media branch '$MEDIA_BRANCH' not found; creating it."
+              git clone -q --depth 1 "$REPO_URL" /tmp/media
+              git -C /tmp/media checkout -q --orphan "$MEDIA_BRANCH"
+              git -C /tmp/media rm -rf . >/dev/null 2>&1 || true
+              printf '# Demo media\n\nAuto-generated gameplay GIFs posted to PRs by `.github/workflows/demo-video.yml`.\n' \
+                > /tmp/media/README.md
+            fi
+            git -C /tmp/media config user.name "github-actions[bot]"
+            git -C /tmp/media config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            # Keep only the latest GIF per PR; the comment is always repointed to the
+            # newest URL. Subshell + nullglob so the glob expands inside the checkout
+            # and an empty match is a no-op, not a literal pattern.
+            ( cd /tmp/media && shopt -s nullglob && for f in pr-${PR}-*.gif; do git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"; done )
+            cp /tmp/demo.gif "/tmp/media/$DEST"
+            git -C /tmp/media add "$DEST" README.md 2>/dev/null || git -C /tmp/media add "$DEST"
+            # A manual re-run of the same commit changes nothing; tolerate it.
+            git -C /tmp/media commit -q -m "demo: PR #${PR} @ ${SHA}" || echo "nothing new to commit"
+            git -C /tmp/media push origin "HEAD:$MEDIA_BRANCH"
+          }
+          published=
+          for attempt in 1 2 3 4 5; do
+            if publish_once; then published=1; break; fi
+            echo "publish attempt $attempt failed (likely a concurrent push to $MEDIA_BRANCH); retrying with a fresh clone…"
+            sleep $((attempt * 2))
+          done
+          [ -n "$published" ] || { echo "::error::could not publish demo to $MEDIA_BRANCH after 5 attempts"; exit 1; }
+
+          RAW_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST}"
+          MARKER="<!-- sparta-demo -->"
+          BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n%s\n\n![demo](%s)\n\n<sub>Recorded from `%s` at `%s`. Updated automatically on each push.</sub>' \
+            "$MARKER" "$CAPTION" "$RAW_URL" "$REPLAY" "$SHA")
+
+          # Update the existing demo comment in place if present, else create one.
+          CID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" --paginate \
+            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -n1 || true)
+          if [ -n "$CID" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/${CID}" -f body="$BODY" >/dev/null
+            echo "Updated demo comment $CID"
+          else
+            gh api -X POST "repos/${{ github.repository }}/issues/${PR}/comments" -f body="$BODY" >/dev/null
+            echo "Posted new demo comment"
+          fi
