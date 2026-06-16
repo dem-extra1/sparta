@@ -39,12 +39,11 @@ fi
 # fail the hook if the import log reports script errors.
 echo "[session-start] Importing Godot project..."
 import_log="$(mktemp)"
+trap 'rm -f "$import_log"' EXIT
 godot --headless --import --verbose --path "$CLAUDE_PROJECT_DIR" 2>&1 | tee "$import_log"
 if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" "$import_log"; then
   echo "[session-start] ERROR: import reported script errors (see above)"
-  rm -f "$import_log"
   exit 1
 fi
-rm -f "$import_log"
 
 echo "[session-start] Done."
