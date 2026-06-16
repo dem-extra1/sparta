@@ -168,7 +168,7 @@ func _draw() -> void:
 ##
 ## Orders are a "hold to reveal" survey aid: shown for all of the player's units
 ## while Space is held (works paused too, since this node is PROCESS_MODE_ALWAYS;
-## P or Ctrl+Space toggles pause). Enemy (team 1) orders are revealed only during
+## P or Shift+Space toggles pause). Enemy (team 1) orders are revealed only during
 ## replay playback — in live play the enemy's intentions stay hidden.
 func _draw_orders() -> void:
 	if not Input.is_key_pressed(KEY_SPACE):

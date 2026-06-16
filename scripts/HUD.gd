@@ -20,7 +20,7 @@ func _ready() -> void:
 
 	# Controls hint.
 	var hint := Label.new()
-	hint.text = "LMB select / drag-box   •   RMB move or attack   •   WASD pan   •   wheel zoom   •   P / Ctrl+Space pause   •   hold Space show orders"
+	hint.text = "LMB select / drag-box   •   RMB move or attack   •   WASD pan   •   wheel zoom   •   P / Shift+Space pause   •   hold Space show orders"
 	hint.position = Vector2(14, 10)
 	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
 	hint.add_theme_font_size_override("font_size", 14)
@@ -182,11 +182,14 @@ func _unhandled_input(event: InputEvent) -> void:
 func _is_pause_keypress(event: InputEvent) -> bool:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return false
-	# P toggles pause; Ctrl+Space does too (plain Space is reserved for the
-	# hold-to-show-orders overlay, so it must carry Ctrl to mean "pause").
-	if event.keycode == KEY_P:
+	# P toggles pause; Shift+Space does too (plain Space is reserved for the
+	# hold-to-show-orders overlay, so it must carry Shift to mean "pause"). Use
+	# physical_keycode so the binding is layout-independent and unaffected by the
+	# held modifier. Shift+Space is used rather than Ctrl+Space because macOS
+	# reserves Ctrl+Space for input-source switching, so it never reaches the app.
+	if event.physical_keycode == KEY_P:
 		return true
-	return event.keycode == KEY_SPACE and event.ctrl_pressed
+	return event.physical_keycode == KEY_SPACE and event.shift_pressed
 
 
 func _toggle_pause() -> void:
