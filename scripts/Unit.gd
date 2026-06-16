@@ -201,18 +201,21 @@ func _separate() -> void:
 func order_summary() -> String:
 	if state == State.ROUTING:
 		return "Routing!"
-	if target_enemy != null and is_instance_valid(target_enemy) \
-			and target_enemy.state != State.DEAD and target_enemy.state != State.ROUTING:
-		return "Attacking %s" % target_enemy.unit_name
-	if has_move_target:
-		return "Moving to (%d, %d)" % [int(round(move_target.x)), int(round(move_target.y))]
-	match state:
-		State.FIGHTING:
+	# A just-killed unit lingers one frame before queue_free() prunes it, and may
+	# still hold a stale target_enemy. Skip the order lookups for it (and for an
+	# idle unit) and fall through to the neutral "holding" text below.
+	if state != State.DEAD:
+		var has_target: bool = target_enemy != null and is_instance_valid(target_enemy) \
+				and target_enemy.state != State.DEAD and target_enemy.state != State.ROUTING
+		if has_target:
+			return "Attacking %s" % target_enemy.unit_name
+		if has_move_target:
+			return "Moving to (%d, %d)" % [int(round(move_target.x)), int(round(move_target.y))]
+		if state == State.FIGHTING:
 			return "Engaged"
-		State.MOVING:
+		if state == State.MOVING:
 			return "Advancing on enemy"
-		_:
-			return "Holding position"
+	return "Holding position"
 
 
 # --- Combat ----------------------------------------------------------------

@@ -111,3 +111,41 @@ func test_order_summary_attack_takes_priority_over_move() -> void:
 	u.has_move_target = true
 	assert_eq(u.order_summary(), "Attacking Cavalry 1",
 		"an explicit attack target is reported ahead of a move target")
+
+
+func test_order_summary_routing_overrides_any_queued_order() -> void:
+	var u := _make_unit()
+	u.state = Unit.State.ROUTING
+	u.move_target = Vector2(50, 50)
+	u.has_move_target = true
+	assert_eq(u.order_summary(), "Routing!",
+		"a routing unit reports routing regardless of any queued order")
+
+
+func test_order_summary_fighting_without_target_is_engaged() -> void:
+	var u := _make_unit()
+	u.state = Unit.State.FIGHTING
+	assert_eq(u.order_summary(), "Engaged",
+		"auto-fighting (no explicit target) reports Engaged")
+
+
+func test_order_summary_moving_without_target_advances() -> void:
+	var u := _make_unit()
+	u.state = Unit.State.MOVING
+	assert_eq(u.order_summary(), "Advancing on enemy",
+		"moving with no explicit destination reports advancing on the enemy")
+
+
+func test_order_summary_ignores_dead_or_routing_target() -> void:
+	var u := _make_unit()
+	var enemy := _attacker_at(FRONT)
+	enemy.unit_name = "Infantry 9"
+	u.target_enemy = enemy
+	# A routing or dead enemy is no longer a valid attack target, so the order
+	# falls through to the move/state description (here: idle -> holding).
+	enemy.state = Unit.State.ROUTING
+	assert_eq(u.order_summary(), "Holding position",
+		"a routing target is not reported as an attack order")
+	enemy.state = Unit.State.DEAD
+	assert_eq(u.order_summary(), "Holding position",
+		"a dead target is not reported as an attack order")
