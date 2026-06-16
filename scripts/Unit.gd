@@ -180,9 +180,10 @@ func _type_separation_radius() -> float:
 
 
 ## Push out of any overlapping unit so regiments form a solid line instead of
-## passing through each other. Each pair shares the correction (half each).
-## Since units move sequentially (each only moves itself), one frame reduces an
-## overlap by ~75%; it converges to zero within a few frames.
+## passing through each other. Each pair shares the correction half each by
+## default; an anti-cavalry spearman yields nothing to enemy cavalry (a hard
+## block — see _push_share). Since units move sequentially (each only moves
+## itself), one frame reduces an overlap by ~75%; it converges within a few frames.
 func _separate() -> void:
 	if state == State.DEAD:
 		return
@@ -200,9 +201,13 @@ func _separate() -> void:
 		var d: float = offset.length()
 		if d >= min_dist:
 			continue
+		# Share of the correction this unit takes: 0.5 soft (the pair splits it),
+		# but a spear line holds firm against enemy cavalry — 0 for the spearman,
+		# 1 for the horse — so cavalry can't ride through a screen (hard block).
+		var share: float = _push_share(other)
 		var push: Vector2
 		if d > 0.01:
-			push = offset / d * ((min_dist - d) * 0.5)
+			push = offset / d * ((min_dist - d) * share)
 		else:
 			# Exactly co-located: both units of the pair derive the SAME angle
 			# (from the lower id, for determinism) and push in OPPOSITE
@@ -212,7 +217,7 @@ func _separate() -> void:
 			var lo: int = mini(get_instance_id(), other.get_instance_id())
 			var angle: float = float(lo % 100) / 100.0 * TAU
 			var dir: float = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
-			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * 0.5)
+			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * share)
 		position += push
 
 
@@ -229,6 +234,22 @@ func _separation_exempt(other: Unit) -> bool:
 	# only a moving unit and a stationary idle friendly pass through each other.
 	return (state == State.MOVING and other.state == State.IDLE) \
 		or (state == State.IDLE and other.state == State.MOVING)
+
+
+## This unit's share of a separation correction. Normally a pair splits it 50/50
+## (soft separation). But an anti-cavalry spearman HOLDS THE LINE against enemy
+## cavalry: the spearman yields nothing (0) and the charging horse is shoved fully
+## clear (1), so cavalry can't ride through a spear screen. The total correction
+## still sums to 1.0, so separation speed is unchanged — only who yields differs.
+## Friendly pairs and every other enemy matchup stay soft (0.5).
+func _push_share(other: Unit) -> float:
+	if other.team == team:
+		return 0.5
+	if anti_cavalry and not is_cavalry and other.is_cavalry:
+		return 0.0   # spearman holds firm against the charging cavalry
+	if is_cavalry and other.anti_cavalry and not other.is_cavalry:
+		return 1.0   # cavalry is shoved fully clear of the spear line
+	return 0.5
 
 
 ## Neighbours to test for overlap. Uses the per-frame spatial hash that Battle

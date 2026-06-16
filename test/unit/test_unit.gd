@@ -212,3 +212,40 @@ func test_mover_does_not_pass_through_fighting_friendly() -> void:
 	fighter.position = Vector2(10.0, 0.0)
 	mover._separate()
 	assert_lt(mover.position.x, 0.0, "a moving unit cannot pass through a fighting friendly")
+
+
+# --- hard blocking: spearmen stop cavalry (issue #8) -----------------------
+
+func test_spearman_holds_line_against_enemy_cavalry() -> void:
+	var spear := _spearman_unit()              # team 0
+	var cav := _cavalry()
+	cav.team = 1                          # enemy cavalry
+	spear.position = Vector2.ZERO
+	cav.position = Vector2(20.0, 0.0)     # overlapping (floor 20+24 = 44)
+	spear._separate()
+	assert_almost_eq(spear.position.x, 0.0, 0.001,
+		"a spearman yields nothing to enemy cavalry — the line holds")
+
+
+func test_enemy_cavalry_shoved_clear_of_spear_line() -> void:
+	var spear := _spearman_unit()              # team 0
+	var cav := _cavalry()
+	cav.team = 1                          # enemy cavalry
+	spear.position = Vector2.ZERO
+	cav.position = Vector2(20.0, 0.0)
+	cav._separate()
+	assert_gt(cav.position.x, 20.0,
+		"enemy cavalry takes the full push-out and is shoved clear of the spears")
+
+
+func test_enemy_infantry_still_separates_softly_from_spearman() -> void:
+	# Hard block is cavalry-specific: a spearman still splits separation 50/50
+	# with enemy infantry, so it is displaced (not an immovable wall to everyone).
+	var spear := _spearman_unit()              # team 0
+	var inf := _make_unit()
+	inf.team = 1                          # enemy infantry (not cavalry)
+	spear.position = Vector2.ZERO
+	inf.position = Vector2(20.0, 0.0)
+	spear._separate()
+	assert_lt(spear.position.x, 0.0,
+		"a spearman is only a hard wall to cavalry — infantry shoves it normally")
