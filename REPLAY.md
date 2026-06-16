@@ -47,6 +47,9 @@ The simulation is deterministic by construction:
 - On the end screen, **Watch Replay** re-runs the battle you just played (the
   indicator changes to `▶ REPLAY`). During playback you can still pan the camera
   and click units to inspect them, but you can't issue orders.
+- **Load Replay** (a persistent top-right button, also on the end screen) opens
+  a file picker on the replays folder so you can watch *any* saved battle, not
+  just the most recent one.
 - **Fight Again** starts a fresh, newly-recorded battle.
 
 Replay files are small JSON:

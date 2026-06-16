@@ -116,6 +116,12 @@ func reset() -> void:
 	mode = Mode.IDLE
 
 
+## The folder replays are saved to (created if needed). For a file picker.
+func replays_dir() -> String:
+	_ensure_dir()
+	return DIR
+
+
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int) -> void:
 	if mode != Mode.RECORD:
