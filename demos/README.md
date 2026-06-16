@@ -28,7 +28,7 @@ Add a `demos/demo.json` on your PR branch:
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `replay` | yes | Repo-relative path to a replay JSON to play back (see below). |
+| `replay` | yes | Repo-relative path to a replay JSON to play back — **no `res://` prefix** (the workflow adds it). See below. |
 | `caption` | recommended | Explains the change; shown above the GIF. |
 | `fixed_fps` | no (30) | Sim/record framerate Movie Maker runs at. |
 | `max_frames` | no (300) | Recording length in frames (`300 / fixed_fps` ≈ seconds). |
