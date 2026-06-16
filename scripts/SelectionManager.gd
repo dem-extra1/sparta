@@ -8,10 +8,17 @@ const UnitRef = preload("res://scripts/Unit.gd")  # avoid global-class-cache dep
 
 const CLICK_THRESHOLD: float = 6.0
 
+# Order-overlay colours (Total War convention: green = move, red = attack).
+const ORDER_MOVE_COLOR: Color = Color(0.45, 0.95, 0.55, 0.9)
+const ORDER_ATTACK_COLOR: Color = Color(0.96, 0.40, 0.32, 0.95)
+
 var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
 var _drag_cur: Vector2 = Vector2.ZERO
 var _selected: Array = []
+# Tracks whether anything was selected last frame, so the overlay is redrawn one
+# final time after the selection clears (wiping the last frame's order lines).
+var _had_selection: bool = false
 
 @onready var _hud = get_node_or_null("../HUD")
 @onready var _battle = get_parent()
@@ -131,11 +138,54 @@ func _refresh_hud() -> void:
 func _process(_delta: float) -> void:
 	# Keep the panel current as the shown unit takes casualties.
 	_refresh_hud()
+	# Order overlays track units as they march, so redraw while anything is
+	# selected; one extra redraw the frame after a selection clears wipes the
+	# stale lines.
+	var has_selection := not _selected.is_empty()
+	if has_selection or _had_selection:
+		queue_redraw()
+	_had_selection = has_selection
 
 
 func _draw() -> void:
+	_draw_orders()
 	if not _dragging:
 		return
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
 	draw_rect(rect, Color(0.4, 0.9, 0.4, 0.15))
 	draw_rect(rect, Color(0.5, 1.0, 0.5, 0.9), false, 1.5)
+
+
+## Draw each selected unit's current order on the field (Total War style): a
+## dashed line to its destination or to the enemy it's attacking, with a marker
+## at the far end. SelectionManager sits at the world origin, so unit world
+## positions can be drawn directly here.
+func _draw_orders() -> void:
+	for u in _selected:
+		if not is_instance_valid(u):
+			continue
+		var origin: Vector2 = u.global_position
+		var tgt = u.target_enemy
+		if tgt != null and is_instance_valid(tgt) \
+				and tgt.state != UnitRef.State.DEAD and tgt.state != UnitRef.State.ROUTING:
+			var tp: Vector2 = tgt.global_position
+			draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
+			_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
+		elif u.has_move_target:
+			var mp: Vector2 = u.move_target
+			draw_dashed_line(origin, mp, ORDER_MOVE_COLOR, 2.0, 9.0)
+			_draw_move_marker(mp, ORDER_MOVE_COLOR)
+
+
+## Destination marker: a small ring with a centre dot.
+func _draw_move_marker(p: Vector2, color: Color) -> void:
+	draw_arc(p, 8.0, 0.0, TAU, 18, color, 2.0)
+	draw_circle(p, 2.5, color)
+
+
+## Attack marker: a crosshair over the targeted enemy.
+func _draw_attack_marker(p: Vector2, color: Color) -> void:
+	var r := 11.0
+	draw_arc(p, r, 0.0, TAU, 22, color, 2.0)
+	draw_line(p + Vector2(-r - 3.0, 0.0), p + Vector2(r + 3.0, 0.0), color, 2.0)
+	draw_line(p + Vector2(0.0, -r - 3.0), p + Vector2(0.0, r + 3.0), color, 2.0)

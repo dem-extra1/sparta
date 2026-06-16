@@ -102,8 +102,8 @@ func _ready() -> void:
 	# Selected-unit panel.
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	panel.position = Vector2(14, -110)
-	panel.custom_minimum_size = Vector2(240, 90)
+	panel.position = Vector2(14, -132)
+	panel.custom_minimum_size = Vector2(240, 112)
 	add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -198,8 +198,8 @@ func show_unit(u, group_count: int) -> void:
 		return
 	var extra: String = "" if group_count <= 1 else "  (+%d more)" % (group_count - 1)
 	var kind: String = "Cavalry" if u.is_cavalry else ("Spearmen" if u.anti_cavalry else "Infantry")
-	_info.text = "%s%s\nType: %s\nSoldiers: %d / %d\nMorale: %d" % [
-		u.unit_name, extra, kind, u.soldiers, u.max_soldiers, int(u.morale)
+	_info.text = "%s%s\nType: %s\nSoldiers: %d / %d\nMorale: %d\nOrder: %s" % [
+		u.unit_name, extra, kind, u.soldiers, u.max_soldiers, int(u.morale), u.order_summary()
 	]
 
 
