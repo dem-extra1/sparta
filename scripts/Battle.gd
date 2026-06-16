@@ -136,7 +136,20 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int) -> void:
 func _apply_order_cmd(cmd: Dictionary) -> void:
 	var target_uid: int = int(cmd["target"])
 	var enemy = _unit_by_uid(target_uid) if target_uid >= 0 else null
-	var i: int = 0
+	var dest := Vector2(float(cmd["x"]), float(cmd["y"]))
+	# Formation cohesion: a move order translates the regiment as a block. Each
+	# unit keeps its offset from the group's current centroid, so the formation
+	# holds its shape (line stays a line) instead of collapsing and re-packing
+	# into a fresh grid. Computed from live positions, so live play and playback
+	# (which reach the same positions at this tick) stay in lockstep.
+	var centroid := Vector2.ZERO
+	if enemy == null:
+		var ps: Array[Vector2] = []
+		for uid in cmd["units"]:
+			var cu = _unit_by_uid(int(uid))
+			if cu != null:
+				ps.append(cu.position)
+		centroid = formation_centroid(ps)
 	for uid in cmd["units"]:
 		var u = _unit_by_uid(int(uid))
 		if u == null:
@@ -145,13 +158,20 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.target_enemy = enemy
 			u.has_move_target = false
 		else:
-			# Spread the destination so units don't pile onto one point.
-			var cols: int = 4
-			var off := Vector2((i % cols) * 42 - 63, (i / cols) * 42)
-			u.move_target = Vector2(float(cmd["x"]), float(cmd["y"])) + off
+			u.move_target = dest + (u.position - centroid)
 			u.has_move_target = true
 			u.target_enemy = null
-		i += 1
+
+
+## Average of a set of positions — the anchor a formation move translates from,
+## so the block keeps its shape. Returns ZERO for an empty set.
+static func formation_centroid(positions: Array[Vector2]) -> Vector2:
+	if positions.is_empty():
+		return Vector2.ZERO
+	var sum := Vector2.ZERO
+	for p in positions:
+		sum += p
+	return sum / float(positions.size())
 
 
 func _unit_by_uid(uid: int) -> UnitRef:
