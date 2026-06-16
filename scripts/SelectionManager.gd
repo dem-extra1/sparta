@@ -158,8 +158,9 @@ func _draw() -> void:
 
 ## Draw each selected unit's current order on the field (Total War style): a
 ## dashed line to its destination or to the enemy it's attacking, with a marker
-## at the far end. SelectionManager sits at the world origin, so unit world
-## positions can be drawn directly here.
+## at the far end. SelectionManager sits at the world origin with no parent
+## transform — the same assumption the drag-box selection relies on — so unit
+## world positions can be drawn directly in _draw()'s local space.
 ##
 ## Orders are a "hold to reveal" survey aid: only shown while the player holds
 ## Space (works paused too, since this node is PROCESS_MODE_ALWAYS). P toggles
@@ -171,6 +172,9 @@ func _draw_orders() -> void:
 		if not is_instance_valid(u):
 			continue
 		var origin: Vector2 = u.global_position
+		# Only a player-issued attack (stored in target_enemy) draws a red line. A
+		# unit auto-fighting its nearest foe has no stored target, so it draws no
+		# line — matching order_summary() reporting "Engaged" with no destination.
 		var tgt = u.target_enemy
 		if tgt != null and is_instance_valid(tgt) \
 				and tgt.state != UnitRef.State.DEAD and tgt.state != UnitRef.State.ROUTING:
