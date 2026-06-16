@@ -193,6 +193,28 @@ func _separate() -> void:
 		position += push
 
 
+# --- Order summary (for the HUD / selection overlay) -----------------------
+
+## Human-readable description of this unit's current order — what the player
+## told it to do (attack a target, move to a point) or, failing an explicit
+## order, what it's doing on its own. Shown in the HUD's selected-unit panel.
+func order_summary() -> String:
+	if state == State.ROUTING:
+		return "Routing!"
+	if target_enemy != null and is_instance_valid(target_enemy) \
+			and target_enemy.state != State.DEAD and target_enemy.state != State.ROUTING:
+		return "Attacking %s" % target_enemy.unit_name
+	if has_move_target:
+		return "Moving to (%d, %d)" % [int(round(move_target.x)), int(round(move_target.y))]
+	match state:
+		State.FIGHTING:
+			return "Engaged"
+		State.MOVING:
+			return "Advancing on enemy"
+		_:
+			return "Holding position"
+
+
 # --- Combat ----------------------------------------------------------------
 
 func _strike(enemy: Unit) -> void:

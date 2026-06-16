@@ -74,3 +74,40 @@ func test_dead_unit_ignores_further_casualties() -> void:
 	u.take_casualties(1000, _attacker_at(FRONT))   # kills it
 	u.take_casualties(10, _attacker_at(FRONT))     # should be a no-op
 	assert_eq(u.soldiers, 0, "a dead unit takes no more casualties")
+
+
+# --- order_summary ---------------------------------------------------------
+
+func test_order_summary_idle_holds_position() -> void:
+	var u := _make_unit()
+	assert_eq(u.order_summary(), "Holding position",
+		"a unit with no order reports holding")
+
+
+func test_order_summary_reports_move_destination() -> void:
+	var u := _make_unit()
+	u.move_target = Vector2(420, -130)
+	u.has_move_target = true
+	assert_eq(u.order_summary(), "Moving to (420, -130)",
+		"a move order reports its destination coordinates")
+
+
+func test_order_summary_reports_attack_target_by_name() -> void:
+	var u := _make_unit()
+	var enemy := _attacker_at(FRONT)   # any other live unit serves as the target
+	enemy.unit_name = "Infantry 2"
+	enemy.team = 1
+	u.target_enemy = enemy
+	assert_eq(u.order_summary(), "Attacking Infantry 2",
+		"an attack order names the targeted enemy")
+
+
+func test_order_summary_attack_takes_priority_over_move() -> void:
+	var u := _make_unit()
+	var enemy := _attacker_at(FRONT)
+	enemy.unit_name = "Cavalry 1"
+	u.target_enemy = enemy
+	u.move_target = Vector2(10, 10)
+	u.has_move_target = true
+	assert_eq(u.order_summary(), "Attacking Cavalry 1",
+		"an explicit attack target is reported ahead of a move target")
