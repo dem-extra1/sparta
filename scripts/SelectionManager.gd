@@ -169,7 +169,10 @@ func _draw_orders() -> void:
 	if not Input.is_key_pressed(KEY_SPACE):
 		return
 	for u in _selected:
-		if not is_instance_valid(u):
+		# A unit that dies mid-march stays valid (and keeps has_move_target) for a
+		# frame before queue_free() prunes it; skip it so it doesn't flash a stale
+		# order line — consistent with order_summary()'s DEAD skip.
+		if not is_instance_valid(u) or u.state == UnitRef.State.DEAD:
 			continue
 		var origin: Vector2 = u.global_position
 		# Only a player-issued attack (stored in target_enemy) draws a red line. A

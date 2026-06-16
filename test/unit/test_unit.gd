@@ -136,16 +136,24 @@ func test_order_summary_moving_without_target_advances() -> void:
 		"moving with no explicit destination reports advancing on the enemy")
 
 
-func test_order_summary_ignores_dead_or_routing_target() -> void:
+func test_order_summary_ignores_routing_target() -> void:
 	var u := _make_unit()
 	var enemy := _attacker_at(FRONT)
 	enemy.unit_name = "Infantry 9"
 	u.target_enemy = enemy
-	# A routing or dead enemy is no longer a valid attack target, so the order
-	# falls through to the move/state description (here: idle -> holding).
 	enemy.state = Unit.State.ROUTING
+	# A routing enemy is no longer a valid attack target, so the order falls
+	# through to the move/state description (here: idle -> holding).
 	assert_eq(u.order_summary(), "Holding position",
 		"a routing target is not reported as an attack order")
+
+
+func test_order_summary_ignores_dead_target() -> void:
+	var u := _make_unit()
+	var enemy := _attacker_at(FRONT)
+	enemy.unit_name = "Infantry 9"
+	u.target_enemy = enemy
 	enemy.state = Unit.State.DEAD
+	# Likewise a dead (but not yet pruned) target is not a valid attack order.
 	assert_eq(u.order_summary(), "Holding position",
 		"a dead target is not reported as an attack order")
