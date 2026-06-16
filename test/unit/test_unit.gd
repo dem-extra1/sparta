@@ -337,3 +337,67 @@ func test_relief_exemption_clears_once_pair_moves_apart() -> void:
 	fresh._update_relief()
 	assert_false(fresh._separation_exempt(tired),
 		"the exemption ends once the swapping pair has moved apart")
+
+
+# --- unit merging (issue #3) -----------------------------------------------
+
+func test_merge_pools_soldiers_and_sums_max() -> void:
+	var a := _make_unit(100)
+	var b := _make_unit(60)
+	a.absorb(b)
+	assert_eq(a.soldiers, 160, "soldier counts are pooled")
+	assert_eq(a.max_soldiers, 160, "max_soldiers are summed")
+
+
+func test_merge_blends_attack_weighted_by_strength() -> void:
+	var a := _make_unit(100)
+	a.attack = 10
+	var b := _make_unit(60)
+	b.attack = 20
+	a.absorb(b)
+	# (10*100 + 20*60) / 160 = 13.75 -> 14
+	assert_eq(a.attack, 14, "attack is strength-weighted between the two regiments")
+
+
+func test_merge_starts_with_a_strangers_debuff() -> void:
+	var a := _make_unit(100)
+	var b := _make_unit(60)
+	a.absorb(b)
+	assert_lt(a.cohesion, 1.0, "a freshly merged unit starts below full cohesion")
+	a.tick_cohesion(1.0)
+	assert_almost_eq(a.cohesion, Unit.MERGE_COHESION_FLOOR + 0.1, 0.001,
+		"cohesion ramps back toward full over time")
+
+
+func test_absorbed_unit_is_removed_from_play() -> void:
+	var a := _make_unit(100)
+	var b := _make_unit(60)
+	a.absorb(b)
+	assert_eq(b.state, Unit.State.DEAD, "the absorbed unit leaves play")
+	assert_false(b.is_in_group("units"), "the absorbed unit leaves the units group")
+
+
+func test_merged_footprint_is_capped_below_melee_reach() -> void:
+	# Repeated merges must not grow the footprint past the contact ceiling, or two
+	# mega-units would shove apart beyond attack reach and never fight.
+	var a := _cavalry()
+	for _i in range(10):
+		var b := _cavalry()
+		a.absorb(b)
+	assert_lte(a.separation_radius, Unit.SEPARATION_RADIUS_MAX,
+		"footprint is clamped so merged units still reach melee contact")
+
+
+func test_merge_blends_using_current_soldiers_not_max() -> void:
+	# A depleted unit contributes its CURRENT strength to the weighted blend,
+	# while max_soldiers still sums.
+	var a := _make_unit(100)
+	a.take_casualties(30, _attacker_at(FRONT))   # 100 -> 70 soldiers
+	a.attack = 10
+	var b := _make_unit(60)
+	b.attack = 20
+	a.absorb(b)
+	assert_eq(a.max_soldiers, 160, "max_soldiers sum regardless of casualties")
+	assert_eq(a.soldiers, 130, "pooled soldiers = 70 + 60")
+	# Weighted by current strength: (10*70 + 20*60) / 130 = 14.6 -> 15.
+	assert_eq(a.attack, 15, "attack weights by current soldiers, not max")
