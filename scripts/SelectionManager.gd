@@ -182,6 +182,7 @@ func _draw_orders() -> void:
 		if u == null or not is_instance_valid(u) or u.state == UnitRef.State.DEAD:
 			continue
 		if u.team != 0 and not show_enemy:
+			continue
 		var origin: Vector2 = u.global_position
 		# Only a player-issued attack (stored in target_enemy) draws a red line. A
 		# unit auto-fighting its nearest foe has no stored target, so it draws no
