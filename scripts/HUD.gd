@@ -8,6 +8,10 @@ var _info: Label
 var _overlay: ColorRect
 var _overlay_label: Label
 var _edge_toggle: CheckButton
+var _status: Label
+var _watch_button: Button
+var _load_dialog: FileDialog
+var _error_dialog: AcceptDialog
 
 
 func _ready() -> void:
@@ -20,6 +24,21 @@ func _ready() -> void:
 	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
 	hint.add_theme_font_size_override("font_size", 14)
 	add_child(hint)
+
+	# Recording / replay status (top-center).
+	_status = Label.new()
+	_status.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_status.position = Vector2(-90, 30)
+	_status.custom_minimum_size = Vector2(180, 0)
+	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_status.add_theme_font_size_override("font_size", 15)
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		_status.text = "▶ REPLAY"
+		_status.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
+	else:
+		_status.text = "● REC"
+		_status.add_theme_color_override("font_color", Color(1.0, 0.5, 0.45))
+	add_child(_status)
 
 	# Settings: edge-scroll toggle (top-right). Give it an explicit width so the
 	# placement is derived from that, not a font-metric-tuned magic offset.
@@ -37,6 +56,34 @@ func _ready() -> void:
 	# Settings autoload after reload_current_scene() frees this HUD.
 	Settings.changed.connect(_sync_edge_toggle)
 	add_child(_edge_toggle)
+
+	# Persistent "Load Replay" button (top-right, under the edge toggle) so a
+	# saved replay can be opened any time — including right after launch.
+	var load_btn := Button.new()
+	load_btn.text = "Load Replay"
+	var load_width := 140.0
+	load_btn.custom_minimum_size = Vector2(load_width, 0)
+	load_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	load_btn.position = Vector2(-load_width - 6.0, 44)
+	load_btn.pressed.connect(_open_load_dialog)
+	add_child(load_btn)
+
+	# File picker for choosing a saved replay, plus an error popup for bad files.
+	# Both stay responsive while the tree is paused (end-of-battle overlay).
+	_load_dialog = FileDialog.new()
+	_load_dialog.process_mode = Node.PROCESS_MODE_ALWAYS
+	_load_dialog.access = FileDialog.ACCESS_USERDATA
+	_load_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_load_dialog.filters = PackedStringArray(["*.json ; Replay files"])
+	_load_dialog.title = "Load Replay"
+	_load_dialog.size = Vector2i(640, 480)
+	_load_dialog.file_selected.connect(_on_replay_chosen)
+	add_child(_load_dialog)
+
+	_error_dialog = AcceptDialog.new()
+	_error_dialog.process_mode = Node.PROCESS_MODE_ALWAYS
+	_error_dialog.title = "Load Replay"
+	add_child(_error_dialog)
 
 	# Selected-unit panel.
 	var panel := PanelContainer.new()
@@ -84,6 +131,20 @@ func _ready() -> void:
 	restart.pressed.connect(_on_restart)
 	box.add_child(restart)
 
+	# Replay the battle that just finished (re-runs the saved log).
+	_watch_button = Button.new()
+	_watch_button.text = "Watch Again" if Replay.mode == Replay.Mode.PLAYBACK else "Watch Replay"
+	_watch_button.custom_minimum_size = Vector2(180, 44)
+	_watch_button.pressed.connect(_on_watch_replay)
+	box.add_child(_watch_button)
+
+	# Open an older saved replay (not just the one that just finished).
+	var load_saved := Button.new()
+	load_saved.text = "Load Replay…"
+	load_saved.custom_minimum_size = Vector2(180, 44)
+	load_saved.pressed.connect(_open_load_dialog)
+	box.add_child(load_saved)
+
 
 func _exit_tree() -> void:
 	# Settings is a persistent autoload; drop our connection so it doesn't
@@ -118,5 +179,37 @@ func show_end(text: String) -> void:
 
 
 func _on_restart() -> void:
+	# Fresh battle: drop back to IDLE so Battle._ready starts a new recording.
+	Replay.reset()
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+
+func _open_load_dialog() -> void:
+	_load_dialog.current_dir = Replay.replays_dir()
+	_load_dialog.popup_centered()
+
+
+func _on_replay_chosen(path: String) -> void:
+	if not Replay.start_playback(path):
+		# Bad/incompatible file — report it without clobbering any result label.
+		_error_dialog.dialog_text = "That file isn't a compatible replay."
+		_error_dialog.popup_centered()
+		return
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+
+func _on_watch_replay() -> void:
+	# Re-run the battle just shown. While watching a replay, "Watch Again" must
+	# re-run *that* file (loaded_path) — which may be an older one opened via the
+	# picker — not the last live battle. After a live battle, replay what we just
+	# saved. If neither exists, say so rather than playing the wrong battle.
+	var path := Replay.loaded_path if Replay.mode == Replay.Mode.PLAYBACK else Replay.last_saved_path
+	if path == "" or not Replay.start_playback(path):
+		# Report on the button itself so the battle result label is preserved.
+		_watch_button.text = "No replay available"
+		_watch_button.disabled = true
+		return
 	get_tree().paused = false
 	get_tree().reload_current_scene()
