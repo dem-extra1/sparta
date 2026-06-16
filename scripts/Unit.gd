@@ -253,7 +253,7 @@ func _draw() -> void:
 	# Drop shadow (squished ellipse anchors the token to the ground).
 	draw_set_transform(Vector2(0, RADIUS * 0.60), 0.0, Vector2(1.15, 0.38))
 	draw_circle(Vector2.ZERO, RADIUS, Color(0, 0, 0, 0.28))
-	draw_set_transform(Vector2.ZERO, 0.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	# State ring drawn behind the sprite: red = engaged, orange = routing.
 	match state:
@@ -265,7 +265,7 @@ func _draw() -> void:
 					Color(0.95, 0.50, 0.05, 1.0), 4.0)
 
 	# Rotate drawing so the sprite's "forward" aligns with the unit's facing direction.
-	draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5)
+	draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5, Vector2.ONE)
 
 	if is_cavalry:
 		_draw_cavalry_sprite(body_c, dark_c, lite_c)
@@ -275,7 +275,7 @@ func _draw() -> void:
 		_draw_infantry_sprite(body_c, dark_c, lite_c)
 
 	# Reset to screen-space for HUD overlays.
-	draw_set_transform(Vector2.ZERO, 0.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if selected:
 		draw_arc(Vector2.ZERO, RADIUS + 5.0, 0, TAU, 28, Color(0.95, 0.95, 0.3), 2.5)
@@ -331,7 +331,7 @@ func _draw_infantry_sprite(body: Color, dark: Color, lite: Color) -> void:
 func _draw_spear_sprite(body: Color, dark: Color, lite: Color) -> void:
 	var R := RADIUS
 	var metal := Color(0.78, 0.80, 0.85, body.a)
-	var wood  := Color(0.62, 0.48, 0.30, body.a)
+	var wood := Color(0.62, 0.48, 0.30, body.a)
 	# Spear shaft (forward = up in rotated local space).
 	var shaft_y: float = -(R + 15.0)
 	draw_line(Vector2(0, -R * 0.05), Vector2(0, shaft_y), wood, 3.0)
@@ -367,6 +367,8 @@ func _draw_cavalry_sprite(body: Color, dark: Color, lite: Color) -> void:
 		Vector2( R * 0.66,  R * 0.28),
 		Vector2( R * 0.60, -R * 0.30),
 	]), body)
+	draw_arc(Vector2(0, -R * 0.30), R * 0.62, 0, TAU, 16, dark, 1.5)
+	draw_arc(Vector2(0,  R * 0.28), R * 0.68, 0, TAU, 16, dark, 1.5)
 	# Horse head / neck offset forward-right.
 	var head := Vector2(R * 0.20, -R * 0.88)
 	draw_circle(head, R * 0.28, lite)
