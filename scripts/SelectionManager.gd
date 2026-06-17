@@ -167,7 +167,11 @@ func _unit_at(world_pos: Vector2, team: int) -> UnitRef:
 	var best_d: float = UnitRef.RADIUS + 6.0
 	for node in get_tree().get_nodes_in_group("units"):
 		var unit = node as UnitRef
-		if unit == null:
+		# A unit that died this frame is still valid and in the group until
+		# queue_free() prunes it; skip it so a click on its last position can't
+		# select/target a dead node — matching box-select, type-select and the
+		# control-group recall guards.
+		if unit == null or unit.state == UnitRef.State.DEAD:
 			continue
 		if unit.team != team:
 			continue

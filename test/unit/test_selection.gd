@@ -60,3 +60,30 @@ func test_recall_unbound_group_is_a_noop() -> void:
 	sm._select(a)
 	sm._recall_group(5)   # never bound
 	assert_eq(sm._selected.size(), 1, "recalling an empty slot leaves selection intact")
+
+
+# --- _unit_at DEAD filter (issue #52) --------------------------------------
+
+func test_unit_at_skips_dead_units() -> void:
+	var sm := _sm()
+	var alive := _unit(false, false)
+	alive.team = 0
+	alive.position = Vector2(100, 100)
+	var dead := _unit(false, false)
+	dead.team = 0
+	dead.position = Vector2(100, 100)   # same spot, about to be freed
+	dead.state = Unit.State.DEAD
+	# A click on the shared position must resolve to the living unit, never the
+	# dead node lingering in the group for the rest of the frame.
+	assert_eq(sm._unit_at(Vector2(100, 100), 0), alive,
+		"_unit_at returns the living unit, skipping the dead one")
+
+
+func test_unit_at_returns_null_when_only_match_is_dead() -> void:
+	var sm := _sm()
+	var dead := _unit(false, false)
+	dead.team = 0
+	dead.position = Vector2(50, 50)
+	dead.state = Unit.State.DEAD
+	assert_null(sm._unit_at(Vector2(50, 50), 0),
+		"a click on a dead unit's last position selects nothing")
