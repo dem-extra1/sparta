@@ -20,6 +20,16 @@ func test_find_path_returns_a_route_between_distinct_cells() -> void:
 		"A* returns a cell route between two distinct free cells")
 
 
+func test_cell_aligned_wall_blocks_only_its_own_cell() -> void:
+	# A wall sized exactly to one cell (CELL=64) must not spill into neighbours:
+	# rect.end is exclusive, so the floor mapping must stay inside the wall.
+	var pf := PathField.new(FIELD)
+	pf.block_rect(Rect2(64, 0, 64, 64))
+	assert_true(pf.is_blocked(Vector2(70, 10)), "the wall's own cell is blocked")
+	assert_false(pf.is_blocked(Vector2(140, 10)), "the cell to the right is clear")
+	assert_false(pf.is_blocked(Vector2(70, 80)), "the cell below is clear")
+
+
 func test_routes_around_a_wall_with_a_gap() -> void:
 	var pf := PathField.new(FIELD)
 	# A vertical wall across the upper field, leaving a gap along the bottom.

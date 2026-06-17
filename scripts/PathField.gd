@@ -38,7 +38,9 @@ func _init(bounds: Rect2, cell: float = CELL) -> void:
 ## Mark every cell overlapping `rect` (world space) as impassable terrain.
 func block_rect(rect: Rect2) -> void:
 	var lo := _cell_coord(rect.position)
-	var hi := _cell_coord(rect.position + rect.size)
+	# rect.end is exclusive: nudge inward so a cell-aligned edge maps to the last
+	# overlapped cell, not the next one over (which would block a wider band).
+	var hi := _cell_coord(rect.end - Vector2(0.001, 0.001))
 	for cx in range(lo.x, hi.x + 1):
 		for cy in range(lo.y, hi.y + 1):
 			var c := Vector2i(cx, cy)
