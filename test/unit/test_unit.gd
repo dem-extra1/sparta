@@ -307,6 +307,55 @@ func test_co_located_equal_uid_pair_still_fans_apart() -> void:
 		"equal-uid co-located units fall back to the instance-id sign and fan apart")
 
 
+# --- waypoints (issue #34) -------------------------------------------------
+
+func test_unit_advances_to_next_waypoint_on_arrival() -> void:
+	var u := _make_unit()
+	u.position = Vector2(100, 100)
+	u.move_target = Vector2(100, 100)   # already arrived (within the 5px threshold)
+	u.has_move_target = true
+	u.waypoints.append(Vector2(300, 100))
+	u._think(0.016)
+	assert_eq(u.move_target, Vector2(300, 100), "arriving pops the next waypoint into move_target")
+	assert_true(u.waypoints.is_empty(), "the consumed waypoint leaves the queue")
+	assert_true(u.has_move_target, "the unit keeps marching toward the new leg")
+
+
+func test_unit_goes_idle_after_draining_waypoints() -> void:
+	var u := _make_unit()
+	u.position = Vector2(100, 100)
+	u.move_target = Vector2(100, 100)   # arrived, with nothing queued behind it
+	u.has_move_target = true
+	u._think(0.016)
+	assert_false(u.has_move_target, "with the route drained the unit drops its move target")
+	assert_eq(u.state, Unit.State.IDLE, "and returns to idle")
+
+
+func test_order_summary_reports_waypoint_count() -> void:
+	var u := _make_unit()
+	u.move_target = Vector2(420, -130)
+	u.has_move_target = true
+	u.waypoints.append(Vector2(500, 0))
+	u.waypoints.append(Vector2(600, 0))
+	assert_eq(
+		u.order_summary(),
+		"Moving to (420, -130) (+2 waypoints)",
+		"the order summary notes how many waypoints remain"
+	)
+
+
+func test_order_summary_singular_waypoint() -> void:
+	var u := _make_unit()
+	u.move_target = Vector2(10, 20)
+	u.has_move_target = true
+	u.waypoints.append(Vector2(50, 50))
+	assert_eq(
+		u.order_summary(),
+		"Moving to (10, 20) (+1 waypoint)",
+		"a single remaining waypoint is reported in the singular"
+	)
+
+
 # --- friendly pass-through (issue #5) --------------------------------------
 
 func test_mover_passes_through_idle_friendly() -> void:

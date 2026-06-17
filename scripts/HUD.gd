@@ -24,7 +24,7 @@ func _ready() -> void:
 
 	# Controls hint.
 	var hint := Label.new()
-	hint.text = "LMB select / drag-box   •   RMB move or attack   •   WASD pan   •   wheel zoom   •   P / Shift+Space pause   •   hold Space show orders"
+	hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   WASD pan   •   wheel zoom   •   P / Shift+Space pause   •   hold Space show orders"
 	hint.position = Vector2(14, 10)
 	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
 	hint.add_theme_font_size_override("font_size", 14)
