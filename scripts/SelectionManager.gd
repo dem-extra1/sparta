@@ -60,7 +60,9 @@ func _finish_selection() -> void:
 	else:
 		for node in get_tree().get_nodes_in_group("units"):
 			var unit = node as UnitRef
-			if unit != null and unit.team == 0 and rect.has_point(unit.global_position):
+			if unit == null or unit.team != 0 or unit.state == UnitRef.State.DEAD:
+				continue
+			if rect.has_point(unit.global_position):
 				_select(unit)
 		_last_click_unit = null   # a box-select breaks any double-click streak
 
