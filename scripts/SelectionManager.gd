@@ -76,8 +76,10 @@ func _finish_click(u) -> void:
 		_select_same_type(u)
 		_last_click_unit = null   # consume, so a third click starts a fresh streak
 		return
-	if u != null:
-		_select(u)
+	if u == null:
+		_last_click_unit = null   # click on empty space ends any streak
+		return
+	_select(u)
 	_last_click_unit = u
 	_last_click_ms = now
 
@@ -186,7 +188,7 @@ func _handle_group_key(event: InputEventKey) -> void:
 
 
 ## Map the number-row keycodes KEY_0..KEY_9 to 0..9; -1 for anything else.
-func _digit_for_keycode(keycode: int) -> int:
+func _digit_for_keycode(keycode: Key) -> int:
 	if keycode >= KEY_0 and keycode <= KEY_9:
 		return keycode - KEY_0
 	return -1
@@ -196,7 +198,7 @@ func _digit_for_keycode(keycode: int) -> int:
 func _bind_group(n: int) -> void:
 	var members: Array = []
 	for u in _selected:
-		if is_instance_valid(u):
+		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
 			members.append(u)
 	_groups[n] = members
 

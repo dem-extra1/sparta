@@ -27,8 +27,9 @@ func test_same_type_matches_role_not_identity() -> void:
 	var inf2 := _unit(false, false)
 	var spear := _unit(false, true)
 	var cav := _unit(true, false)
+	var cav2 := _unit(true, false)
 	assert_true(sm._same_type(inf1, inf2), "two infantry share a type")
-	assert_true(sm._same_type(cav, cav), "a unit matches itself")
+	assert_true(sm._same_type(cav, cav2), "two distinct cavalry share a type")
 	assert_false(sm._same_type(inf1, spear), "infantry and spearmen differ")
 	assert_false(sm._same_type(inf1, cav), "infantry and cavalry differ")
 
