@@ -123,7 +123,7 @@ func _issue_order(world_pos: Vector2) -> void:
 		# Right-clicking an engaged friendly that isn't part of the selection is a
 		# line-relief order (#4): the selected unit swaps into its fight. Plain
 		# ground stays an ordinary move.
-		var friend = _unit_at(world_pos, 0)
+		var friend: UnitRef = _unit_at(world_pos, 0)
 		if friend != null and friend.state == UnitRef.State.FIGHTING and not _selected.has(friend):
 			target_uid = friend.uid
 	var uids: Array = []
