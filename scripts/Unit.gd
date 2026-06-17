@@ -378,7 +378,8 @@ func _rear_point() -> Vector2:
 	return position + back * 160.0
 
 
-## End the relief exemption once the swapping pair has moved clear of each other.
+## End the relief exemption once the partner has left the line (gone, dead, or
+## routing) or the swapping pair has moved clear of each other.
 func _update_relief() -> void:
 	if _relief_partner == null:
 		return
