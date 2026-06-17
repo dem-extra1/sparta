@@ -106,11 +106,11 @@ func _ready() -> void:
 	# screen's bottom edge.
 	var panel := PanelContainer.new()
 	var panel_min := Vector2(240, 90)
-	var panel_bottom_margin := 20.0
+	var panel_bottom_gap := 20.0   # clearance between the panel and the screen edge
 	panel.custom_minimum_size = panel_min
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.position = Vector2(14.0, -(panel_min.y + panel_bottom_margin))
+	panel.position = Vector2(14.0, -(panel_min.y + panel_bottom_gap))
 	add_child(panel)
 
 	var margin := MarginContainer.new()
