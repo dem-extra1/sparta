@@ -197,7 +197,7 @@ func test_idle_friendly_does_not_push_the_mover_either() -> void:
 	idle.position = Vector2(10.0, 0.0)
 	idle._separate()
 	assert_almost_eq(idle.position.x, 10.0, 0.001,
-		"the idle unit does not shove the passing mover — exemption is symmetric")
+		"idle does not push itself off the mover — the exemption fires from both sides")
 
 
 func test_mover_does_not_pass_through_fighting_friendly() -> void:
