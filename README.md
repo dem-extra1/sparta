@@ -1,7 +1,7 @@
 # Sparta
 
-A prototype that fuses **Crusader Kings 3**-style grand strategy with **Total War**-style
-real-time tactical battles. Built in **Godot 4.6** with GDScript.
+A prototype that fuses grand strategy with real-time tactical battles. 
+Built in **Godot 4.6** with GDScript.
 
 This repo currently contains **Milestone 1: a single, self-contained tactical battle** —
 the hardest and most differentiating piece, built first as a vertical slice. The campaign
@@ -94,5 +94,5 @@ Once installed, `godot --headless` can run exports or a GDScript test suite (e.g
 
 ## Roadmap
 - **M1 (here):** one playable tactical battle. ✅ scaffolded
-- **M2:** CK3-style campaign map — provinces, characters, turn-based diplomacy; battles auto-resolved.
+- **M2:** campaign map — provinces, characters, turn-based diplomacy; battles auto-resolved.
 - **M3:** integration — armies on the map launch into this battle scene and return a result.

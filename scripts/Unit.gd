@@ -150,7 +150,12 @@ func _nearest_enemy() -> Unit:
 # --- Movement --------------------------------------------------------------
 
 func _move_to(point: Vector2, delta: float) -> void:
-	var to: Vector2 = point - position
+	# Route around terrain via the pathfinding layer when one is active; with no
+	# obstacles registered the next step is the target itself (straight line).
+	var step: Vector2 = point
+	if PathField.active != null:
+		step = PathField.active.next_step(position, point)
+	var to: Vector2 = step - position
 	if to.length() < 1.0:
 		return
 	var dir: Vector2 = to.normalized()
