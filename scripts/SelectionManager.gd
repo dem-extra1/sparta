@@ -86,7 +86,9 @@ func _finish_click(u) -> void:
 func _select_same_type(proto) -> void:
 	for node in get_tree().get_nodes_in_group("units"):
 		var unit = node as UnitRef
-		if unit != null and unit.team == 0 and _same_type(unit, proto):
+		if unit == null or unit.team != 0 or unit.state == UnitRef.State.DEAD:
+			continue
+		if _same_type(unit, proto):
 			_select(unit)
 
 
