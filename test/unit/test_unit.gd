@@ -321,3 +321,19 @@ func test_relief_exemption_clears_when_partner_routs() -> void:
 	fresh._update_relief()
 	assert_false(fresh._separation_exempt(tired),
 		"a routed partner is no longer exempt — it gets shouldered again")
+
+
+func test_relief_exemption_clears_once_pair_moves_apart() -> void:
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	tired.position = Vector2.ZERO
+	fresh.position = Vector2.ZERO
+	fresh.begin_relief(tired)
+	assert_true(fresh._separation_exempt(tired), "exempt while still overlapping")
+	# Move the reliever well clear of the tired unit (past the clear distance).
+	fresh.position = Vector2(fresh.separation_radius + tired.separation_radius + 50.0, 0.0)
+	fresh._update_relief()
+	assert_false(fresh._separation_exempt(tired),
+		"the exemption ends once the swapping pair has moved apart")
