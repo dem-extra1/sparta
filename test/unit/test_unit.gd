@@ -298,6 +298,11 @@ func test_co_located_equal_uid_pair_still_fans_apart() -> void:
 	a.position = Vector2.ZERO
 	b._separate()
 	var b_push: Vector2 = b.position
+	# Guard non-zero pushes explicitly: a dot product with a zero vector is 0 (not
+	# negative), so the opposite-direction check below can't on its own tell
+	# "fanned apart" from "one push short-circuited to zero".
+	assert_gt(a_push.length(), 0.0, "the first unit is pushed off the stack")
+	assert_gt(b_push.length(), 0.0, "its partner is pushed too")
 	assert_lt(a_push.dot(b_push), 0.0,
 		"equal-uid co-located units fall back to the instance-id sign and fan apart")
 
