@@ -392,11 +392,8 @@ func absorb(other: Unit) -> void:
 
 ## Remove a unit that has been absorbed by a merge (not a battle death).
 func _merged_away() -> void:
-	state = State.DEAD
-	selected = false
 	_relief_partner = null
-	remove_from_group("units")
-	queue_free()
+	_remove_from_play()
 
 
 ## Begin relieving an engaged friendly: this (fresh) unit takes over its fight
@@ -458,6 +455,12 @@ func _update_relief() -> void:
 # --- Death & routing -------------------------------------------------------
 
 func _die() -> void:
+	_remove_from_play()
+
+
+## Shared teardown for leaving the battle (a death or a merge): mark dead,
+## deselect, leave the units group, and free.
+func _remove_from_play() -> void:
 	state = State.DEAD
 	selected = false
 	remove_from_group("units")
