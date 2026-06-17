@@ -25,6 +25,7 @@ var uid: int = -1
 var soldiers: int
 var morale: float = 100.0
 var fatigue: float = 0.0   # 0 fresh .. 100 exhausted; rotated out by relief (#4)
+var cohesion: float = 1.0   # 1.0 gelled; drops on a merge (#3), then ramps back
 var state: int = State.IDLE
 var facing: Vector2 = Vector2.DOWN
 var move_target: Vector2 = Vector2.ZERO
@@ -43,6 +44,11 @@ const FATIGUE_PER_SEC: float = 8.0
 const FATIGUE_RECOVER_PER_SEC: float = 5.0
 const FATIGUE_MAX_ATTACK_PENALTY: float = 0.4
 
+# Merging two regiments (#3) starts the result with a "strangers" cohesion debuff
+# (scales attack) that ramps back to full as the merged unit gels.
+const MERGE_COHESION_FLOOR: float = 0.6
+const COHESION_RECOVER_PER_SEC: float = 0.1
+
 # Per-type collision footprint: the center-to-center separation floor used in
 # _separate(). RADIUS stays the visual/contact size; this is purely the body
 # width for crowding, assigned per type in _ready(). Each stays below attack
@@ -51,6 +57,10 @@ const FATIGUE_MAX_ATTACK_PENALTY: float = 0.4
 const SEPARATION_RADIUS_INFANTRY: float = 18.0
 const SEPARATION_RADIUS_SPEARMEN: float = 20.0
 const SEPARATION_RADIUS_CAVALRY: float = 24.0
+# Hard ceiling on a footprint (merging widens it, #3). Two maxed units have a
+# floor of 2*28 = 56, still under melee reach (attack_range 26 + RADIUS 18 +
+# RADIUS 18 = 62), so even merged mega-units keep pressing into contact.
+const SEPARATION_RADIUS_MAX: float = 28.0
 
 var _attack_cd: float = 0.0
 var _rout_timer: float = 0.0
@@ -91,6 +101,7 @@ func _physics_process(delta: float) -> void:
 	_separate()
 
 	tick_fatigue(delta)
+	tick_cohesion(delta)
 	_update_relief()
 
 	if not _moved_last_frame and state != State.FIGHTING:
@@ -281,8 +292,9 @@ func _separation_candidates() -> Array:
 # --- Combat ----------------------------------------------------------------
 
 func _strike(enemy: Unit) -> void:
-	# Tired troops hit softer: fatigue scales effective attack before defence.
-	var eff_attack: float = float(attack) * fatigue_attack_factor()
+	# Tired troops hit softer; a freshly-merged unit hits softer still until it
+	# gels. Both scale effective attack before defence.
+	var eff_attack: float = float(attack) * fatigue_attack_factor() * cohesion
 	var base: float = maxf(1.0, eff_attack - float(enemy.defense))
 	# Draw from the seeded replay RNG (one stream, stable order) so battles are
 	# reproducible. This is the simulation's only source of randomness.
@@ -345,6 +357,43 @@ func tick_fatigue(delta: float) -> void:
 ## Attack multiplier from fatigue: 1.0 fresh, down to (1 - max penalty) spent.
 func fatigue_attack_factor() -> float:
 	return 1.0 - FATIGUE_MAX_ATTACK_PENALTY * (fatigue / 100.0)
+
+
+## The "strangers" cohesion debuff from a merge (#3) ramps back to full over time.
+func tick_cohesion(delta: float) -> void:
+	if cohesion < 1.0:
+		cohesion = minf(1.0, cohesion + COHESION_RECOVER_PER_SEC * delta)
+
+
+## Fold another friendly regiment into this one (#3): pool soldiers, blend the
+## combat stats weighted by strength, and start with a cohesion debuff that
+## decays. The absorbed unit is removed. Caller guarantees same team.
+func absorb(other: Unit) -> void:
+	var a: float = float(soldiers)
+	var b: float = float(other.soldiers)
+	var total: float = a + b
+	if total <= 0.0:
+		return
+	max_soldiers += other.max_soldiers
+	# Strength-weighted blend so the bigger regiment dominates the result.
+	attack = int(round((attack * a + other.attack * b) / total))
+	defense = int(round((defense * a + other.defense * b) / total))
+	morale = (morale * a + other.morale * b) / total
+	fatigue = (fatigue * a + other.fatigue * b) / total
+	soldiers += other.soldiers
+	# Strangers debuff and a wider body for the combined regiment — capped so the
+	# footprint never grows past melee reach (which would deadlock contact).
+	cohesion = MERGE_COHESION_FLOOR
+	separation_radius = minf(maxf(separation_radius, other.separation_radius) + 2.0,
+		SEPARATION_RADIUS_MAX)
+	other._merged_away()
+	queue_redraw()
+
+
+## Remove a unit that has been absorbed by a merge (not a battle death).
+func _merged_away() -> void:
+	_relief_partner = null
+	_remove_from_play()
 
 
 ## Begin relieving an engaged friendly: this (fresh) unit takes over its fight
@@ -411,9 +460,16 @@ func _update_relief() -> void:
 # --- Death & routing -------------------------------------------------------
 
 func _die() -> void:
+	_remove_from_play()
+
+
+## Shared teardown for leaving the battle (a death or a merge): mark dead,
+## deselect, leave the units group, and free.
+func _remove_from_play() -> void:
 	state = State.DEAD
 	selected = false
 	remove_from_group("units")
+	remove_from_group("routers")   # no-op unless removing a routing unit
 	queue_free()
 
 

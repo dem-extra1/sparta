@@ -40,6 +40,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and _dragging:
 		_drag_cur = get_global_mouse_position()
 		queue_redraw()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
+		_issue_merge()   # merge the selected friendly regiments into one (#3)
 
 
 func _finish_selection() -> void:
@@ -87,6 +89,21 @@ func _issue_order(world_pos: Vector2) -> void:
 	if uids.is_empty():
 		return
 	_battle.enqueue_order(uids, world_pos, target_uid)
+
+
+## Merge the selected friendly regiments into the first-selected one (#3). Encoded
+## as an order whose target is the primary uid — which IS in `units`, so Battle
+## tells it apart from a relief (whose target is a friendly outside the selection).
+func _issue_merge() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit):
+			uids.append(unit.uid)
+	if uids.size() < 2:
+		return   # need at least two regiments to merge
+	_battle.enqueue_order(uids, Vector2.ZERO, uids[0])
 
 
 # --- helpers ---------------------------------------------------------------

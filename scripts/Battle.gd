@@ -135,6 +135,12 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int) -> void:
 ## playback so both produce identical results.
 func _apply_order_cmd(cmd: Dictionary) -> void:
 	var target_uid: int = int(cmd["target"])
+	# Merge (#3): the target is the primary and is itself one of the ordered units
+	# (a relief's target is a friendly OUTSIDE the selection — that's the
+	# disambiguator). Handle it first, then fall through to attack/relief/move.
+	if target_uid >= 0 and _uids_contain(cmd["units"], target_uid):
+		_apply_merge(cmd["units"], target_uid)
+		return
 	# The target uid may be an enemy (attack) or a friendly (line relief, #4); a
 	# plain move has no target. Resolve it and dispatch per ordered unit by team.
 	var target_unit: Unit = _unit_by_uid(target_uid) if target_uid >= 0 else null
@@ -178,6 +184,29 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.move_target = dest + (u.position - centroid)   # formation move
 			u.has_move_target = true
 			u.target_enemy = null
+
+
+func _uids_contain(uids: Array, target: int) -> bool:
+	for u in uids:
+		if int(u) == target:
+			return true
+	return false
+
+
+## Merge every other ordered unit into the primary (#3). Same-team only.
+func _apply_merge(uids: Array, primary_uid: int) -> void:
+	var primary = _unit_by_uid(primary_uid)
+	if primary == null:
+		return
+	for uid in uids:
+		var u = _unit_by_uid(int(uid))
+		if u == null or u == primary or u.team != primary.team:
+			continue
+		# Don't fold a routing or dead unit into a steady regiment (a unit can rout
+		# between selecting it and the merge applying); it's no longer a valid body.
+		if u.state == UnitRef.State.ROUTING or u.state == UnitRef.State.DEAD:
+			continue
+		primary.absorb(u)
 
 
 ## Average of a set of positions — the anchor a formation move translates from,
