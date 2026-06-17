@@ -154,7 +154,13 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int) -> void:
 		"target": target_uid,
 	}
 	_pending_orders.append(cmd)
-	_apply_order_cmd(cmd)
+	# Apply immediately for zero-latency feedback and paused preview — EXCEPT a
+	# waypoint append (#34), which is NOT idempotent: the tick re-applies every
+	# pending cmd, and a second u.waypoints.append() would duplicate the leg. An
+	# append is also tick-authoritative anyway (its point is derived from positions
+	# at the tick, matching replay), so it's applied once, on that tick.
+	if target_uid != ORDER_APPEND_WAYPOINT:
+		_apply_order_cmd(cmd)
 
 
 ## Apply one order (move or attack) to its units. Shared by live play and

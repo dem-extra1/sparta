@@ -58,3 +58,19 @@ func test_append_to_idle_unit_starts_it_marching() -> void:
 	assert_true(u.has_move_target, "appending to an idle unit starts it moving")
 	assert_eq(u.move_target, Vector2(150, 0), "the first appended point becomes the target")
 	assert_true(u.waypoints.is_empty(), "nothing is left queued behind it")
+
+
+func test_append_via_enqueue_is_not_double_applied() -> void:
+	# enqueue_order applies non-append orders immediately AND _physics_process
+	# re-applies every pending cmd on the next tick. An append must run only on the
+	# tick or the queue would grow a duplicate leg. Simulate a live append on a unit
+	# already marching, then drain _pending_orders exactly as the next tick does.
+	var u := _unit(1, Vector2.ZERO)
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true   # already en route
+	var b := _battle([u])
+	b.enqueue_order([1], Vector2(400, 0), BattleScript.ORDER_APPEND_WAYPOINT)
+	for o in b._pending_orders:
+		b._apply_order_cmd(o)
+	assert_eq(u.waypoints.size(), 1, "an appended waypoint is queued exactly once, not doubled")
+	assert_eq(u.waypoints[0], Vector2(400, 0), "and holds the appended point")

@@ -321,7 +321,7 @@ func _draw_orders() -> void:
 ## current move_target and each queued waypoint, a small dot at every intermediate
 ## stop, and the destination ring at the final point. With no waypoints this is the
 ## original single dashed segment to the destination.
-func _draw_move_path(origin: Vector2, first: Vector2, waypoints: Array) -> void:
+func _draw_move_path(origin: Vector2, first: Vector2, waypoints: Array[Vector2]) -> void:
 	var prev: Vector2 = origin
 	var point: Vector2 = first
 	for i in range(waypoints.size() + 1):
