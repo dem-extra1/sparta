@@ -7,11 +7,18 @@ extends Node2D
 const UnitRef = preload("res://scripts/Unit.gd")  # avoid global-class-cache dependency
 
 const CLICK_THRESHOLD: float = 6.0
+const DOUBLE_CLICK_MS: int = 350
 
 var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
 var _drag_cur: Vector2 = Vector2.ZERO
 var _selected: Array = []
+
+# Double-click type-select: the last clicked unit and when (ms).
+var _last_click_unit = null
+var _last_click_ms: int = -100000
+# Control groups: number-key digit -> bound Array of units.
+var _groups: Dictionary = {}
 
 @onready var _hud = get_node_or_null("../HUD")
 @onready var _battle = get_parent()
@@ -40,6 +47,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and _dragging:
 		_drag_cur = get_global_mouse_position()
 		queue_redraw()
+	elif event is InputEventKey and event.pressed and not event.echo:
+		_handle_group_key(event)
 
 
 func _finish_selection() -> void:
@@ -47,16 +56,50 @@ func _finish_selection() -> void:
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
 
 	if rect.size.length() < CLICK_THRESHOLD:
-		var u = _unit_at(_drag_start, 0)
-		if u != null:
-			_select(u)
+		_finish_click(_unit_at(_drag_start, 0))
 	else:
 		for node in get_tree().get_nodes_in_group("units"):
 			var unit = node as UnitRef
-			if unit != null and unit.team == 0 and rect.has_point(unit.global_position):
+			if unit == null or unit.team != 0 or unit.state == UnitRef.State.DEAD:
+				continue
+			if rect.has_point(unit.global_position):
 				_select(unit)
+		_last_click_unit = null   # a box-select breaks any double-click streak
 
 	_refresh_hud()
+
+
+## Resolve a single left-click: a second click on the same unit within the
+## double-click window selects every visible friendly of that type; otherwise it
+## is an ordinary single select.
+func _finish_click(u) -> void:
+	var now: int = Time.get_ticks_msec()
+	if u != null and u == _last_click_unit and now - _last_click_ms <= DOUBLE_CLICK_MS:
+		_select_same_type(u)
+		_last_click_unit = null   # consume, so a third click starts a fresh streak
+		return
+	if u == null:
+		_last_click_unit = null   # click on empty space ends any streak
+		return
+	_select(u)
+	_last_click_unit = u
+	_last_click_ms = now
+
+
+## Select every alive friendly (team 0) unit sharing the prototype's type.
+func _select_same_type(proto) -> void:
+	for node in get_tree().get_nodes_in_group("units"):
+		var unit = node as UnitRef
+		if unit == null or unit.team != 0 or unit.state == UnitRef.State.DEAD:
+			continue
+		if _same_type(unit, proto):
+			_select(unit)
+
+
+## Two units are the "same type" when their cavalry/anti-cavalry roles match
+## (Infantry / Spearmen / Cavalry), regardless of name or stats.
+func _same_type(a, b) -> bool:
+	return a.is_cavalry == b.is_cavalry and a.anti_cavalry == b.anti_cavalry
 
 
 func _issue_order(world_pos: Vector2) -> void:
@@ -130,6 +173,46 @@ func _refresh_hud() -> void:
 
 func _process(_delta: float) -> void:
 	# Keep the panel current as the shown unit takes casualties.
+	_refresh_hud()
+
+
+# --- control groups --------------------------------------------------------
+
+## Ctrl+<0-9> binds the current selection to that group; <0-9> alone recalls it.
+func _handle_group_key(event: InputEventKey) -> void:
+	var n: int = _digit_for_keycode(event.keycode)
+	if n < 0:
+		return
+	if event.ctrl_pressed:
+		_bind_group(n)
+	else:
+		_recall_group(n)
+
+
+## Map the number-row keycodes KEY_0..KEY_9 to 0..9; -1 for anything else.
+func _digit_for_keycode(keycode: Key) -> int:
+	if keycode >= KEY_0 and keycode <= KEY_9:
+		return keycode - KEY_0
+	return -1
+
+
+## Bind the current selection to a control group (a snapshot of live members).
+func _bind_group(n: int) -> void:
+	var members: Array = []
+	for u in _selected:
+		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
+			members.append(u)
+	_groups[n] = members
+
+
+## Replace the selection with a control group's still-alive members.
+func _recall_group(n: int) -> void:
+	if not _groups.has(n):
+		return
+	_clear_selection()
+	for u in _groups[n]:
+		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
+			_select(u)
 	_refresh_hud()
 
 

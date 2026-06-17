@@ -36,16 +36,28 @@ const DETECTION_RANGE: float = 190.0
 const ATTACK_INTERVAL: float = 0.6
 const ROUT_TIME: float = 6.0
 
+# Per-type collision footprint: the center-to-center separation floor used in
+# _separate(). RADIUS stays the visual/contact size; this is purely the body
+# width for crowding, assigned per type in _ready(). Each stays below attack
+# reach (attack_range + RADIUS) so units still press into melee contact instead
+# of bouncing apart. Cavalry are bulkier; spearmen a touch wider than infantry.
+const SEPARATION_RADIUS_INFANTRY: float = 18.0
+const SEPARATION_RADIUS_SPEARMEN: float = 20.0
+const SEPARATION_RADIUS_CAVALRY: float = 24.0
+
 var _attack_cd: float = 0.0
 var _rout_timer: float = 0.0
 var _moved_last_frame: bool = false
 var _charge_ready: bool = true   # cavalry get one charge bonus per engagement
 var team_color: Color = Color.WHITE
+# Collision footprint for _separate(); assigned per type in _ready().
+var separation_radius: float = SEPARATION_RADIUS_INFANTRY
 
 
 func _ready() -> void:
 	soldiers = max_soldiers
 	team_color = Color("4a7fd6") if team == 0 else Color("d65a4a")
+	separation_radius = _type_separation_radius()
 	add_to_group("units")
 	z_index = 1
 	queue_redraw()
@@ -138,7 +150,12 @@ func _nearest_enemy() -> Unit:
 # --- Movement --------------------------------------------------------------
 
 func _move_to(point: Vector2, delta: float) -> void:
-	var to: Vector2 = point - position
+	# Route around terrain via the pathfinding layer when one is active; with no
+	# obstacles registered the next step is the target itself (straight line).
+	var step: Vector2 = point
+	if PathField.active != null:
+		step = PathField.active.next_step(position, point)
+	var to: Vector2 = step - position
 	if to.length() < 1.0:
 		return
 	var dir: Vector2 = to.normalized()
@@ -157,6 +174,16 @@ func _face_dir(dir: Vector2) -> void:
 		facing = dir.normalized()
 
 
+## Collision footprint by unit type. Cavalry get the widest body, spearmen a bit
+## wider than infantry; all stay below attack reach so melee still presses.
+func _type_separation_radius() -> float:
+	if is_cavalry:
+		return SEPARATION_RADIUS_CAVALRY
+	if anti_cavalry:
+		return SEPARATION_RADIUS_SPEARMEN
+	return SEPARATION_RADIUS_INFANTRY
+
+
 ## Push out of any overlapping unit so regiments form a solid line instead of
 ## passing through each other. Each pair shares the correction (half each).
 ## Since units move sequentially (each only moves itself), one frame reduces an
@@ -165,14 +192,12 @@ func _separate() -> void:
 	if state == State.DEAD:
 		return
 	# Consider living units and routers alike: nobody gets walked through.
-	var others: Array = get_tree().get_nodes_in_group("units")
-	others.append_array(get_tree().get_nodes_in_group("routers"))
-	for o in others:
+	for o in _separation_candidates():
 		var other: Unit = o as Unit
 		# DEAD: queue_free'd but not yet removed from its group this frame.
 		if other == null or other == self or other.state == State.DEAD:
 			continue
-		var min_dist: float = RADIUS + other.RADIUS
+		var min_dist: float = separation_radius + other.separation_radius
 		var offset: Vector2 = position - other.position
 		var d: float = offset.length()
 		if d >= min_dist:
@@ -191,6 +216,19 @@ func _separate() -> void:
 			var dir: float = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
 			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * 0.5)
 		position += push
+
+
+## Neighbours to test for overlap. Uses the per-frame spatial hash that Battle
+## rebuilds at the start of each tick (a local 3x3-block lookup, O(k) in the
+## neighbourhood rather than O(n) over all units); falls back to a full
+## units+routers group scan when no grid is current for this frame — e.g. a unit
+## test that calls _separate() directly with no Battle running.
+func _separation_candidates() -> Array:
+	if SpatialHash.is_current(Engine.get_physics_frames()):
+		return SpatialHash.query(position)
+	var all: Array = get_tree().get_nodes_in_group("units")
+	all.append_array(get_tree().get_nodes_in_group("routers"))
+	return all
 
 
 # --- Combat ----------------------------------------------------------------

@@ -1,0 +1,9 @@
+{
+  "_comment": "Copy this to demos/demo.json (and tailor it) on a PR to publish a demo. The 'replay' path is repo-relative with no res:// prefix. See demos/README.md.",
+  "replay": "demos/showcase.json",
+  "caption": "Describe what this PR changes and what to watch for in the clip.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

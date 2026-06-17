@@ -91,3 +91,69 @@ func test_rearm_charge_restores_availability() -> void:
 	u.consume_charge()
 	u.rearm_charge()
 	assert_true(u.consume_charge(), "rearm makes a charge available again")
+
+
+# --- per-type footprint (issue #6) -----------------------------------------
+
+func _cavalry() -> Unit:
+	var u: Unit = Unit.new()
+	u.is_cavalry = true                 # set before _ready() so footprint is cavalry
+	add_child_autofree(u)
+	u.facing = Vector2.DOWN
+	u.position = Vector2.ZERO
+	return u
+
+
+func test_cavalry_footprint_wider_than_infantry() -> void:
+	var inf := _make_unit()
+	var cav := _cavalry()
+	assert_gt(cav.separation_radius, inf.separation_radius,
+		"cavalry should have a wider collision footprint than infantry")
+
+
+func test_infantry_pair_clear_at_40px_not_pushed() -> void:
+	# 40px exceeds the infantry floor (18+18=36), so there is no separation push.
+	var a := _make_unit()
+	var b := _make_unit()
+	a.position = Vector2.ZERO
+	b.position = Vector2(40.0, 0.0)
+	a._separate()
+	assert_almost_eq(a.position.x, 0.0, 0.001, "infantry at 40px are already clear")
+
+
+func test_cavalry_pair_overlap_at_40px_pushed_apart() -> void:
+	# 40px is inside the cavalry floor (24+24=48), so the pair pushes apart.
+	var a := _cavalry()
+	var b := _cavalry()
+	a.position = Vector2.ZERO
+	b.position = Vector2(40.0, 0.0)
+	a._separate()
+	assert_lt(a.position.x, 0.0, "cavalry at 40px overlap by footprint and push apart")
+
+
+func _spearman_unit() -> Unit:
+	var u: Unit = Unit.new()
+	u.anti_cavalry = true   # set before _ready() so the footprint is spearmen
+	add_child_autofree(u)
+	u.facing = Vector2.DOWN
+	u.position = Vector2.ZERO
+	return u
+
+
+func test_spearmen_footprint_between_infantry_and_cavalry() -> void:
+	var spear := _spearman_unit()
+	assert_gt(spear.separation_radius, _make_unit().separation_radius,
+		"spearmen footprint exceeds infantry")
+	assert_lt(spear.separation_radius, _cavalry().separation_radius,
+		"spearmen footprint is below cavalry")
+
+
+func test_spearmen_pair_overlap_at_38px_pushed_apart() -> void:
+	# 38px is inside the spearmen floor (20+20=40) but outside the infantry
+	# floor (18+18=36), so only spearmen push at this gap.
+	var a := _spearman_unit()
+	var b := _spearman_unit()
+	a.position = Vector2.ZERO
+	b.position = Vector2(38.0, 0.0)
+	a._separate()
+	assert_lt(a.position.x, 0.0, "spearmen at 38px overlap by footprint and push apart")
