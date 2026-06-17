@@ -71,7 +71,7 @@ func _physics_process(delta: float) -> void:
 	_separate()
 
 	if not _moved_last_frame and state != State.FIGHTING:
-		rearm_charge()   # rearm charge once disengaged
+		rearm_charge()
 	queue_redraw()
 
 
