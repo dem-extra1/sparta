@@ -76,6 +76,23 @@ func test_dead_unit_ignores_further_casualties() -> void:
 	assert_eq(u.soldiers, 0, "a dead unit takes no more casualties")
 
 
+# --- charge lifecycle (issue #29) ------------------------------------------
+
+func test_consume_charge_spends_exactly_once() -> void:
+	var u := _make_unit()
+	u.is_cavalry = true   # charges are a cavalry mechanic
+	assert_true(u.consume_charge(), "a fresh unit has a charge available")
+	assert_false(u.consume_charge(), "the charge is spent after one consume")
+
+
+func test_rearm_charge_restores_availability() -> void:
+	var u := _make_unit()
+	u.is_cavalry = true
+	u.consume_charge()
+	u.rearm_charge()
+	assert_true(u.consume_charge(), "rearm makes a charge available again")
+
+
 # --- per-type footprint (issue #6) -----------------------------------------
 
 func _cavalry() -> Unit:

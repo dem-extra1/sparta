@@ -83,7 +83,7 @@ func _physics_process(delta: float) -> void:
 	_separate()
 
 	if not _moved_last_frame and state != State.FIGHTING:
-		_charge_ready = true   # rearm charge once disengaged
+		rearm_charge()
 	queue_redraw()
 
 
@@ -272,6 +272,22 @@ func _separation_candidates() -> Array:
 
 # --- Combat ----------------------------------------------------------------
 
+## Cavalry get one charge bonus per engagement. consume_charge() reports whether
+## a charge is available and spends it; rearm_charge() restores it once the unit
+## breaks contact. Centralizing the field's write-path behind these methods keeps
+## the charge lifecycle in one place as charge mechanics grow (a cooldown, a
+## spent/"shattered" state, per-target tracking) — see issue #29.
+func consume_charge() -> bool:
+	if not _charge_ready:
+		return false
+	_charge_ready = false
+	return true
+
+
+func rearm_charge() -> void:
+	_charge_ready = true
+
+
 func _strike(enemy: Unit) -> void:
 	var base: float = float(max(1, attack - enemy.defense))
 	# Draw from the seeded replay RNG (one stream, stable order) so battles are
@@ -279,9 +295,10 @@ func _strike(enemy: Unit) -> void:
 	var dmg: float = base * Replay.rng.randf_range(0.6, 1.4)
 
 	# Cavalry charge bonus on first contact, blunted by anti-cavalry spears.
-	if is_cavalry and _charge_ready and not enemy.is_cavalry:
+	# consume_charge() gates on availability and spends it in one place, so the
+	# charge is only spent when it actually lands on a non-cavalry target.
+	if is_cavalry and not enemy.is_cavalry and consume_charge():
 		dmg *= 0.6 if enemy.anti_cavalry else 1.8
-		_charge_ready = false
 
 	enemy.take_casualties(int(round(dmg)), self)
 
