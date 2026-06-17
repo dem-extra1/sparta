@@ -9,10 +9,18 @@ const UnitRef = preload("res://scripts/Unit.gd")  # avoid global-class-cache dep
 const CLICK_THRESHOLD: float = 6.0
 const DOUBLE_CLICK_MS: int = 350
 
+# Order-overlay colours (Total War convention: green = move, red = attack).
+const ORDER_MOVE_COLOR: Color = Color(0.45, 0.95, 0.55, 0.9)
+const ORDER_ATTACK_COLOR: Color = Color(0.96, 0.40, 0.32, 0.95)
+
 var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
 var _drag_cur: Vector2 = Vector2.ZERO
 var _selected: Array = []
+# Tracks whether the order overlay was visible last frame (Space held to survey
+# all orders), so it's redrawn one final time after Space is released — wiping
+# the last frame's order lines.
+var _was_showing_orders: bool = false
 
 # Double-click type-select: the last clicked unit and when (ms).
 var _last_click_unit = null
@@ -202,6 +210,13 @@ func _refresh_hud() -> void:
 func _process(_delta: float) -> void:
 	# Keep the panel current as the shown unit takes casualties.
 	_refresh_hud()
+	# Order overlays only render while Space is held (see _draw_orders), so redraw
+	# while it's held to track marching units, plus one extra frame after release
+	# to wipe the last frame's lines. Selection alone draws nothing here.
+	var showing_orders := Input.is_key_pressed(KEY_SPACE)
+	if showing_orders or _was_showing_orders:
+		queue_redraw()
+	_was_showing_orders = showing_orders
 
 
 # --- control groups --------------------------------------------------------
@@ -245,8 +260,62 @@ func _recall_group(n: int) -> void:
 
 
 func _draw() -> void:
+	_draw_orders()
 	if not _dragging:
 		return
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
 	draw_rect(rect, Color(0.4, 0.9, 0.4, 0.15))
 	draw_rect(rect, Color(0.5, 1.0, 0.5, 0.9), false, 1.5)
+
+
+## Draw units' current orders on the field (Total War style): a dashed line to
+## each unit's destination or to the enemy it's attacking, with a marker at the
+## far end. SelectionManager sits at the world origin with no parent transform —
+## the same assumption the drag-box selection relies on — so unit world
+## positions can be drawn directly in _draw()'s local space.
+##
+## Orders are a "hold to reveal" survey aid: shown for all of the player's units
+## while Space is held (works paused too, since this node is PROCESS_MODE_ALWAYS;
+## P or Shift+Space toggles pause). Enemy (team 1) orders are revealed only during
+## replay playback — in live play the enemy's intentions stay hidden.
+func _draw_orders() -> void:
+	if not Input.is_key_pressed(KEY_SPACE):
+		return
+	var show_enemy: bool = Replay.mode == Replay.Mode.PLAYBACK
+	for node in get_tree().get_nodes_in_group("units"):
+		var u = node as UnitRef
+		# A unit that dies mid-march stays valid (and keeps has_move_target) for a
+		# frame before queue_free() prunes it; skip it so it doesn't flash a stale
+		# order line — consistent with order_summary()'s DEAD skip.
+		if u == null or not is_instance_valid(u) or u.state == UnitRef.State.DEAD:
+			continue
+		if u.team != 0 and not show_enemy:
+			continue
+		var origin: Vector2 = u.global_position
+		# Only a player-issued attack (stored in target_enemy) draws a red line. A
+		# unit auto-fighting its nearest foe has no stored target, so it draws no
+		# line — matching order_summary() reporting "Engaged" with no destination.
+		var tgt = u.target_enemy
+		if tgt != null and is_instance_valid(tgt) \
+				and tgt.state != UnitRef.State.DEAD and tgt.state != UnitRef.State.ROUTING:
+			var tp: Vector2 = tgt.global_position
+			draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
+			_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
+		elif u.has_move_target:
+			var mp: Vector2 = u.move_target
+			draw_dashed_line(origin, mp, ORDER_MOVE_COLOR, 2.0, 9.0)
+			_draw_move_marker(mp, ORDER_MOVE_COLOR)
+
+
+## Destination marker: a small ring with a centre dot.
+func _draw_move_marker(p: Vector2, color: Color) -> void:
+	draw_arc(p, 8.0, 0.0, TAU, 18, color, 2.0)
+	draw_circle(p, 2.5, color)
+
+
+## Attack marker: a crosshair over the targeted enemy.
+func _draw_attack_marker(p: Vector2, color: Color) -> void:
+	var r := 11.0
+	draw_arc(p, r, 0.0, TAU, 22, color, 2.0)
+	draw_line(p + Vector2(-r - 3.0, 0.0), p + Vector2(r + 3.0, 0.0), color, 2.0)
+	draw_line(p + Vector2(0.0, -r - 3.0), p + Vector2(0.0, r + 3.0), color, 2.0)

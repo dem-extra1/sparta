@@ -20,7 +20,7 @@ func _ready() -> void:
 
 	# Controls hint.
 	var hint := Label.new()
-	hint.text = "LMB select / drag-box   •   RMB move or attack   •   WASD pan   •   wheel zoom   •   Space pause"
+	hint.text = "LMB select / drag-box   •   RMB move or attack   •   WASD pan   •   wheel zoom   •   P / Shift+Space pause   •   hold Space show orders"
 	hint.position = Vector2(14, 10)
 	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
 	hint.add_theme_font_size_override("font_size", 14)
@@ -179,7 +179,7 @@ func _sync_edge_toggle() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Space toggles active pause: the sim freezes but selection and camera stay
+	# P toggles active pause: the sim freezes but selection and camera stay
 	# live (they run as PROCESS_MODE_ALWAYS), so orders can be queued while paused
 	# and apply on resume. Disabled once the end-of-battle overlay is up.
 	if _is_pause_keypress(event) and not _overlay.visible:
@@ -187,9 +187,16 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_pause_keypress(event: InputEvent) -> bool:
-	return event is InputEventKey \
-		and event.pressed and not event.echo \
-		and event.keycode == KEY_SPACE
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return false
+	# P toggles pause; Shift+Space does too (plain Space is reserved for the
+	# hold-to-show-orders overlay, so it must carry Shift to mean "pause"). Use
+	# physical_keycode so the binding is layout-independent and unaffected by the
+	# held modifier. Shift+Space is used rather than Ctrl+Space because macOS
+	# reserves Ctrl+Space for input-source switching, so it never reaches the app.
+	if event.physical_keycode == KEY_P:
+		return true
+	return event.physical_keycode == KEY_SPACE and event.shift_pressed
 
 
 func _toggle_pause() -> void:
@@ -205,8 +212,8 @@ func show_unit(u, group_count: int) -> void:
 		return
 	var extra: String = "" if group_count <= 1 else "  (+%d more)" % (group_count - 1)
 	var kind: String = "Cavalry" if u.is_cavalry else ("Spearmen" if u.anti_cavalry else "Infantry")
-	_info.text = "%s%s\nType: %s\nSoldiers: %d / %d\nMorale: %d" % [
-		u.unit_name, extra, kind, u.soldiers, u.max_soldiers, int(u.morale)
+	_info.text = "%s%s\nType: %s\nSoldiers: %d / %d\nMorale: %d\nOrder: %s" % [
+		u.unit_name, extra, kind, u.soldiers, u.max_soldiers, int(u.morale), u.order_summary()
 	]
 
 
