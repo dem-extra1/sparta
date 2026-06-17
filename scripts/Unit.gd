@@ -214,9 +214,10 @@ func _separate() -> void:
 
 
 ## Neighbours to test for overlap. Uses the per-frame spatial hash that Battle
-## rebuilds at the start of each tick (an O(1) local block lookup); falls back to
-## a full units+routers group scan when no grid is current for this frame — e.g.
-## a unit test that calls _separate() directly with no Battle running.
+## rebuilds at the start of each tick (a local 3x3-block lookup, O(k) in the
+## neighbourhood rather than O(n) over all units); falls back to a full
+## units+routers group scan when no grid is current for this frame — e.g. a unit
+## test that calls _separate() directly with no Battle running.
 func _separation_candidates() -> Array:
 	if SpatialHash.is_current(Engine.get_physics_frames()):
 		return SpatialHash.query(position)

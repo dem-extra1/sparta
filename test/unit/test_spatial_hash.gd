@@ -3,6 +3,11 @@ extends GutTest
 ## units within separation distance, so Unit._separate() resolves the same set of
 ## overlaps a brute-force all-pairs scan would, just faster.
 
+func before_each() -> void:
+	# Start from a clean grid even if another test script left static state behind.
+	SpatialHash.reset()
+
+
 func after_each() -> void:
 	# Isolate the static grid between tests (and from other test scripts).
 	SpatialHash.reset()
