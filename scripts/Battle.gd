@@ -132,16 +132,23 @@ func _physics_process(_delta: float) -> void:
 
 
 ## Called by SelectionManager when the player issues a right-click order. The
-## order is queued and applied on the next physics tick (live play only).
+## order is recorded and re-applied on the next physics tick (live play only),
+## but we also apply it immediately so it takes effect with no input latency and
+## the order overlay reflects the new destination right away — including while
+## paused, when the physics tick that drains _pending_orders isn't running. The
+## tick's re-application is idempotent (same cmd, same _apply_order_cmd), so live
+## and replayed orders stay on the same deterministic code path.
 func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
-	_pending_orders.append({
+	var cmd := {
 		"units": uids,
 		"x": world_pos.x,
 		"y": world_pos.y,
 		"target": target_uid,
-	})
+	}
+	_pending_orders.append(cmd)
+	_apply_order_cmd(cmd)
 
 
 ## Apply one order (move or attack) to its units. Shared by live play and
