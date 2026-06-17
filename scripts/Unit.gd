@@ -464,6 +464,7 @@ func _remove_from_play() -> void:
 	state = State.DEAD
 	selected = false
 	remove_from_group("units")
+	remove_from_group("routers")   # no-op unless removing a routing unit
 	queue_free()
 
 

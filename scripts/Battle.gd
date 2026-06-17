@@ -202,6 +202,10 @@ func _apply_merge(uids: Array, primary_uid: int) -> void:
 		var u = _unit_by_uid(int(uid))
 		if u == null or u == primary or u.team != primary.team:
 			continue
+		# Don't fold a routing or dead unit into a steady regiment (a unit can rout
+		# between selecting it and the merge applying); it's no longer a valid body.
+		if u.state == UnitRef.State.ROUTING or u.state == UnitRef.State.DEAD:
+			continue
 		primary.absorb(u)
 
 
