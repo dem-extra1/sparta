@@ -159,6 +159,23 @@ func test_order_summary_ignores_dead_target() -> void:
 		"a dead target is not reported as an attack order")
 
 
+# --- charge lifecycle (issue #29) ------------------------------------------
+
+func test_consume_charge_spends_exactly_once() -> void:
+	var u := _make_unit()
+	u.is_cavalry = true   # charges are a cavalry mechanic
+	assert_true(u.consume_charge(), "a fresh unit has a charge available")
+	assert_false(u.consume_charge(), "the charge is spent after one consume")
+
+
+func test_rearm_charge_restores_availability() -> void:
+	var u := _make_unit()
+	u.is_cavalry = true
+	u.consume_charge()
+	u.rearm_charge()
+	assert_true(u.consume_charge(), "rearm makes a charge available again")
+
+
 # --- per-type footprint (issue #6) -----------------------------------------
 
 func _cavalry() -> Unit:
@@ -223,3 +240,112 @@ func test_spearmen_pair_overlap_at_38px_pushed_apart() -> void:
 	b.position = Vector2(38.0, 0.0)
 	a._separate()
 	assert_lt(a.position.x, 0.0, "spearmen at 38px overlap by footprint and push apart")
+
+
+# --- friendly pass-through (issue #5) --------------------------------------
+
+func test_mover_passes_through_idle_friendly() -> void:
+	var mover := _make_unit()
+	var idle := _make_unit()
+	mover.team = 0
+	idle.team = 0
+	mover.state = Unit.State.MOVING
+	idle.state = Unit.State.IDLE
+	mover.position = Vector2.ZERO
+	idle.position = Vector2(10.0, 0.0)        # deep overlap (infantry floor 36)
+	mover._separate()
+	assert_almost_eq(mover.position.x, 0.0, 0.001,
+		"a moving unit is not pushed off an idle friendly — it passes through")
+
+
+func test_two_idle_friendlies_still_separate() -> void:
+	var a := _make_unit()
+	var b := _make_unit()
+	a.team = 0
+	b.team = 0
+	a.state = Unit.State.IDLE
+	b.state = Unit.State.IDLE
+	a.position = Vector2.ZERO
+	b.position = Vector2(10.0, 0.0)
+	a._separate()
+	assert_lt(a.position.x, 0.0, "two idle friendlies are solid and push apart")
+
+
+func test_mover_does_not_pass_through_idle_enemy() -> void:
+	var mover := _make_unit()
+	var enemy := _make_unit()
+	mover.team = 0
+	enemy.team = 1
+	mover.state = Unit.State.MOVING
+	enemy.state = Unit.State.IDLE
+	mover.position = Vector2.ZERO
+	enemy.position = Vector2(10.0, 0.0)
+	mover._separate()
+	assert_lt(mover.position.x, 0.0, "an enemy is never exempt — the mover is blocked")
+
+
+func test_idle_friendly_does_not_push_the_mover_either() -> void:
+	# The exemption is symmetric: the idle unit's own _separate() must also leave
+	# the passing mover untouched.
+	var mover := _make_unit()
+	var idle := _make_unit()
+	mover.team = 0
+	idle.team = 0
+	mover.state = Unit.State.MOVING
+	idle.state = Unit.State.IDLE
+	mover.position = Vector2.ZERO
+	idle.position = Vector2(10.0, 0.0)
+	idle._separate()
+	assert_almost_eq(idle.position.x, 10.0, 0.001,
+		"idle does not push itself off the mover — the exemption fires from both sides")
+
+
+func test_mover_does_not_pass_through_fighting_friendly() -> void:
+	# Only IDLE friendlies are passed through; a FIGHTING friendly is solid.
+	var mover := _make_unit()
+	var fighter := _make_unit()
+	mover.team = 0
+	fighter.team = 0
+	mover.state = Unit.State.MOVING
+	fighter.state = Unit.State.FIGHTING
+	mover.position = Vector2.ZERO
+	fighter.position = Vector2(10.0, 0.0)
+	mover._separate()
+	assert_lt(mover.position.x, 0.0, "a moving unit cannot pass through a fighting friendly")
+
+
+# --- hard blocking: spearmen stop cavalry (issue #8) -----------------------
+
+func test_spearman_holds_line_against_enemy_cavalry() -> void:
+	var spear := _spearman_unit()              # team 0
+	var cav := _cavalry()
+	cav.team = 1                          # enemy cavalry
+	spear.position = Vector2.ZERO
+	cav.position = Vector2(20.0, 0.0)     # overlapping (floor 20+24 = 44)
+	spear._separate()
+	assert_almost_eq(spear.position.x, 0.0, 0.001,
+		"a spearman yields nothing to enemy cavalry — the line holds")
+
+
+func test_enemy_cavalry_shoved_clear_of_spear_line() -> void:
+	var spear := _spearman_unit()              # team 0
+	var cav := _cavalry()
+	cav.team = 1                          # enemy cavalry
+	spear.position = Vector2.ZERO
+	cav.position = Vector2(20.0, 0.0)
+	cav._separate()
+	assert_gt(cav.position.x, 20.0,
+		"enemy cavalry takes the full push-out and is shoved clear of the spears")
+
+
+func test_enemy_infantry_still_separates_softly_from_spearman() -> void:
+	# Hard block is cavalry-specific: a spearman still splits separation 50/50
+	# with enemy infantry, so it is displaced (not an immovable wall to everyone).
+	var spear := _spearman_unit()              # team 0
+	var inf := _make_unit()
+	inf.team = 1                          # enemy infantry (not cavalry)
+	spear.position = Vector2.ZERO
+	inf.position = Vector2(20.0, 0.0)
+	spear._separate()
+	assert_lt(spear.position.x, 0.0,
+		"a spearman is only a hard wall to cavalry — infantry shoves it normally")
