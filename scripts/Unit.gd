@@ -30,6 +30,10 @@ var state: int = State.IDLE
 var facing: Vector2 = Vector2.DOWN
 var move_target: Vector2 = Vector2.ZERO
 var has_move_target: bool = false
+# Queued destinations after move_target: the unit marches the route in order,
+# popping the next point each time it reaches the current one (#34). Filled by
+# Shift+right-click; a plain move order clears it.
+var waypoints: Array[Vector2] = []
 var target_enemy: Unit = null
 var selected: bool = false
 
@@ -135,6 +139,8 @@ func _think(delta: float) -> void:
 	if has_move_target:
 		if position.distance_to(move_target) > 5.0:
 			_move_to(move_target, delta)
+		elif not waypoints.is_empty():
+			move_target = waypoints.pop_front()   # advance along the queued route (#34)
 		else:
 			has_move_target = false
 			state = State.IDLE
@@ -278,7 +284,10 @@ func order_summary() -> String:
 		if has_target:
 			return "Attacking %s" % target_enemy.unit_name
 		if has_move_target:
-			return "Moving to (%d, %d)" % [int(round(move_target.x)), int(round(move_target.y))]
+			var dest: String = "Moving to (%d, %d)" % [int(round(move_target.x)), int(round(move_target.y))]
+			if not waypoints.is_empty():
+				dest += " (+%d waypoint%s)" % [waypoints.size(), "" if waypoints.size() == 1 else "s"]
+			return dest
 		if state == State.FIGHTING:
 			return "Engaged"
 		if state == State.MOVING:
