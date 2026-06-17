@@ -242,6 +242,66 @@ func test_spearmen_pair_overlap_at_38px_pushed_apart() -> void:
 	assert_lt(a.position.x, 0.0, "spearmen at 38px overlap by footprint and push apart")
 
 
+# --- co-located fan-out determinism (issue #50) ----------------------------
+
+func test_co_located_pair_fans_apart_by_uid() -> void:
+	# Two regiments stacked on the exact same spot must push in OPPOSITE
+	# directions so they fan apart instead of staying welded together.
+	var a := _make_unit()
+	var b := _make_unit()
+	a.uid = 5
+	b.uid = 7
+	a.position = Vector2.ZERO
+	b.position = Vector2.ZERO
+	a._separate()
+	var a_push: Vector2 = a.position
+	a.position = Vector2.ZERO   # reset so b sees the same co-located pair
+	b._separate()
+	var b_push: Vector2 = b.position
+	assert_gt(a_push.length(), 0.0, "a co-located unit is pushed off the stack")
+	assert_gt(b_push.length(), 0.0, "its partner is pushed too")
+	assert_lt(a_push.dot(b_push), 0.0, "the pair fans apart in opposite directions")
+
+
+func test_co_located_push_matches_uid_formula() -> void:
+	# The fan-out angle and sign are keyed off the stable uid (issue #50): keyed
+	# off get_instance_id() — which is assigned per launch — a live run and its
+	# replay would push co-located units different ways and desync. Pin the exact
+	# vector the uid formula produces so a regression to instance ids is caught.
+	var a := _make_unit()
+	var b := _make_unit()
+	a.uid = 5
+	b.uid = 7
+	a.position = Vector2.ZERO
+	b.position = Vector2.ZERO
+	a._separate()
+	# lo = min(5, 7) = 5 -> angle = 5/100 * TAU; a holds the lower uid so dir = -1.
+	# magnitude = (sep_a + sep_b) * share, share = 0.5 for two infantry friendlies.
+	var magnitude: float = (a.separation_radius + b.separation_radius) * 0.5
+	var expected: Vector2 = Vector2.RIGHT.rotated(0.05 * TAU) * -1.0 * magnitude
+	assert_almost_eq(a.position.x, expected.x, 0.001, "co-located push x matches the uid formula")
+	assert_almost_eq(a.position.y, expected.y, 0.001, "co-located push y matches the uid formula")
+
+
+func test_co_located_equal_uid_pair_still_fans_apart() -> void:
+	# Two unspawned units share the default uid (-1), so there's no stable uid
+	# order to break the tie. The sign falls back to instance id (always distinct
+	# between two objects) so the pair still fans apart rather than stacking.
+	var a := _make_unit()
+	var b := _make_unit()
+	assert_eq(a.uid, -1, "unspawned units keep the default uid")
+	assert_eq(b.uid, -1, "unspawned units keep the default uid")
+	a.position = Vector2.ZERO
+	b.position = Vector2.ZERO
+	a._separate()
+	var a_push: Vector2 = a.position
+	a.position = Vector2.ZERO
+	b._separate()
+	var b_push: Vector2 = b.position
+	assert_lt(a_push.dot(b_push), 0.0,
+		"equal-uid co-located units fall back to the instance-id sign and fan apart")
+
+
 # --- friendly pass-through (issue #5) --------------------------------------
 
 func test_mover_passes_through_idle_friendly() -> void:
