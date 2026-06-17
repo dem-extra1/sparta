@@ -249,3 +249,155 @@ func test_enemy_infantry_still_separates_softly_from_spearman() -> void:
 	spear._separate()
 	assert_lt(spear.position.x, 0.0,
 		"a spearman is only a hard wall to cavalry — infantry shoves it normally")
+
+
+# --- fatigue + line relief (issue #4) --------------------------------------
+
+func test_fatigue_builds_while_fighting() -> void:
+	var u := _make_unit()
+	u.state = Unit.State.FIGHTING
+	u.tick_fatigue(1.0)
+	assert_almost_eq(u.fatigue, 8.0, 0.001, "a fighting unit accrues fatigue")
+
+
+func test_fatigue_recovers_while_resting() -> void:
+	var u := _make_unit()
+	u.fatigue = 20.0
+	u.state = Unit.State.IDLE
+	u.tick_fatigue(1.0)
+	assert_almost_eq(u.fatigue, 15.0, 0.001, "a resting unit recovers fatigue")
+
+
+func test_fatigue_reduces_attack_factor() -> void:
+	var u := _make_unit()
+	u.fatigue = 0.0
+	assert_almost_eq(u.fatigue_attack_factor(), 1.0, 0.001, "fresh = full attack")
+	u.fatigue = 100.0
+	assert_almost_eq(u.fatigue_attack_factor(), 0.6, 0.001, "spent = 60% attack")
+
+
+func test_relief_swaps_the_fight_and_exempts_the_pair() -> void:
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	var foe := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	foe.team = 1
+	tired.target_enemy = foe
+	fresh.begin_relief(tired)
+	assert_eq(fresh.target_enemy, foe, "the reliever takes over the tired unit's fight")
+	assert_null(tired.target_enemy, "the tired unit disengages")
+	assert_true(tired.has_move_target, "the tired unit peels back to the rear")
+	assert_true(fresh._separation_exempt(tired), "the swapping pair passes through")
+	assert_true(tired._separation_exempt(fresh), "the relief exemption is mutual")
+
+
+func test_relief_inherits_nearest_enemy_when_target_is_unset() -> void:
+	# A unit can be FIGHTING an auto-acquired foe with target_enemy still null.
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	var foe := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	foe.team = 1
+	tired.position = Vector2.ZERO
+	foe.position = Vector2(30.0, 0.0)   # within tired's detection range
+	tired.target_enemy = null
+	fresh.begin_relief(tired)
+	assert_eq(fresh.target_enemy, foe,
+		"the reliever inherits the tired unit's nearest enemy even when unset")
+
+
+func test_relief_exemption_clears_when_partner_routs() -> void:
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	fresh.position = Vector2.ZERO
+	tired.position = Vector2(5.0, 0.0)   # still adjacent, so it's not "apart"
+	fresh.begin_relief(tired)
+	assert_true(fresh._separation_exempt(tired), "exempt during the swap")
+	tired.state = Unit.State.ROUTING
+	fresh._update_relief()
+	assert_false(fresh._separation_exempt(tired),
+		"a routed partner is no longer exempt — it gets shouldered again")
+
+
+func test_relief_exemption_clears_once_pair_moves_apart() -> void:
+	var fresh := _make_unit()
+	var tired := _make_unit()
+	fresh.team = 0
+	tired.team = 0
+	tired.position = Vector2.ZERO
+	fresh.position = Vector2.ZERO
+	fresh.begin_relief(tired)
+	assert_true(fresh._separation_exempt(tired), "exempt while still overlapping")
+	# Move the reliever well clear of the tired unit (past the clear distance).
+	fresh.position = Vector2(fresh.separation_radius + tired.separation_radius + 50.0, 0.0)
+	fresh._update_relief()
+	assert_false(fresh._separation_exempt(tired),
+		"the exemption ends once the swapping pair has moved apart")
+
+
+# --- unit merging (issue #3) -----------------------------------------------
+
+func test_merge_pools_soldiers_and_sums_max() -> void:
+	var a := _make_unit(100)
+	var b := _make_unit(60)
+	a.absorb(b)
+	assert_eq(a.soldiers, 160, "soldier counts are pooled")
+	assert_eq(a.max_soldiers, 160, "max_soldiers are summed")
+
+
+func test_merge_blends_attack_weighted_by_strength() -> void:
+	var a := _make_unit(100)
+	a.attack = 10
+	var b := _make_unit(60)
+	b.attack = 20
+	a.absorb(b)
+	# (10*100 + 20*60) / 160 = 13.75 -> 14
+	assert_eq(a.attack, 14, "attack is strength-weighted between the two regiments")
+
+
+func test_merge_starts_with_a_strangers_debuff() -> void:
+	var a := _make_unit(100)
+	var b := _make_unit(60)
+	a.absorb(b)
+	assert_lt(a.cohesion, 1.0, "a freshly merged unit starts below full cohesion")
+	a.tick_cohesion(1.0)
+	assert_almost_eq(a.cohesion, Unit.MERGE_COHESION_FLOOR + 0.1, 0.001,
+		"cohesion ramps back toward full over time")
+
+
+func test_absorbed_unit_is_removed_from_play() -> void:
+	var a := _make_unit(100)
+	var b := _make_unit(60)
+	a.absorb(b)
+	assert_eq(b.state, Unit.State.DEAD, "the absorbed unit leaves play")
+	assert_false(b.is_in_group("units"), "the absorbed unit leaves the units group")
+
+
+func test_merged_footprint_is_capped_below_melee_reach() -> void:
+	# Repeated merges must not grow the footprint past the contact ceiling, or two
+	# mega-units would shove apart beyond attack reach and never fight.
+	var a := _cavalry()
+	for _i in range(10):
+		var b := _cavalry()
+		a.absorb(b)
+	assert_lte(a.separation_radius, Unit.SEPARATION_RADIUS_MAX,
+		"footprint is clamped so merged units still reach melee contact")
+
+
+func test_merge_blends_using_current_soldiers_not_max() -> void:
+	# A depleted unit contributes its CURRENT strength to the weighted blend,
+	# while max_soldiers still sums.
+	var a := _make_unit(100)
+	a.take_casualties(30, _attacker_at(FRONT))   # 100 -> 70 soldiers
+	a.attack = 10
+	var b := _make_unit(60)
+	b.attack = 20
+	a.absorb(b)
+	assert_eq(a.max_soldiers, 160, "max_soldiers sum regardless of casualties")
+	assert_eq(a.soldiers, 130, "pooled soldiers = 70 + 60")
+	# Weighted by current strength: (10*70 + 20*60) / 130 = 14.6 -> 15.
+	assert_eq(a.attack, 15, "attack weights by current soldiers, not max")

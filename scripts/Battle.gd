@@ -135,7 +135,16 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int) -> void:
 ## playback so both produce identical results.
 func _apply_order_cmd(cmd: Dictionary) -> void:
 	var target_uid: int = int(cmd["target"])
-	var enemy = _unit_by_uid(target_uid) if target_uid >= 0 else null
+	# Merge (#3): the target is the primary and is itself one of the ordered units
+	# (a relief's target is a friendly OUTSIDE the selection — that's the
+	# disambiguator). Handle it first, then fall through to attack/relief/move.
+	if target_uid >= 0 and _uids_contain(cmd["units"], target_uid):
+		_apply_merge(cmd["units"], target_uid)
+		return
+	# The target uid may be an enemy (attack) or a friendly (line relief, #4); a
+	# plain move has no target. Resolve it and dispatch per ordered unit by team.
+	var target_unit: Unit = _unit_by_uid(target_uid) if target_uid >= 0 else null
+	var is_move: bool = target_unit == null
 	var dest := Vector2(float(cmd["x"]), float(cmd["y"]))
 	# Formation cohesion: a move order translates the regiment as a block. Each
 	# unit keeps its offset from the group's current centroid, so the formation
@@ -143,24 +152,61 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	# into a fresh grid. Computed from live positions, so live play and playback
 	# (which reach the same positions at this tick) stay in lockstep.
 	var centroid := Vector2.ZERO
-	if enemy == null:
+	if is_move:
 		var ps: Array[Vector2] = []
 		for uid in cmd["units"]:
-			var cu = _unit_by_uid(int(uid))
+			var cu: Unit = _unit_by_uid(int(uid))
 			if cu != null:
 				ps.append(cu.position)
 		centroid = formation_centroid(ps)
+	var relieved: bool = false
+	var relief_foe: Unit = null
 	for uid in cmd["units"]:
-		var u = _unit_by_uid(int(uid))
+		var u: Unit = _unit_by_uid(int(uid))
 		if u == null:
 			continue
-		if enemy != null:
-			u.target_enemy = enemy
+		if target_unit != null and target_unit != u and target_unit.team != u.team:
+			u.target_enemy = target_unit   # attack an enemy
 			u.has_move_target = false
+		elif target_unit != null and target_unit != u and target_unit.team == u.team:
+			# Relief: the first reliever swaps with the tired unit; any others just
+			# advance on the same fight so they don't shove the retreating unit.
+			if not relieved:
+				u.begin_relief(target_unit)
+				# Capture the foe begin_relief() resolved (it clears the tired
+				# unit's target_enemy, so later relievers can't read it from there).
+				relief_foe = u.target_enemy
+				relieved = true
+			else:
+				u.target_enemy = relief_foe
+				u.has_move_target = false
 		else:
-			u.move_target = dest + (u.position - centroid)
+			u.move_target = dest + (u.position - centroid)   # formation move
 			u.has_move_target = true
 			u.target_enemy = null
+
+
+func _uids_contain(uids: Array, target: int) -> bool:
+	for u in uids:
+		if int(u) == target:
+			return true
+	return false
+
+
+## Merge every other ordered unit into the primary (#3). Same-team only.
+func _apply_merge(uids: Array, primary_uid: int) -> void:
+	var primary = _unit_by_uid(primary_uid)
+	if primary == null:
+		return
+	for uid in uids:
+		var u = _unit_by_uid(int(uid))
+		if u == null or u == primary or u.team != primary.team:
+			continue
+		# Don't fold a routing or dead unit into a steady regiment (a unit can rout
+		# between selecting it and the merge applying); it's no longer a valid body.
+		if u.state == UnitRef.State.ROUTING or u.state == UnitRef.State.DEAD:
+			continue
+		primary.absorb(u)
 
 
 ## Average of a set of positions — the anchor a formation move translates from,
