@@ -76,6 +76,23 @@ func test_dead_unit_ignores_further_casualties() -> void:
 	assert_eq(u.soldiers, 0, "a dead unit takes no more casualties")
 
 
+# --- charge lifecycle (issue #29) ------------------------------------------
+
+func test_consume_charge_spends_exactly_once() -> void:
+	var u := _make_unit()
+	u.is_cavalry = true   # charges are a cavalry mechanic
+	assert_true(u.consume_charge(), "a fresh unit has a charge available")
+	assert_false(u.consume_charge(), "the charge is spent after one consume")
+
+
+func test_rearm_charge_restores_availability() -> void:
+	var u := _make_unit()
+	u.is_cavalry = true
+	u.consume_charge()
+	u.rearm_charge()
+	assert_true(u.consume_charge(), "rearm makes a charge available again")
+
+
 # --- per-type footprint (issue #6) -----------------------------------------
 
 func _cavalry() -> Unit:
@@ -197,7 +214,7 @@ func test_idle_friendly_does_not_push_the_mover_either() -> void:
 	idle.position = Vector2(10.0, 0.0)
 	idle._separate()
 	assert_almost_eq(idle.position.x, 10.0, 0.001,
-		"the idle unit does not shove the passing mover — exemption is symmetric")
+		"idle does not push itself off the mover — the exemption fires from both sides")
 
 
 func test_mover_does_not_pass_through_fighting_friendly() -> void:
