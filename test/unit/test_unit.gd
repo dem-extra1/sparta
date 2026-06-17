@@ -356,6 +356,51 @@ func test_order_summary_singular_waypoint() -> void:
 	)
 
 
+# --- ranged units (issue #37) ----------------------------------------------
+
+func _archer() -> Unit:
+	var u: Unit = Unit.new()
+	u.is_ranged = true   # set before _ready() so the unit is configured as ranged
+	add_child_autofree(u)
+	u.facing = Vector2.DOWN
+	u.position = Vector2.ZERO
+	return u
+
+
+func test_archer_shoots_enemy_within_range() -> void:
+	var archer := _archer()
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(120, 0)   # within RANGED_RANGE (160), beyond melee contact
+	var before: int = enemy.soldiers
+	archer._think(0.016)
+	assert_eq(archer.state, Unit.State.FIGHTING, "an archer in range stands and fires")
+	assert_eq(archer.position, Vector2.ZERO, "it shoots from where it stands, not closing in")
+	assert_lt(enemy.soldiers, before, "the volley inflicts casualties")
+
+
+func test_archer_advances_toward_enemy_beyond_range() -> void:
+	var archer := _archer()
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(180, 0)   # beyond RANGED_RANGE (160), within detection (190)
+	var before: int = enemy.soldiers
+	archer._think(0.016)
+	assert_gt(archer.position.x, 0.0, "an archer out of range advances to close the gap")
+	assert_eq(enemy.soldiers, before, "no volley until the enemy is within range")
+
+
+func test_archer_melees_when_enemy_in_contact() -> void:
+	var archer := _archer()
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(40, 0)   # inside melee contact (~62px)
+	var before: int = enemy.soldiers
+	archer._think(0.016)
+	assert_eq(archer.state, Unit.State.FIGHTING, "a cornered archer still fights in melee")
+	assert_lt(enemy.soldiers, before, "and deals melee casualties")
+
+
 # --- friendly pass-through (issue #5) --------------------------------------
 
 func test_mover_passes_through_idle_friendly() -> void:

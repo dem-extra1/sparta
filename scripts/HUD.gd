@@ -228,7 +228,15 @@ func show_unit(u, group_count: int) -> void:
 		clear_unit()
 		return
 	var extra: String = "" if group_count <= 1 else "  (+%d more)" % (group_count - 1)
-	var kind: String = "Cavalry" if u.is_cavalry else ("Spearmen" if u.anti_cavalry else "Infantry")
+	var kind: String
+	if u.is_cavalry:
+		kind = "Cavalry"
+	elif u.anti_cavalry:
+		kind = "Spearmen"
+	elif u.is_ranged:
+		kind = "Archers"
+	else:
+		kind = "Infantry"
 	_info.text = "%s%s\nType: %s\nSoldiers: %d / %d\nMorale: %d\nOrder: %s" % [
 		u.unit_name, extra, kind, u.soldiers, u.max_soldiers, int(u.morale), u.order_summary()
 	]

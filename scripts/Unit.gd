@@ -20,6 +20,7 @@ var uid: int = -1
 @export var attack_range: float = 26.0
 @export var is_cavalry: bool = false
 @export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
+@export var is_ranged: bool = false   # archers: loose volleys from a distance (#37)
 
 # --- Runtime state ---
 var soldiers: int
@@ -41,6 +42,15 @@ const RADIUS: float = 18.0
 const DETECTION_RANGE: float = 190.0
 const ATTACK_INTERVAL: float = 0.6
 const ROUT_TIME: float = 6.0
+
+# Ranged combat (#37). A ranged unit looses volleys at any enemy within
+# RANGED_RANGE that isn't already in melee contact — far outreaching melee's
+# ~62px contact, so archers skirmish from safety. RANGED_RANGE stays below
+# DETECTION_RANGE so an auto-acquired target is always in detection too. Volleys
+# fire on their own (slower) cadence and hit a touch softer per shot than melee.
+const RANGED_RANGE: float = 160.0
+const RANGED_INTERVAL: float = 1.0
+const RANGED_DAMAGE_FACTOR: float = 0.7
 
 # Fatigue builds while FIGHTING and recovers while resting; it bites into attack
 # so rotating tired regiments out via line relief (#4) is a real tactical lever.
@@ -119,6 +129,18 @@ func _think(delta: float) -> void:
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
+		# Ranged units (#37) stand and loose volleys at any enemy inside RANGED_RANGE
+		# that hasn't closed to melee — they skirmish at distance instead of charging.
+		# Gated by the same "not disengaging" rule as melee: a plain move order with
+		# no explicit attack target marches them off rather than rooting them to fire.
+		if is_ranged and not in_contact and dist <= RANGED_RANGE \
+				and (target_enemy != null or not has_move_target):
+			state = State.FIGHTING
+			_face(enemy.position)
+			if _attack_cd <= 0.0:
+				_attack_cd = RANGED_INTERVAL
+				_shoot(enemy)
+			return
 		# Fight when in contact, UNLESS the player gave a plain move order with no
 		# explicit attack target — that's a disengage command, so march off and let
 		# the unit break contact. (Pulling out exposes the rear; the enemy chasing
@@ -377,6 +399,16 @@ func _strike(enemy: Unit) -> void:
 	enemy.take_casualties(int(round(dmg)), self)
 
 
+## A ranged volley (#37): like a melee strike without the cavalry charge, scaled
+## by RANGED_DAMAGE_FACTOR — archers trade per-hit punch for striking from beyond
+## melee reach. Draws from the same seeded RNG stream so battles stay reproducible.
+func _shoot(enemy: Unit) -> void:
+	var eff_attack: float = float(attack) * fatigue_attack_factor() * cohesion
+	var base: float = maxf(1.0, eff_attack - float(enemy.defense))
+	var dmg: float = base * RANGED_DAMAGE_FACTOR * Replay.rng.randf_range(0.6, 1.4)
+	enemy.take_casualties(int(round(dmg)), self)
+
+
 ## Called by an attacker. Applies flanking from THIS unit's facing.
 func take_casualties(amount: int, attacker: Unit) -> void:
 	if state == State.DEAD or state == State.ROUTING:
@@ -605,6 +637,8 @@ func _draw() -> void:
 		_draw_cavalry_sprite(body_c, dark_c, lite_c)
 	elif anti_cavalry:
 		_draw_spear_sprite(body_c, dark_c, lite_c)
+	elif is_ranged:
+		_draw_archer_sprite(body_c, dark_c, lite_c)
 	else:
 		_draw_infantry_sprite(body_c, dark_c, lite_c)
 
@@ -659,6 +693,33 @@ func _draw_infantry_sprite(body: Color, dark: Color, lite: Color) -> void:
 	# Sword pommel / crossguard at the top of the shield.
 	draw_line(Vector2(-5.0, -R + 8.0), Vector2(5.0, -R + 8.0), metal, 2.5)
 	draw_line(Vector2(0, -R + 2.0), Vector2(0, -R + 9.0), metal, 2.0)
+
+
+## Archers: a light skirmisher body with a drawn bow + nocked arrow forward (#37).
+func _draw_archer_sprite(body: Color, dark: Color, lite: Color) -> void:
+	var R := RADIUS
+	var metal := Color(0.78, 0.80, 0.85, body.a)
+	var wood := Color(0.62, 0.48, 0.30, body.a)
+	# Light round body — archers are unarmoured, so a smaller token than a shield.
+	draw_circle(Vector2.ZERO, R * 0.60, body)
+	draw_arc(Vector2.ZERO, R * 0.60, 0, TAU, 20, dark, 1.5)
+	# Bow: an arc bulging forward (up = forward in this rotated local space), with
+	# a bowstring across its tips.
+	var bow_r: float = R * 1.05
+	var a0: float = -PI * 0.5 - 0.7
+	var a1: float = -PI * 0.5 + 0.7
+	draw_arc(Vector2.ZERO, bow_r, a0, a1, 16, wood, 2.5)
+	var tip0: Vector2 = Vector2.from_angle(a0) * bow_r
+	var tip1: Vector2 = Vector2.from_angle(a1) * bow_r
+	draw_line(tip0, tip1, lite, 1.0)
+	# Nocked arrow at the string's midpoint, pointing forward with a metal head.
+	var nock: Vector2 = (tip0 + tip1) * 0.5
+	draw_line(nock, Vector2(0, -(bow_r + 9.0)), metal, 1.5)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(0, -(bow_r + 13.0)),
+		Vector2(3.0, -(bow_r + 5.0)),
+		Vector2(-3.0, -(bow_r + 5.0)),
+	]), metal)
 
 
 ## Spearmen: round hoplon shield with a forward-pointing spear.

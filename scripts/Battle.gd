@@ -75,11 +75,12 @@ func _draw() -> void:
 
 
 func _spawn_line(team: int, facing: Vector2, y: float) -> void:
-	# Loadout: spearmen, infantry, infantry, cavalry, cavalry.
+	# Loadout: spearmen, infantry, archers, cavalry, cavalry. The archers (#37)
+	# skirmish from range — softer in melee, but they soften the line before contact.
 	var loadout := [
 		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "spd": 80},
 		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "spd": 90},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "spd": 90},
+		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "spd": 95},
 		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160},
 		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160},
 	]
@@ -97,6 +98,7 @@ func _spawn_line(team: int, facing: Vector2, y: float) -> void:
 		u.team = team
 		u.anti_cavalry = d["anti_cav"]
 		u.is_cavalry = d["cav"]
+		u.is_ranged = d.get("ranged", false)
 		u.max_soldiers = d["soldiers"]
 		u.attack = d["atk"]
 		u.defense = d["def"]
