@@ -1,15 +1,17 @@
 # Gameplay demos in PRs
 
 When a Claude session makes a **user-visible change** (anything affecting how the
-game looks or plays), it should post a short clip in the PR so reviewers can *see*
-the change, not just read the diff. CI handles the recording and posting; the
-author's job is to **declare what to show**.
-
-CI can't infer what a diff changed, so the demo is author-declared: you commit a
-**replay** that exercises your change plus a small **manifest**, and
-[`.github/workflows/demo-video.yml`](../.github/workflows/demo-video.yml) plays
-that replay back headlessly (Godot Movie Maker → ffmpeg → GIF) and posts it as an
+game looks or plays), a short clip is posted in the PR so reviewers can *see* the
+change, not just read the diff.
+[`.github/workflows/demo-video.yml`](../.github/workflows/demo-video.yml) plays a
+replay back headlessly (Godot Movie Maker → ffmpeg → GIF) and posts it as an
 inline, autoplaying GIF in the PR conversation.
+
+CI can't infer what a diff changed, so to make the clip *demonstrate your change*
+you **declare what to show**: commit a small **manifest** (`demos/demo.json`)
+pointing at a **replay** that exercises it. If you don't, CI still posts a demo —
+the default `showcase.json` battle, labelled as a generic build demo — but a
+tailored one is far more useful, so prefer to add a manifest.
 
 ## The contract
 
@@ -56,10 +58,13 @@ CI replays it against *your PR's* build, so the clip reflects your change.
 
 ## When it runs
 
-- Only on PRs from `claude/*` branches that touch `scenes/`, `scripts/`,
-  `assets/`, or `project.godot` (a "user-visible change").
-- Only when `demos/demo.json` exists — **no manifest, no demo** (a docs/CI/test
-  PR records nothing rather than posting a misleading generic clip).
+- On PRs from `claude/*` branches that touch `scenes/`, `scripts/`, `assets/`, or
+  `project.godot` (a "user-visible change"). Docs/CI/test-only PRs don't trigger it.
+- **A demo is always posted on those PRs.** With a `demos/demo.json`, it records the
+  replay you named (tailored to your change). Without one, it falls back to the
+  default `demos/showcase.json` battle, posted with an honest "generic build demo"
+  caption that nudges you to add a manifest. So the manifest is how you make the
+  demo *demonstrate your change* — skipping it gives a generic clip, not nothing.
 
 ## Where the GIF lives
 
