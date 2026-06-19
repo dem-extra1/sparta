@@ -106,7 +106,7 @@ SPARTA_DEMO_REPLAY="res://demos/showcase.json" \
 ffmpeg -i /tmp/demo.avi -vf "fps=12,scale=640:-1:flags=lanczos" /tmp/demo.gif
 # MP4 with sound (the AVI already holds the audio track):
 ffmpeg -i /tmp/demo.avi -vf "scale=640:-2:flags=lanczos" \
-  -c:v libx264 -pix_fmt yuv420p -movflags +faststart -c:a aac -b:a 128k /tmp/demo.mp4
+  -c:v libx264 -pix_fmt yuv420p -profile:v high -movflags +faststart -c:a aac -b:a 128k /tmp/demo.mp4
 ```
 
 [`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd) is the headless entry
