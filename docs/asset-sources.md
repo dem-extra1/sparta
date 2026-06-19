@@ -20,8 +20,8 @@ clear that bar:
 - **CC-BY / CC-BY-SA / OGA-BY** — fine to bundle *if* you keep the attribution (and,
   for `-SA`, accept that derivatives inherit the share-alike licence).
 
-Everything else is **reference-only**: most "free" stock libraries (Mixkit, Pixabay
-post-2019, BBC RemArc) let you **use** a sound in your own build but forbid
+Everything else is **reference-only**: most "free" stock libraries (Mixkit, Pixabay,
+BBC RemArc) let you **use** a sound in your own build but forbid
 **re-sharing the raw file**. Useful for auditioning or a personal, non-committed
 build — but the files must not land in the repo.
 
