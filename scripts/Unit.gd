@@ -158,7 +158,12 @@ func _think(delta: float) -> void:
 			if away.length() < 0.001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
 			_move_to(_clamp_to_field(position + away.normalized() * SKIRMISH_KITE_DISTANCE), delta)
-			return
+			# Only commit to the retreat if it actually moved. If the unit is cornered
+			# against the field edge (clamp snapped the target onto its position),
+			# fall through to the fire/melee branches so it still shoots instead of
+			# standing idle.
+			if _moved_last_frame:
+				return
 		# Ranged units (#37) stand and loose volleys at any enemy inside RANGED_RANGE
 		# that hasn't closed to melee — they skirmish at distance instead of charging.
 		# Gated by the same "not disengaging" rule as melee: a plain move order with

@@ -111,8 +111,9 @@ func test_skirmish_ranged_unit_fires_at_standoff_range() -> void:
 	assert_eq(u.position, Vector2.ZERO, "and holds its ground while firing")
 
 
-func test_skirmish_retreat_is_clamped_to_the_field() -> void:
-	# A skirmisher already at the field edge shouldn't back off the map.
+func test_skirmish_cornered_unit_fires_instead_of_freezing() -> void:
+	# A skirmisher pinned against the field edge can't retreat (the clamp snaps the
+	# target onto its position). It must fall through and fire, not stand idle.
 	var u := _make_unit()
 	u.team = 0
 	u.is_ranged = true
@@ -121,9 +122,30 @@ func test_skirmish_retreat_is_clamped_to_the_field() -> void:
 	u.position = Vector2(0, 500)                 # against the left edge
 	var enemy := _make_unit()
 	enemy.team = 1
-	enemy.position = Vector2(30, 500)            # to the right, inside the kite distance
+	# Right of it, inside the kite distance but beyond melee contact (a standoff foe).
+	enemy.position = Vector2(Unit.SKIRMISH_KITE_DISTANCE - 20.0, 500)
 	u._think(0.1)
-	assert_gte(u.position.x, 0.0, "a kiting unit at the edge is clamped inside the field")
+	assert_eq(u.position.x, 0.0, "a cornered kiter stays clamped on the field edge")
+	assert_eq(u.state, Unit.State.FIGHTING, "and fires rather than freezing")
+
+
+func test_skirmish_ranged_unit_does_not_kite_on_a_plain_move_order() -> void:
+	# A plain move order (move target, no explicit attack target) disengages: the
+	# skirmisher marches to the destination instead of kiting. Geometry is chosen so
+	# kiting (-x, away from the enemy) and marching (+x, toward the destination) pull
+	# opposite ways, so the assertion actually distinguishes them.
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	u.order_mode = Unit.ORDER_SKIRMISH
+	u.position = Vector2(500, 500)
+	u.move_target = Vector2(600, 500)   # destination is to the +x side
+	u.has_move_target = true
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = u.position + Vector2(Unit.SKIRMISH_KITE_DISTANCE - 20.0, 0.0)  # +x, inside kite range
+	u._think(0.1)
+	assert_gt(u.position.x, 500.0, "a skirmisher under a move order marches to its destination, not away")
 
 
 # --- attack flank / rear approach (#82) ------------------------------------
