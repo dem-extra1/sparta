@@ -273,6 +273,8 @@ func _recall_group(n: int) -> void:
 	for u in _groups[n]:
 		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
 			_select(u)
+	if not _selected.is_empty():
+		Sfx.play(&"select")   # parity with click / box / type-select feedback
 	_refresh_hud()
 
 

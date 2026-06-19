@@ -124,6 +124,8 @@ func _synth(name: StringName) -> AudioStreamWAV:
 			buf = _blip(buf, 0.00, 0.20, 392.0, 392.0, "saw", 0.4)
 			buf = _blip(buf, 0.18, 0.20, 311.0, 311.0, "saw", 0.4)
 			buf = _blip(buf, 0.36, 0.40, 233.0, 233.0, "saw", 0.4)
+		_:
+			push_warning("Sfx._synth: no waveform defined for event '%s'" % name)
 	return _make_wav(buf)
 
 
