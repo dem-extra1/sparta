@@ -81,6 +81,51 @@ func test_hold_ranged_unit_still_fires_within_range() -> void:
 	assert_eq(u.state, Unit.State.FIGHTING, "a held ranged unit still looses volleys in range")
 
 
+# --- skirmish kiting (#85) -------------------------------------------------
+
+func test_skirmish_ranged_unit_retreats_from_a_close_enemy() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	u.order_mode = Unit.ORDER_SKIRMISH
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(Unit.SKIRMISH_KITE_DISTANCE - 40.0, 0)   # inside the kite distance
+	u._think(0.1)
+	assert_lt(u.position.x, 0.0, "a skirmisher backs away from an enemy inside the kite distance")
+
+
+func test_skirmish_ranged_unit_fires_at_standoff_range() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	u.order_mode = Unit.ORDER_SKIRMISH
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	# Beyond the kite distance but within RANGED_RANGE -> fire, don't retreat.
+	enemy.position = Vector2(Unit.SKIRMISH_KITE_DISTANCE + 40.0, 0)
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "a skirmisher fires at a standoff-range enemy")
+	assert_eq(u.position, Vector2.ZERO, "and holds its ground while firing")
+
+
+func test_skirmish_retreat_is_clamped_to_the_field() -> void:
+	# A skirmisher already at the field edge shouldn't back off the map.
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	u.order_mode = Unit.ORDER_SKIRMISH
+	u.field_bounds = Rect2(0, 0, 1000, 1000)
+	u.position = Vector2(0, 500)                 # against the left edge
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(30, 500)            # to the right, inside the kite distance
+	u._think(0.1)
+	assert_gte(u.position.x, 0.0, "a kiting unit at the edge is clamped inside the field")
+
+
 # --- attack flank / rear approach (#82) ------------------------------------
 
 func test_attack_rear_approach_point_is_behind_the_target() -> void:

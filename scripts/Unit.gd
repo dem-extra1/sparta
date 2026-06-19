@@ -47,6 +47,14 @@ var order_mode: int = 0
 const ORDER_HOLD := 1
 const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
+const ORDER_SKIRMISH := 4
+# Skirmish (#85): a kiting ranged unit backs off when a threat closes inside this
+# distance, instead of standing to fire. Above melee contact (~62) and below
+# RANGED_RANGE (160) so there's room to fire before being caught.
+const SKIRMISH_KITE_DISTANCE: float = 100.0
+# Field rectangle the unit keeps inside when kiting (set by Battle on spawn). The
+# default is effectively unbounded so direct Unit tests don't need to set it.
+var field_bounds: Rect2 = Rect2(-100000, -100000, 200000, 200000)
 
 const RADIUS: float = 18.0
 const DETECTION_RANGE: float = 190.0
@@ -139,6 +147,18 @@ func _think(delta: float) -> void:
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
+		# Skirmish (#85): a ranged unit kites — if a threat is inside the kite
+		# distance it backs off (away from the threat, clamped to the field) rather
+		# than standing to fire or being caught in melee; beyond it, it falls through
+		# to the normal ranged fire below. Gated by the same "not disengaging" rule
+		# as firing, so a plain move order still marches it off instead of kiting.
+		if is_ranged and order_mode == ORDER_SKIRMISH and dist < SKIRMISH_KITE_DISTANCE \
+				and (target_enemy != null or not has_move_target):
+			var away: Vector2 = position - enemy.position
+			if away.length() < 0.001:
+				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
+			_move_to(_clamp_to_field(position + away.normalized() * SKIRMISH_KITE_DISTANCE), delta)
+			return
 		# Ranged units (#37) stand and loose volleys at any enemy inside RANGED_RANGE
 		# that hasn't closed to melee — they skirmish at distance instead of charging.
 		# Gated by the same "not disengaging" rule as melee: a plain move order with
@@ -229,6 +249,14 @@ func _attack_approach_point(enemy: Unit) -> Vector2:
 	# the enemy's perp side (its left), deterministically rather than NaN/oscillating.
 	var side: float = 1.0 if (position - enemy.position).dot(perp) >= 0.0 else -1.0
 	return enemy.position + perp * (side * contact)
+
+
+## Keep a point inside the playable field (used when a skirmisher kites, #85), so
+## a retreating unit doesn't back off the map edge.
+func _clamp_to_field(p: Vector2) -> Vector2:
+	return Vector2(
+		clampf(p.x, field_bounds.position.x, field_bounds.end.x),
+		clampf(p.y, field_bounds.position.y, field_bounds.end.y))
 
 
 # --- Movement --------------------------------------------------------------

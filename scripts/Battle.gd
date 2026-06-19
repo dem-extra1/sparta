@@ -61,7 +61,8 @@ func _ready() -> void:
 	# UnitRef — so a future enum reorder fails loudly instead of misbehaving.
 	assert(UnitRef.ORDER_HOLD == OrderMode.HOLD \
 			and UnitRef.ORDER_ATTACK_FLANK == OrderMode.ATTACK_FLANK \
-			and UnitRef.ORDER_ATTACK_REAR == OrderMode.ATTACK_REAR,
+			and UnitRef.ORDER_ATTACK_REAR == OrderMode.ATTACK_REAR \
+			and UnitRef.ORDER_SKIRMISH == OrderMode.SKIRMISH,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 
 	# Start a fresh recording for every live battle (so any battle can be
@@ -131,6 +132,7 @@ func _spawn_line(team: int, facing: Vector2, y: float) -> void:
 		u.move_speed = d["spd"] * SPEED_SCALE
 		u.facing = facing
 		u.position = Vector2(start_x + i * spacing, y)
+		u.field_bounds = FIELD   # so a skirmisher (#85) kites without backing off the map
 		_units.add_child(u)
 
 
