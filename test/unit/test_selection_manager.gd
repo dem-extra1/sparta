@@ -2,6 +2,9 @@ extends GutTest
 ## SelectionManager order-overlay helpers (#101): the SUPPORT-ward resolution that
 ## decides whether the hold-Space overlay draws a supporter→ward link. The drawing
 ## itself is visual, but the ward-validity guard is pure logic and worth pinning.
+## (The freed-instance `is_instance_valid(ward) == false` path isn't exercised — it
+## needs a queue_free() plus a frame await, awkward in GUT; the alive/none/dead/
+## routing/self cases below cover the rest of the guard.)
 
 const SelectionManagerScript = preload("res://scripts/SelectionManager.gd")
 const UnitScript = preload("res://scripts/Unit.gd")
@@ -49,3 +52,12 @@ func test_support_ward_skips_a_routing_ward() -> void:
 	u.support_target = ward
 	ward.state = UnitScript.State.ROUTING
 	assert_null(sm._support_ward_of(u), "a routing ward is not drawn")
+
+
+func test_support_ward_skips_self() -> void:
+	# Parity with Unit._support_valid's self-guard check. Battle never issues a
+	# self-guard order, but the helper rejects it so the two stay in lockstep.
+	var sm := _sm()
+	var u := _unit()
+	u.support_target = u
+	assert_null(sm._support_ward_of(u), "a unit can't guard itself")
