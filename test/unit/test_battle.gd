@@ -109,10 +109,12 @@ func test_pending_append_preview_uses_formation_offset() -> void:
 
 
 func test_pending_plain_move_is_not_previewed_as_append() -> void:
-	# Only appends are pending-but-unapplied; a plain move is applied immediately
-	# (shown via move_target), so it must not also surface as a pending preview.
+	# A plain move is applied immediately (shown via move_target) but its cmd still
+	# sits in _pending_orders. pending_append_points_for filters on
+	# target == ORDER_APPEND_WAYPOINT, so the plain move is excluded by target, not
+	# by queue absence — it must not surface as a pending preview.
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
-	b.enqueue_order([1], Vector2(200, 0), -1)   # plain move, applied now
+	b.enqueue_order([1], Vector2(200, 0), -1)   # plain move
 	assert_true(b.pending_append_points_for(u).is_empty(),
 		"a plain move is not previewed as a pending append")
