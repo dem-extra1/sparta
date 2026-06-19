@@ -667,3 +667,24 @@ func test_merge_blends_using_current_soldiers_not_max() -> void:
 	assert_eq(a.soldiers, 130, "pooled soldiers = 70 + 60")
 	# Weighted by current strength: (10*70 + 20*60) / 130 = 14.6 -> 15.
 	assert_eq(a.attack, 15, "attack weights by current soldiers, not max")
+
+
+# --- rout timeout teardown (issue #61) -------------------------------------
+
+func test_rout_timeout_leaves_groups_synchronously() -> void:
+	var u := _make_unit()
+	u._rout()
+	assert_true(u.is_in_group("routers"), "a routing unit joins the routers group")
+	assert_false(u.is_in_group("units"), "a routing unit has left the units group")
+	# Expire the rout timer so the next call triggers the timeout.
+	u._rout_timer = 0.0
+	u._process_rout(0.016)
+	assert_eq(u.state, Unit.State.DEAD, "the rout timeout kills the unit")
+	# queue_free() is deferred to end of frame, but the group memberships must be
+	# dropped synchronously so a DEAD unit never lingers in the spatial-hash /
+	# separation scans (both of which include the routers group) for the rest of
+	# the tick — see issue #61.
+	assert_false(u.is_in_group("routers"),
+		"a routed-out unit leaves the routers group the same tick it dies")
+	assert_false(u.is_in_group("units"),
+		"a routed-out unit is not in the units group either")
