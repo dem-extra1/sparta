@@ -399,15 +399,20 @@ func _draw_orders() -> void:
 		# unit auto-fighting its nearest foe has no stored target, so it draws no
 		# line — matching order_summary() reporting "Engaged" with no destination.
 		var tgt = u.target_enemy
+		# Resolve the SUPPORT ward once (only when supporting) so the elif and its body
+		# share a single lookup. Binding it before the chain — rather than inside the
+		# elif — keeps the move-route else reachable when a SUPPORT unit has no valid
+		# ward (e.g. a SUPPORT order on empty ground, which leaves a move target).
+		var ward: UnitRef = _support_ward_of(u) if u.order_mode == UnitRef.ORDER_SUPPORT else null
 		if tgt != null and is_instance_valid(tgt) \
 				and tgt.state != UnitRef.State.DEAD and tgt.state != UnitRef.State.ROUTING:
 			var tp: Vector2 = tgt.global_position
 			draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
 			_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
-		elif u.order_mode == UnitRef.ORDER_SUPPORT and _support_ward_of(u) != null:
+		elif ward != null:
 			# A SUPPORT unit (#101) holds no target_enemy/move_target of its own, so draw
 			# its guard duty instead: a teal link to the ward it's shadowing.
-			var wp: Vector2 = _support_ward_of(u).global_position
+			var wp: Vector2 = ward.global_position
 			draw_dashed_line(origin, wp, ORDER_SUPPORT_COLOR, 2.0, 9.0)
 			_draw_support_marker(wp, ORDER_SUPPORT_COLOR)
 		else:
@@ -417,12 +422,12 @@ func _draw_orders() -> void:
 
 
 ## The friendly a SUPPORT unit (#101) is guarding, if it's still a valid overlay
-## target (alive, not routing); else null. Extracted so the overlay branch reads
-## cleanly and the guard is unit-testable — it mirrors the ward checks in
-## Unit._support_valid (the order_mode == SUPPORT test stays at the call site).
+## target; else null. Extracted so the overlay branch reads cleanly and the guard is
+## unit-testable. Fully mirrors the ward checks in Unit._support_valid — alive, not
+## routing, and not the unit itself (the order_mode == SUPPORT test stays at the call site).
 func _support_ward_of(u: UnitRef) -> UnitRef:
 	var ward = u.support_target
-	if ward != null and is_instance_valid(ward) \
+	if ward != null and is_instance_valid(ward) and ward != u \
 			and ward.state != UnitRef.State.DEAD and ward.state != UnitRef.State.ROUTING:
 		return ward
 	return null
