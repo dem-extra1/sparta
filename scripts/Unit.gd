@@ -604,13 +604,10 @@ func _process_rout(delta: float) -> void:
 	position += flee * (move_speed * 1.3) * delta
 	_rout_timer -= delta
 	if _rout_timer <= 0.0:
-		# Leave play via the shared teardown so the unit drops out of the
-		# "routers" group synchronously. Godot defers queue_free() to end of
-		# frame, so a bare "state = DEAD; queue_free()" would leave a
-		# DEAD-but-still-grouped unit in the spatial hash / separation scans
-		# (which include routers) for the rest of the tick — currently caught
-		# only by per-call-site DEAD guards. Closing the window here makes
-		# those guards defence-in-depth rather than the primary protection.
+		# Godot defers queue_free() to end of frame, so the unit would otherwise
+		# linger in the "routers" group — and the spatial hash / separation scans
+		# that fold it in — for the rest of the tick after its state goes DEAD.
+		# _remove_from_play() drops it from its groups synchronously.
 		_remove_from_play()
 	else:
 		queue_redraw()

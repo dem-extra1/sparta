@@ -676,7 +676,7 @@ func test_rout_timeout_leaves_groups_synchronously() -> void:
 	u._rout()
 	assert_true(u.is_in_group("routers"), "a routing unit joins the routers group")
 	assert_false(u.is_in_group("units"), "a routing unit has left the units group")
-	# Force the rout timer to expire on the next process step.
+	# Expire the rout timer so the next call triggers the timeout.
 	u._rout_timer = 0.0
 	u._process_rout(0.016)
 	assert_eq(u.state, Unit.State.DEAD, "the rout timeout kills the unit")
