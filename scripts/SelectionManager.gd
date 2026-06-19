@@ -11,9 +11,11 @@ const CLICK_THRESHOLD: float = 6.0
 const DOUBLE_CLICK_MS: int = 350
 const CURSOR_SIZE: int = 24   # generated order-mode cursor (#35)
 
-# Order-overlay colours (Total War convention: green = move, red = attack).
+# Order-overlay colours (Total War convention: green = move, red = attack). Teal marks
+# a SUPPORT link (#101) — same hue as the SUPPORT order cursor (_order_mode_color).
 const ORDER_MOVE_COLOR: Color = Color(0.45, 0.95, 0.55, 0.9)
 const ORDER_ATTACK_COLOR: Color = Color(0.96, 0.40, 0.32, 0.95)
+const ORDER_SUPPORT_COLOR: Color = Color(0.4, 0.95, 0.7, 0.9)
 
 var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
@@ -402,10 +404,28 @@ func _draw_orders() -> void:
 			var tp: Vector2 = tgt.global_position
 			draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
 			_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
+		elif u.order_mode == UnitRef.ORDER_SUPPORT and _support_ward_of(u) != null:
+			# A SUPPORT unit (#101) holds no target_enemy/move_target of its own, so draw
+			# its guard duty instead: a teal link to the ward it's shadowing.
+			var wp: Vector2 = _support_ward_of(u).global_position
+			draw_dashed_line(origin, wp, ORDER_SUPPORT_COLOR, 2.0, 9.0)
+			_draw_support_marker(wp, ORDER_SUPPORT_COLOR)
 		else:
 			var route := _move_route_for(u)
 			if not route.is_empty():
 				_draw_move_path(origin, route[0], route.slice(1))
+
+
+## The friendly a SUPPORT unit (#101) is guarding, if it's still a valid overlay
+## target (alive, not routing); else null. Extracted so the overlay branch reads
+## cleanly and the guard is unit-testable — it mirrors the ward checks in
+## Unit._support_valid (the order_mode == SUPPORT test stays at the call site).
+func _support_ward_of(u: UnitRef) -> UnitRef:
+	var ward = u.support_target
+	if ward != null and is_instance_valid(ward) \
+			and ward.state != UnitRef.State.DEAD and ward.state != UnitRef.State.ROUTING:
+		return ward
+	return null
 
 
 ## A unit's full move route for the overlay: its committed destination and queued
@@ -443,6 +463,13 @@ func _draw_move_path(origin: Vector2, first: Vector2, waypoints: Array[Vector2])
 func _draw_move_marker(p: Vector2, color: Color) -> void:
 	draw_arc(p, 8.0, 0.0, TAU, 18, color, 2.0)
 	draw_circle(p, 2.5, color)
+
+
+## Support marker: a double "shielding" ring over the guarded ward, distinct from the
+## move ring and the attack crosshair.
+func _draw_support_marker(p: Vector2, color: Color) -> void:
+	draw_arc(p, 10.0, 0.0, TAU, 20, color, 2.0)
+	draw_arc(p, 5.0, 0.0, TAU, 12, color, 1.5)
 
 
 ## Attack marker: a crosshair over the targeted enemy.
