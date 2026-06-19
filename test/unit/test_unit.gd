@@ -50,6 +50,21 @@ func test_attack_flank_approach_point_is_on_the_near_side() -> void:
 		"flank approach is on the side the attacker is already nearer")
 
 
+func test_attack_flank_tie_break_picks_the_perp_side() -> void:
+	# Attacker exactly on the enemy's forward axis: the dot-product tie-break (>= 0)
+	# sends it to the enemy's perp side deterministically (not the shortest route).
+	var u := _make_unit()
+	u.order_mode = Unit.ORDER_ATTACK_FLANK
+	u.position = Vector2(0, 100)    # directly in front of an enemy facing +y
+	var enemy := _make_unit()
+	enemy.facing = Vector2.DOWN
+	enemy.position = Vector2.ZERO
+	var contact: float = u.attack_range + Unit.RADIUS + enemy.RADIUS
+	# perp = (-facing.y, facing.x) = (-1, 0); dot == 0 -> side = +1 -> perp * contact.
+	assert_eq(u._attack_approach_point(enemy), Vector2(-contact, 0),
+		"an on-axis flank attack breaks the tie to the enemy's perp side")
+
+
 # --- _flank_multiplier -----------------------------------------------------
 
 func test_frontal_hit_is_1x() -> void:

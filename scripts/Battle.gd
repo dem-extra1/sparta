@@ -56,6 +56,13 @@ var _next_uid: int = 0
 
 
 func _ready() -> void:
+	# Unit mirrors a few OrderMode values as plain ints (it can't reference our
+	# enum without a preload cycle). Assert the mirror here — where we already hold
+	# UnitRef — so a future enum reorder fails loudly instead of misbehaving.
+	assert(UnitRef.ORDER_ATTACK_FLANK == OrderMode.ATTACK_FLANK \
+			and UnitRef.ORDER_ATTACK_REAR == OrderMode.ATTACK_REAR,
+			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
+
 	# Start a fresh recording for every live battle (so any battle can be
 	# replayed for debugging). During playback the recorder is already armed by
 	# the seed loaded from the file, so we leave it alone.
