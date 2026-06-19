@@ -7,11 +7,11 @@ extends Node
 ## are throttled by wall-clock time so dozens of simultaneous combat hits don't
 ## stack into a roar.
 ##
-## Sounds are procedural placeholders synthesised at startup — no audio assets are
-## bundled (this prototype's CI sandbox can't fetch any). If a file exists at
-## res://assets/sfx/<name>.{wav,ogg} it is used INSTEAD of the synth, so curated
-## open-access (CC0) audio can be dropped in later with no code change. See the
-## "improve sound effects" follow-up issue and assets/sfx/README.md.
+## Sounds load from curated open-access (CC0) audio under res://assets/sfx/ (see
+## assets/sfx/CREDITS.md). A file at res://assets/sfx/<name>.{wav,ogg} is used
+## INSTEAD of the synth; the procedural synthesiser below stays as an automatic
+## fallback for any event whose file is missing, so the game is never silent. See
+## assets/sfx/README.md to add or swap clips.
 
 const ASSET_DIR := "res://assets/sfx"
 const VOICES := 8            # concurrent AudioStreamPlayers (overlapping sounds)
