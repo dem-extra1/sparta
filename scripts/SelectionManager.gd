@@ -80,6 +80,8 @@ func _finish_selection() -> void:
 				_select(unit)
 		_last_click_unit = null   # a box-select breaks any double-click streak
 
+	if not _selected.is_empty():
+		Sfx.play(&"select")
 	_refresh_hud()
 
 
@@ -150,6 +152,7 @@ func _issue_order(world_pos: Vector2, append: bool = false) -> void:
 	if uids.is_empty():
 		return
 	_battle.enqueue_order(uids, world_pos, target_uid)
+	Sfx.play(&"order")
 
 
 ## Merge the selected friendly regiments into the first-selected one (#3). Encoded
@@ -165,6 +168,7 @@ func _issue_merge() -> void:
 	if uids.size() < 2:
 		return   # need at least two regiments to merge
 	_battle.enqueue_order(uids, Vector2.ZERO, uids[0])
+	Sfx.play(&"order")
 
 
 # --- helpers ---------------------------------------------------------------
@@ -269,6 +273,8 @@ func _recall_group(n: int) -> void:
 	for u in _groups[n]:
 		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
 			_select(u)
+	if not _selected.is_empty():
+		Sfx.play(&"select")   # parity with click / box / type-select feedback
 	_refresh_hud()
 
 
