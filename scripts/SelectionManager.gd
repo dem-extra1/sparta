@@ -32,7 +32,7 @@ var _last_click_ms: int = -100000
 # Control groups: number-key digit -> bound Array of units.
 var _groups: Dictionary = {}
 # Armed order mode (#35): the next right-click issues an order in this stance.
-# Selected by hotkey (fixed defaults for now; rebindable in #87) and shown by the
+# Selected by hotkey (rebindable via ☰ Menu → Keybindings, #87) and shown by the
 # cursor + a HUD indicator. Stays armed (sticky) until changed or cleared (Esc).
 var _armed_mode: int = BattleRef.OrderMode.NORMAL
 

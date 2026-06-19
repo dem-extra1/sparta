@@ -24,7 +24,7 @@ var _status: Label
 func _ready() -> void:
 	title = "Keybindings"
 	process_mode = Node.PROCESS_MODE_ALWAYS   # usable while the battle is paused
-	unresizable = false
+	unresizable = true   # fixed 5-row grid; resizing would only add blank space / clip
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 8)
@@ -83,20 +83,27 @@ func _refresh_labels() -> void:
 func _begin_capture(slug: String) -> void:
 	_capturing_slug = slug
 	_status.text = ""
-	# Drop focus so the button itself doesn't swallow Space/Enter as a re-press.
+	# Drop focus so the button itself doesn't swallow Space/Enter as a re-press, and
+	# disable OK so a stray Enter during capture can't confirm/close the dialog.
 	_row_buttons[slug].release_focus()
+	get_ok_button().disabled = true
 	_refresh_labels()
+
+
+func _end_capture() -> void:
+	_capturing_slug = ""
+	get_ok_button().disabled = false
 
 
 func _on_visibility_changed() -> void:
 	if not visible and _capturing_slug != "":
-		_capturing_slug = ""
+		_end_capture()
 		_refresh_labels()
 
 
 func _on_custom_action(action: StringName) -> void:
 	if action == "reset":
-		_capturing_slug = ""
+		_end_capture()
 		Settings.reset_order_bindings()   # Settings.changed -> _refresh_labels
 		_status.text = "Restored default hotkeys."
 
@@ -106,14 +113,20 @@ func _input(event: InputEvent) -> void:
 		return
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	# Consume the key so it doesn't also leak to the order selector / camera.
+	# Consume the key so it doesn't also leak to the order selector / camera (and so
+	# Enter can't reach the OK button to confirm the dialog mid-capture).
 	get_viewport().set_input_as_handled()
 	var keycode: int = event.physical_keycode
 	var slug := _capturing_slug
-	_capturing_slug = ""
+	_end_capture()
 
+	# Esc cancels; Enter/Return is reserved (dialog confirm) and never bound.
 	if keycode == KEY_ESCAPE:
 		_status.text = "Rebind cancelled."
+		_refresh_labels()
+		return
+	if keycode == KEY_ENTER or keycode == KEY_KP_ENTER:
+		_status.text = "Enter is reserved and can't be bound."
 		_refresh_labels()
 		return
 	var conflict := Settings.slug_for_keycode(keycode)
