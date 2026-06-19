@@ -20,8 +20,8 @@ var edge_scroll: bool = false:
 			_save()
 			changed.emit()
 
-# Play sound effects (combat, selection, orders, battle outcome). Default on.
-var sfx_enabled: bool = true:
+# Play sound effects (combat, selection, orders, battle outcome). Default off.
+var sfx_enabled: bool = false:
 	set(value):
 		if value == sfx_enabled:
 			return
