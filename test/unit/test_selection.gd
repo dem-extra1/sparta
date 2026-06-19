@@ -34,6 +34,17 @@ func test_same_type_matches_role_not_identity() -> void:
 	assert_false(sm._same_type(inf1, cav), "infantry and cavalry differ")
 
 
+func test_same_type_distinguishes_archers() -> void:
+	var sm := _sm()
+	var inf := _unit(false, false)
+	var archer := _unit(false, false)
+	archer.is_ranged = true
+	var archer2 := _unit(false, false)
+	archer2.is_ranged = true
+	assert_false(sm._same_type(inf, archer), "an archer is a different type from infantry")
+	assert_true(sm._same_type(archer, archer2), "two archers share a type")
+
+
 func test_digit_for_keycode_maps_number_row_only() -> void:
 	var sm := _sm()
 	assert_eq(sm._digit_for_keycode(KEY_0), 0, "KEY_0 -> group 0")

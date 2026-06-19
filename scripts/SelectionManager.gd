@@ -110,10 +110,11 @@ func _select_same_type(proto) -> void:
 			_select(unit)
 
 
-## Two units are the "same type" when their cavalry/anti-cavalry roles match
-## (Infantry / Spearmen / Cavalry), regardless of name or stats.
+## Two units are the "same type" when their cavalry/anti-cavalry/ranged roles
+## match (Infantry / Spearmen / Cavalry / Archers), regardless of name or stats.
 func _same_type(a, b) -> bool:
-	return a.is_cavalry == b.is_cavalry and a.anti_cavalry == b.anti_cavalry
+	return a.is_cavalry == b.is_cavalry and a.anti_cavalry == b.anti_cavalry \
+			and a.is_ranged == b.is_ranged
 
 
 func _issue_order(world_pos: Vector2, append: bool = false) -> void:
