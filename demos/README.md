@@ -4,8 +4,9 @@ When a Claude session makes a **user-visible change** (anything affecting how th
 game looks or plays), a short clip is posted in the PR so reviewers can *see* the
 change, not just read the diff.
 [`.github/workflows/demo-video.yml`](../.github/workflows/demo-video.yml) plays a
-replay back headlessly (Godot Movie Maker → ffmpeg → GIF) and posts it as an
-inline, autoplaying GIF in the PR conversation.
+replay back headlessly (Godot Movie Maker → ffmpeg) and posts it as an inline,
+autoplaying GIF in the PR conversation — plus a link to an **MP4 with sound**
+(the GIF is silent; see [Sound](#sound) below).
 
 CI can't infer what a diff changed, so to make the clip *demonstrate your change*
 you **declare what to show**: commit a small **manifest** (`demos/demo.json`)
@@ -70,14 +71,28 @@ CI replays it against *your PR's* build, so the clip reflects your change.
 
 ## Where the GIF lives
 
-The GIF is pushed to a long-lived **`demo-media`** branch and embedded by raw URL.
-This deliberately avoids committing to your PR's own branch: it never disturbs the
-PR's required status checks, and the clip keeps working after the PR branch is
-deleted on merge. The comment is updated in place on each push (no spam), and the
-filename carries the commit SHA so GitHub never shows a stale cached frame.
+The GIF (and the MP4 — see [Sound](#sound)) is pushed to a long-lived
+**`demo-media`** branch and embedded/linked by raw URL. This deliberately avoids
+committing to your PR's own branch: it never disturbs the PR's required status
+checks, and the clip keeps working after the PR branch is deleted on merge. The
+comment is updated in place on each push (no spam), and the filename carries the
+commit SHA so GitHub never shows a stale cached frame.
 
-> Inline autoplaying previews in comments are GIFs by necessity — true `<video>`
-> players require GitHub's browser-only attachment upload, which CI can't reach.
+## Sound
+
+The inline preview is a GIF, and **GIF can't carry audio** — so the clip you see
+autoplaying in the comment is silent. The workflow also encodes an **MP4 with
+sound** (Godot's Movie Maker captures the game's audio into the recording; the GIF
+step just drops it) and links it under the GIF as *"watch with sound"*. Click it to
+play the clip with audio.
+
+Why a link and not an inline player: GitHub renders an inline, playable `<video>`
+**only** for files uploaded through its browser-only attachment CDN
+(`user-attachments` / `user-images.githubusercontent.com`), which needs a logged-in
+session and is unreachable from CI. A `<video>` tag or bare link pointing at our
+`demo-media` raw URL renders as a dead/greyed player or a download, not an
+autoplaying clip — so a click-to-play link is the honest best CI can post. The MP4
+is silent only if SFX happen not to fire during the recorded battle.
 
 ## Trying the launcher locally
 
@@ -87,7 +102,11 @@ SPARTA_DEMO_REPLAY="res://demos/showcase.json" \
   xvfb-run -a godot --rendering-driver opengl3 \
   --write-movie /tmp/demo.avi --fixed-fps 30 --quit-after 300 \
   res://tools/demo/DemoRunner.tscn
+# Silent GIF (inline preview):
 ffmpeg -i /tmp/demo.avi -vf "fps=12,scale=640:-1:flags=lanczos" /tmp/demo.gif
+# MP4 with sound (the AVI already holds the audio track):
+ffmpeg -i /tmp/demo.avi -vf "scale=640:-2:flags=lanczos" \
+  -c:v libx264 -pix_fmt yuv420p -profile:v high -movflags +faststart -c:a aac -b:a 128k /tmp/demo.mp4
 ```
 
 [`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd) is the headless entry

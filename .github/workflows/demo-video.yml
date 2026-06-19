@@ -1,5 +1,6 @@
 # Records a short gameplay clip for Claude-authored PRs that change the game and
-# posts it as an inline GIF in the PR conversation.
+# posts it as an inline GIF in the PR conversation, plus a link to an MP4 with sound
+# (the GIF is silent — GIF can't carry audio).
 #
 # What it records: if the PR commits a demos/demo.json it records the replay that
 # names (chosen by the author to show the PR's change); otherwise it falls back to
@@ -15,7 +16,9 @@
 # never touches the PR's own head commit (so it can't disturb required checks) and
 # survives the PR branch being deleted on merge. The filename carries the commit
 # SHA so the raw URL changes each push and GitHub's image cache never serves a
-# stale frame.
+# stale frame. The MP4 rides along on the same branch and is linked (not embedded):
+# GitHub renders an inline video player only for files uploaded via that browser-only
+# attachment CDN, so a raw-URL clip can only be a click-to-play link, not autoplay.
 name: Demo video
 
 on:
@@ -163,13 +166,32 @@ jobs:
             --quit-after "$MAX_FRAMES" res://tools/demo/DemoRunner.tscn
           [ -s /tmp/demo.avi ] || { echo "::error::Movie Maker produced no output"; exit 1; }
 
-          # Two-pass palette gives a sharp, small GIF.
+          # Two-pass palette gives a sharp, small GIF (the inline, autoplaying preview).
           ffmpeg -y -i /tmp/demo.avi \
             -vf "fps=$GIF_FPS,scale=$WIDTH:-1:flags=lanczos,palettegen" /tmp/pal.png
           ffmpeg -y -i /tmp/demo.avi -i /tmp/pal.png \
             -lavfi "fps=$GIF_FPS,scale=$WIDTH:-1:flags=lanczos[x];[x][1:v]paletteuse" /tmp/demo.gif
           [ -s /tmp/demo.gif ] || { echo "::error::GIF conversion failed"; exit 1; }
           ls -la /tmp/demo.gif
+
+          # Also encode an MP4 *with sound*. Movie Maker writes the game's audio into
+          # the AVI; the GIF above drops it (GIF can't carry audio), so this is the
+          # only artifact that keeps the soundtrack. H.264 + AAC in yuv420p with
+          # +faststart is the most widely browser-playable combination (Safari too);
+          # scale uses -2 so the height stays even (a libx264 requirement). Movie Maker
+          # always writes an audio track (silence when no SFX fire), so there's always
+          # audio to encode. Best-effort: any encode failure is caught by the else
+          # branch and never blocks the GIF, which is the primary demo.
+          if ffmpeg -y -i /tmp/demo.avi \
+              -vf "scale=$WIDTH:-2:flags=lanczos" \
+              -c:v libx264 -pix_fmt yuv420p -profile:v high -movflags +faststart \
+              -c:a aac -b:a 128k \
+              /tmp/demo.mp4 && [ -s /tmp/demo.mp4 ]; then
+            ls -la /tmp/demo.mp4
+          else
+            echo "::warning::MP4 (with sound) encode failed; posting the GIF only."
+            rm -f /tmp/demo.mp4
+          fi
 
       - name: Publish GIF and comment
         if: steps.demo.outputs.record == 'true'
@@ -185,6 +207,7 @@ jobs:
           # to a reader and unique per push, so the raw URL changes and dodges cache.
           SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
           DEST="pr-${PR}-${SHA}.gif"
+          DEST_MP4="pr-${PR}-${SHA}.mp4"   # the sound version, when one was encoded
 
           # Publish onto the long-lived media branch. An isolated clone keeps the PR
           # checkout untouched. Different PRs share this branch, so a concurrent push
@@ -200,17 +223,24 @@ jobs:
               git clone -q --depth 1 "$REPO_URL" /tmp/media
               git -C /tmp/media checkout -q --orphan "$MEDIA_BRANCH"
               git -C /tmp/media rm -rf . >/dev/null 2>&1 || true
-              printf '# Demo media\n\nAuto-generated gameplay GIFs posted to PRs by `.github/workflows/demo-video.yml`.\n' \
+              printf '# Demo media\n\nAuto-generated gameplay GIFs (silent, inline) and MP4s (with sound) posted to PRs by `.github/workflows/demo-video.yml`.\n' \
                 > /tmp/media/README.md
             fi
             git -C /tmp/media config user.name "github-actions[bot]"
             git -C /tmp/media config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            # Keep only the latest GIF per PR; the comment is always repointed to the
-            # newest URL. Subshell + nullglob so the glob expands inside the checkout
-            # and an empty match is a no-op, not a literal pattern.
-            ( cd /tmp/media && shopt -s nullglob && for f in pr-${PR}-*.gif; do git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"; done )
+            # Keep only the latest GIF + MP4 per PR; the comment is always repointed to
+            # the newest URLs. Subshell + nullglob so the glob expands inside the
+            # checkout and an empty match is a no-op, not a literal pattern.
+            ( cd /tmp/media && shopt -s nullglob && for f in pr-${PR}-*.gif pr-${PR}-*.mp4; do git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"; done )
             cp /tmp/demo.gif "/tmp/media/$DEST"
-            git -C /tmp/media add "$DEST" README.md 2>/dev/null || git -C /tmp/media add "$DEST"
+            git -C /tmp/media add "$DEST"
+            # Add the sound MP4 too, when the encode produced one (best-effort).
+            if [ -s /tmp/demo.mp4 ]; then
+              cp /tmp/demo.mp4 "/tmp/media/$DEST_MP4"
+              git -C /tmp/media add "$DEST_MP4"
+            fi
+            # README exists on every clone after first creation; tolerate it missing.
+            git -C /tmp/media add README.md 2>/dev/null || true
             # A manual re-run of the same commit changes nothing; tolerate it.
             git -C /tmp/media commit -q -m "demo: PR #${PR} @ ${SHA}" || echo "nothing new to commit"
             git -C /tmp/media push origin "HEAD:$MEDIA_BRANCH"
@@ -225,8 +255,24 @@ jobs:
 
           RAW_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST}"
           MARKER="<!-- sparta-demo -->"
-          BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n%s\n\n![demo](%s)\n\n<sub>Recorded from `%s` at `%s`. Updated automatically on each push.</sub>' \
-            "$MARKER" "$CAPTION" "$RAW_URL" "$REPLAY" "$SHA")
+          # The inline GIF is silent (GIF can't carry audio). When an MP4 was
+          # published, link it so reviewers can play the clip *with sound*. GitHub
+          # only renders an inline video player for files uploaded via its
+          # browser-only user-attachments CDN — a raw-URL <video> tag or bare link
+          # shows a dead player / download — so a click-to-play link is the honest
+          # best CI can do.
+          # Assembled in pieces (each $() drops trailing newlines, so the next piece
+          # leads with the blank line it wants). The sound link is inserted only when an
+          # MP4 was published; otherwise the body collapses to the original GIF-only
+          # spacing.
+          BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n%s\n\n![demo](%s)' \
+            "$MARKER" "$CAPTION" "$RAW_URL")
+          if [ -s /tmp/demo.mp4 ]; then
+            RAW_MP4_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST_MP4}"
+            BODY="$BODY"$(printf '\n\n🔊 The GIF above is silent — [watch with sound (MP4)](%s).' "$RAW_MP4_URL")
+          fi
+          BODY="$BODY"$(printf '\n\n<sub>Recorded from `%s` at `%s`. Updated automatically on each push.</sub>' \
+            "$REPLAY" "$SHA")
 
           # Update the existing demo comment in place if present, else create one.
           CID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" --paginate \
