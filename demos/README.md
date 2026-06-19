@@ -37,7 +37,9 @@ Add a `demos/demo.json` on your PR branch:
 | `fps` | no (12) | Output GIF framerate. |
 | `width` | no (640) | Output GIF width in px (height auto). |
 
-`demo.example.json` is a copy-paste starting point.
+`demo.example.json` is a copy-paste starting point. Any **other** keys are
+ignored by the workflow (its `jq` only reads the fields above), so a leading
+`"_comment"` note — as used in `demo.example.json` itself — is safe to include.
 
 ## Getting a replay that shows your change
 
