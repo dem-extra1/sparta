@@ -6,7 +6,7 @@ extends CanvasLayer
 ##   - victory/defeat overlay with a restart button
 
 # Stable ids for the Menu popup's items (independent of index / separators).
-enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX }
+enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX, MENU_KEYBINDINGS }
 
 var _info: Label
 var _overlay: ColorRect
@@ -18,6 +18,7 @@ var _order_mode_label: Label
 var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
+var _keybindings_dialog: AcceptDialog
 
 
 func _ready() -> void:
@@ -25,7 +26,7 @@ func _ready() -> void:
 
 	# Controls hint.
 	var hint := Label.new()
-	hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   H/F/R/K/G order mode (Esc clear)   •   WASD pan   •   wheel zoom   •   P / Shift+Space pause   •   hold Space show orders"
+	hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   H/F/R/K/G order mode (rebind in ☰ Menu; Esc clear)   •   WASD pan   •   wheel zoom   •   P / Shift+Space pause   •   hold Space show orders"
 	hint.position = Vector2(14, 10)
 	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
 	hint.add_theme_font_size_override("font_size", 14)
@@ -98,6 +99,7 @@ func _ready() -> void:
 	popup.add_separator()
 	popup.add_check_item("Mouse-edge scroll", MENU_EDGE_SCROLL)
 	popup.add_check_item("Sound effects", MENU_SFX)
+	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
 	_sync_setting_toggles()
 	popup.id_pressed.connect(_on_menu_id)
 	# Keep the check items in sync if a setting changes elsewhere. Use a named
@@ -123,6 +125,11 @@ func _ready() -> void:
 	# Neutral default; each caller sets a context-specific title before popping it.
 	_error_dialog.title = "Replay"
 	add_child(_error_dialog)
+
+	# Rebindable order-mode hotkeys (#87). Its own PROCESS_MODE_ALWAYS dialog so it's
+	# usable while paused, like the other menu dialogs.
+	_keybindings_dialog = preload("res://scripts/KeybindingsDialog.gd").new()
+	add_child(_keybindings_dialog)
 
 	# Selected-unit info panel, pinned above the bottom-left corner. The top
 	# offset is derived from the panel's own min-height + bottom margin (not a
@@ -219,6 +226,8 @@ func _on_menu_id(id: int) -> void:
 			Settings.edge_scroll = not Settings.edge_scroll
 		MENU_SFX:
 			Settings.sfx_enabled = not Settings.sfx_enabled
+		MENU_KEYBINDINGS:
+			_keybindings_dialog.popup_centered()
 
 
 func _unhandled_input(event: InputEvent) -> void:
