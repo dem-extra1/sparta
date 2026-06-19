@@ -433,21 +433,157 @@ func test_order_summary_ignores_dead_target() -> void:
 		"a dead target is not reported as an attack order")
 
 
-# --- charge lifecycle (issue #29) ------------------------------------------
+# --- physics-based cavalry charge (issue #100) -----------------------------
 
-func test_consume_charge_spends_exactly_once() -> void:
-	var u := _make_unit()
-	u.is_cavalry = true   # charges are a cavalry mechanic
-	assert_true(u.consume_charge(), "a fresh unit has a charge available")
-	assert_false(u.consume_charge(), "the charge is spent after one consume")
+func test_charge_full_on_headon_gallop() -> void:
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(100, 0)                  # straight ahead
+	u._approach_velocity = Vector2(u.move_speed, 0)   # full-speed, dead-on
+	var expected: float = 1.0 + Unit.CHARGE_BONUS_AT_REF_SPEED * (u.move_speed / Unit.CHARGE_REFERENCE_SPEED)
+	assert_almost_eq(u.charge_multiplier(enemy), expected, 0.001,
+		"a full-speed head-on charge lands the full momentum bonus")
 
 
-func test_rearm_charge_restores_availability() -> void:
-	var u := _make_unit()
-	u.is_cavalry = true
-	u.consume_charge()
-	u.rearm_charge()
-	assert_true(u.consume_charge(), "rearm makes a charge available again")
+func test_charge_none_when_stationary() -> void:
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(100, 0)
+	u._approach_velocity = Vector2.ZERO              # carrying no momentum
+	assert_almost_eq(u.charge_multiplier(enemy), 1.0, 0.001,
+		"a stationary cavalry unit (no impact velocity) gets no charge")
+
+
+func test_charge_ignores_motion_across_the_target() -> void:
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(100, 0)                 # target on the +x axis
+	u._approach_velocity = Vector2(0, u.move_speed)  # moving perpendicular to it
+	assert_almost_eq(u.charge_multiplier(enemy), 1.0, 0.001,
+		"velocity across the target (not toward it) earns no charge")
+
+
+func test_charge_glancing_is_between_none_and_full() -> void:
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(100, 0)
+	u._approach_velocity = Vector2(u.move_speed, 0)
+	var full: float = u.charge_multiplier(enemy)
+	u._approach_velocity = Vector2(1, 1).normalized() * u.move_speed   # 45-degree approach
+	var glancing: float = u.charge_multiplier(enemy)
+	assert_gt(glancing, 1.0, "a glancing charge still lands some bonus")
+	assert_lt(glancing, full, "but less than a head-on charge at the same speed")
+
+
+func test_charge_into_spears_backfires_into_a_penalty() -> void:
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	var spear := _spearman_unit()                   # anti_cavalry = true
+	spear.team = 1
+	spear.position = Vector2(100, 0)
+	u._approach_velocity = Vector2(u.move_speed, 0)  # full charge onto braced spears
+	assert_lt(u.charge_multiplier(spear), 1.0,
+		"charging a braced spear line backfires into a damage penalty")
+	assert_gte(u.charge_multiplier(spear), Unit.ANTI_CAV_CHARGE_FLOOR,
+		"the backfire is floored so it never zeroes the rider's damage")
+
+
+func test_non_cavalry_never_charges() -> void:
+	var u := _make_unit()                            # infantry
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(100, 0)
+	u._approach_velocity = Vector2(u.move_speed, 0)
+	assert_almost_eq(u.charge_multiplier(enemy), 1.0, 0.001,
+		"only cavalry get a charge bonus")
+
+
+func test_cavalry_does_not_charge_cavalry() -> void:
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	var enemy := _cavalry()
+	enemy.team = 1
+	enemy.position = Vector2(100, 0)
+	u._approach_velocity = Vector2(u.move_speed, 0)
+	assert_almost_eq(u.charge_multiplier(enemy), 1.0, 0.001,
+		"a charge doesn't apply cavalry-vs-cavalry")
+
+
+func test_move_to_records_approach_velocity() -> void:
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u._move_to(Vector2(100, 0), 0.1)
+	assert_almost_eq(u._approach_velocity.x, u.move_speed, 0.001,
+		"moving toward a point records the closing speed for the charge model")
+	assert_almost_eq(u._approach_velocity.y, 0.0, 0.001, "in the direction of travel")
+
+
+func test_approach_velocity_clears_after_a_stationary_frame() -> void:
+	# A stationary, non-fighting unit carries no momentum: the impact velocity is dropped
+	# so a later standing strike can't charge off stale motion.
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u._approach_velocity = Vector2(u.move_speed, 0)   # as if it just galloped in
+	u._physics_process(0.016)                          # a frame with no enemy / no move
+	assert_eq(u._approach_velocity, Vector2.ZERO,
+		"an idle frame with no movement clears the carried impact velocity")
+
+
+func test_strike_spends_the_charge_velocity() -> void:
+	# The charge is spent on the strike that lands it, so follow-up grinding strikes in
+	# the same melee don't each re-charge off the same approach.
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u._approach_velocity = Vector2(u.move_speed, 0)
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(100, 0)
+	u._strike(enemy)
+	assert_eq(u._approach_velocity, Vector2.ZERO,
+		"a strike consumes the carried impact velocity")
+
+
+func test_approach_velocity_survives_a_cooldown_wait_in_contact() -> void:
+	# If a cavalry reaches contact while its attack is still on cooldown, the impact
+	# velocity must survive the wait frame (it's FIGHTING, not idle) so the first actual
+	# strike still charges — rather than being cleared as if the unit had stopped.
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	u._approach_velocity = Vector2(u.move_speed, 0)
+	u._attack_cd = 1.0                       # not ready to strike yet
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(u.attack_range + Unit.RADIUS + enemy.RADIUS - 2.0, 0)  # in contact
+	# Contact frame: _think enters the in-contact branch → state = FIGHTING, but no strike
+	# (cd > 0) and no _move_to. The end-of-frame idle-clear is skipped *because* state is
+	# FIGHTING, so the carried velocity survives to the first real strike once cd elapses.
+	u._physics_process(0.016)
+	assert_eq(u.state, Unit.State.FIGHTING, "the unit is in contact and fighting")
+	assert_gt(u._approach_velocity.length(), 0.0,
+		"impact velocity is kept through the cooldown wait, not cleared as if idle")
+
+
+func test_stationary_cavalry_takes_no_spear_penalty() -> void:
+	# Physics model (#100): the anti-cavalry penalty IS the charge backfiring, so a
+	# cavalry unit that isn't charging (no impact velocity) fights spearmen at full
+	# effectiveness — unlike the old flat first-strike x0.6. Recorded as intended.
+	var u := _cavalry()
+	u.position = Vector2.ZERO
+	var spear := _spearman_unit()            # anti_cavalry = true
+	spear.team = 1
+	spear.position = Vector2(100, 0)
+	u._approach_velocity = Vector2.ZERO      # standing, not charging
+	assert_almost_eq(u.charge_multiplier(spear), 1.0, 0.001,
+		"a stationary (non-charging) cavalry unit takes no anti-cavalry penalty")
 
 
 # --- per-type footprint (issue #6) -----------------------------------------

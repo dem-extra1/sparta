@@ -105,10 +105,38 @@ const SEPARATION_RADIUS_CAVALRY: float = 24.0
 # RADIUS 18 = 62), so even merged mega-units keep pressing into contact.
 const SEPARATION_RADIUS_MAX: float = 28.0
 
+# Cavalry charge (#100): a physics-based bonus, not a one-shot token. The damage
+# multiplier scales with the rider's IMPACT VELOCITY at the moment of contact — the
+# component of its approach velocity aimed straight at the target — so both closing
+# speed and angle matter. Calibrated so a full-speed head-on gallop (~a cavalry's
+# move_speed) lands roughly the old flat +0.8 (x1.8 damage); a shallow angle or a
+# near-stationary unit (e.g. a shadowing supporter, #86) earns proportionally less,
+# down to nothing. Deterministic (positions + move_speed only) so replays stay exact.
+const CHARGE_BONUS_AT_REF_SPEED: float = 0.8
+# Reference closing speed at which a head-on charge yields the full bonus above. An
+# independent balance knob, NOT a hard link to Battle: it's set near a typical cavalry
+# gallop (~96 = base 160 * Battle.SPEED_SCALE 0.6) so a full charge ~matches the prior
+# flat x1.8, but it's a plain literal on purpose — deriving it from Battle.SPEED_SCALE
+# would reintroduce the Unit<->Battle preload cycle this file avoids elsewhere. Changing
+# cavalry speed just rescales the charge (faster hits harder, by design); nothing breaks.
+# The bonus always scales with the unit's own gallop (speed_toward <= move_speed): a
+# cavalry at the reference speed peaks at the reference x1.8, and a faster one exceeds it
+# on purpose — that's intended scaling, not a cap to enforce (so no assert pins it).
+const CHARGE_REFERENCE_SPEED: float = 96.0
+# Anti-cavalry spearmen brace and turn the charge against the rider: the momentum
+# becomes a speed-scaled PENALTY (impaling yourself at a gallop hurts) instead of a
+# bonus, floored so even a full charge into spears never drops below the old x0.6.
+const ANTI_CAV_CHARGE_BACKFIRE: float = 0.5
+const ANTI_CAV_CHARGE_FLOOR: float = 0.6
+
 var _attack_cd: float = 0.0
 var _rout_timer: float = 0.0
 var _moved_last_frame: bool = false
-var _charge_ready: bool = true   # cavalry get one charge bonus per engagement
+# Velocity the unit carried into its last move; the cavalry charge bonus (#100) reads it
+# at contact. Spent by _strike (so only the contact strike charges, not the grinding
+# strikes after) and cleared when the unit goes idle/holds (a stationary unit carries no
+# momentum); kept while FIGHTING so a strike delayed by attack cooldown still lands it.
+var _approach_velocity: Vector2 = Vector2.ZERO
 var _relief_partner: Unit = null   # unit we're swapping with mid-relief (#4)
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
@@ -147,8 +175,12 @@ func _physics_process(delta: float) -> void:
 	tick_cohesion(delta)
 	_update_relief()
 
+	# A stationary, non-fighting unit carries no momentum: drop any leftover approach
+	# velocity so a later standing strike can't charge off it (#100). While FIGHTING we
+	# keep it — a strike held back by attack cooldown on the contact frame still charges
+	# on the next — and _strike spends it, so grinding strikes after the first don't.
 	if not _moved_last_frame and state != State.FIGHTING:
-		rearm_charge()
+		_approach_velocity = Vector2.ZERO
 	queue_redraw()
 
 
@@ -355,6 +387,9 @@ func _move_to(point: Vector2, delta: float) -> void:
 	position += dir * move_speed * delta
 	state = State.MOVING
 	_moved_last_frame = true
+	# Record the velocity carried this frame so a strike on the next (contact) frame
+	# can scale the charge bonus (#100) by the actual closing speed and direction.
+	_approach_velocity = dir * move_speed
 
 
 func _face(point: Vector2) -> void:
@@ -511,20 +546,31 @@ func _separation_candidates() -> Array:
 
 # --- Combat ----------------------------------------------------------------
 
-## Cavalry get one charge bonus per engagement. consume_charge() reports whether
-## a charge is available and spends it; rearm_charge() restores it once the unit
-## breaks contact. Centralizing the field's write-path behind these methods keeps
-## the charge lifecycle in one place as charge mechanics grow (a cooldown, a
-## spent/"shattered" state, per-target tracking) — see issue #29.
-func consume_charge() -> bool:
-	if not _charge_ready:
-		return false
-	_charge_ready = false
-	return true
-
-
-func rearm_charge() -> void:
-	_charge_ready = true
+## Physics-based cavalry charge multiplier (#100): the bonus is the rider's IMPACT
+## MOMENTUM, not a one-shot token. It scales with the component of the unit's approach
+## velocity aimed straight at the target — so a fast, head-on gallop lands the full
+## bonus, a shallow/glancing approach lands less, and a near-stationary unit (a unit
+## grinding in melee, or a shadowing supporter, #86) lands none. Cavalry only, and not
+## against other cavalry. Anti-cavalry spearmen brace and turn it into a speed-scaled
+## penalty (charging onto set spears backfires) — so a cavalry unit that ISN'T moving
+## carries no momentum and fights spearmen at x1.0, neither charging nor impaling itself
+## (intended; the old model applied a flat first-strike x0.6 even when stationary).
+## Deterministic — derived from positions and move_speed, which live play and replay
+## reach identically — so replays stay exact.
+func charge_multiplier(enemy: Unit) -> float:
+	if not is_cavalry or enemy.is_cavalry:
+		return 1.0
+	var to_target: Vector2 = enemy.position - position
+	if to_target.length() < 0.001:
+		return 1.0
+	# Speed directed at the target (combines closing speed and angle, relative to it).
+	var speed_toward: float = maxf(0.0, _approach_velocity.dot(to_target.normalized()))
+	var charge: float = CHARGE_BONUS_AT_REF_SPEED * (speed_toward / CHARGE_REFERENCE_SPEED)
+	if enemy.anti_cavalry:
+		# A braced spear line reverses the charge into a penalty that grows with the
+		# closing speed, floored so it never drops below the old flat x0.6.
+		return maxf(ANTI_CAV_CHARGE_FLOOR, 1.0 - charge * ANTI_CAV_CHARGE_BACKFIRE)
+	return 1.0 + charge
 
 
 func _strike(enemy: Unit) -> void:
@@ -536,11 +582,12 @@ func _strike(enemy: Unit) -> void:
 	# reproducible. This is the simulation's only source of randomness.
 	var dmg: float = base * Replay.rng.randf_range(0.6, 1.4)
 
-	# Cavalry charge bonus on first contact, blunted by anti-cavalry spears.
-	# consume_charge() gates on availability and spends it in one place, so the
-	# charge is only spent when it actually lands on a non-cavalry target.
-	if is_cavalry and not enemy.is_cavalry and consume_charge():
-		dmg *= 0.6 if enemy.anti_cavalry else 1.8
+	# Cavalry charge: a momentum-scaled bonus (or a backfire onto braced spears),
+	# computed from the rider's impact velocity at this contact (#100). Spend it so the
+	# charge lands only on this first, contact-making strike — not the grinding strikes
+	# that follow in the same melee.
+	dmg *= charge_multiplier(enemy)
+	_approach_velocity = Vector2.ZERO
 
 	Sfx.play(&"hit")   # presentation only; throttled in Sfx so a line doesn't roar
 	enemy.take_casualties(int(round(dmg)), self)
