@@ -402,6 +402,10 @@ func _strike(enemy: Unit) -> void:
 ## A ranged volley (#37): like a melee strike without the cavalry charge, scaled
 ## by RANGED_DAMAGE_FACTOR — archers trade per-hit punch for striking from beyond
 ## melee reach. Draws from the same seeded RNG stream so battles stay reproducible.
+## Damage flows through take_casualties, so volleys inherit the same flank/rear
+## multiplier as melee (relative to the TARGET's facing): fire into a flank or
+## rear deals the full 1.5x / 2.0x bonus, so archers in a pincer hit notably
+## harder than head-on.
 func _shoot(enemy: Unit) -> void:
 	var eff_attack: float = float(attack) * fatigue_attack_factor() * cohesion
 	var base: float = maxf(1.0, eff_attack - float(enemy.defense))

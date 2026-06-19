@@ -371,7 +371,9 @@ func test_archer_shoots_enemy_within_range() -> void:
 	var archer := _archer()
 	var enemy := _make_unit()
 	enemy.team = 1
-	enemy.position = Vector2(120, 0)   # within RANGED_RANGE (160), beyond melee contact
+	# Derived from the constant so the test tracks RANGED_RANGE tuning: 40px inside
+	# ranged range, comfortably beyond melee contact (~62px).
+	enemy.position = Vector2(Unit.RANGED_RANGE - 40.0, 0)
 	var before: int = enemy.soldiers
 	archer._think(0.016)
 	assert_eq(archer.state, Unit.State.FIGHTING, "an archer in range stands and fires")
@@ -383,7 +385,9 @@ func test_archer_advances_toward_enemy_beyond_range() -> void:
 	var archer := _archer()
 	var enemy := _make_unit()
 	enemy.team = 1
-	enemy.position = Vector2(180, 0)   # beyond RANGED_RANGE (160), within detection (190)
+	# Just beyond RANGED_RANGE but still inside DETECTION_RANGE, derived so the
+	# test stays valid if either constant moves (asserts RANGED_RANGE < DETECTION_RANGE).
+	enemy.position = Vector2(Unit.RANGED_RANGE + 20.0, 0)
 	var before: int = enemy.soldiers
 	archer._think(0.016)
 	assert_gt(archer.position.x, 0.0, "an archer out of range advances to close the gap")
@@ -394,7 +398,10 @@ func test_archer_melees_when_enemy_in_contact() -> void:
 	var archer := _archer()
 	var enemy := _make_unit()
 	enemy.team = 1
-	enemy.position = Vector2(40, 0)   # inside melee contact (~62px)
+	# Inside melee contact (attack_range + both radii), derived so the test tracks
+	# the contact-distance formula rather than a hard-coded ~62px.
+	var contact: float = archer.attack_range + Unit.RADIUS + enemy.RADIUS
+	enemy.position = Vector2(contact - 22.0, 0)
 	var before: int = enemy.soldiers
 	archer._think(0.016)
 	assert_eq(archer.state, Unit.State.FIGHTING, "a cornered archer still fights in melee")
