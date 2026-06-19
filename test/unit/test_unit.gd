@@ -563,7 +563,10 @@ func test_approach_velocity_survives_a_cooldown_wait_in_contact() -> void:
 	var enemy := _make_unit()
 	enemy.team = 1
 	enemy.position = Vector2(u.attack_range + Unit.RADIUS + enemy.RADIUS - 2.0, 0)  # in contact
-	u._physics_process(0.016)                # contact frame: FIGHTING, no strike (cd>0), no move
+	# Contact frame: _think enters the in-contact branch → state = FIGHTING, but no strike
+	# (cd > 0) and no _move_to. The end-of-frame idle-clear is skipped *because* state is
+	# FIGHTING, so the carried velocity survives to the first real strike once cd elapses.
+	u._physics_process(0.016)
 	assert_eq(u.state, Unit.State.FIGHTING, "the unit is in contact and fighting")
 	assert_gt(u._approach_velocity.length(), 0.0,
 		"impact velocity is kept through the cooldown wait, not cleared as if idle")

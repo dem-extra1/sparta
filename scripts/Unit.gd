@@ -119,8 +119,9 @@ const CHARGE_BONUS_AT_REF_SPEED: float = 0.8
 # flat x1.8, but it's a plain literal on purpose — deriving it from Battle.SPEED_SCALE
 # would reintroduce the Unit<->Battle preload cycle this file avoids elsewhere. Changing
 # cavalry speed just rescales the charge (faster hits harder, by design); nothing breaks.
-# The bonus is naturally capped at the unit's own gallop (speed_toward <= move_speed), so
-# with cavalry at the reference speed it can't exceed the reference x1.8 today.
+# The bonus always scales with the unit's own gallop (speed_toward <= move_speed): a
+# cavalry at the reference speed peaks at the reference x1.8, and a faster one exceeds it
+# on purpose — that's intended scaling, not a cap to enforce (so no assert pins it).
 const CHARGE_REFERENCE_SPEED: float = 96.0
 # Anti-cavalry spearmen brace and turn the charge against the rider: the momentum
 # becomes a speed-scaled PENALTY (impaling yourself at a gallop hurts) instead of a
