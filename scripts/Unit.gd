@@ -396,6 +396,7 @@ func _strike(enemy: Unit) -> void:
 	if is_cavalry and not enemy.is_cavalry and consume_charge():
 		dmg *= 0.6 if enemy.anti_cavalry else 1.8
 
+	Sfx.play(&"hit")   # presentation only; throttled in Sfx so a line doesn't roar
 	enemy.take_casualties(int(round(dmg)), self)
 
 
@@ -410,6 +411,7 @@ func _shoot(enemy: Unit) -> void:
 	var eff_attack: float = float(attack) * fatigue_attack_factor() * cohesion
 	var base: float = maxf(1.0, eff_attack - float(enemy.defense))
 	var dmg: float = base * RANGED_DAMAGE_FACTOR * Replay.rng.randf_range(0.6, 1.4)
+	Sfx.play(&"shoot")
 	enemy.take_casualties(int(round(dmg)), self)
 
 
@@ -431,8 +433,10 @@ func take_casualties(amount: int, attacker: Unit) -> void:
 	if soldiers <= 0:
 		soldiers = 0
 		_die()
+		Sfx.play(&"death")
 	elif morale <= 0.0:
 		_rout()
+		Sfx.play(&"rout")
 
 	queue_redraw()
 

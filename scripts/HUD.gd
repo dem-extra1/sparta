@@ -6,7 +6,7 @@ extends CanvasLayer
 ##   - victory/defeat overlay with a restart button
 
 # Stable ids for the Menu popup's items (independent of index / separators).
-enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL }
+enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX }
 
 var _info: Label
 var _overlay: ColorRect
@@ -84,13 +84,14 @@ func _ready() -> void:
 	popup.add_item("Load Replay…", MENU_LOAD)
 	popup.add_separator()
 	popup.add_check_item("Mouse-edge scroll", MENU_EDGE_SCROLL)
-	popup.set_item_checked(popup.get_item_index(MENU_EDGE_SCROLL), Settings.edge_scroll)
+	popup.add_check_item("Sound effects", MENU_SFX)
+	_sync_setting_toggles()
 	popup.id_pressed.connect(_on_menu_id)
-	# Keep the edge-scroll check in sync if the setting changes elsewhere. Use a
-	# named method (not a lambda) so the connection is tied to this node's
-	# lifetime and torn down in _exit_tree() — otherwise it would dangle on the
-	# persistent Settings autoload after reload_current_scene() frees this HUD.
-	Settings.changed.connect(_sync_edge_toggle)
+	# Keep the check items in sync if a setting changes elsewhere. Use a named
+	# method (not a lambda) so the connection is tied to this node's lifetime and
+	# torn down in _exit_tree() — otherwise it would dangle on the persistent
+	# Settings autoload after reload_current_scene() frees this HUD.
+	Settings.changed.connect(_sync_setting_toggles)
 
 	# File picker for choosing a saved replay, plus an error popup for bad files.
 	# Both stay responsive while the tree is paused (end-of-battle overlay).
@@ -181,13 +182,14 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	# Settings is a persistent autoload; drop our connection so it doesn't
 	# outlive this HUD (e.g. across reload_current_scene()).
-	if Settings.changed.is_connected(_sync_edge_toggle):
-		Settings.changed.disconnect(_sync_edge_toggle)
+	if Settings.changed.is_connected(_sync_setting_toggles):
+		Settings.changed.disconnect(_sync_setting_toggles)
 
 
-func _sync_edge_toggle() -> void:
+func _sync_setting_toggles() -> void:
 	var popup := _menu_button.get_popup()
 	popup.set_item_checked(popup.get_item_index(MENU_EDGE_SCROLL), Settings.edge_scroll)
+	popup.set_item_checked(popup.get_item_index(MENU_SFX), Settings.sfx_enabled)
 
 
 ## Dispatch a Menu popup selection by its stable item id.
@@ -200,8 +202,10 @@ func _on_menu_id(id: int) -> void:
 		MENU_LOAD:
 			_open_load_dialog()
 		MENU_EDGE_SCROLL:
-			# Flip the setting; Settings.changed -> _sync_edge_toggle re-checks the item.
+			# Flip the setting; Settings.changed -> _sync_setting_toggles re-checks it.
 			Settings.edge_scroll = not Settings.edge_scroll
+		MENU_SFX:
+			Settings.sfx_enabled = not Settings.sfx_enabled
 
 
 func _unhandled_input(event: InputEvent) -> void:
