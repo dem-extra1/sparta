@@ -1,8 +1,8 @@
 # Sound effects
 
 The game ships **curated open-access (CC0) audio** for every event, sourced from
-[Kenney](https://kenney.nl) — see [`CREDITS.md`](CREDITS.md) for the per-file
-source and licence. The `Sfx` autoload (`scripts/Sfx.gd`) loads these files at
+[OpenGameArt](https://opengameart.org) — see [`CREDITS.md`](CREDITS.md) for the
+per-file source and licence. The `Sfx` autoload (`scripts/Sfx.gd`) loads these files at
 startup. The procedural synthesiser in `Sfx` remains as an automatic **fallback**:
 if an event ever has no bundled file, its placeholder is synthesised at runtime
 instead, so the game is never silent.
@@ -23,7 +23,7 @@ If `assets/sfx/hit.ogg` (or `.wav`) exists, it is used instead of the synth — 
 code change needed. Keep clips short (well under a second for combat/UI sounds).
 
 Godot imports audio on first load, generating a committed `<file>.import` sidecar
-(see `hit.ogg.import`). After dropping a new file, run the editor — or
+(see `hit.wav.import`). After dropping a new file, run the editor — or
 `godot --headless --import` — so the sidecar is created; CI imports automatically.
 
 ## Licensing
