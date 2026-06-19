@@ -43,6 +43,14 @@ func test_throttled_repeat_is_suppressed() -> void:
 	assert_eq(Sfx._next_voice, v0, "a repeat within the throttle window is suppressed")
 
 
+func test_throttled_event_fires_after_window() -> void:
+	Sfx._last_played[&"hit"] = Time.get_ticks_msec() - 10000   # window long expired
+	var v0: int = Sfx._next_voice
+	Sfx.play(&"hit")
+	assert_eq(Sfx._next_voice, (v0 + 1) % Sfx._voices.size(),
+		"a throttled event fires again once its window has expired")
+
+
 func test_unknown_name_plays_nothing() -> void:
 	var v0: int = Sfx._next_voice
 	Sfx.play(&"does_not_exist")
