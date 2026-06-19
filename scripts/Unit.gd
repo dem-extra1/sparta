@@ -221,6 +221,8 @@ func _attack_approach_point(enemy: Unit) -> Vector2:
 	if order_mode == ORDER_ATTACK_REAR:
 		return enemy.position - enemy.facing * contact
 	var perp := Vector2(-enemy.facing.y, enemy.facing.x)
+	# Tie-break: an attacker exactly on the enemy's fore/aft axis (dot == 0) goes to
+	# the enemy's perp side (its left), deterministically rather than NaN/oscillating.
 	var side: float = 1.0 if (position - enemy.position).dot(perp) >= 0.0 else -1.0
 	return enemy.position + perp * (side * contact)
 
