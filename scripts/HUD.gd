@@ -106,7 +106,8 @@ func _ready() -> void:
 
 	_error_dialog = AcceptDialog.new()
 	_error_dialog.process_mode = Node.PROCESS_MODE_ALWAYS
-	_error_dialog.title = "Load Replay"
+	# Neutral default; each caller sets a context-specific title before popping it.
+	_error_dialog.title = "Replay"
 	add_child(_error_dialog)
 
 	# Selected-unit info panel, pinned above the bottom-left corner. The top
@@ -277,6 +278,7 @@ func _on_restart_replay() -> void:
 	if not Replay.start_playback(Replay.loaded_path):
 		# Loaded fine on entering PLAYBACK, so a failure now means it vanished
 		# mid-watch — report it like _on_replay_chosen rather than bailing silently.
+		_error_dialog.title = "Restart Replay"
 		_error_dialog.dialog_text = "That replay is no longer available."
 		_error_dialog.popup_centered()
 		return
@@ -292,6 +294,7 @@ func _open_load_dialog() -> void:
 func _on_replay_chosen(path: String) -> void:
 	if not Replay.start_playback(path):
 		# Bad/incompatible file — report it without clobbering any result label.
+		_error_dialog.title = "Load Replay"
 		_error_dialog.dialog_text = "That file isn't a compatible replay."
 		_error_dialog.popup_centered()
 		return
