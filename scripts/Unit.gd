@@ -48,10 +48,21 @@ const ORDER_HOLD := 1
 const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
+const ORDER_SUPPORT := 5
 # Skirmish (#85): a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
 const SKIRMISH_KITE_DISTANCE: float = 100.0
+# Support (#86): a unit ordered to guard a friendly "ward" engages any enemy that
+# closes within SUPPORT_GUARD_RADIUS of the ward, otherwise shadows the ward,
+# holding station SUPPORT_FOLLOW_DISTANCE off so it doesn't pile onto it. The guard
+# radius is near DETECTION_RANGE (190) so it meets threats about as far as it would
+# normally spot them; the follow distance sits just past two footprints (~36).
+const SUPPORT_GUARD_RADIUS: float = 180.0
+const SUPPORT_FOLLOW_DISTANCE: float = 80.0
+# The friendly unit a SUPPORT order tells this one to guard (set by Battle from the
+# order's target). Cleared when it dies/routs, reverting this unit to NORMAL.
+var support_target: Unit = null
 # Field rectangle the unit keeps inside when kiting (set by Battle on spawn). The
 # default is effectively unbounded so direct Unit tests don't need to set it.
 var field_bounds: Rect2 = Rect2(-100000, -100000, 200000, 200000)
@@ -143,6 +154,17 @@ func _physics_process(delta: float) -> void:
 
 ## Decide what to do this frame: fight if in contact, otherwise move.
 func _think(delta: float) -> void:
+	# Support stance (#86): guard a friendly ward — engage threats near it, else
+	# shadow it. Handled up front so it overrides the normal target/move logic. If
+	# the ward is gone (dead, routed, or cleared) the order is spent, so drop it and
+	# fall through to NORMAL auto-behaviour.
+	if order_mode == ORDER_SUPPORT:
+		if _support_valid():
+			_support_tick(delta)
+			return
+		support_target = null
+		order_mode = 0   # ward gone: revert to NORMAL
+
 	var enemy: Unit = _current_target()
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
@@ -224,19 +246,72 @@ func _current_target() -> Unit:
 
 
 func _nearest_enemy() -> Unit:
+	return _nearest_enemy_to(position, DETECTION_RANGE)
+
+
+## Nearest living, non-routing enemy within `radius` of `center`. Backs both normal
+## auto-acquisition (centred on this unit, DETECTION_RANGE) and the support stance
+## (#86), which scans around the WARD's position so a supporter meets threats
+## closing on its charge rather than only ones near itself.
+func _nearest_enemy_to(center: Vector2, radius: float) -> Unit:
 	var best: Unit = null
-	var best_d: float = DETECTION_RANGE
+	var best_d: float = radius
 	for u in get_tree().get_nodes_in_group("units"):
 		var other: Unit = u as Unit
 		if other == null or other.team == team:
 			continue
 		if other.state == State.DEAD or other.state == State.ROUTING:
 			continue
-		var d: float = position.distance_to(other.position)
+		var d: float = center.distance_to(other.position)
 		if d < best_d:
 			best_d = d
 			best = other
 	return best
+
+
+## Whether this unit's SUPPORT order (#86) still has a valid ward to guard: a
+## living, non-routing friendly that isn't this unit itself.
+func _support_valid() -> bool:
+	return support_target != null and is_instance_valid(support_target) \
+		and support_target != self \
+		and support_target.state != State.DEAD \
+		and support_target.state != State.ROUTING
+
+
+## Support stance (#86): guard the ward. If an enemy has closed within
+## SUPPORT_GUARD_RADIUS of the ward, peel off and engage it (firing at standoff if
+## ranged, melee in contact, else closing on it); otherwise shadow the ward,
+## holding a short standoff so the supporter doesn't pile onto the unit it guards.
+## Targeting keys off the WARD's position, so the supporter returns to its charge
+## once a threat is dealt with. Deterministic (no RNG / wall-clock), matching the
+## normal fire/melee cadence so live and replayed battles stay in lockstep.
+func _support_tick(delta: float) -> void:
+	var ward: Unit = support_target
+	var threat: Unit = _nearest_enemy_to(ward.position, SUPPORT_GUARD_RADIUS)
+	if threat != null:
+		var dist: float = position.distance_to(threat.position)
+		var in_contact: bool = dist <= attack_range + RADIUS + threat.RADIUS
+		if is_ranged and not in_contact and dist <= RANGED_RANGE:
+			state = State.FIGHTING
+			_face(threat.position)
+			if _attack_cd <= 0.0:
+				_attack_cd = RANGED_INTERVAL
+				_shoot(threat)
+		elif in_contact:
+			state = State.FIGHTING
+			_face(threat.position)
+			if _attack_cd <= 0.0:
+				_attack_cd = ATTACK_INTERVAL
+				_strike(threat)
+		else:
+			_move_to(threat.position, delta)
+		return
+	# No threat near the ward: shadow it, holding station a short distance off so
+	# the supporter doesn't crowd the unit it's guarding.
+	if position.distance_to(ward.position) > SUPPORT_FOLLOW_DISTANCE:
+		_move_to(ward.position, delta)
+	else:
+		state = State.IDLE
 
 
 ## Approach point for a flank/rear attack (#82): a spot at melee-contact distance
@@ -364,6 +439,10 @@ func _separate() -> void:
 func order_summary() -> String:
 	if state == State.ROUTING:
 		return "Routing!"
+	# A SUPPORT order (#86) is reported by its ward, ahead of the target/move lookups
+	# below — a supporter holds no target_enemy/move_target of its own.
+	if order_mode == ORDER_SUPPORT and _support_valid():
+		return "Supporting %s" % support_target.unit_name
 	# A just-killed unit lingers one frame before queue_free() prunes it, and may
 	# still hold a stale target_enemy. Skip the order lookups for it (and for an
 	# idle unit) and fall through to the neutral "holding" text below.

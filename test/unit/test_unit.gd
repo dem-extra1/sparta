@@ -148,6 +148,117 @@ func test_skirmish_ranged_unit_does_not_kite_on_a_plain_move_order() -> void:
 	assert_gt(u.position.x, 500.0, "a skirmisher under a move order marches to its destination, not away")
 
 
+# --- support / defend a friendly (#86) -------------------------------------
+
+func test_support_unit_moves_toward_its_ward_with_no_threat() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.order_mode = Unit.ORDER_SUPPORT
+	u.position = Vector2.ZERO
+	var ward := _make_unit()
+	ward.team = 0
+	ward.position = Vector2(300, 0)   # well beyond the follow standoff, no enemy about
+	u.support_target = ward
+	u._think(0.1)
+	assert_gt(u.position.x, 0.0, "a supporter with no threat near its ward closes on the ward")
+
+
+func test_support_unit_holds_station_when_near_its_ward() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.order_mode = Unit.ORDER_SUPPORT
+	u.position = Vector2.ZERO
+	var ward := _make_unit()
+	ward.team = 0
+	ward.position = Vector2(Unit.SUPPORT_FOLLOW_DISTANCE - 20.0, 0)   # already at standoff
+	u.support_target = ward
+	u._think(0.1)
+	assert_eq(u.position, Vector2.ZERO, "a supporter already at standoff from its ward holds station")
+	assert_eq(u.state, Unit.State.IDLE, "and goes idle")
+
+
+func test_support_unit_engages_a_threat_near_its_ward() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.order_mode = Unit.ORDER_SUPPORT
+	u.position = Vector2.ZERO
+	var ward := _make_unit()
+	ward.team = 0
+	ward.position = Vector2(60, 0)
+	u.support_target = ward
+	var threat := _make_unit()
+	threat.team = 1
+	# Near the ward (inside SUPPORT_GUARD_RADIUS) and in melee contact with the supporter.
+	threat.position = Vector2(u.attack_range + Unit.RADIUS + threat.RADIUS - 2.0, 0)
+	var before: int = threat.soldiers
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "a supporter fights a threat that reached its ward")
+	assert_lt(threat.soldiers, before, "and deals casualties to it")
+
+
+func test_support_unit_advances_on_a_distant_threat_near_its_ward() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.order_mode = Unit.ORDER_SUPPORT
+	u.position = Vector2.ZERO
+	var ward := _make_unit()
+	ward.team = 0
+	ward.position = Vector2(150, 0)
+	u.support_target = ward
+	var threat := _make_unit()
+	threat.team = 1
+	threat.position = Vector2(140, 0)   # near the ward, far from the supporter
+	u._think(0.1)
+	assert_gt(u.position.x, 0.0, "a supporter closes on a threat near its ward but out of its reach")
+
+
+func test_support_ranged_unit_fires_at_a_threat_near_its_ward() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.is_ranged = true
+	u.order_mode = Unit.ORDER_SUPPORT
+	u.position = Vector2.ZERO
+	var ward := _make_unit()
+	ward.team = 0
+	ward.position = Vector2(120, 0)
+	u.support_target = ward
+	var threat := _make_unit()
+	threat.team = 1
+	# Near the ward, within the supporter's ranged range but beyond melee contact.
+	threat.position = Vector2(Unit.RANGED_RANGE - 40.0, 0)
+	var before: int = threat.soldiers
+	u._think(0.1)
+	assert_eq(u.state, Unit.State.FIGHTING, "a ranged supporter looses on a threat near its ward")
+	assert_eq(u.position, Vector2.ZERO, "firing from where it stands, not closing in")
+	assert_lt(threat.soldiers, before, "the volley hits the threat")
+
+
+func test_support_unit_reverts_to_normal_when_ward_dies() -> void:
+	# Once the guarded ward is gone the support order is spent: the unit drops the
+	# dangling reference and reverts to NORMAL auto-behaviour.
+	var u := _make_unit()
+	u.team = 0
+	u.order_mode = Unit.ORDER_SUPPORT
+	u.position = Vector2.ZERO
+	var ward := _make_unit()
+	ward.team = 0
+	u.support_target = ward
+	ward.state = Unit.State.DEAD
+	u._think(0.1)
+	assert_eq(u.order_mode, 0, "a supporter whose ward is gone reverts to NORMAL")
+	assert_null(u.support_target, "and drops the dangling ward reference")
+
+
+func test_order_summary_reports_support_ward() -> void:
+	var u := _make_unit()
+	u.order_mode = Unit.ORDER_SUPPORT
+	var ward := _make_unit()
+	ward.unit_name = "Archers 3"
+	u.support_target = ward
+	assert_eq(u.order_summary(), "Supporting Archers 3",
+		"a supporting unit reports the ward it's guarding")
+
+
 # --- attack flank / rear approach (#82) ------------------------------------
 
 func test_attack_rear_approach_point_is_behind_the_target() -> void:

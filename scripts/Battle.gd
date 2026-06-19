@@ -62,7 +62,8 @@ func _ready() -> void:
 	assert(UnitRef.ORDER_HOLD == OrderMode.HOLD \
 			and UnitRef.ORDER_ATTACK_FLANK == OrderMode.ATTACK_FLANK \
 			and UnitRef.ORDER_ATTACK_REAR == OrderMode.ATTACK_REAR \
-			and UnitRef.ORDER_SKIRMISH == OrderMode.SKIRMISH,
+			and UnitRef.ORDER_SKIRMISH == OrderMode.SKIRMISH \
+			and UnitRef.ORDER_SUPPORT == OrderMode.SUPPORT,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 
 	# Start a fresh recording for every live battle (so any battle can be
@@ -233,16 +234,25 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			continue
 		# A fresh order (anything but a waypoint append) discards the queued route
 		# and sets the unit's stance; an append continues the current march/stance.
+		# Clearing any prior support ward (#86) means a plain order drops the guard
+		# duty; a SUPPORT order re-sets it in the friendly-target branch below.
 		if not append:
 			u.waypoints.clear()
 			u.order_mode = mode
+			u.support_target = null
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
 			u.target_enemy = target_unit   # attack an enemy
 			u.has_move_target = false
 		elif target_unit != null and target_unit != u and target_unit.team == u.team:
-			# Relief: the first reliever swaps with the tired unit; any others just
-			# advance on the same fight so they don't shove the retreating unit.
-			if not relieved:
+			if mode == OrderMode.SUPPORT:
+				# Support (#86): guard the targeted friendly. Every ordered unit shadows
+				# the same ward and engages threats near it — no relief swap.
+				u.support_target = target_unit
+				u.target_enemy = null
+				u.has_move_target = false
+			elif not relieved:
+				# Relief (#4): the first reliever swaps with the tired unit; any others
+				# just advance on the same fight so they don't shove the retreating unit.
 				u.begin_relief(target_unit)
 				# Capture the foe begin_relief() resolved (it clears the tired
 				# unit's target_enemy, so later relievers can't read it from there).
