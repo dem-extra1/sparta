@@ -1,7 +1,7 @@
 {
-  "_comment": "Audio-only change (issue #83). The CI demo renders a SILENT GIF, so the new sounds are not audible in the posted clip — run the game locally to hear them. Reuses the bundled showcase replay just so the demo job has something to render.",
-  "replay": "demos/showcase.json",
-  "caption": "Sound effects: re-sourced all 8 cues from OpenGameArt CC0 submissions, replacing the Kenney set — sword clash, swishes, thwack, trumpet, fanfare (hit, shoot, rout, death, select, order, victory, defeat). NOTE: this GIF is silent, so the change isn't audible here; run locally to hear it. Per-file sources + licences in assets/sfx/CREDITS.md.",
+  "_comment": "Smart order: support / defend a friendly unit (#86). Seed-plus-orders replay: at ~0.4s the Archers (uid 2) are ordered to SUPPORT the Infantry (uid 1); at ~1.5s the Infantry advances. Watch the archers shadow the infantry, holding station off it and firing on any enemy that closes on it instead of chasing whatever's nearest to themselves.",
+  "replay": "demos/support_demo.json",
+  "caption": "Smart order — Support/defend (#86): the Archers are ordered to guard the Infantry (press G, right-click the friendly). They shadow their ward, hold a short standoff, and loose volleys on enemies that close on it — peeling to meet threats to their charge, then returning. Reverts to normal if the ward falls.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,

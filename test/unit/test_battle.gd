@@ -158,3 +158,45 @@ func test_append_preserves_the_existing_stance() -> void:
 		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.NORMAL})
 	assert_eq(u.order_mode, BattleScript.OrderMode.HOLD,
 		"a waypoint append leaves the unit's stance unchanged")
+
+
+# --- support / defend (#86) ------------------------------------------------
+
+func test_support_order_sets_the_ward_not_a_relief() -> void:
+	var supporter := _unit(1, Vector2.ZERO)
+	supporter.team = 0
+	var ward := _unit(2, Vector2(100, 0))
+	ward.team = 0
+	ward.state = UnitScript.State.FIGHTING   # would be a line-relief target without SUPPORT
+	var b := _battle([supporter, ward])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0, "target": 2,
+		"mode": BattleScript.OrderMode.SUPPORT})
+	assert_eq(supporter.support_target, ward, "a SUPPORT order guards the targeted friendly")
+	assert_eq(supporter.order_mode, BattleScript.OrderMode.SUPPORT, "and stamps the SUPPORT stance")
+	assert_null(supporter._relief_partner, "it does not start a line relief on the ward")
+
+
+func test_plain_order_clears_a_prior_support_ward() -> void:
+	var supporter := _unit(1, Vector2.ZERO)
+	var ward := _unit(2, Vector2(100, 0))
+	supporter.support_target = ward
+	supporter.order_mode = BattleScript.OrderMode.SUPPORT
+	var b := _battle([supporter, ward])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1})   # plain move
+	assert_null(supporter.support_target, "a fresh plain order drops the guard duty")
+	assert_eq(supporter.order_mode, BattleScript.OrderMode.NORMAL, "and resets the stance")
+
+
+func test_append_preserves_a_support_ward() -> void:
+	# An append continues the current order, so — like the stance — it leaves a
+	# unit's support ward intact rather than clearing it.
+	var supporter := _unit(1, Vector2.ZERO)
+	var ward := _unit(2, Vector2(100, 0))
+	supporter.support_target = ward
+	supporter.order_mode = BattleScript.OrderMode.SUPPORT
+	supporter.move_target = Vector2(200, 0)
+	supporter.has_move_target = true
+	var b := _battle([supporter, ward])
+	b._apply_order_cmd({"units": [1], "x": 400.0, "y": 0.0,
+		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.NORMAL})
+	assert_eq(supporter.support_target, ward, "a waypoint append leaves the support ward intact")

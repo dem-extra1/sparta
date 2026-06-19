@@ -142,11 +142,14 @@ func _issue_order(world_pos: Vector2, append: bool = false) -> void:
 	if enemy != null:
 		target_uid = enemy.uid
 	else:
-		# Right-clicking an engaged friendly that isn't part of the selection is a
-		# line-relief order (#4): the selected unit swaps into its fight. Plain
-		# ground stays an ordinary move.
+		# Right-clicking a friendly that isn't part of the selection targets it: a
+		# line-relief order (#4) on an engaged friendly, or — when SUPPORT is armed
+		# (#86) — a guard order on any friendly, engaged or not. Plain ground stays
+		# an ordinary move.
 		var friend: UnitRef = _unit_at(world_pos, 0)
-		if friend != null and friend.state == UnitRef.State.FIGHTING and not _selected.has(friend):
+		var supporting: bool = _armed_mode == BattleRef.OrderMode.SUPPORT
+		if friend != null and not _selected.has(friend) \
+				and (supporting or friend.state == UnitRef.State.FIGHTING):
 			target_uid = friend.uid
 		elif append:
 			# Shift on plain ground queues a waypoint (#34); the sentinel rides the
