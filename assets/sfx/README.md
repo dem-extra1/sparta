@@ -1,8 +1,8 @@
 # Sound effects
 
 The game ships **curated open-access (CC0) audio** for every event, sourced from
-[Kenney](https://kenney.nl) — see [`CREDITS.md`](CREDITS.md) for the per-file
-source and licence. The `Sfx` autoload (`scripts/Sfx.gd`) loads these files at
+[OpenGameArt](https://opengameart.org) — see [`CREDITS.md`](CREDITS.md) for the
+per-file source and licence. The `Sfx` autoload (`scripts/Sfx.gd`) loads these files at
 startup. The procedural synthesiser in `Sfx` remains as an automatic **fallback**:
 if an event ever has no bundled file, its placeholder is synthesised at runtime
 instead, so the game is never silent.
