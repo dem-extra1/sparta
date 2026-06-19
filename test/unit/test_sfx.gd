@@ -8,6 +8,12 @@ func before_each() -> void:
 	Settings.sfx_enabled = true   # reset the gate before each case
 
 
+func after_each() -> void:
+	# _last_played is shared singleton state on the Sfx autoload; clear it so a
+	# throttle timestamp seeded by one test can't surprise a later one.
+	Sfx._last_played.clear()
+
+
 func test_every_event_has_a_stream() -> void:
 	for name in Sfx.NAMES:
 		assert_true(Sfx._streams.get(name) is AudioStream,

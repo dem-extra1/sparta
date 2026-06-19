@@ -125,7 +125,11 @@ func _synth(name: StringName) -> AudioStreamWAV:
 			buf = _blip(buf, 0.18, 0.20, 311.0, 311.0, "saw", 0.4)
 			buf = _blip(buf, 0.36, 0.40, 233.0, 233.0, "saw", 0.4)
 		_:
+			# Unknown event: return null so play()'s null guard skips it at runtime
+			# (a zero-byte WAV would pass that guard and play silence). Works for
+			# OGG assets too, where a data-size check wouldn't apply.
 			push_warning("Sfx._synth: no waveform defined for event '%s'" % name)
+			return null
 	return _make_wav(buf)
 
 
