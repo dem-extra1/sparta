@@ -96,3 +96,13 @@ Once installed, `godot --headless` can run exports or a GDScript test suite (e.g
 - **M1 (here):** one playable tactical battle. ✅ scaffolded
 - **M2:** campaign map — provinces, characters, turn-based diplomacy; battles auto-resolved.
 - **M3:** integration — armies on the map launch into this battle scene and return a result.
+
+## License
+
+The **code** is licensed under the [MIT License](LICENSE).
+
+**Bundled assets are licensed separately.** MIT covers the source code, *not* the
+third-party art and audio under `assets/`, which each keep their own licence
+(CC0 or CC-BY). See [`assets/sfx/CREDITS.md`](assets/sfx/CREDITS.md) for audio and
+[`ASSETS.md`](ASSETS.md) for graphics. The project bundles only assets that permit
+redistribution — never `NC`/`ND` or no-redistribution stock content.
