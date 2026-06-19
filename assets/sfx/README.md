@@ -23,7 +23,7 @@ If `assets/sfx/hit.ogg` (or `.wav`) exists, it is used instead of the synth — 
 code change needed. Keep clips short (well under a second for combat/UI sounds).
 
 Godot imports audio on first load, generating a committed `<file>.import` sidecar
-(see `hit.ogg.import`). After dropping a new file, run the editor — or
+(see `hit.wav.import`). After dropping a new file, run the editor — or
 `godot --headless --import` — so the sidecar is created; CI imports automatically.
 
 ## Licensing
