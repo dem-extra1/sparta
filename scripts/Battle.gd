@@ -190,12 +190,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	# (which reach the same positions at this tick) stay in lockstep.
 	var centroid := Vector2.ZERO
 	if is_move:
-		var ps: Array[Vector2] = []
-		for uid in cmd["units"]:
-			var cu: Unit = _unit_by_uid(int(uid))
-			if cu != null:
-				ps.append(cu.position)
-		centroid = formation_centroid(ps)
+		centroid = _centroid_of_uids(cmd["units"])
 	var relieved: bool = false
 	var relief_foe: Unit = null
 	for uid in cmd["units"]:
@@ -266,6 +261,36 @@ static func formation_centroid(positions: Array[Vector2]) -> Vector2:
 	for p in positions:
 		sum += p
 	return sum / float(positions.size())
+
+
+## Formation centroid of the live positions of the given unit uids (the anchor a
+## formation move translates from). Shared by _apply_order_cmd and the overlay's
+## pending-append preview so both compute the same per-unit offset.
+func _centroid_of_uids(uids: Array) -> Vector2:
+	var ps: Array[Vector2] = []
+	for uid in uids:
+		var cu: Unit = _unit_by_uid(int(uid))
+		if cu != null:
+			ps.append(cu.position)
+	return formation_centroid(ps)
+
+
+## Points for a unit's not-yet-applied waypoint appends (#62), in queue order.
+## While the sim is paused _physics_process doesn't drain _pending_orders, so an
+## appended leg isn't written to u.waypoints until the player unpauses; the order
+## overlay calls this to preview those queued legs without mutating state. Each
+## point is derived exactly as _apply_order_cmd will (same formation centroid),
+## and positions are frozen while paused, so the preview matches the eventual leg.
+func pending_append_points_for(u: Unit) -> Array[Vector2]:
+	var points: Array[Vector2] = []
+	for cmd in _pending_orders:
+		if int(cmd["target"]) != ORDER_APPEND_WAYPOINT:
+			continue
+		if not _uids_contain(cmd["units"], u.uid):
+			continue
+		var dest := Vector2(float(cmd["x"]), float(cmd["y"]))
+		points.append(dest + (u.position - _centroid_of_uids(cmd["units"])))
+	return points
 
 
 func _unit_by_uid(uid: int) -> UnitRef:

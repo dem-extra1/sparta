@@ -74,3 +74,45 @@ func test_append_via_enqueue_is_not_double_applied() -> void:
 		b._apply_order_cmd(o)
 	assert_eq(u.waypoints.size(), 1, "an appended waypoint is queued exactly once, not doubled")
 	assert_eq(u.waypoints[0], Vector2(400, 0), "and holds the appended point")
+
+
+# --- pending-append preview while paused (issue #62) -----------------------
+
+func test_pending_append_is_previewed_without_being_applied() -> void:
+	# An append isn't applied until the next physics tick (so it isn't doubled).
+	# While paused that tick never runs, so the overlay previews it from
+	# _pending_orders instead — without mutating the unit's queue (#62).
+	var u := _unit(1, Vector2.ZERO)
+	u.has_move_target = false
+	var b := _battle([u])
+	b.enqueue_order([1], Vector2(300, 0), BattleScript.ORDER_APPEND_WAYPOINT)
+	assert_false(u.has_move_target, "the append is not applied yet (no tick ran)")
+	assert_true(u.waypoints.is_empty(), "and nothing is queued on the unit yet")
+	var preview: Array = b.pending_append_points_for(u)
+	assert_eq(preview.size(), 1, "the pending append is previewed")
+	assert_eq(preview[0], Vector2(300, 0), "at the appended point (single unit: no offset)")
+
+
+func test_pending_append_preview_uses_formation_offset() -> void:
+	# A multi-unit append keeps each unit's offset from the group centroid; the
+	# preview reproduces that exactly (positions are frozen while paused, so it
+	# matches what the tick will apply).
+	var a := _unit(1, Vector2(0, 0))
+	var c := _unit(2, Vector2(100, 0))
+	var b := _battle([a, c])
+	b.enqueue_order([1, 2], Vector2(300, 0), BattleScript.ORDER_APPEND_WAYPOINT)
+	# Centroid of (0,0) and (100,0) is (50,0); offsets are -50 and +50.
+	assert_eq(b.pending_append_points_for(a)[0], Vector2(250, 0),
+		"unit a previews at dest + its offset from the centroid")
+	assert_eq(b.pending_append_points_for(c)[0], Vector2(350, 0),
+		"unit c previews at dest + its offset from the centroid")
+
+
+func test_pending_plain_move_is_not_previewed_as_append() -> void:
+	# Only appends are pending-but-unapplied; a plain move is applied immediately
+	# (shown via move_target), so it must not also surface as a pending preview.
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_order([1], Vector2(200, 0), -1)   # plain move, applied now
+	assert_true(b.pending_append_points_for(u).is_empty(),
+		"a plain move is not previewed as a pending append")

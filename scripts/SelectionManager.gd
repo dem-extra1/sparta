@@ -314,8 +314,25 @@ func _draw_orders() -> void:
 			var tp: Vector2 = tgt.global_position
 			draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
 			_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
-		elif u.has_move_target:
-			_draw_move_path(origin, u.move_target, u.waypoints)
+		else:
+			var route := _move_route_for(u)
+			if not route.is_empty():
+				_draw_move_path(origin, route[0], route.slice(1))
+
+
+## A unit's full move route for the overlay: its committed destination and queued
+## waypoints, plus any waypoint appends still pending in Battle (#62). While the
+## sim is paused the physics tick that drains those appends into u.waypoints isn't
+## running, so without this the overlay wouldn't preview a just-queued leg until
+## the player unpaused. Returns [] when the unit has no move order and nothing
+## pending. The pending points are read-only — no authoritative state is mutated.
+func _move_route_for(u) -> Array[Vector2]:
+	var route: Array[Vector2] = []
+	if u.has_move_target:
+		route.append(u.move_target)
+		route.append_array(u.waypoints)
+	route.append_array(_battle.pending_append_points_for(u))
+	return route
 
 
 ## Draw a unit's full move route (#34): a dashed line from the unit through its
