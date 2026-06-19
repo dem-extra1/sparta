@@ -37,6 +37,10 @@ var has_move_target: bool = false
 var waypoints: Array[Vector2] = []
 var target_enemy: Unit = null
 var selected: bool = false
+# Order stance (#35), set by Battle._apply_order_cmd from the order's mode.
+# Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
+# The smart-order behaviours (#82/#84/#85/#86) read this; NORMAL is current behaviour.
+var order_mode: int = 0
 
 const RADIUS: float = 18.0
 const DETECTION_RANGE: float = 190.0

@@ -27,6 +27,9 @@ enum Mode { IDLE, RECORD, PLAYBACK }
 
 const DIR := "user://replays"
 const FORMAT_VERSION := 1
+# The per-order "mode" field (#35 smart orders) is additive and back-compatible:
+# old replays omit it and load with mode 0 (OrderMode.NORMAL = current behaviour),
+# so no version bump is needed and existing v1 replays still play.
 const PHYSICS_TPS := 60
 
 # IDLE before a battle is set up; RECORD while capturing a live battle;
@@ -41,7 +44,8 @@ var seed_value: int = 0
 
 # Orders for the battle being recorded or played back.
 # Each entry: { "tick": int, "units": Array[int] (uids), "x": float, "y": float,
-#               "target": int (enemy uid, or -1 for a move order) }.
+#               "target": int (enemy uid, or -1 for a move order),
+#               "mode": int (Battle.OrderMode; 0 = NORMAL) }.
 var _orders: Array = []
 var _play_index: int = 0
 # Bumped per save so two battles finishing in the same wall-clock second don't
@@ -103,6 +107,7 @@ func start_playback(path: String) -> bool:
 			"x": float(o.get("x", 0.0)),
 			"y": float(o.get("y", 0.0)),
 			"target": int(o.get("target", -1)),
+			"mode": int(o.get("mode", 0)),   # 0 = OrderMode.NORMAL
 		})
 	_play_index = 0
 	loaded_path = path
@@ -123,7 +128,8 @@ func replays_dir() -> String:
 
 
 ## RECORD: append an order at the current tick. No-op otherwise.
-func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int) -> void:
+func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
+		order_mode: int = 0) -> void:
 	if mode != Mode.RECORD:
 		return
 	_orders.append({
@@ -132,6 +138,7 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int) -> void
 		"x": pos.x,
 		"y": pos.y,
 		"target": target_uid,
+		"mode": order_mode,   # 0 = OrderMode.NORMAL
 	})
 
 
