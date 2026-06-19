@@ -283,6 +283,7 @@ func set_order_mode(text: String) -> void:
 
 func show_end(text: String) -> void:
 	_paused_label.visible = false   # the end overlay supersedes the pause banner
+	_order_mode_label.visible = false   # armed-mode indicator is irrelevant on the end screen
 	_overlay_label.text = text
 	_overlay.visible = true
 	get_tree().paused = true

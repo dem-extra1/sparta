@@ -64,7 +64,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_drag_cur = get_global_mouse_position()
 		queue_redraw()
 	elif event is InputEventKey and event.pressed and not event.echo:
-		var mode: int = _order_mode_for_keycode(event.keycode)
+		var mode: int = _order_mode_for_keycode(event.physical_keycode)
 		if mode >= 0:
 			_set_armed_mode(mode)   # arm a smart-order stance (#35)
 		elif event.keycode == KEY_M:
@@ -294,9 +294,11 @@ func _exit_tree() -> void:
 	Input.set_custom_mouse_cursor(null)
 
 
-## Fixed default order-mode hotkeys (rebindable in #87). -1 = not a mode key.
-func _order_mode_for_keycode(keycode: Key) -> int:
-	match keycode:
+## Fixed default order-mode hotkeys (rebindable in #87). Keyed on the PHYSICAL
+## keycode (layout-independent), matching the camera (WASD) and pause hotkeys.
+## -1 = not a mode key.
+func _order_mode_for_keycode(physical_keycode: Key) -> int:
+	match physical_keycode:
 		KEY_H: return BattleRef.OrderMode.HOLD
 		KEY_F: return BattleRef.OrderMode.ATTACK_FLANK
 		KEY_R: return BattleRef.OrderMode.ATTACK_REAR
@@ -314,7 +316,7 @@ func _set_armed_mode(mode: int) -> void:
 	if _hud != null:
 		# Empty label hides the indicator for the default stance.
 		var label: String = "" if mode == BattleRef.OrderMode.NORMAL \
-				else String(BattleRef.ORDER_MODE_NAMES.get(mode, ""))
+				else str(BattleRef.ORDER_MODE_NAMES.get(mode, ""))
 		_hud.set_order_mode(label)
 
 
