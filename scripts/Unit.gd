@@ -41,6 +41,10 @@ var selected: bool = false
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours (#82/#84/#85/#86) read this; NORMAL is current behaviour.
 var order_mode: int = 0
+# Stance values from Battle.OrderMode that Unit's own behaviour reacts to, mirrored
+# as plain ints to avoid a Unit<->Battle preload cycle (kept in sync with the enum).
+const ORDER_ATTACK_FLANK := 2
+const ORDER_ATTACK_REAR := 3
 
 const RADIUS: float = 18.0
 const DETECTION_RANGE: float = 190.0
@@ -158,7 +162,12 @@ func _think(delta: float) -> void:
 			return
 		elif target_enemy != null:
 			# Explicit attack order, not yet in contact: chase past any move target.
-			_move_to(enemy.position, delta)
+			# A flank/rear stance (#82) closes on the enemy's side or back instead of
+			# head-on, so the strike on arrival lands with the flank/rear bonus.
+			var goal: Vector2 = enemy.position
+			if order_mode == ORDER_ATTACK_FLANK or order_mode == ORDER_ATTACK_REAR:
+				goal = _attack_approach_point(enemy)
+			_move_to(goal, delta)
 			return
 
 	# Obey a move order (disengaging if needed), else auto-advance on a near enemy.
@@ -199,6 +208,21 @@ func _nearest_enemy() -> Unit:
 			best_d = d
 			best = other
 	return best
+
+
+## Approach point for a flank/rear attack (#82): a spot at melee-contact distance
+## on the enemy's flank or rear, relative to its facing, so closing on it brings
+## this unit alongside/behind the target and its strike lands with the flank/rear
+## bonus. Recomputed each tick from sim state, so it tracks a turning or moving
+## target and stays deterministic (no RNG / wall-clock). Flank picks whichever
+## side this unit is already nearer, so it doesn't wrap around unnecessarily.
+func _attack_approach_point(enemy: Unit) -> Vector2:
+	var contact: float = attack_range + RADIUS + enemy.RADIUS
+	if order_mode == ORDER_ATTACK_REAR:
+		return enemy.position - enemy.facing * contact
+	var perp := Vector2(-enemy.facing.y, enemy.facing.x)
+	var side: float = 1.0 if (position - enemy.position).dot(perp) >= 0.0 else -1.0
+	return enemy.position + perp * (side * contact)
 
 
 # --- Movement --------------------------------------------------------------

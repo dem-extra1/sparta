@@ -25,6 +25,31 @@ func _attacker_at(p: Vector2) -> Unit:
 	return a
 
 
+# --- attack flank / rear approach (#82) ------------------------------------
+
+func test_attack_rear_approach_point_is_behind_the_target() -> void:
+	var u := _make_unit()
+	u.order_mode = Unit.ORDER_ATTACK_REAR
+	var enemy := _make_unit()
+	enemy.facing = Vector2.DOWN     # facing +y
+	enemy.position = Vector2.ZERO
+	var contact: float = u.attack_range + Unit.RADIUS + enemy.RADIUS
+	assert_eq(u._attack_approach_point(enemy), Vector2(0, -contact),
+		"rear approach is directly behind the target (opposite its facing)")
+
+
+func test_attack_flank_approach_point_is_on_the_near_side() -> void:
+	var u := _make_unit()
+	u.order_mode = Unit.ORDER_ATTACK_FLANK
+	u.position = Vector2(100, 0)    # to the enemy's right
+	var enemy := _make_unit()
+	enemy.facing = Vector2.DOWN
+	enemy.position = Vector2.ZERO
+	var contact: float = u.attack_range + Unit.RADIUS + enemy.RADIUS
+	assert_eq(u._attack_approach_point(enemy), Vector2(contact, 0),
+		"flank approach is on the side the attacker is already nearer")
+
+
 # --- _flank_multiplier -----------------------------------------------------
 
 func test_frontal_hit_is_1x() -> void:
