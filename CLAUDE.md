@@ -11,6 +11,20 @@ and verification steps — read `PLAN.md` first.
 - Main scene: `scenes/Battle.tscn`. Core scripts live in `scripts/`.
 - Issues are tracked on this repo with `P0`–`P3` labels; `PLAN.md` mirrors the roadmap.
 
+## Gameplay demos in PRs
+When your change is **user-visible** — it affects how the game looks or plays
+(`scenes/`, `scripts/`, `assets/`, `project.godot`) — help reviewers *see* it:
+commit a **`demos/demo.json`** so CI records a short clip and posts it on the PR.
+
+- Point `replay` at a replay that exercises your change. Record one by playing the
+  game and copying the saved file from `user://replays/` into `demos/`, or — for
+  changes visible in any battle (unit art, HUD, balance) — reuse the bundled
+  `demos/showcase.json`. Write a `caption` describing what changed.
+- See `demos/README.md` for the full contract and `demos/demo.example.json` for a
+  template.
+- If you skip this, CI still posts a *generic* build demo, but it won't show your
+  specific change — so add a tailored manifest whenever the change is worth seeing.
+
 ## Code review handling policy
 When addressing review feedback (human or automated) on a PR, triage each finding:
 

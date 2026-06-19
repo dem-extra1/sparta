@@ -1,6 +1,11 @@
-# Records a gameplay demo for Claude-authored PRs that change the game, and posts
-# it as an inline GIF in the PR conversation. See demos/README.md for the author
-# contract (commit a demos/demo.json pointing at a replay that shows your change).
+# Records a short gameplay clip for Claude-authored PRs that change the game and
+# posts it as an inline GIF in the PR conversation.
+#
+# What it records: if the PR commits a demos/demo.json it records the replay that
+# names (chosen by the author to show the PR's change); otherwise it falls back to
+# the default demos/showcase.json battle, posted with an honest "generic build
+# demo" caption. Either way a demo appears. See demos/README.md for the author
+# contract.
 #
 # Why a separate workflow (not claude.yml): claude.yml only *calls* an external
 # reusable workflow (d-morrison/gha), so recording steps can't be added there.
@@ -53,18 +58,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Look for a demo manifest
-        id: manifest
+      - name: Resolve demo source
+        id: demo
+        # Pick what to record: the PR's own demos/demo.json if present (tailored to
+        # the change), else the default showcase battle (generic, honestly labelled).
+        # Records as long as some replay file resolves; only skips if even the
+        # fallback is missing.
         run: |
+          set -euo pipefail
           if [ -f demos/demo.json ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
+            M=demos/demo.json
+            REPLAY=$(jq -r '.replay // "demos/showcase.json"' "$M")
+            CAPTION=$(jq -r '.caption // "Gameplay demo for this PR."' "$M")
+            FIXED_FPS=$(jq -r '.fixed_fps // 30' "$M")
+            MAX_FRAMES=$(jq -r '.max_frames // 300' "$M")
+            GIF_FPS=$(jq -r '.fps // 12' "$M")
+            WIDTH=$(jq -r '.width // 640' "$M")
+            # Be forgiving if an author included a res:// prefix; the runner adds it.
+            REPLAY="${REPLAY#res://}"
+            echo "Using demos/demo.json (replay: $REPLAY)"
           else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "No demos/demo.json on this PR — nothing to record. (See demos/README.md.)"
+            echo "No demos/demo.json — recording the default showcase battle. Add one to tailor the demo (see demos/README.md)."
+            REPLAY=demos/showcase.json
+            CAPTION='⚙️ Generic build demo — no PR-specific demo was provided. To show what this PR changes, commit a `demos/demo.json` pointing at a replay that exercises it (see `demos/README.md`).'
+            FIXED_FPS=30; MAX_FRAMES=300; GIF_FPS=12; WIDTH=640
           fi
+          if [ ! -f "$REPLAY" ]; then
+            echo "Replay file '$REPLAY' not found; skipping demo."
+            echo "record=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # caption is free text (may contain spaces/markdown) -> multiline output.
+          # Random delimiter so no author-provided caption can collide with it and
+          # smuggle in extra outputs; printf (not echo) so a caption beginning with
+          # -n/-e is emitted verbatim.
+          DELIM="caption_eof_$(openssl rand -hex 8)"
+          {
+            echo "record=true"
+            echo "replay=$REPLAY"
+            echo "fixed_fps=$FIXED_FPS"
+            echo "max_frames=$MAX_FRAMES"
+            echo "gif_fps=$GIF_FPS"
+            echo "width=$WIDTH"
+            echo "caption<<$DELIM"
+            printf '%s\n' "$CAPTION"
+            echo "$DELIM"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Godot ${{ env.GODOT_VERSION }}
-        if: steps.manifest.outputs.present == 'true'
+        if: steps.demo.outputs.record == 'true'
         uses: chickensoft-games/setup-godot@v2
         with:
           version: ${{ env.GODOT_VERSION }}
@@ -73,7 +115,7 @@ jobs:
       - name: Install GUT ${{ env.GUT_VERSION }}
         # The project's test files extend GutTest, so GUT must be present or the
         # import below fails to resolve that class (same as godot-ci.yml).
-        if: steps.manifest.outputs.present == 'true'
+        if: steps.demo.outputs.record == 'true'
         run: |
           git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
           mkdir -p addons
@@ -83,13 +125,13 @@ jobs:
       - name: Install Xvfb + ffmpeg
         # Movie Maker renders frames (software GL via Xvfb is fine — no GPU needed);
         # ffmpeg turns the AVI into a compact GIF.
-        if: steps.manifest.outputs.present == 'true'
+        if: steps.demo.outputs.record == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb ffmpeg
 
       - name: Import & validate project
-        if: steps.manifest.outputs.present == 'true'
+        if: steps.demo.outputs.record == 'true'
         run: |
           set -o pipefail
           godot --headless --import --verbose 2>&1 | tee import.log
@@ -99,26 +141,22 @@ jobs:
           fi
 
       - name: Record demo
-        if: steps.manifest.outputs.present == 'true'
-        id: record
+        if: steps.demo.outputs.record == 'true'
         # Tighter guard than the job backstop: headless Godot/Xvfb can deadlock on
         # driver init before --quit-after ever takes effect. Recording is seconds;
         # 10 min is generous.
         timeout-minutes: 10
+        env:
+          # From the resolve step; passed via env (not ${{ }} interpolation) so
+          # author-controlled values can't inject shell.
+          REPLAY: ${{ steps.demo.outputs.replay }}
+          FIXED_FPS: ${{ steps.demo.outputs.fixed_fps }}
+          MAX_FRAMES: ${{ steps.demo.outputs.max_frames }}
+          GIF_FPS: ${{ steps.demo.outputs.gif_fps }}
+          WIDTH: ${{ steps.demo.outputs.width }}
         run: |
           set -euo pipefail
-          REPLAY=$(jq -r '.replay // empty' demos/demo.json)
-          FIXED_FPS=$(jq -r '.fixed_fps // 30' demos/demo.json)
-          MAX_FRAMES=$(jq -r '.max_frames // 300' demos/demo.json)
-          GIF_FPS=$(jq -r '.fps // 12' demos/demo.json)
-          WIDTH=$(jq -r '.width // 640' demos/demo.json)
-
-          if [ -z "$REPLAY" ] || [ ! -f "$REPLAY" ]; then
-            echo "::error::demos/demo.json must set \"replay\" to a committed replay file (got: '${REPLAY:-}')"
-            exit 1
-          fi
           echo "Recording $MAX_FRAMES frames of res://$REPLAY"
-
           export SPARTA_DEMO_REPLAY="res://$REPLAY"
           xvfb-run -a godot --rendering-driver opengl3 \
             --write-movie /tmp/demo.avi --fixed-fps "$FIXED_FPS" \
@@ -134,9 +172,12 @@ jobs:
           ls -la /tmp/demo.gif
 
       - name: Publish GIF and comment
-        if: steps.manifest.outputs.present == 'true'
+        if: steps.demo.outputs.record == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          # Author-controlled; via env so they can't inject the publish script.
+          CAPTION: ${{ steps.demo.outputs.caption }}
+          REPLAY: ${{ steps.demo.outputs.replay }}
         run: |
           set -euo pipefail
           PR=${{ github.event.pull_request.number }}
@@ -144,8 +185,6 @@ jobs:
           # to a reader and unique per push, so the raw URL changes and dodges cache.
           SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
           DEST="pr-${PR}-${SHA}.gif"
-          CAPTION=$(jq -r '.caption // "Gameplay demo for this PR."' demos/demo.json)
-          REPLAY=$(jq -r '.replay // empty' demos/demo.json)
 
           # Publish onto the long-lived media branch. An isolated clone keeps the PR
           # checkout untouched. Different PRs share this branch, so a concurrent push
