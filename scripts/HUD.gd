@@ -14,6 +14,7 @@ var _overlay_label: Label
 var _menu_button: MenuButton
 var _status: Label
 var _paused_label: Label
+var _order_mode_label: Label
 var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
@@ -24,7 +25,7 @@ func _ready() -> void:
 
 	# Controls hint.
 	var hint := Label.new()
-	hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   WASD pan   •   wheel zoom   •   P / Shift+Space pause   •   hold Space show orders"
+	hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   H/F/R/K/G order mode (Esc clear)   •   WASD pan   •   wheel zoom   •   P / Shift+Space pause   •   hold Space show orders"
 	hint.position = Vector2(14, 10)
 	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
 	hint.add_theme_font_size_override("font_size", 14)
@@ -57,6 +58,18 @@ func _ready() -> void:
 	_paused_label.add_theme_color_override("font_color", Color(0.95, 0.9, 0.35))
 	_paused_label.visible = false
 	add_child(_paused_label)
+
+	# Armed order-mode indicator (#35), top-center below the pause banner. Hidden
+	# for the default stance; SelectionManager calls set_order_mode() to update it.
+	_order_mode_label = Label.new()
+	_order_mode_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_order_mode_label.position = Vector2(-120, 80)
+	_order_mode_label.custom_minimum_size = Vector2(240, 0)
+	_order_mode_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_order_mode_label.add_theme_font_size_override("font_size", 16)
+	_order_mode_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.35))
+	_order_mode_label.visible = false
+	add_child(_order_mode_label)
 
 	# Menu button (top-right) gathering the global options that used to be
 	# scattered across the HUD — restart, replay loading, and the edge-scroll
@@ -257,6 +270,15 @@ func show_unit(u, group_count: int) -> void:
 
 func clear_unit() -> void:
 	_info.text = "No unit selected"
+
+
+## Show the armed order mode (#35). Empty text hides the indicator (default stance).
+func set_order_mode(text: String) -> void:
+	if text == "":
+		_order_mode_label.visible = false
+	else:
+		_order_mode_label.text = "Order: %s" % text
+		_order_mode_label.visible = true
 
 
 func show_end(text: String) -> void:

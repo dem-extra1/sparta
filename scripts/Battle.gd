@@ -14,6 +14,24 @@ const FIELD := Rect2(0, 0, 1600, 1000)
 # unchanged — real merge/attack/relief targets are uids >= 0, a plain move is -1.
 const ORDER_APPEND_WAYPOINT := -2
 
+## Order modes (#35): the "stance" an order applies to its units. NORMAL is the
+## current move/attack behaviour. The smart modes are chosen by the player's armed
+## mode (SelectionManager), recorded in the replay ("mode") and stamped on
+## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues
+## (#82/#84/#85/#86). Until then a non-NORMAL stance is stored but behaves as
+## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT }
+
+## Human-readable mode names for the HUD / cursor indicator.
+const ORDER_MODE_NAMES := {
+	OrderMode.NORMAL: "Normal",
+	OrderMode.HOLD: "Hold",
+	OrderMode.ATTACK_FLANK: "Attack flank",
+	OrderMode.ATTACK_REAR: "Attack rear",
+	OrderMode.SKIRMISH: "Skirmish",
+	OrderMode.SUPPORT: "Support",
+}
+
 # Global movement scale: lower = units move slower (relative speeds preserved).
 const SPEED_SCALE := 0.6
 
@@ -126,7 +144,8 @@ func _physics_process(_delta: float) -> void:
 			_apply_order_cmd(cmd)
 	else:
 		for o in _pending_orders:
-			Replay.record_order(_tick, o["units"], Vector2(o["x"], o["y"]), o["target"])
+			Replay.record_order(_tick, o["units"], Vector2(o["x"], o["y"]), o["target"],
+					int(o.get("mode", OrderMode.NORMAL)))
 			_apply_order_cmd(o)
 		_pending_orders.clear()
 
@@ -146,7 +165,8 @@ func _physics_process(_delta: float) -> void:
 ## paused, when the physics tick that drains _pending_orders isn't running. The
 ## tick's re-application is idempotent (same cmd, same _apply_order_cmd), so live
 ## and replayed orders stay on the same deterministic code path.
-func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int) -> void:
+func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
+		order_mode: int = OrderMode.NORMAL) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -154,6 +174,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int) -> void:
 		"x": world_pos.x,
 		"y": world_pos.y,
 		"target": target_uid,
+		"mode": order_mode,
 	}
 	_pending_orders.append(cmd)
 	# Apply immediately for zero-latency feedback and paused preview — EXCEPT a
@@ -178,6 +199,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	# A move whose target is the append sentinel queues a waypoint instead of
 	# replacing the route (#34); any other order resets the queue first.
 	var append: bool = target_uid == ORDER_APPEND_WAYPOINT
+	# The order's stance (#35), stamped on each ordered unit below for the smart-
+	# order behaviours to consume. Defaults to NORMAL for older replays / merges.
+	var mode: int = int(cmd.get("mode", OrderMode.NORMAL))
 	# The target uid may be an enemy (attack) or a friendly (line relief, #4); a
 	# plain move has no target. Resolve it and dispatch per ordered unit by team.
 	var target_unit: Unit = _unit_by_uid(target_uid) if target_uid >= 0 else null
@@ -197,9 +221,11 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 		var u: Unit = _unit_by_uid(int(uid))
 		if u == null:
 			continue
-		# A fresh order (anything but a waypoint append) discards the queued route.
+		# A fresh order (anything but a waypoint append) discards the queued route
+		# and sets the unit's stance; an append continues the current march/stance.
 		if not append:
 			u.waypoints.clear()
+			u.order_mode = mode
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
 			u.target_enemy = target_unit   # attack an enemy
 			u.has_move_target = false
