@@ -6,7 +6,7 @@ extends CanvasLayer
 ##   - victory/defeat overlay with a restart button
 
 # Stable ids for the Menu popup's items (independent of index / separators).
-enum { MENU_RESTART, MENU_LOAD, MENU_EDGE_SCROLL }
+enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL }
 
 var _info: Label
 var _overlay: ColorRect
@@ -73,8 +73,14 @@ func _ready() -> void:
 
 	var popup := _menu_button.get_popup()
 	popup.process_mode = Node.PROCESS_MODE_ALWAYS   # usable while paused
-	# "Restart Battle" works mid-fight, not just from the end-of-battle overlay.
+	# "Restart Battle" works mid-fight, not just from the end-of-battle overlay;
+	# it always starts a fresh LIVE battle (matching the overlay's "Fight Again").
+	# "Restart Replay" instead rewinds the current playback to tick 0, so it's
+	# only meaningful while watching a replay — disabled (greyed) in a live battle.
 	popup.add_item("Restart Battle", MENU_RESTART)
+	popup.add_item("Restart Replay", MENU_RESTART_REPLAY)
+	popup.set_item_disabled(popup.get_item_index(MENU_RESTART_REPLAY),
+			Replay.mode != Replay.Mode.PLAYBACK)
 	popup.add_item("Load Replay…", MENU_LOAD)
 	popup.add_separator()
 	popup.add_check_item("Mouse-edge scroll", MENU_EDGE_SCROLL)
@@ -188,6 +194,8 @@ func _on_menu_id(id: int) -> void:
 	match id:
 		MENU_RESTART:
 			_on_restart()
+		MENU_RESTART_REPLAY:
+			_on_restart_replay()
 		MENU_LOAD:
 			_open_load_dialog()
 		MENU_EDGE_SCROLL:
@@ -256,6 +264,19 @@ func show_end(text: String) -> void:
 func _on_restart() -> void:
 	# Fresh battle: drop back to IDLE so Battle._ready starts a new recording.
 	Replay.reset()
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+
+func _on_restart_replay() -> void:
+	# Rewind the replay being watched back to tick 0. Only meaningful in PLAYBACK
+	# mode (the menu item is disabled otherwise); guard anyway in case it's
+	# reached another way. start_playback re-reads loaded_path and resets the
+	# play index, so reloading the scene replays it from the start.
+	if Replay.mode != Replay.Mode.PLAYBACK:
+		return
+	if not Replay.start_playback(Replay.loaded_path):
+		return
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
