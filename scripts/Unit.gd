@@ -42,7 +42,9 @@ var selected: bool = false
 # The smart-order behaviours (#82/#84/#85/#86) read this; NORMAL is current behaviour.
 var order_mode: int = 0
 # Stance values from Battle.OrderMode that Unit's own behaviour reacts to, mirrored
-# as plain ints to avoid a Unit<->Battle preload cycle (kept in sync with the enum).
+# as plain ints to avoid a Unit<->Battle preload cycle (kept in sync with the enum;
+# Battle._ready asserts they match). NORMAL is 0 (Unit's default order_mode).
+const ORDER_HOLD := 1
 const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
 
@@ -179,9 +181,11 @@ func _think(delta: float) -> void:
 		else:
 			has_move_target = false
 			state = State.IDLE
-	elif enemy != null:
+	elif enemy != null and order_mode != ORDER_HOLD:
 		_move_to(enemy.position, delta)
 	else:
+		# Idle: no enemy, or a HOLD stance (#84) that won't chase — the paths above
+		# still fight/fire whatever reaches a held unit.
 		state = State.IDLE
 
 
