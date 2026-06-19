@@ -5,9 +5,12 @@ extends CanvasLayer
 ##   - selected-unit info panel (bottom-left)
 ##   - victory/defeat overlay with a restart button
 
-# Stable ids for the Menu popup's items (independent of index / separators).
-enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX }
+const BattleRef = preload("res://scripts/Battle.gd")
 
+# Stable ids for the Menu popup's items (independent of index / separators).
+enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX, MENU_KEYBINDINGS }
+
+var _hint: Label
 var _info: Label
 var _overlay: ColorRect
 var _overlay_label: Label
@@ -18,18 +21,20 @@ var _order_mode_label: Label
 var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
+var _keybindings_dialog: AcceptDialog
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS   # stays responsive when paused
 
-	# Controls hint.
-	var hint := Label.new()
-	hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   H/F/R/K/G order mode (Esc clear)   •   WASD pan   •   wheel zoom   •   P / Shift+Space pause   •   hold Space show orders"
-	hint.position = Vector2(14, 10)
-	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
-	hint.add_theme_font_size_override("font_size", 14)
-	add_child(hint)
+	# Controls hint. The order-mode keys are rendered from the live Settings bindings
+	# (#87) so the bar stays accurate after a rebind; _refresh_hint re-renders on change.
+	_hint = Label.new()
+	_hint.position = Vector2(14, 10)
+	_hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
+	_hint.add_theme_font_size_override("font_size", 14)
+	add_child(_hint)
+	_refresh_hint()
 
 	# Recording / replay status (top-center).
 	_status = Label.new()
@@ -98,6 +103,7 @@ func _ready() -> void:
 	popup.add_separator()
 	popup.add_check_item("Mouse-edge scroll", MENU_EDGE_SCROLL)
 	popup.add_check_item("Sound effects", MENU_SFX)
+	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
 	_sync_setting_toggles()
 	popup.id_pressed.connect(_on_menu_id)
 	# Keep the check items in sync if a setting changes elsewhere. Use a named
@@ -105,6 +111,8 @@ func _ready() -> void:
 	# torn down in _exit_tree() — otherwise it would dangle on the persistent
 	# Settings autoload after reload_current_scene() frees this HUD.
 	Settings.changed.connect(_sync_setting_toggles)
+	# Same lifetime concern: keep the hint's order-mode keys in sync after a rebind.
+	Settings.changed.connect(_refresh_hint)
 
 	# File picker for choosing a saved replay, plus an error popup for bad files.
 	# Both stay responsive while the tree is paused (end-of-battle overlay).
@@ -123,6 +131,11 @@ func _ready() -> void:
 	# Neutral default; each caller sets a context-specific title before popping it.
 	_error_dialog.title = "Replay"
 	add_child(_error_dialog)
+
+	# Rebindable order-mode hotkeys (#87). Its own PROCESS_MODE_ALWAYS dialog so it's
+	# usable while paused, like the other menu dialogs.
+	_keybindings_dialog = preload("res://scripts/KeybindingsDialog.gd").new()
+	add_child(_keybindings_dialog)
 
 	# Selected-unit info panel, pinned above the bottom-left corner. The top
 	# offset is derived from the panel's own min-height + bottom margin (not a
@@ -197,12 +210,27 @@ func _exit_tree() -> void:
 	# outlive this HUD (e.g. across reload_current_scene()).
 	if Settings.changed.is_connected(_sync_setting_toggles):
 		Settings.changed.disconnect(_sync_setting_toggles)
+	if Settings.changed.is_connected(_refresh_hint):
+		Settings.changed.disconnect(_refresh_hint)
 
 
 func _sync_setting_toggles() -> void:
 	var popup := _menu_button.get_popup()
 	popup.set_item_checked(popup.get_item_index(MENU_EDGE_SCROLL), Settings.edge_scroll)
 	popup.set_item_checked(popup.get_item_index(MENU_SFX), Settings.sfx_enabled)
+
+
+## Rebuild the controls hint, rendering the order-mode keys from the live Settings
+## bindings (#87) so the bar reflects rebinds instead of the hardcoded defaults.
+func _refresh_hint() -> void:
+	if _hint == null:
+		return
+	var keys: String = ""
+	for entry in BattleRef.ORDER_MODE_HOTKEYS:
+		if keys != "":
+			keys += "/"
+		keys += OS.get_keycode_string(Settings.order_binding(entry["slug"]))
+	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (rebind in ☰ Menu; Esc clear)   •   WASD pan   •   wheel zoom   •   P / Shift+Space pause   •   hold Space show orders" % keys
 
 
 ## Dispatch a Menu popup selection by its stable item id.
@@ -219,6 +247,8 @@ func _on_menu_id(id: int) -> void:
 			Settings.edge_scroll = not Settings.edge_scroll
 		MENU_SFX:
 			Settings.sfx_enabled = not Settings.sfx_enabled
+		MENU_KEYBINDINGS:
+			_keybindings_dialog.popup_centered()
 
 
 func _unhandled_input(event: InputEvent) -> void:

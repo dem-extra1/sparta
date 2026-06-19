@@ -32,7 +32,7 @@ var _last_click_ms: int = -100000
 # Control groups: number-key digit -> bound Array of units.
 var _groups: Dictionary = {}
 # Armed order mode (#35): the next right-click issues an order in this stance.
-# Selected by hotkey (fixed defaults for now; rebindable in #87) and shown by the
+# Selected by hotkey (rebindable via ☰ Menu → Keybindings, #87) and shown by the
 # cursor + a HUD indicator. Stays armed (sticky) until changed or cleared (Esc).
 var _armed_mode: int = BattleRef.OrderMode.NORMAL
 
@@ -299,18 +299,19 @@ func _exit_tree() -> void:
 	Input.set_custom_mouse_cursor(null)
 
 
-## Fixed default order-mode hotkeys (rebindable in #87). Keyed on the PHYSICAL
-## keycode (layout-independent), matching the camera (WASD) and pause hotkeys.
-## -1 = not a mode key.
+## Order-mode hotkeys (#87): keyed on the PHYSICAL keycode (layout-independent, like
+## the camera/pause keys) and now read from the Settings autoload so they're
+## rebindable. Esc -> NORMAL ("clear stance") stays fixed. -1 = not a mode key.
 func _order_mode_for_keycode(physical_keycode: Key) -> int:
-	match physical_keycode:
-		KEY_H: return BattleRef.OrderMode.HOLD
-		KEY_F: return BattleRef.OrderMode.ATTACK_FLANK
-		KEY_R: return BattleRef.OrderMode.ATTACK_REAR
-		KEY_K: return BattleRef.OrderMode.SKIRMISH
-		KEY_G: return BattleRef.OrderMode.SUPPORT
-		KEY_ESCAPE: return BattleRef.OrderMode.NORMAL
-		_: return -1
+	if physical_keycode == KEY_ESCAPE:
+		return BattleRef.OrderMode.NORMAL
+	var slug := Settings.slug_for_keycode(physical_keycode)
+	if slug == "":
+		return -1
+	for entry in BattleRef.ORDER_MODE_HOTKEYS:
+		if entry["slug"] == slug:
+			return entry["mode"]
+	return -1
 
 
 func _set_armed_mode(mode: int) -> void:
