@@ -1,7 +1,7 @@
 {
-  "_comment": "Order overlay for SUPPORT units (#101). This is a hold-Space survey overlay, which the headless demo runner doesn't trigger, so the new teal supporter->ward link is NOT visible in this clip — it only draws in-game while Space is held. Reuses the support replay (Archers ordered to guard the Infantry) so the clip at least shows the scenario the overlay annotates.",
-  "replay": "demos/support_demo.json",
-  "caption": "Order overlay for SUPPORT units (#101): hold Space in-game and a unit guarding a friendly now draws a teal link to its ward (with a double-ring 'shielding' marker), matching the SUPPORT cursor colour — previously a supporter drew nothing on the overlay. NOTE: the overlay is a hold-Space survey aid that this silent auto-clip can't show; the replay here is the support scenario it annotates.",
+  "_comment": "Rebindable order-mode hotkeys + keybindings menu (#87). This is a ☰ Menu → Keybindings… settings dialog, which the headless demo runner can't open, so the feature itself is NOT visible in this clip. Reuses the bundled showcase battle so CI still posts a build demo; the change is pure client-side input config with no in-battle visual and no sim/replay impact.",
+  "replay": "demos/showcase.json",
+  "caption": "Rebindable order-mode hotkeys (#87): the H/F/R/K/G order-mode keys can now be remapped from ☰ Menu → Keybindings… (capture a key, conflicts rejected, reset-to-defaults), persisted in user://settings.cfg; the selector reads its keys from Settings. NOTE: it's a settings dialog this silent auto-clip can't open — the clip is just the bundled showcase battle. Pure input config: no sim/replay/determinism impact.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,

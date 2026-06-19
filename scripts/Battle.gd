@@ -32,6 +32,19 @@ const ORDER_MODE_NAMES := {
 	OrderMode.SUPPORT: "Support",
 }
 
+## Rebindable order-mode hotkeys (#87), in menu/HUD order. Each entry pairs the
+## OrderMode it arms with a stable cfg "slug"; the Settings autoload persists
+## slug -> physical keycode (defaults in Settings.DEFAULT_ORDER_BINDINGS), and the
+## keybindings dialog labels rows via ORDER_MODE_NAMES. NORMAL (Esc, "clear stance")
+## is intentionally absent — it stays a fixed, non-rebindable key.
+const ORDER_MODE_HOTKEYS := [
+	{"mode": OrderMode.HOLD, "slug": "hold"},
+	{"mode": OrderMode.ATTACK_FLANK, "slug": "attack_flank"},
+	{"mode": OrderMode.ATTACK_REAR, "slug": "attack_rear"},
+	{"mode": OrderMode.SKIRMISH, "slug": "skirmish"},
+	{"mode": OrderMode.SUPPORT, "slug": "support"},
+]
+
 # Global movement scale: lower = units move slower (relative speeds preserved).
 const SPEED_SCALE := 0.6
 
