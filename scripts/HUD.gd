@@ -6,7 +6,7 @@ extends CanvasLayer
 ##   - victory/defeat overlay with a restart button
 
 # Stable ids for the Menu popup's items (independent of index / separators).
-enum { MENU_RESTART, MENU_LOAD, MENU_EDGE_SCROLL }
+enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL }
 
 var _info: Label
 var _overlay: ColorRect
@@ -73,8 +73,14 @@ func _ready() -> void:
 
 	var popup := _menu_button.get_popup()
 	popup.process_mode = Node.PROCESS_MODE_ALWAYS   # usable while paused
-	# "Restart Battle" works mid-fight, not just from the end-of-battle overlay.
+	# "Restart Battle" works mid-fight, not just from the end-of-battle overlay;
+	# it always starts a fresh LIVE battle (matching the overlay's "Fight Again").
+	# "Restart Replay" instead rewinds the current playback to tick 0, so it's
+	# only meaningful while watching a replay — disabled (greyed) in a live battle.
 	popup.add_item("Restart Battle", MENU_RESTART)
+	popup.add_item("Restart Replay", MENU_RESTART_REPLAY)
+	popup.set_item_disabled(popup.get_item_index(MENU_RESTART_REPLAY),
+			Replay.mode != Replay.Mode.PLAYBACK)
 	popup.add_item("Load Replay…", MENU_LOAD)
 	popup.add_separator()
 	popup.add_check_item("Mouse-edge scroll", MENU_EDGE_SCROLL)
@@ -100,7 +106,8 @@ func _ready() -> void:
 
 	_error_dialog = AcceptDialog.new()
 	_error_dialog.process_mode = Node.PROCESS_MODE_ALWAYS
-	_error_dialog.title = "Load Replay"
+	# Neutral default; each caller sets a context-specific title before popping it.
+	_error_dialog.title = "Replay"
 	add_child(_error_dialog)
 
 	# Selected-unit info panel, pinned above the bottom-left corner. The top
@@ -188,6 +195,8 @@ func _on_menu_id(id: int) -> void:
 	match id:
 		MENU_RESTART:
 			_on_restart()
+		MENU_RESTART_REPLAY:
+			_on_restart_replay()
 		MENU_LOAD:
 			_open_load_dialog()
 		MENU_EDGE_SCROLL:
@@ -260,6 +269,23 @@ func _on_restart() -> void:
 	get_tree().reload_current_scene()
 
 
+func _on_restart_replay() -> void:
+	# Rewind the watched replay to tick 0: start_playback re-reads loaded_path and
+	# resets the play index, then the scene reload replays from the start. PLAYBACK
+	# only (the menu item is disabled otherwise); guarded in case it's reached anyway.
+	if Replay.mode != Replay.Mode.PLAYBACK:
+		return
+	if not Replay.start_playback(Replay.loaded_path):
+		# Loaded fine on entering PLAYBACK, so a failure now means it vanished
+		# mid-watch — report it like _on_replay_chosen rather than bailing silently.
+		_error_dialog.title = "Restart Replay"
+		_error_dialog.dialog_text = "That replay is no longer available."
+		_error_dialog.popup_centered()
+		return
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+
 func _open_load_dialog() -> void:
 	_load_dialog.current_dir = Replay.replays_dir()
 	_load_dialog.popup_centered()
@@ -268,6 +294,7 @@ func _open_load_dialog() -> void:
 func _on_replay_chosen(path: String) -> void:
 	if not Replay.start_playback(path):
 		# Bad/incompatible file — report it without clobbering any result label.
+		_error_dialog.title = "Load Replay"
 		_error_dialog.dialog_text = "That file isn't a compatible replay."
 		_error_dialog.popup_centered()
 		return
