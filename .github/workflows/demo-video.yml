@@ -89,6 +89,10 @@ jobs:
             exit 0
           fi
           # caption is free text (may contain spaces/markdown) -> multiline output.
+          # Random delimiter so no author-provided caption can collide with it and
+          # smuggle in extra outputs; printf (not echo) so a caption beginning with
+          # -n/-e is emitted verbatim.
+          DELIM="caption_eof_$(openssl rand -hex 8)"
           {
             echo "record=true"
             echo "replay=$REPLAY"
@@ -96,9 +100,9 @@ jobs:
             echo "max_frames=$MAX_FRAMES"
             echo "gif_fps=$GIF_FPS"
             echo "width=$WIDTH"
-            echo "caption<<DEMO_EOF"
-            echo "$CAPTION"
-            echo "DEMO_EOF"
+            echo "caption<<$DELIM"
+            printf '%s\n' "$CAPTION"
+            echo "$DELIM"
           } >> "$GITHUB_OUTPUT"
 
       - name: Set up Godot ${{ env.GODOT_VERSION }}
