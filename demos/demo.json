@@ -1,0 +1,9 @@
+{
+  "_comment": "Audio-only change (issue #76). The CI demo renders a SILENT GIF, so the new sounds are not audible in the posted clip — run the game locally to hear them. Reuses the bundled showcase replay just so the demo job has something to render.",
+  "replay": "demos/showcase.json",
+  "caption": "Sound effects: swapped the procedural placeholders for curated CC0 audio (Kenney) across all 8 events — hit, shoot, rout, death, select, order, victory, defeat. NOTE: this GIF is silent, so the change isn't audible here; run locally to hear it. Sources + licences in assets/sfx/CREDITS.md.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}
