@@ -113,7 +113,15 @@ const SEPARATION_RADIUS_MAX: float = 28.0
 # near-stationary unit (e.g. a shadowing supporter, #86) earns proportionally less,
 # down to nothing. Deterministic (positions + move_speed only) so replays stay exact.
 const CHARGE_BONUS_AT_REF_SPEED: float = 0.8
-const CHARGE_REFERENCE_SPEED: float = 96.0   # a cavalry move_speed: 160 * Battle SPEED_SCALE (0.6)
+# Reference closing speed at which a head-on charge yields the full bonus above. An
+# independent balance knob, NOT a hard link to Battle: it's set near a typical cavalry
+# gallop (~96 = base 160 * Battle.SPEED_SCALE 0.6) so a full charge ~matches the prior
+# flat x1.8, but it's a plain literal on purpose — deriving it from Battle.SPEED_SCALE
+# would reintroduce the Unit<->Battle preload cycle this file avoids elsewhere. Changing
+# cavalry speed just rescales the charge (faster hits harder, by design); nothing breaks.
+# The bonus is naturally capped at the unit's own gallop (speed_toward <= move_speed), so
+# with cavalry at the reference speed it can't exceed the reference x1.8 today.
+const CHARGE_REFERENCE_SPEED: float = 96.0
 # Anti-cavalry spearmen brace and turn the charge against the rider: the momentum
 # becomes a speed-scaled PENALTY (impaling yourself at a gallop hurts) instead of a
 # bonus, floored so even a full charge into spears never drops below the old x0.6.
@@ -123,8 +131,10 @@ const ANTI_CAV_CHARGE_FLOOR: float = 0.6
 var _attack_cd: float = 0.0
 var _rout_timer: float = 0.0
 var _moved_last_frame: bool = false
-# Velocity the unit carried into its last move; drives the charge bonus (#100) and is
-# cleared on any frame it doesn't move, so the charge lands only on the contact strike.
+# Velocity the unit carried into its last move; the cavalry charge bonus (#100) reads it
+# at contact. Spent by _strike (so only the contact strike charges, not the grinding
+# strikes after) and cleared when the unit goes idle/holds (a stationary unit carries no
+# momentum); kept while FIGHTING so a strike delayed by attack cooldown still lands it.
 var _approach_velocity: Vector2 = Vector2.ZERO
 var _relief_partner: Unit = null   # unit we're swapping with mid-relief (#4)
 var team_color: Color = Color.WHITE
@@ -164,10 +174,11 @@ func _physics_process(delta: float) -> void:
 	tick_cohesion(delta)
 	_update_relief()
 
-	# Clear the carried impact velocity on any frame the unit didn't move, so the
-	# charge bonus (#100) lands only on the first, contact-making strike — not on the
-	# stationary "grinding" strikes that follow. _move_to refreshes it while closing.
-	if not _moved_last_frame:
+	# A stationary, non-fighting unit carries no momentum: drop any leftover approach
+	# velocity so a later standing strike can't charge off it (#100). While FIGHTING we
+	# keep it — a strike held back by attack cooldown on the contact frame still charges
+	# on the next — and _strike spends it, so grinding strikes after the first don't.
+	if not _moved_last_frame and state != State.FIGHTING:
 		_approach_velocity = Vector2.ZERO
 	queue_redraw()
 
@@ -540,8 +551,11 @@ func _separation_candidates() -> Array:
 ## bonus, a shallow/glancing approach lands less, and a near-stationary unit (a unit
 ## grinding in melee, or a shadowing supporter, #86) lands none. Cavalry only, and not
 ## against other cavalry. Anti-cavalry spearmen brace and turn it into a speed-scaled
-## penalty (charging onto set spears backfires). Deterministic — derived from positions
-## and move_speed, which live play and replay reach identically — so replays stay exact.
+## penalty (charging onto set spears backfires) — so a cavalry unit that ISN'T moving
+## carries no momentum and fights spearmen at x1.0, neither charging nor impaling itself
+## (intended; the old model applied a flat first-strike x0.6 even when stationary).
+## Deterministic — derived from positions and move_speed, which live play and replay
+## reach identically — so replays stay exact.
 func charge_multiplier(enemy: Unit) -> float:
 	if not is_cavalry or enemy.is_cavalry:
 		return 1.0
@@ -568,8 +582,11 @@ func _strike(enemy: Unit) -> void:
 	var dmg: float = base * Replay.rng.randf_range(0.6, 1.4)
 
 	# Cavalry charge: a momentum-scaled bonus (or a backfire onto braced spears),
-	# computed from the rider's impact velocity at this contact (#100).
+	# computed from the rider's impact velocity at this contact (#100). Spend it so the
+	# charge lands only on this first, contact-making strike — not the grinding strikes
+	# that follow in the same melee.
 	dmg *= charge_multiplier(enemy)
+	_approach_velocity = Vector2.ZERO
 
 	Sfx.play(&"hit")   # presentation only; throttled in Sfx so a line doesn't roar
 	enemy.take_casualties(int(round(dmg)), self)
