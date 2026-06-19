@@ -1,13 +1,17 @@
 extends CanvasLayer
 ## On-screen UI, built in code (no .tscn needed):
 ##   - top hint bar
+##   - top-right Menu button: restart the battle plus global options (#53)
 ##   - selected-unit info panel (bottom-left)
 ##   - victory/defeat overlay with a restart button
+
+# Stable ids for the Menu popup's items (independent of index / separators).
+enum { MENU_RESTART, MENU_LOAD, MENU_EDGE_SCROLL }
 
 var _info: Label
 var _overlay: ColorRect
 var _overlay_label: Label
-var _edge_toggle: CheckButton
+var _menu_button: MenuButton
 var _status: Label
 var _paused_label: Label
 var _watch_button: Button
@@ -54,33 +58,33 @@ func _ready() -> void:
 	_paused_label.visible = false
 	add_child(_paused_label)
 
-	# Settings: edge-scroll toggle (top-right). Give it an explicit width so the
-	# placement is derived from that, not a font-metric-tuned magic offset.
-	_edge_toggle = CheckButton.new()
-	_edge_toggle.text = "Mouse-edge scroll"
-	var toggle_width := 240.0
-	_edge_toggle.custom_minimum_size = Vector2(toggle_width, 0)
-	_edge_toggle.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_edge_toggle.position = Vector2(-toggle_width - 6.0, 6)
-	_edge_toggle.button_pressed = Settings.edge_scroll
-	_edge_toggle.toggled.connect(func(on: bool) -> void: Settings.edge_scroll = on)
-	# Keep the checkbox in sync if the setting changes elsewhere. Use a named
-	# method (not a lambda) so the connection is tied to this node's lifetime and
-	# torn down in _exit_tree() — otherwise it would dangle on the persistent
-	# Settings autoload after reload_current_scene() frees this HUD.
-	Settings.changed.connect(_sync_edge_toggle)
-	add_child(_edge_toggle)
+	# Menu button (top-right) gathering the global options that used to be
+	# scattered across the HUD — restart, replay loading, and the edge-scroll
+	# toggle (#53). Its popup is PROCESS_MODE_ALWAYS so it stays usable while the
+	# simulation is paused. Give the button an explicit width so its placement is
+	# derived from that, not a font-metric-tuned magic offset.
+	_menu_button = MenuButton.new()
+	_menu_button.text = "☰ Menu"
+	var menu_width := 120.0
+	_menu_button.custom_minimum_size = Vector2(menu_width, 0)
+	_menu_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_menu_button.position = Vector2(-menu_width - 6.0, 6)
+	add_child(_menu_button)
 
-	# Persistent "Load Replay" button (top-right, under the edge toggle) so a
-	# saved replay can be opened any time — including right after launch.
-	var load_btn := Button.new()
-	load_btn.text = "Load Replay"
-	var load_width := 140.0
-	load_btn.custom_minimum_size = Vector2(load_width, 0)
-	load_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	load_btn.position = Vector2(-load_width - 6.0, 44)
-	load_btn.pressed.connect(_open_load_dialog)
-	add_child(load_btn)
+	var popup := _menu_button.get_popup()
+	popup.process_mode = Node.PROCESS_MODE_ALWAYS   # usable while paused
+	# "Restart Battle" works mid-fight, not just from the end-of-battle overlay.
+	popup.add_item("Restart Battle", MENU_RESTART)
+	popup.add_item("Load Replay…", MENU_LOAD)
+	popup.add_separator()
+	popup.add_check_item("Mouse-edge scroll", MENU_EDGE_SCROLL)
+	popup.set_item_checked(popup.get_item_index(MENU_EDGE_SCROLL), Settings.edge_scroll)
+	popup.id_pressed.connect(_on_menu_id)
+	# Keep the edge-scroll check in sync if the setting changes elsewhere. Use a
+	# named method (not a lambda) so the connection is tied to this node's
+	# lifetime and torn down in _exit_tree() — otherwise it would dangle on the
+	# persistent Settings autoload after reload_current_scene() frees this HUD.
+	Settings.changed.connect(_sync_edge_toggle)
 
 	# File picker for choosing a saved replay, plus an error popup for bad files.
 	# Both stay responsive while the tree is paused (end-of-battle overlay).
@@ -175,7 +179,20 @@ func _exit_tree() -> void:
 
 
 func _sync_edge_toggle() -> void:
-	_edge_toggle.button_pressed = Settings.edge_scroll
+	var popup := _menu_button.get_popup()
+	popup.set_item_checked(popup.get_item_index(MENU_EDGE_SCROLL), Settings.edge_scroll)
+
+
+## Dispatch a Menu popup selection by its stable item id.
+func _on_menu_id(id: int) -> void:
+	match id:
+		MENU_RESTART:
+			_on_restart()
+		MENU_LOAD:
+			_open_load_dialog()
+		MENU_EDGE_SCROLL:
+			# Flip the setting; Settings.changed -> _sync_edge_toggle re-checks the item.
+			Settings.edge_scroll = not Settings.edge_scroll
 
 
 func _unhandled_input(event: InputEvent) -> void:
