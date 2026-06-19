@@ -103,34 +103,36 @@ func _synth(name: StringName) -> AudioStreamWAV:
 	var buf := PackedFloat32Array()
 	match name:
 		&"hit":   # melee thud: low body + a noise transient
-			_blip(buf, 0.0, 0.12, 180.0, 90.0, "sine", 0.7)
-			_blip(buf, 0.0, 0.04, 0.0, 0.0, "noise", 0.25)
+			buf = _blip(buf, 0.0, 0.12, 180.0, 90.0, "sine", 0.7)
+			buf = _blip(buf, 0.0, 0.04, 0.0, 0.0, "noise", 0.25)
 		&"shoot":   # arrow: bright down-sweep + airy noise
-			_blip(buf, 0.0, 0.10, 1300.0, 420.0, "saw", 0.4)
-			_blip(buf, 0.0, 0.04, 0.0, 0.0, "noise", 0.3)
+			buf = _blip(buf, 0.0, 0.10, 1300.0, 420.0, "saw", 0.4)
+			buf = _blip(buf, 0.0, 0.04, 0.0, 0.0, "noise", 0.3)
 		&"rout":   # falling whistle
-			_blip(buf, 0.0, 0.30, 520.0, 160.0, "square", 0.35)
+			buf = _blip(buf, 0.0, 0.30, 520.0, 160.0, "square", 0.35)
 		&"death":   # low descending knell
-			_blip(buf, 0.0, 0.28, 220.0, 70.0, "sine", 0.6)
+			buf = _blip(buf, 0.0, 0.28, 220.0, 70.0, "sine", 0.6)
 		&"select":   # short crisp click
-			_blip(buf, 0.0, 0.05, 900.0, 900.0, "square", 0.3)
+			buf = _blip(buf, 0.0, 0.05, 900.0, 900.0, "square", 0.3)
 		&"order":   # short up-blip (acknowledge)
-			_blip(buf, 0.0, 0.06, 600.0, 760.0, "square", 0.3)
+			buf = _blip(buf, 0.0, 0.06, 600.0, 760.0, "square", 0.3)
 		&"victory":   # rising C-E-G arpeggio
-			_blip(buf, 0.00, 0.16, 523.0, 523.0, "square", 0.4)
-			_blip(buf, 0.12, 0.16, 659.0, 659.0, "square", 0.4)
-			_blip(buf, 0.24, 0.30, 784.0, 784.0, "square", 0.4)
+			buf = _blip(buf, 0.00, 0.16, 523.0, 523.0, "square", 0.4)
+			buf = _blip(buf, 0.12, 0.16, 659.0, 659.0, "square", 0.4)
+			buf = _blip(buf, 0.24, 0.30, 784.0, 784.0, "square", 0.4)
 		&"defeat":   # falling G-Eb-Bb arpeggio
-			_blip(buf, 0.00, 0.20, 392.0, 392.0, "saw", 0.4)
-			_blip(buf, 0.18, 0.20, 311.0, 311.0, "saw", 0.4)
-			_blip(buf, 0.36, 0.40, 233.0, 233.0, "saw", 0.4)
+			buf = _blip(buf, 0.00, 0.20, 392.0, 392.0, "saw", 0.4)
+			buf = _blip(buf, 0.18, 0.20, 311.0, 311.0, "saw", 0.4)
+			buf = _blip(buf, 0.36, 0.40, 233.0, 233.0, "saw", 0.4)
 	return _make_wav(buf)
 
 
-## Add one decaying tone/noise burst into buf (grown as needed). Frequency sweeps
-## linearly f0 -> f1 across the blip; amplitude decays over its length.
+## Add one decaying tone/noise burst into buf (grown as needed) and return it.
+## Callers reassign (buf = _blip(buf, ...)) so the result is correct regardless of
+## GDScript's packed-array copy-on-write. Frequency sweeps linearly f0 -> f1 across
+## the blip; amplitude decays over its length.
 func _blip(buf: PackedFloat32Array, start_s: float, dur: float,
-		f0: float, f1: float, kind: String, amp: float) -> void:
+		f0: float, f1: float, kind: String, amp: float) -> PackedFloat32Array:
 	var n: int = int(dur * MIX_RATE)
 	var start_i: int = int(start_s * MIX_RATE)
 	if buf.size() < start_i + n:
@@ -142,11 +144,15 @@ func _blip(buf: PackedFloat32Array, start_s: float, dur: float,
 		phase += TAU * freq / float(MIX_RATE)
 		var w: float
 		match kind:
+			"sine": w = sin(phase)
 			"square": w = 1.0 if sin(phase) >= 0.0 else -1.0
 			"saw": w = fmod(phase / TAU, 1.0) * 2.0 - 1.0
 			"noise": w = _rng.randf_range(-1.0, 1.0)
-			_: w = sin(phase)
+			_:
+				push_warning("Sfx._blip: unknown waveform kind '%s'; using sine" % kind)
+				w = sin(phase)
 		buf[start_i + i] += w * pow(1.0 - t, 2.0) * amp   # squared decay envelope
+	return buf
 
 
 ## Pack mono float samples (-1..1) into a 16-bit PCM AudioStreamWAV.
