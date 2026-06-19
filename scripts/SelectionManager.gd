@@ -9,6 +9,7 @@ const BattleRef = preload("res://scripts/Battle.gd")  # for the waypoint-append 
 
 const CLICK_THRESHOLD: float = 6.0
 const DOUBLE_CLICK_MS: int = 350
+const CURSOR_SIZE: int = 24   # generated order-mode cursor (#35)
 
 # Order-overlay colours (Total War convention: green = move, red = attack).
 const ORDER_MOVE_COLOR: Color = Color(0.45, 0.95, 0.55, 0.9)
@@ -28,6 +29,10 @@ var _last_click_unit = null
 var _last_click_ms: int = -100000
 # Control groups: number-key digit -> bound Array of units.
 var _groups: Dictionary = {}
+# Armed order mode (#35): the next right-click issues an order in this stance.
+# Selected by hotkey (fixed defaults for now; rebindable in #87) and shown by the
+# cursor + a HUD indicator. Stays armed (sticky) until changed or cleared (Esc).
+var _armed_mode: int = BattleRef.OrderMode.NORMAL
 
 @onready var _hud = get_node_or_null("../HUD")
 @onready var _battle = get_parent()
@@ -59,7 +64,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		_drag_cur = get_global_mouse_position()
 		queue_redraw()
 	elif event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_M:
+		var mode: int = _order_mode_for_keycode(event.physical_keycode)
+		if mode >= 0:
+			_set_armed_mode(mode)   # arm a smart-order stance (#35)
+		elif event.keycode == KEY_M:
 			_issue_merge()   # merge the selected friendly regiments into one (#3)
 		else:
 			_handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall (#11)
@@ -151,7 +159,7 @@ func _issue_order(world_pos: Vector2, append: bool = false) -> void:
 			uids.append(unit.uid)
 	if uids.is_empty():
 		return
-	_battle.enqueue_order(uids, world_pos, target_uid)
+	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode)
 	Sfx.play(&"order")
 
 
@@ -276,6 +284,77 @@ func _recall_group(n: int) -> void:
 	if not _selected.is_empty():
 		Sfx.play(&"select")   # parity with click / box / type-select feedback
 	_refresh_hud()
+
+
+# --- order modes (#35) -----------------------------------------------------
+
+func _exit_tree() -> void:
+	# The custom cursor is global engine state; restore the system cursor so an
+	# armed mode doesn't persist past this scene (e.g. across reload_current_scene).
+	Input.set_custom_mouse_cursor(null)
+
+
+## Fixed default order-mode hotkeys (rebindable in #87). Keyed on the PHYSICAL
+## keycode (layout-independent), matching the camera (WASD) and pause hotkeys.
+## -1 = not a mode key.
+func _order_mode_for_keycode(physical_keycode: Key) -> int:
+	match physical_keycode:
+		KEY_H: return BattleRef.OrderMode.HOLD
+		KEY_F: return BattleRef.OrderMode.ATTACK_FLANK
+		KEY_R: return BattleRef.OrderMode.ATTACK_REAR
+		KEY_K: return BattleRef.OrderMode.SKIRMISH
+		KEY_G: return BattleRef.OrderMode.SUPPORT
+		KEY_ESCAPE: return BattleRef.OrderMode.NORMAL
+		_: return -1
+
+
+func _set_armed_mode(mode: int) -> void:
+	if mode == _armed_mode:
+		return
+	_armed_mode = mode
+	_update_order_cursor()
+	if _hud != null:
+		# Empty label hides the indicator for the default stance.
+		var label: String = "" if mode == BattleRef.OrderMode.NORMAL \
+				else str(BattleRef.ORDER_MODE_NAMES.get(mode, ""))
+		_hud.set_order_mode(label)
+
+
+## Reflect the armed mode in the mouse cursor (#35): a coloured disc per smart
+## mode, or the system arrow for NORMAL. First-pass art; richer per-mode icons are
+## deferred (see the epic, #35).
+func _update_order_cursor() -> void:
+	if _armed_mode == BattleRef.OrderMode.NORMAL:
+		Input.set_custom_mouse_cursor(null)
+		return
+	var tex := _order_cursor_texture(_order_mode_color(_armed_mode))
+	var hotspot := Vector2(CURSOR_SIZE / 2.0, CURSOR_SIZE / 2.0)
+	Input.set_custom_mouse_cursor(tex, Input.CURSOR_ARROW, hotspot)
+
+
+func _order_mode_color(mode: int) -> Color:
+	match mode:
+		BattleRef.OrderMode.HOLD: return Color(0.45, 0.6, 1.0)
+		BattleRef.OrderMode.ATTACK_FLANK: return Color(1.0, 0.65, 0.2)
+		BattleRef.OrderMode.ATTACK_REAR: return Color(1.0, 0.3, 0.25)
+		BattleRef.OrderMode.SKIRMISH: return Color(1.0, 0.9, 0.3)
+		BattleRef.OrderMode.SUPPORT: return Color(0.4, 0.95, 0.7)
+		_: return Color.WHITE
+
+
+## A filled disc in `color` with a white rim, centre-hotspot, for the cursor.
+func _order_cursor_texture(color: Color) -> ImageTexture:
+	var img := Image.create(CURSOR_SIZE, CURSOR_SIZE, false, Image.FORMAT_RGBA8)
+	var c := Vector2(CURSOR_SIZE / 2.0, CURSOR_SIZE / 2.0)
+	var r: float = CURSOR_SIZE / 2.0 - 1.0
+	for y in CURSOR_SIZE:
+		for x in CURSOR_SIZE:
+			var d: float = Vector2(x + 0.5, y + 0.5).distance_to(c)
+			if d <= r - 3.0:
+				img.set_pixel(x, y, color)
+			elif d <= r:
+				img.set_pixel(x, y, Color.WHITE)   # rim for contrast on any background
+	return ImageTexture.create_from_image(img)
 
 
 func _draw() -> void:

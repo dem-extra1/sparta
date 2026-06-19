@@ -118,3 +118,43 @@ func test_pending_plain_move_is_not_previewed_as_append() -> void:
 	b.enqueue_order([1], Vector2(200, 0), -1)   # plain move
 	assert_true(b.pending_append_points_for(u).is_empty(),
 		"a plain move is not previewed as a pending append")
+
+
+# --- order-mode framework (#35 / #81) --------------------------------------
+
+func test_order_mode_is_stamped_on_a_fresh_order() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1,
+		"mode": BattleScript.OrderMode.HOLD})
+	assert_eq(u.order_mode, BattleScript.OrderMode.HOLD,
+		"a fresh order stamps its stance on the unit")
+
+
+func test_order_mode_defaults_to_normal_when_absent() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.order_mode = BattleScript.OrderMode.HOLD   # a prior stance
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 50.0, "y": 0.0, "target": -1})   # no "mode"
+	assert_eq(u.order_mode, BattleScript.OrderMode.NORMAL,
+		"a mode-less / plain order resets the stance to NORMAL")
+
+
+func test_enqueue_order_carries_the_mode() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_order([1], Vector2(50, 0), -1, BattleScript.OrderMode.SKIRMISH)
+	assert_eq(int(b._pending_orders[-1]["mode"]), BattleScript.OrderMode.SKIRMISH,
+		"the armed mode is recorded on the pending order")
+
+
+func test_append_preserves_the_existing_stance() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true
+	u.order_mode = BattleScript.OrderMode.HOLD
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 400.0, "y": 0.0,
+		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.NORMAL})
+	assert_eq(u.order_mode, BattleScript.OrderMode.HOLD,
+		"a waypoint append leaves the unit's stance unchanged")
