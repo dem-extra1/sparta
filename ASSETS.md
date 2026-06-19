@@ -3,6 +3,10 @@
 The game runs **without any downloaded art** — units draw as placeholder tokens in
 `Unit.gd`. When you want real medieval art, use genuinely free **CC0** sources below.
 
+> 📓 For the broader **running catalog** of audio + graphics sources (including
+> reference-only libraries we can't bundle), see
+> [`docs/asset-sources.md`](docs/asset-sources.md).
+
 > ⚠️ **Do not use Total War mod assets.** They are *not* public domain — modders retain
 > copyright and many derive from copyrighted base-game art. Shipping them is legally risky.
 > The sources below are CC0 (public-domain equivalent): free for any use, no attribution
