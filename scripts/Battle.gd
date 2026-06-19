@@ -343,4 +343,5 @@ func _end(text: String) -> void:
 	# re-save (the file already exists).
 	if Replay.mode == Replay.Mode.RECORD:
 		Replay.save(text, _tick)
+	Sfx.play(&"victory" if text == "Victory!" else &"defeat")
 	_hud.show_end(text)

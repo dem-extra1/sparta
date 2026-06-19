@@ -20,6 +20,16 @@ var edge_scroll: bool = false:
 			_save()
 			changed.emit()
 
+# Play sound effects (combat, selection, orders, battle outcome). Default on.
+var sfx_enabled: bool = true:
+	set(value):
+		if value == sfx_enabled:
+			return
+		sfx_enabled = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 
 func _ready() -> void:
 	_load()
@@ -31,6 +41,7 @@ func _load() -> void:
 		return
 	_loading = true
 	edge_scroll = cfg.get_value("camera", "edge_scroll", edge_scroll)
+	sfx_enabled = cfg.get_value("audio", "sfx_enabled", sfx_enabled)
 	_loading = false
 
 
@@ -39,4 +50,5 @@ func _save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(SAVE_PATH)
 	cfg.set_value("camera", "edge_scroll", edge_scroll)
+	cfg.set_value("audio", "sfx_enabled", sfx_enabled)
 	cfg.save(SAVE_PATH)
