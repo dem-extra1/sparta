@@ -326,7 +326,7 @@ func _draw_orders() -> void:
 ## running, so without this the overlay wouldn't preview a just-queued leg until
 ## the player unpaused. Returns [] when the unit has no move order and nothing
 ## pending. The pending points are read-only — no authoritative state is mutated.
-func _move_route_for(u) -> Array[Vector2]:
+func _move_route_for(u: UnitRef) -> Array[Vector2]:
 	var route: Array[Vector2] = []
 	if u.has_move_target:
 		route.append(u.move_target)
