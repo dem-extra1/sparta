@@ -8,6 +8,12 @@ const UnitRef = preload("res://scripts/Unit.gd")
 
 const FIELD := Rect2(0, 0, 1600, 1000)
 
+# Sentinel order target (#34): a move order carrying this as its `target` appends
+# its destination to the units' waypoint queue instead of replacing the route.
+# Overloads the existing int field (like merge/relief) so the replay format is
+# unchanged — real merge/attack/relief targets are uids >= 0, a plain move is -1.
+const ORDER_APPEND_WAYPOINT := -2
+
 # Global movement scale: lower = units move slower (relative speeds preserved).
 const SPEED_SCALE := 0.6
 
@@ -148,7 +154,13 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int) -> void:
 		"target": target_uid,
 	}
 	_pending_orders.append(cmd)
-	_apply_order_cmd(cmd)
+	# Apply immediately for zero-latency feedback and paused preview — EXCEPT a
+	# waypoint append (#34), which is NOT idempotent: the tick re-applies every
+	# pending cmd, and a second u.waypoints.append() would duplicate the leg. An
+	# append is also tick-authoritative anyway (its point is derived from positions
+	# at the tick, matching replay), so it's applied once, on that tick.
+	if target_uid != ORDER_APPEND_WAYPOINT:
+		_apply_order_cmd(cmd)
 
 
 ## Apply one order (move or attack) to its units. Shared by live play and
@@ -161,6 +173,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	if target_uid >= 0 and _uids_contain(cmd["units"], target_uid):
 		_apply_merge(cmd["units"], target_uid)
 		return
+	# A move whose target is the append sentinel queues a waypoint instead of
+	# replacing the route (#34); any other order resets the queue first.
+	var append: bool = target_uid == ORDER_APPEND_WAYPOINT
 	# The target uid may be an enemy (attack) or a friendly (line relief, #4); a
 	# plain move has no target. Resolve it and dispatch per ordered unit by team.
 	var target_unit: Unit = _unit_by_uid(target_uid) if target_uid >= 0 else null
@@ -185,6 +200,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 		var u: Unit = _unit_by_uid(int(uid))
 		if u == null:
 			continue
+		# A fresh order (anything but a waypoint append) discards the queued route.
+		if not append:
+			u.waypoints.clear()
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
 			u.target_enemy = target_unit   # attack an enemy
 			u.has_move_target = false
@@ -201,9 +219,17 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				u.target_enemy = relief_foe
 				u.has_move_target = false
 		else:
-			u.move_target = dest + (u.position - centroid)   # formation move
-			u.has_move_target = true
+			var point: Vector2 = dest + (u.position - centroid)   # formation move
 			u.target_enemy = null
+			if append:
+				# Queue the point; start marching it now if the unit was idle.
+				u.waypoints.append(point)
+				if not u.has_move_target:
+					u.move_target = u.waypoints.pop_front()
+					u.has_move_target = true
+			else:
+				u.move_target = point
+				u.has_move_target = true
 
 
 func _uids_contain(uids: Array, target: int) -> bool:

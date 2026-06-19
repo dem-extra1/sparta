@@ -5,6 +5,7 @@ extends Node2D
 ##   Right click       — move there, or attack the enemy unit clicked
 
 const UnitRef = preload("res://scripts/Unit.gd")  # avoid global-class-cache dependency
+const BattleRef = preload("res://scripts/Battle.gd")  # for the waypoint-append sentinel (#34)
 
 const CLICK_THRESHOLD: float = 6.0
 const DOUBLE_CLICK_MS: int = 350
@@ -51,7 +52,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_finish_selection()
 				queue_redraw()
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			_issue_order(get_global_mouse_position())
+			# Shift+right-click appends a waypoint to the route instead of replacing
+			# it, so a march can be plotted as a multi-leg path (#34).
+			_issue_order(get_global_mouse_position(), event.shift_pressed)
 	elif event is InputEventMouseMotion and _dragging:
 		_drag_cur = get_global_mouse_position()
 		queue_redraw()
@@ -113,7 +116,7 @@ func _same_type(a, b) -> bool:
 	return a.is_cavalry == b.is_cavalry and a.anti_cavalry == b.anti_cavalry
 
 
-func _issue_order(world_pos: Vector2) -> void:
+func _issue_order(world_pos: Vector2, append: bool = false) -> void:
 	# Orders are replayed, so the player can't steer a playback.
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
@@ -134,6 +137,11 @@ func _issue_order(world_pos: Vector2) -> void:
 		var friend: UnitRef = _unit_at(world_pos, 0)
 		if friend != null and friend.state == UnitRef.State.FIGHTING and not _selected.has(friend):
 			target_uid = friend.uid
+		elif append:
+			# Shift on plain ground queues a waypoint (#34); the sentinel rides the
+			# target field so Battle appends instead of replacing the route. Append
+			# is ignored when the click resolves to an attack or relief target.
+			target_uid = BattleRef.ORDER_APPEND_WAYPOINT
 	var uids: Array = []
 	for unit in _selected:
 		if is_instance_valid(unit):
@@ -306,9 +314,23 @@ func _draw_orders() -> void:
 			draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
 			_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
 		elif u.has_move_target:
-			var mp: Vector2 = u.move_target
-			draw_dashed_line(origin, mp, ORDER_MOVE_COLOR, 2.0, 9.0)
-			_draw_move_marker(mp, ORDER_MOVE_COLOR)
+			_draw_move_path(origin, u.move_target, u.waypoints)
+
+
+## Draw a unit's full move route (#34): a dashed line from the unit through its
+## current move_target and each queued waypoint, a small dot at every intermediate
+## stop, and the destination ring at the final point. With no waypoints this is the
+## original single dashed segment to the destination.
+func _draw_move_path(origin: Vector2, first: Vector2, waypoints: Array[Vector2]) -> void:
+	var prev: Vector2 = origin
+	var point: Vector2 = first
+	for i in range(waypoints.size() + 1):
+		draw_dashed_line(prev, point, ORDER_MOVE_COLOR, 2.0, 9.0)
+		if i < waypoints.size():
+			draw_circle(point, 3.0, ORDER_MOVE_COLOR)   # intermediate waypoint dot
+			prev = point
+			point = waypoints[i]
+	_draw_move_marker(point, ORDER_MOVE_COLOR)           # final destination ring
 
 
 ## Destination marker: a small ring with a centre dot.
