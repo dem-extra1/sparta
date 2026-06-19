@@ -269,13 +269,16 @@ func _on_restart() -> void:
 
 
 func _on_restart_replay() -> void:
-	# Rewind the replay being watched back to tick 0. Only meaningful in PLAYBACK
-	# mode (the menu item is disabled otherwise); guard anyway in case it's
-	# reached another way. start_playback re-reads loaded_path and resets the
-	# play index, so reloading the scene replays it from the start.
+	# Rewind the watched replay to tick 0: start_playback re-reads loaded_path and
+	# resets the play index, then the scene reload replays from the start. PLAYBACK
+	# only (the menu item is disabled otherwise); guarded in case it's reached anyway.
 	if Replay.mode != Replay.Mode.PLAYBACK:
 		return
 	if not Replay.start_playback(Replay.loaded_path):
+		# Loaded fine on entering PLAYBACK, so a failure now means it vanished
+		# mid-watch — report it like _on_replay_chosen rather than bailing silently.
+		_error_dialog.dialog_text = "That replay is no longer available."
+		_error_dialog.popup_centered()
 		return
 	get_tree().paused = false
 	get_tree().reload_current_scene()
