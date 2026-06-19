@@ -1,7 +1,7 @@
 {
-  "_comment": "Physics-based cavalry charge (#100). Seed-plus-orders replay: at ~0.2s both player Cavalry (uids 3, 4) are ordered to charge the enemy Infantry (uid 6). They gallop in head-on and slam into the line — the charge bonus now scales with their impact velocity (speed + direction at contact), so a full-speed head-on hit lands hard, while glancing or near-stationary contact earns little. The damage change isn't a visible motion difference; see the PR diff / tests for the model.",
-  "replay": "demos/charge_demo.json",
-  "caption": "Physics-based cavalry charge (#100): the charge bonus is now the rider's impact momentum — it scales with closing speed AND how head-on the hit is (relative to the target), replacing the old flat one-charge-per-engagement token. Here both Cavalry gallop into the enemy Infantry at full speed for the full bonus; a stationary or glancing hit earns little, and charging onto braced anti-cavalry spears backfires into a penalty.",
+  "_comment": "Order overlay for SUPPORT units (#101). This is a hold-Space survey overlay, which the headless demo runner doesn't trigger, so the new teal supporter->ward link is NOT visible in this clip — it only draws in-game while Space is held. Reuses the support replay (Archers ordered to guard the Infantry) so the clip at least shows the scenario the overlay annotates.",
+  "replay": "demos/support_demo.json",
+  "caption": "Order overlay for SUPPORT units (#101): hold Space in-game and a unit guarding a friendly now draws a teal link to its ward (with a double-ring 'shielding' marker), matching the SUPPORT cursor colour — previously a supporter drew nothing on the overlay. NOTE: the overlay is a hold-Space survey aid that this silent auto-clip can't show; the replay here is the support scenario it annotates.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,
