@@ -20,3 +20,13 @@ import.log
 # OS / editor cruft
 .DS_Store
 Thumbs.db
+
+# Quarto documentation site (website/) — build output and cache are generated
+.quarto/
+website/.quarto/
+website/_site/
+/_freeze/
+website/_freeze/
+# Demo clips are recorded by CI (publish-site.yml) into website/media/, not committed
+website/media/*.mp4
+website/media/*.jpg
