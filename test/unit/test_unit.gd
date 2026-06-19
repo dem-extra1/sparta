@@ -25,6 +25,36 @@ func _attacker_at(p: Vector2) -> Unit:
 	return a
 
 
+# --- hold location (#84) ---------------------------------------------------
+
+func test_hold_unit_does_not_chase_a_nearby_enemy() -> void:
+	var u := _make_unit()
+	u.team = 0
+	u.order_mode = Unit.ORDER_HOLD
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(100, 0)   # inside DETECTION_RANGE, out of melee contact
+	var before := u.position
+	u._think(0.1)
+	assert_eq(u.position, before, "a holding unit doesn't advance on a detected enemy")
+	assert_eq(u.state, Unit.State.IDLE, "and stays idle")
+
+
+func test_normal_unit_chases_a_nearby_enemy() -> void:
+	# Contrast: the same setup without HOLD advances — confirming the guard is what
+	# pins a held unit in place, not the test geometry.
+	var u := _make_unit()
+	u.team = 0
+	u.position = Vector2.ZERO        # order_mode defaults to NORMAL
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(100, 0)
+	var before := u.position
+	u._think(0.1)
+	assert_ne(u.position, before, "a normal unit advances on a detected enemy")
+
+
 # --- attack flank / rear approach (#82) ------------------------------------
 
 func test_attack_rear_approach_point_is_behind_the_target() -> void:

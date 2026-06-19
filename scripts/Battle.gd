@@ -59,7 +59,8 @@ func _ready() -> void:
 	# Unit mirrors a few OrderMode values as plain ints (it can't reference our
 	# enum without a preload cycle). Assert the mirror here — where we already hold
 	# UnitRef — so a future enum reorder fails loudly instead of misbehaving.
-	assert(UnitRef.ORDER_ATTACK_FLANK == OrderMode.ATTACK_FLANK \
+	assert(UnitRef.ORDER_HOLD == OrderMode.HOLD \
+			and UnitRef.ORDER_ATTACK_FLANK == OrderMode.ATTACK_FLANK \
 			and UnitRef.ORDER_ATTACK_REAR == OrderMode.ATTACK_REAR,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 
