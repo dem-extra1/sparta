@@ -237,13 +237,26 @@ func _separate() -> void:
 			push = offset / d * ((min_dist - d) * share)
 		else:
 			# Exactly co-located: both units of the pair derive the SAME angle
-			# (from the lower id, for determinism) and push in OPPOSITE
+			# (from the lower stable uid, for determinism) and push in OPPOSITE
 			# directions, so they reliably fan apart instead of drifting
 			# together. Using each unit's own id here would push near-adjacent
 			# ids in almost the same direction and never separate them.
-			var lo: int = mini(get_instance_id(), other.get_instance_id())
-			var angle: float = float(lo % 100) / 100.0 * TAU
-			var dir: float = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
+			#
+			# Key off uid, NOT get_instance_id(): instance ids are assigned per
+			# launch and differ between a live run and its replay, which would
+			# desync co-located pushes. uid is the stable per-battle id. posmod
+			# buckets the unspawned default (-1) into a valid 0..99 angle slot.
+			# The push SIGN also comes from uid, except when both share a uid
+			# (e.g. two unspawned test units, both -1): there's no stable order to
+			# break the tie, so fall back to instance id for the sign alone — it's
+			# always distinct, so the pair still fans apart instead of stacking.
+			var lo: int = mini(uid, other.uid)
+			var angle: float = float(posmod(lo, 100)) / 100.0 * TAU
+			var dir: float
+			if uid != other.uid:
+				dir = 1.0 if uid > other.uid else -1.0
+			else:
+				dir = 1.0 if get_instance_id() > other.get_instance_id() else -1.0
 			push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * share)
 		position += push
 
