@@ -5,7 +5,10 @@
 # What it records: if the PR commits a demos/demo.json it records the replay that
 # names (chosen by the author to show the PR's change); otherwise it falls back to
 # the default demos/showcase.json battle, posted with an honest "generic build
-# demo" caption. Either way a demo appears. See demos/README.md for the author
+# demo" caption. Either way a demo appears — unless demos/demo.json sets
+# "skip": true (a change a recorded battle can't show, e.g. a paused-overlay
+# interaction): then no clip is recorded and a short note explaining the absence is
+# posted instead of an unrelated generic GIF. See demos/README.md for the author
 # contract.
 #
 # Why a separate workflow (not claude.yml): claude.yml only *calls* an external
@@ -71,6 +74,23 @@ jobs:
           set -euo pipefail
           if [ -f demos/demo.json ]; then
             M=demos/demo.json
+            # A change the recorded-battle pipeline can't capture (a paused-overlay
+            # interaction, an editor-only tool, a non-visual refactor) can set
+            # "skip": true to suppress an unrelated generic clip. CI then posts a
+            # short note explaining the absence instead of a misleading GIF (#75).
+            if [ "$(jq -r '.skip // false' "$M")" = "true" ]; then
+              REASON=$(jq -r '.reason // .caption // "this change cannot be shown by a recorded battle clip."' "$M")
+              echo "demos/demo.json sets skip=true — posting a note instead of a clip."
+              DELIM="reason_eof_$(openssl rand -hex 8)"
+              {
+                echo "record=false"
+                echo "skip=true"
+                echo "reason<<$DELIM"
+                printf '%s\n' "$REASON"
+                echo "$DELIM"
+              } >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             REPLAY=$(jq -r '.replay // "demos/showcase.json"' "$M")
             CAPTION=$(jq -r '.caption // "Gameplay demo for this PR."' "$M")
             FIXED_FPS=$(jq -r '.fixed_fps // 30' "$M")
@@ -284,4 +304,33 @@ jobs:
           else
             gh api -X POST "repos/${{ github.repository }}/issues/${PR}/comments" -f body="$BODY" >/dev/null
             echo "Posted new demo comment"
+          fi
+
+      - name: Post 'no clip applies' note
+        # The author marked this change as not demonstrable by a recorded battle
+        # ("skip": true in demos/demo.json). Rather than post an unrelated generic
+        # clip — the #75 anti-pattern — upsert the same demo comment slot with a
+        # short note explaining why there's no GIF, so reviewers get an honest,
+        # relevant signal instead of a misleading one.
+        if: steps.demo.outputs.skip == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Author-controlled free text; via env (not ${{ }}) so it can't inject the script.
+          REASON: ${{ steps.demo.outputs.reason }}
+        run: |
+          set -euo pipefail
+          PR=${{ github.event.pull_request.number }}
+          MARKER="<!-- sparta-demo -->"
+          # Reuses the demo comment marker, so if a generic clip was posted on an
+          # earlier push it gets replaced in place by this note (no duplicate slot).
+          BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n🚫 **No gameplay clip for this PR** — %s\n\n<sub>The author marked this change as not demonstrable by a recorded battle (`"skip": true` in `demos/demo.json`); see `demos/README.md`.</sub>' \
+            "$MARKER" "$REASON")
+          CID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" --paginate \
+            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -n1 || true)
+          if [ -n "$CID" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/${CID}" -f body="$BODY" >/dev/null
+            echo "Updated demo comment $CID with 'no clip' note"
+          else
+            gh api -X POST "repos/${{ github.repository }}/issues/${PR}/comments" -f body="$BODY" >/dev/null
+            echo "Posted 'no clip' note"
           fi
