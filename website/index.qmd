@@ -1,0 +1,93 @@
+---
+title: "Sparta"
+subtitle: "Grand strategy meets the clash of tactical battle."
+toc: false
+page-layout: full
+---
+
+::: {.hero}
+# ΣPARTA
+
+::: {.tagline}
+A prototype that fuses **CK3-style grand strategy** with **Total War-style
+real-time tactical battles** --- built in **Godot 4.6** with GDScript.
+:::
+
+[Get started →](getting-started.qmd){.btn .btn-sparta .btn-lg role="button"}
+[How to play](how-to-play.qmd){.btn .btn-outline-light .btn-lg role="button"}
+[View on GitHub](https://github.com/Lacaedemon/sparta){.btn .btn-outline-light .btn-lg role="button"}
+:::
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/showcase.jpg">
+    <source src="media/showcase.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>A deterministic auto-battle (seed&nbsp;12345): two armies advance,
+  press into melee, and one side breaks and routs.</figcaption>
+</figure>
+```
+
+## What is Sparta?
+
+Sparta is a solo prototype with a deliberate strategy: build the **hardest, most
+differentiating piece first** --- a real-time tactical battle --- as a self-contained
+vertical slice, get it playable, then grow outward into a campaign.
+
+This repository currently contains **Milestone 1**: a single, self-contained
+tactical battle. You command the [**blue army**]{.army-blue}; defeat the
+[**red army**]{.army-red} on a top-down field where *where the bodies are* is the
+whole game.
+
+It runs with **zero downloaded art** --- units render as colored placeholder tokens ---
+so you can clone, open in Godot, press **F5**, and fight immediately.
+
+## What makes a battle interesting
+
+::: {.grid}
+
+::: {.g-col-12 .g-col-md-6}
+### ⚔️ Collision is the core
+Units physically occupy space, press against each other, and block friend and foe.
+Flanking, screening spearmen, cavalry charges, and chokepoints only matter because
+units *can't* pass through or stack on one another.
+:::
+
+::: {.g-col-12 .g-col-md-6}
+### 🛡️ Flanking & morale
+Hit a unit from the side (×1.5) or rear (×2) for far more damage and morale loss.
+Units that lose enough soldiers or take flank hits **rout** --- and routs spread to
+nearby allies.
+:::
+
+::: {.g-col-12 .g-col-md-6}
+### 🐎 Rock-paper-scissors
+**Cavalry** are fast with a charge bonus, but **spearmen** blunt that charge. Use
+cavalry to flank, spears to screen. Read more in [Tactics](tactics.qmd).
+:::
+
+::: {.g-col-12 .g-col-md-6}
+### 🎬 Deterministic replays
+Every battle records as a tiny seed-plus-orders log --- the same approach Total War
+uses. Re-watch any battle, or re-run it to debug. See [Replays](replays.qmd).
+:::
+
+:::
+
+## Jump in
+
+- **[Getting Started](getting-started.qmd)** --- install Godot, import the project, press play.
+- **[How to Play](how-to-play.qmd)** --- controls, the objective, and the battle loop.
+- **[Tactics That Matter](tactics.qmd)** --- flanking, routing, and the unit triangle.
+- **[Replays](replays.qmd)** --- how the deterministic record/playback system works.
+- **[Architecture](architecture.qmd)** --- the scripts, scenes, and the collision design pillar.
+- **[Roadmap](roadmap.qmd)** --- milestones and the prioritized issue backlog.
+
+::: {.callout-note}
+This site is generated documentation. The source of truth lives in the
+[Sparta repository](https://github.com/Lacaedemon/sparta) --- `README.md`,
+`PLAN.md`, `REPLAY.md`, and `ASSETS.md`.
+:::

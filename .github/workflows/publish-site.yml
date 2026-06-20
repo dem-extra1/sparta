@@ -1,0 +1,107 @@
+# Builds the Sparta documentation site (Quarto, in website/) and deploys it to
+# GitHub Pages. The site embeds gameplay demo clips, so a first job records a
+# couple of deterministic replays headlessly (Godot Movie Maker -> ffmpeg ->
+# mp4 + poster) and uploads them as an artifact; the publish job (the reusable
+# d-morrison/gha quarto-publish workflow) pulls that artifact in before render.
+# So no binaries live in git and the clips always reflect the current main build.
+#
+# One-time setup: in repo Settings -> Pages, set "Source" to "GitHub Actions".
+# Until then the deploy step fails with a clear message (the build still runs).
+name: Publish site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/publish-site.yml'
+      # Game-code/demo changes can alter what the recorded clips show, so refresh
+      # the site (and its demos) when they move too.
+      - 'scenes/**'
+      - 'scripts/**'
+      - 'assets/**'
+      - 'project.godot'
+      - 'demos/**'
+      - 'tools/demo/**'
+  workflow_dispatch:
+
+# Read-only by default; the publish job grants its own Pages permissions below.
+permissions:
+  contents: read
+
+# One in-flight deploy at a time; let a running deploy finish (don't cancel).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  # Pinned versions — keep in sync with .github/workflows/godot-ci.yml.
+  GODOT_VERSION: 4.6.0
+  GUT_VERSION: v9.6.0
+
+jobs:
+  # Best-effort: record the demo clips and hand them to the publish job as an
+  # artifact. If Godot/Movie Maker flakes (headless GL can deadlock) this job
+  # fails but never blocks the deploy (continue-on-error + publish's if: always);
+  # the pages then render without fresh video and the <video> embeds fall back.
+  demos:
+    if: github.repository == 'Lacaedemon/sparta'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }}
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false   # Standard build, not the .NET/C# build
+
+      - name: Install GUT ${{ env.GUT_VERSION }}
+        # The project's test files extend GutTest, so GUT must be present or the
+        # import below fails to resolve that class (same as godot-ci.yml).
+        run: |
+          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
+          mkdir -p addons
+          rm -rf addons/gut
+          cp -r /tmp/gut/addons/gut addons/gut
+
+      - name: Install Xvfb + ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb ffmpeg
+
+      - name: Record demo clips
+        # Tighter guard than the job backstop: headless Godot/Xvfb can deadlock on
+        # driver init before --quit-after takes effect. Recording is seconds each.
+        timeout-minutes: 12
+        run: website/tools/record-demos.sh "$GITHUB_WORKSPACE/website/media"
+
+      - name: Upload demo media
+        # One artifact carrying both the clips and their posters; the publish job
+        # extracts it into website/media before Quarto renders.
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-media
+          path: |
+            website/media/*.mp4
+            website/media/*.jpg
+          if-no-files-found: warn
+          retention-days: 1
+
+  # Render + deploy via the shared reusable workflow (d-morrison/gha). It checks
+  # out the repo, pulls the demo-media artifact into website/media, renders the
+  # Quarto project, and deploys to Pages. Runs even if the demos job flaked.
+  publish:
+    needs: [demos]
+    if: always() && github.repository == 'Lacaedemon/sparta'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: d-morrison/gha/.github/workflows/quarto-publish.yml@v1
+    with:
+      path: website
+      pre-render-artifact: demo-media
+      pre-render-artifact-path: website/media

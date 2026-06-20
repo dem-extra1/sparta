@@ -1,0 +1,104 @@
+project:
+  type: website
+  output-dir: _site
+  render:
+    - "*.qmd"
+  # Demo clips live in media/ and are referenced from raw-HTML <video> blocks,
+  # which Quarto's resource auto-detection can miss — list the folder explicitly
+  # so it's always copied into _site (CI records the mp4s/posters here at build).
+  resources:
+    - media/
+
+# Sparta documentation site. Pure-markdown Quarto (no R / knitr) — every page is a
+# plain .qmd, so rendering needs only the Quarto CLI. Templated on UCD-SERG/qwt,
+# trimmed to the website essentials (the academic book/theorem/bibliography
+# machinery that qwt carries is dropped — Sparta has no R chunks or citations).
+
+website:
+  title: "Sparta"
+  site-url: https://lacaedemon.github.io/sparta/
+  description: >-
+    A prototype fusing CK3-style grand strategy with Total War-style tactical
+    battles, built in Godot 4.6.
+  favicon: /favicon.svg
+  back-to-top-navigation: true
+  page-navigation: true
+  reader-mode: true
+  repo-url: https://github.com/Lacaedemon/sparta
+  repo-branch: main
+  # The Quarto project lives in website/, not the repo root — so edit/source
+  # links resolve to the right path on GitHub.
+  repo-subdir: website
+  repo-actions: [edit, issue, source]
+  page-footer:
+    left: "Sparta — code under the [MIT License](https://github.com/Lacaedemon/sparta/blob/main/LICENSE); bundled art/audio keep their own CC0/CC-BY terms."
+    center: "Built with [Quarto](https://quarto.org/)"
+    right:
+      - icon: github
+        href: https://github.com/Lacaedemon/sparta
+        aria-label: GitHub repository
+  navbar:
+    background: primary
+    search: true
+    logo: /favicon.svg
+    left:
+      - text: "Home"
+        href: index.qmd
+      - text: "Play"
+        menu:
+          - text: "Getting Started"
+            href: getting-started.qmd
+          - text: "How to Play"
+            href: how-to-play.qmd
+          - text: "Tactics That Matter"
+            href: tactics.qmd
+      - text: "Under the Hood"
+        menu:
+          - text: "Replays"
+            href: replays.qmd
+          - text: "Architecture"
+            href: architecture.qmd
+      - text: "Roadmap"
+        href: roadmap.qmd
+      - text: "Assets"
+        href: assets.qmd
+    right:
+      - icon: github
+        href: https://github.com/Lacaedemon/sparta
+        aria-label: GitHub
+  sidebar:
+    style: floating
+    collapse-level: 1
+    contents:
+      - text: "Home"
+        href: index.qmd
+      - section: "Play"
+        contents:
+          - getting-started.qmd
+          - how-to-play.qmd
+          - tactics.qmd
+      - section: "Under the Hood"
+        contents:
+          - replays.qmd
+          - architecture.qmd
+      - roadmap.qmd
+      - assets.qmd
+
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    css: styles.css
+    toc: true
+    toc-location: right
+    toc-depth: 3
+    anchor-sections: true
+    code-copy: true
+    code-overflow: wrap
+    link-external-icon: true
+    link-external-newwindow: true
+    smooth-scroll: true
+
+date: last-modified
+date-format: "[Last updated:] YYYY-MM-DD"

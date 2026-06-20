@@ -1,0 +1,79 @@
+---
+title: "Getting Started"
+description: "Install Godot, import the project, and run your first battle."
+---
+
+Sparta is a **Godot 4.6** project. It needs no environment variables, no build
+step, and --- crucially --- **no downloaded art**: units draw themselves as colored
+placeholder tokens, so the battle is playable the moment you press play.
+
+## 1. Install Godot 4.6 (Standard build)
+
+Download **Godot 4.6.x --- Standard build** (GDScript, *not* the .NET/C# build) from
+the [official downloads page](https://godotengine.org/download/).
+
+::: {.callout-important}
+Use the **Standard** build, not **.NET**. Sparta is pure GDScript; the .NET build
+is for C# projects and is not what this project targets.
+:::
+
+## 2. Import the project
+
+1. Open Godot.
+2. Click **Import**.
+3. Select this repository's `project.godot`.
+
+## 3. Play
+
+Press **F5** (Play). The battle starts immediately:
+
+- Two armies spawn --- [**blue**]{.army-blue} at the top (yours),
+  [**red**]{.army-red} at the bottom (the enemy).
+- Units are colored tokens on a green field. No art download is required.
+
+That's it --- you're in a battle. Head to **[How to Play](how-to-play.qmd)** for the
+controls, or **[Tactics That Matter](tactics.qmd)** to start winning.
+
+## Running headlessly (optional)
+
+You don't need a display to *validate* the project --- handy for CI or a cloud
+editor. From the project root:
+
+```bash
+# Catch parse/load errors without opening the editor:
+godot --headless --path . --quit
+```
+
+To actually *play*, though, you need the desktop editor with a display --- a headless
+environment has no window to render the battle into.
+
+### Installing Godot in a headless Linux environment
+
+Most Linux CI (and remote/cloud editors) can run Godot headlessly once it's
+installed. Add this to a setup script (matches the project's Godot version):
+
+```bash
+wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O /tmp/godot.zip
+mkdir -p "$HOME/.local/bin/"
+unzip -q /tmp/godot.zip -d "$HOME/.local/bin/"
+mv "$HOME/.local/bin/Godot_v4.6-stable_linux.x86_64" "$HOME/.local/bin/godot"
+chmod +x "$HOME/.local/bin/godot"
+rm /tmp/godot.zip
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+::: {.callout-note}
+If the engine version changes, update **both** the download URL and the binary
+filename in the snippet above.
+:::
+
+## Tests
+
+The project has a GUT test suite (vendored at run time in CI). See
+[`test/`](https://github.com/Lacaedemon/sparta/tree/main/test) in the repository
+for how it's wired.
+
+---
+
+*Source: [`README.md`](https://github.com/Lacaedemon/sparta/blob/main/README.md)
+in the repository.*

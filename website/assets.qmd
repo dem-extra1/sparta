@@ -1,0 +1,82 @@
+---
+title: "Assets & Licensing"
+description: "How Sparta sources art and audio, and the one rule that decides what can ship."
+---
+
+The game runs **without any downloaded art** --- units draw as placeholder tokens in
+`Unit.gd`. When real medieval art is wanted, Sparta uses genuinely free sources and
+follows one hard rule about what may be bundled.
+
+## The one rule: can we *bundle* it?
+
+Anything committed under `assets/` is **redistributed to everyone who clones --- or
+forks --- the repo**. So a source is usable as a bundled file only if its licence
+permits **standalone redistribution of the (possibly modified) file**.
+
+| | Meaning |
+| :---: | --- |
+| ✅ **bundle-safe** | CC0 / public domain --- zero obligations (we credit anyway). |
+| 🅰 **bundle-safe, with attribution** | CC-BY / CC-BY-SA / OGA-BY --- commit, but keep the credit; `-SA` derivatives stay `-SA`. |
+| ⛔ **reference-only** | `NC`, `ND`, or no standalone redistribution (Mixkit, Pixabay, BBC RemArc). Audition only --- never commit the file. |
+
+::: {.callout-important}
+## Being non-commercial doesn't loosen this --- it tightens it
+The blocker is **redistribution**, not commerciality. Because forks inherit the repo
+(code is MIT), anything carrying **`NC`** or **`ND`** is out: `NC` would bar
+downstream/commercial forks, and `ND` forbids the routine adapting we do (trim,
+resample, recolour, loop).
+
+**Litmus test:** *"Could a stranger who forks our repo --- even to ship a commercial
+game --- keep this exact file?"* CC0 / CC-BY / CC-BY-SA → yes. NC / ND / Mixkit /
+Pixabay / BBC RemArc → no.
+:::
+
+::: {.callout-warning}
+## Do not use Total War mod assets
+They are **not** public domain --- modders retain copyright and many derive from
+copyrighted base-game art. Shipping them is legally risky. Stick to the CC0 sources
+below.
+:::
+
+## Recommended CC0 graphics
+
+| Pack | Use for | Licence | Link |
+| --- | --- | :---: | --- |
+| Toen's Medieval Strategy Sprite Pack (16×16) | Soldiers, cavalry, siege, banners | CC0 | [OpenGameArt](https://opengameart.org/content/toens-medieval-strategy-sprite-pack-v10-16x16) |
+| Kenney --- game assets | UI buttons, panels, fonts, tiles | CC0 | [kenney.nl](https://kenney.nl/assets) |
+| OpenGameArt --- CC0 collection | Terrain, grass/dirt tiles, props | CC0 (verify each) | [OpenGameArt search](https://opengameart.org/art-search-advanced?keys=&field_art_licenses_tid%5B%5D=4) |
+| game-icons.net | Ability / unit / status icons (4000+) | CC-BY 3.0 🅰 | [game-icons.net](https://game-icons.net/) |
+
+## How to add art
+
+1. Download a pack and unzip it.
+2. Drop the PNGs into `assets/sprites/` (units) or `assets/ui/` (interface).
+3. Godot auto-imports them when the editor regains focus.
+4. Wire a `Sprite2D` into `Unit.gd._ready()` --- see the README's *"Swapping
+   placeholder art"* section.
+
+## Audio
+
+Sparta currently ships a CC0 sound set sourced from **OpenGameArt** (sword clash,
+swishes, thwack, trumpet, fanfare for hit/shoot/rout/death/select/order/victory/
+defeat). Per-file sources and licences are recorded in
+[`assets/sfx/CREDITS.md`](https://github.com/Lacaedemon/sparta/blob/main/assets/sfx/CREDITS.md).
+
+## Currently bundled
+
+- **Audio:** OpenGameArt CC0 set (see the credits file above).
+- **Graphics:** none --- procedural placeholder primitives in `Unit.gd`.
+
+::: {.callout-note}
+## Code vs assets
+The project's **code** is [MIT-licensed](https://github.com/Lacaedemon/sparta/blob/main/LICENSE).
+Bundled **assets** keep their own licences (CC0 / CC-BY), recorded in the receipts.
+MIT never implies a licence over the third-party art and audio.
+:::
+
+---
+
+*Full running catalog (audio + graphics, including reference-only sources) lives in
+[`docs/asset-sources.md`](https://github.com/Lacaedemon/sparta/blob/main/docs/asset-sources.md);
+the standing art shortlist is in
+[`ASSETS.md`](https://github.com/Lacaedemon/sparta/blob/main/ASSETS.md).*

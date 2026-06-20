@@ -1,0 +1,90 @@
+---
+title: "Architecture"
+description: "Project layout, the scripts, and the collision design pillar."
+---
+
+Sparta's Milestone&nbsp;1 is one self-contained battle scene wired up in code. The
+codebase is small and deliberately flat --- easy to read end to end.
+
+## Project layout
+
+```
+project.godot          Godot project config (main scene = scenes/Battle.tscn)
+scenes/Battle.tscn     Main scene: camera + units container + selection + HUD
+scripts/
+  Battle.gd            Spawns armies, enemy AI, win/lose check, tick clock + replay orders
+  Replay.gd            Deterministic record/playback (autoload): seeded RNG + order log
+  Unit.gd              Regiment: stats, movement, melee, flanking, morale, routing
+  SelectionManager.gd  Click + drag-box selection, move/attack orders
+  CameraController.gd  WASD / edge pan, wheel zoom
+  HUD.gd               Hint bar, unit info panel, victory/defeat overlay
+assets/                CC0 art goes here (see Assets) --- not required to run
+```
+
+::: {.callout-note}
+## A deliberate deviation from a scene-heavy design
+The UI is built **in code** in `HUD.gd` instead of separate `.tscn` files, and units
+are instantiated in code (`Unit.new()` in `Battle.gd`) instead of a `Unit.tscn`.
+Fewer scene files to corrupt, functionally equivalent.
+:::
+
+## The scripts at a glance
+
+| Script | Responsibility |
+| --- | --- |
+| [`Battle.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Battle.gd) | Spawns two armies, runs the enemy AI, the fixed-tick clock, applies queued orders, checks win/lose, saves the replay on battle end. |
+| [`Unit.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Unit.gd) | A regiment: stats and the `IDLE→MOVING→FIGHTING→ROUTING/DEAD` state machine, movement, melee with flanking, morale/routing, soft separation, and `_draw()` visuals. |
+| [`SelectionManager.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/SelectionManager.gd) | Left-click + drag-box selection; right-click move/attack order issuing. |
+| [`CameraController.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/CameraController.gd) | WASD / arrow / screen-edge pan, mouse-wheel zoom. |
+| [`HUD.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/HUD.gd) | Hint bar, selected-unit info panel, victory/defeat overlay, active pause, `● REC` indicator. |
+| [`Replay.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Replay.gd) | Autoload: the single seeded RNG and the record/playback system (see [Replays](replays.qmd)). |
+
+## Design pillar: collision is core
+
+In a Total War-style battle, *where the bodies are* **is** the game. Sparta treats
+collision as a first-class system, not polish: units must physically occupy space,
+press against each other, hold formation, and be blocked by friend and foe. Flanking,
+screening spearmen, cavalry charges, and chokepoints are only meaningful if units
+**cannot** pass through or stack on one another. Collision correctness and
+performance take priority over new-feature breadth.
+
+**Current state --- soft separation.** Each frame, a unit pushes out of any overlapping
+unit (live or routing) by *half* the overlap; the neighbor corrects the other half.
+The center-to-center floor is `RADIUS + other.RADIUS`. It's intentionally *soft* so
+regiments still press into melee contact (attack reach > separation floor) instead of
+bouncing apart. The logic lives in `Unit.gd` → `_separate()`.
+
+### Collision roadmap (priority order)
+
+1. ✅ **No-stack soft separation** between live units.
+2. **Per-type footprint** --- cavalry wider than infantry, so charges and screens read
+   correctly.
+3. **Formation cohesion** --- a regiment holds a block/line shape while moving, not a blob.
+4. **Hard blocking** --- spearmen screen and physically stop cavalry passage; lines form
+   chokepoints. Where collision and the rock-paper-scissors design meet.
+5. **Scale** --- replace the O(n²) neighbor scan with a spatial grid (and/or
+   `CharacterBody2D` / `move_and_slide`) before unit counts grow past a few dozen.
+
+## Determinism
+
+The whole simulation is built to be reproducible --- one seeded RNG stream, a fixed
+60&nbsp;Hz physics tick, and orders applied on the next tick so live play and replay
+share a code path. This is what powers the replay system and the CI demo clips. See
+**[Replays](replays.qmd)** for the full story.
+
+## Tuning pointers
+
+| Want to change… | Look in… |
+| --- | --- |
+| Unit stats / loadout | `Battle.gd` → `_spawn_line()` array |
+| Collision spacing / soft-resolve | `Unit.gd` → `_separate()` (floor = `RADIUS + other.RADIUS`); spawn gaps via `spacing` in `_spawn_line()` |
+| Movement pace | `Battle.gd` → `SPEED_SCALE` constant (lower = slower) |
+| Combat math | `Unit.gd` → `_strike()` / `take_casualties()` / `_flank_multiplier()` |
+| Active pause | `HUD.gd` → `_toggle_pause()` (Space) |
+| Enemy AI | `Battle.gd` → `_run_enemy_ai()` |
+
+---
+
+*Source: [`PLAN.md`](https://github.com/Lacaedemon/sparta/blob/main/PLAN.md) and
+[`README.md`](https://github.com/Lacaedemon/sparta/blob/main/README.md) in the
+repository.*

@@ -1,0 +1,86 @@
+---
+title: "Tactics That Matter"
+description: "Flanking, morale and routing, the unit triangle, and disengaging."
+---
+
+Numbers aren't everything. Sparta's battles are decided by **where** units are and
+**which way they face** --- flanking, morale, and the rock-paper-scissors of unit
+types turn an even fight lopsided.
+
+## Flanking
+
+Hitting a unit from the side or rear deals far more damage *and* morale loss than a
+frontal clash:
+
+| Attack angle | Multiplier |
+| --- | --- |
+| Front | ×1.0 |
+| Side (flank) | **×1.5** |
+| Rear | **×2.0** |
+
+**Maneuver behind the enemy line.** A regiment pinned frontally by a screen while
+your cavalry hits its rear will melt --- and start a rout that spreads.
+
+## Morale & routing
+
+Units don't fight to the last soldier. When a unit loses enough soldiers or takes
+flank/rear hits, it **routs** --- it flees (shown faded) and stops counting toward the
+battle.
+
+- **Routs are contagious.** A nearby ally watching a unit break is more likely to
+  break too. One collapse can cascade down a line.
+- This makes morale a *weapon*: you can win by breaking the enemy's will before
+  you've killed even half their soldiers.
+
+## The unit triangle (rock-paper-scissors)
+
+Three roles, each strong against one and weak to another:
+
+::: {.grid}
+
+::: {.g-col-12 .g-col-md-4}
+### 🗡️ Infantry
+The reliable line. No special bonus --- your anvil to pin the enemy in place while
+something else does the killing.
+:::
+
+::: {.g-col-12 .g-col-md-4}
+### 🐎 Cavalry
+**Fast**, with a **charge bonus**. Devastating into a flank or rear --- but blunted
+when it charges into braced spears.
+:::
+
+::: {.g-col-12 .g-col-md-4}
+### 🛡️ Spearmen
+Anti-cavalry (marked with a spear). They **blunt the cavalry charge**, so use them
+to **screen** your line against enemy horse.
+:::
+
+:::
+
+**The loop:** cavalry beats exposed flanks → spearmen beat cavalry → infantry pin so
+your cavalry can get *around* to those flanks. Read the enemy's screen before you
+commit your horse.
+
+## Disengaging --- a risky lever
+
+Right-click the ground (a **move** order) to pull a unit *out* of melee. It's how
+you retreat a battered regiment or redeploy cavalry to a fresh flank.
+
+::: {.callout-warning}
+## Disengaging exposes your back
+While a unit marches away it shows its **rear** to whatever it left --- so that enemy
+gets free **rear hits (×2)** until your unit is clear. Pull out at the right moment,
+or pull out into a disaster.
+:::
+
+Stop the unit and it re-engages anything nearby. Timing the disengage --- late enough
+that the enemy is committed, early enough that you survive the exit --- is one of the
+game's sharper decisions.
+
+---
+
+*Source: [`README.md`](https://github.com/Lacaedemon/sparta/blob/main/README.md) ·
+combat math lives in
+[`scripts/Unit.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Unit.gd)
+(`_strike()`, `_flank_multiplier()`).*

@@ -1,0 +1,103 @@
+---
+title: "Replays"
+description: "How Sparta's deterministic record/playback system works, and why the logs are tiny."
+---
+
+Sparta records every battle so it can be **re-watched** and --- more importantly ---
+**re-run for debugging**. This is the same technique **Total War** uses, and the
+reason its replay files are tiny.
+
+## Two ways to build replays
+
+| Approach | How | Trade-off |
+| --- | --- | --- |
+| **State-snapshot** | Save every unit's position/health each frame, play it back like a video. | Simple, but logs are large and it's "dumb" playback --- you can't re-run the logic to investigate a bug. |
+| **Deterministic sim + input log** *(Sparta)* | Record only the RNG **seed** and the player's **orders** (each stamped with its physics tick). Replaying re-seeds the RNG and re-injects the orders on the same ticks, so the **real simulation** re-runs identically. | Tiny logs *and* reproduces bugs in the live sim. |
+
+Godot has no built-in system for either --- both are something you build. Sparta uses
+the deterministic approach because it gives small logs *and* reproduces bugs in the
+live simulation, which is exactly what makes it useful.
+
+## Why it's reproducible
+
+The simulation is deterministic by construction:
+
+- **One RNG stream.** All gameplay randomness goes through `Replay.rng`, a single
+  seeded `RandomNumberGenerator`, drawn in a stable order.
+- **Fixed timestep.** The sim advances on the 60&nbsp;Hz physics tick --- never on a
+  variable-framerate / wall-clock timer. Enemy AI re-evaluates on a fixed tick
+  cadence for the same reason.
+- **Orders, not selections.** Only right-click orders change the outcome; selection,
+  camera, and zoom are pure presentation and aren't recorded. Each order references
+  units by a stable per-battle `uid` so it survives a scene reload.
+- **Next-tick application.** Orders are queued and applied on the *next* physics
+  tick, so live play and playback take the exact same code path.
+
+::: {.callout-note}
+Results are reproducible on the **same build and platform**. Bit-exact
+cross-platform floating-point replay is out of scope.
+:::
+
+## The file format
+
+Replay files are small JSON:
+
+```json
+{
+  "version": 1,
+  "seed": "2582915400366924141",
+  "physics_tps": 60,
+  "created": 1781512075.7,
+  "result": "Defeat",
+  "duration_ticks": 1013,
+  "orders": [
+    { "tick": 84,  "units": [0, 1], "x": 740.0, "y": 560.0, "target": -1 },
+    { "tick": 132, "units": [3],    "x": 0.0,   "y": 0.0,   "target": 7 }
+  ]
+}
+```
+
+- An order with `target: -1` is a **move** (to `x,y`); otherwise it's an **attack**
+  on the enemy unit with that `uid`.
+- The seed is stored as a **string** on purpose: JSON numbers are float64 and would
+  silently lose precision on a full 64-bit seed, desyncing the replay.
+
+## Using it in-game
+
+- Every live battle is **recorded automatically** (a `● REC` indicator, top-center)
+  and saved to `user://replays/` when it ends.
+- **Watch Replay** (end screen) re-runs the battle you just played. You can pan and
+  inspect units during playback, but can't issue orders.
+- **Load Replay** (top-right, also on the end screen) opens any saved battle.
+- **Fight Again** starts a fresh, newly-recorded battle.
+
+## Where it lives
+
+| File | Role |
+| --- | --- |
+| [`scripts/Replay.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Replay.gd) | Autoload singleton: seeded RNG, record/playback, save/load |
+| [`scripts/Battle.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Battle.gd) | Tick clock, order queue/apply, AI cadence, saves on battle end |
+| [`scripts/Unit.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/Unit.gd) | Draws combat randomness from `Replay.rng`; carries a `uid` |
+| [`scripts/SelectionManager.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/SelectionManager.gd) | Routes right-click orders to `Battle.enqueue_order` |
+| [`scripts/HUD.gd`](https://github.com/Lacaedemon/sparta/blob/main/scripts/HUD.gd) | `● REC` / `▶ REPLAY` indicator and the Watch Replay button |
+
+## Keeping it deterministic as the game grows
+
+When you add new systems, preserve replayability by:
+
+- Drawing **all** randomness from `Replay.rng` (never `randf()`/`randi()` or a fresh
+  `RandomNumberGenerator`), in a deterministic order.
+- Running gameplay logic on the **physics tick**, not on `_process`/wall-clock time.
+- Recording any new player input that affects the simulation as an order (extend the
+  command schema and bump `Replay.FORMAT_VERSION`).
+
+::: {.callout-tip}
+These same replays power the project's CI gameplay demos and the clips on this site:
+CI plays a replay back headlessly and encodes it to video. See
+[`demos/README.md`](https://github.com/Lacaedemon/sparta/blob/main/demos/README.md).
+:::
+
+---
+
+*Source: [`REPLAY.md`](https://github.com/Lacaedemon/sparta/blob/main/REPLAY.md) in
+the repository.*

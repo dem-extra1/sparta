@@ -7,6 +7,10 @@ This repo currently contains **Milestone 1: a single, self-contained tactical ba
 the hardest and most differentiating piece, built first as a vertical slice. The campaign
 map and the integration between the two layers come in later milestones (see the project plan).
 
+📖 **Documentation site:** <https://lacaedemon.github.io/sparta/> — getting started,
+controls, tactics, the replay system, architecture, and roadmap, with gameplay clips.
+(Built with Quarto from `website/`; published via GitHub Pages.)
+
 ## Run it
 
 1. Install **Godot 4.6.x — Standard build** (not the .NET/C# build) from

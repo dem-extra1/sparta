@@ -1,0 +1,69 @@
+---
+title: "How to Play"
+description: "Controls, the objective, and the moment-to-moment battle loop."
+---
+
+You command the [**blue army**]{.army-blue} (top of the field). Your objective:
+defeat the [**red army**]{.army-red} (bottom). A side loses when it has no units
+left fighting --- every remaining unit is dead or routing.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/clash.jpg">
+    <source src="media/clash.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Selecting units and issuing move/attack orders during a battle.</figcaption>
+</figure>
+```
+
+## Controls
+
+| Action | Control |
+| --- | --- |
+| Select a unit | **Left-click** |
+| Select multiple | **Left-click and drag** a box |
+| Move | **Right-click** the ground |
+| Attack | **Right-click** an enemy unit |
+| Pan camera | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges |
+| Zoom | **Mouse wheel** |
+| Active pause | <kbd>Space</kbd> |
+
+A right-click on empty ground is a **move** order; a right-click on an enemy is an
+**attack** order. Selection and camera stay live even while paused, so you can plan
+under pressure.
+
+## The battle loop
+
+1. **Select** --- left-click a unit, or drag a box to grab several at once. The info
+   panel fills with the selected unit's stats.
+2. **Order** --- right-click to send them. Move them onto an enemy's flank, or
+   right-click the enemy directly to attack.
+3. **Watch the bars** --- each unit shows a strength bar that drops as it takes
+   casualties. Morale matters as much as numbers (see [Tactics](tactics.qmd)).
+4. **Exploit the break** --- when a unit **routs**, it flees (shown faded) and stops
+   counting toward the battle. Routs spread to nearby allies, so a single break can
+   cascade.
+5. **Win** --- eliminate or rout the entire enemy army and a **Victory** overlay
+   appears, with **Fight Again** to restart.
+
+## Recording & replays
+
+Every battle is recorded automatically --- a `● REC` indicator shows top-center. When
+a battle ends it's saved, and you can:
+
+- **Watch Replay** --- re-run the battle you just played (`▶ REPLAY`). You can still
+  pan and inspect units during playback, but can't issue new orders.
+- **Load Replay** --- open any earlier saved battle from a file picker (top-right,
+  also on the end screen).
+- **Fight Again** --- start a fresh, newly-recorded battle.
+
+See **[Replays](replays.qmd)** for how the deterministic system works and why the
+logs are tiny.
+
+---
+
+*Source: [`README.md`](https://github.com/Lacaedemon/sparta/blob/main/README.md)
+in the repository.*

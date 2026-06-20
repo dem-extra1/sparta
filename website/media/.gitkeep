@@ -1,0 +1,4 @@
+# Demo clips (showcase.mp4/.jpg, clash.mp4/.jpg) are recorded into this folder by
+# .github/workflows/publish-site.yml at deploy time, then published with the site.
+# They are intentionally NOT committed (see .gitignore). This .gitkeep keeps the
+# folder present so a local `quarto render` has a resources target.

@@ -1,0 +1,82 @@
+---
+title: "Roadmap"
+description: "Milestones, the prioritized issue backlog, and design goals captured early."
+---
+
+The strategy is a **vertical slice**: build the hardest, most-differentiating piece
+(a tactical battle) first, make it fun, then grow outward into a campaign.
+
+## Milestones
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| **M1** | One playable, self-contained tactical battle. | ✅ Scaffolded & playable |
+| **M2** | CK3-style **campaign map** --- clickable provinces, characters/realms, turn-based diplomacy & war. Battles **auto-resolved** at first. | Not started |
+| **M3** | **Integration** --- an army battle on the campaign map launches into the M1 battle scene and returns a result (winner, casualties). Where the two genres meet. | Not started |
+
+The battle scene was kept self-contained specifically to make the M3 hand-off clean.
+
+## Prioritized backlog
+
+Tracked as issues on [`Lacaedemon/sparta`](https://github.com/Lacaedemon/sparta/issues)
+with `P0`--`P3` labels. Order reflects **dependencies** --- validate the foundation, build
+the collision pillar, then features that depend on it, then independent polish.
+
+### P0 --- Foundation
+- First run & verification in Godot --- nothing below is validated until this passes.
+- Spacebar active pause --- confirm live.
+
+### P1 --- Collision pillar (in dependency order)
+- **Per-type footprint** --- `_separate()` currently uses a shared `RADIUS`; make it per-type.
+- **NavigationAgent2D pathfinding** --- decide the path-vs-collision split here.
+- **Scale beyond O(n²)** --- pairs with pathfinding.
+- **Formation cohesion** --- depends on per-type footprint.
+- **Hard blocking** --- spears stop cavalry; depends on solid collision + formations.
+
+### P2 --- Features on the shared "collision-exemption" primitive
+Build the primitive once, then reuse it:
+
+- **Friendly pass-through** --- simplest; establishes the primitive.
+- **Line relief** --- adds a fatigue stat + a choreographed front-line handoff.
+- **Unit merging** --- stat blending + a temporary "strangers" debuff.
+
+### P3 --- Independent polish
+- **Richer selection** --- double-click type-select, control groups.
+
+## Design goals captured early
+
+These are recorded so the intent isn't lost --- not yet scheduled.
+
+::: {.callout-note collapse="true"}
+## Unit merging --- combine two units into one
+Fold depleted units together after casualties, or deliberately bind units into a
+single wider, coordinated block (ties into the collision/formation pillar). Merging
+forces strangers together, so the result starts with a **temporary debuff** that
+decays as the unit "gels". Open questions: capped vs summed `max_soldiers`, type/team
+restrictions, reversibility, and how to blend stats.
+:::
+
+::: {.callout-note collapse="true"}
+## Line relief --- cycle tired units out of combat
+A fresh unit relieves an engaged friendly: it advances into the front-line slot as
+the tired one peels back. Requires a **new fatigue/stamina stat** and a choreographed
+swap where the two units **pass through each other** --- directly exercising the
+collision-exemption primitive. The hard part is making the handoff read well and not
+be exploitable.
+:::
+
+::: {.callout-note collapse="true"}
+## Move-through friendly units --- coordinated pass-through
+Let a unit move *through* an idle friendly smoothly (ranks interleave, the idle unit
+parts and reforms) instead of colliding or detouring. Shares the collision-exemption
+mechanism with line relief; distinct in that the mover keeps going rather than taking
+over the slot.
+:::
+
+Relief, merging, and pass-through should likely share **one** underlying
+"soft-pass / collision-exemption" primitive --- which is why P2 builds it once.
+
+---
+
+*Source: [`PLAN.md`](https://github.com/Lacaedemon/sparta/blob/main/PLAN.md) in the
+repository. The issue tracker is the live source of truth for status.*
