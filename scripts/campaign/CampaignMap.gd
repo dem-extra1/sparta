@@ -145,7 +145,7 @@ func _check_winner() -> bool:
 	var won := w == PLAYER_FACTION
 	var who: String = _state.faction_names[w] if w < _state.faction_names.size() else "Someone"
 	var msg := "🏆 Victory — %s conquers all!" % _state.faction_names[PLAYER_FACTION] if won \
-			else "☠ Defeat — %s has overrun you." % who
+			else "☠ Defeat — overrun by %s." % who
 	if _hud != null:
 		_hud.show_victory(msg)
 	return true

@@ -137,3 +137,4 @@ func reset_for_new_campaign() -> void:
 	_overlay.visible = false
 	_end_turn_button.disabled = false
 	_flash_label.text = ""
+	_flash_timer = 0.0
