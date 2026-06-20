@@ -67,7 +67,8 @@ for spec in "${DEMOS[@]}"; do
   # MP4 with sound: H.264 + AAC in yuv420p with +faststart is the most widely
   # browser-playable combination (Safari included). scale uses -2 so the height
   # stays even (a libx264 requirement). The demo runner force-enables SFX
-  # (tools/demo/DemoRunner.gd), so the AVI carries the battle's sound.
+  # (tools/demo/DemoRunner.gd), so the AVI carries any battle sound that fires
+  # (still silent if a replay happens to trigger no sound events).
   ffmpeg -y -i "$AVI" \
     -vf "scale=$WIDTH:-2:flags=lanczos" \
     -c:v libx264 -pix_fmt yuv420p -profile:v high -movflags +faststart \
