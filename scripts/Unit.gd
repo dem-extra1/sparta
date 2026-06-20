@@ -607,10 +607,10 @@ func _shoot(enemy: Unit) -> void:
 	Sfx.play(&"shoot")
 	# Cosmetic volley trail (#65): arrows streak from the shooter to the target. Spawned
 	# on the (deterministic) sim tick but animated/faded on render time, so it has no
-	# effect on the simulation or replays. Skipped if we're somehow outside the tree.
-	var world := get_parent()
-	if world != null:
-		VolleyTrail.spawn(world, global_position, enemy.global_position, team_color)
+	# effect on the simulation or replays. Skipped if we're somehow outside the scene
+	# tree (is_inside_tree() also guarantees get_parent() is a live tree node to add to).
+	if is_inside_tree():
+		VolleyTrail.spawn(get_parent(), global_position, enemy.global_position, team_color)
 	enemy.take_casualties(int(round(dmg)), self)
 
 
