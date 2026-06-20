@@ -54,3 +54,13 @@ tools/check.sh && git push
 
 The headless demo recorder used by the demo-video pipeline — see
 [`demos/README.md`](../demos/README.md).
+
+## `ci/`
+
+Small helpers invoked by GitHub Actions workflows.
+
+- `upsert-pr-comment.sh <repo> <pr> <marker> <body> [label]` — PATCH the existing
+  marker-tagged PR comment if one exists, else POST a new one. Used by
+  `.github/workflows/demo-video.yml` so its recorded-clip and "no clip applies"
+  paths share one comment-upsert implementation. Needs `gh` authenticated via
+  `GH_TOKEN`.

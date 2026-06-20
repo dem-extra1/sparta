@@ -295,16 +295,10 @@ jobs:
           BODY="$BODY"$(printf '\n\n<sub>Recorded from `%s` at `%s`. Updated automatically on each push.</sub>' \
             "$REPLAY" "$SHA")
 
-          # Update the existing demo comment in place if present, else create one.
-          CID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" --paginate \
-            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -n1 || true)
-          if [ -n "$CID" ]; then
-            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/${CID}" -f body="$BODY" >/dev/null
-            echo "Updated demo comment $CID"
-          else
-            gh api -X POST "repos/${{ github.repository }}/issues/${PR}/comments" -f body="$BODY" >/dev/null
-            echo "Posted new demo comment"
-          fi
+          # Update the existing demo comment in place if present, else create one
+          # (shared upsert helper — see the 'no clip applies' step, which reuses it).
+          tools/ci/upsert-pr-comment.sh \
+            "${{ github.repository }}" "$PR" "$MARKER" "$BODY" "demo comment"
 
       - name: Post 'no clip applies' note
         # The author marked this change as not demonstrable by a recorded battle
@@ -326,12 +320,5 @@ jobs:
           # earlier push it gets replaced in place by this note (no duplicate slot).
           BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n🚫 **No gameplay clip for this PR** — %s\n\n<sub>The author marked this change as not demonstrable by a recorded battle (`"skip": true` in `demos/demo.json`); see `demos/README.md`.</sub>' \
             "$MARKER" "$REASON")
-          CID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" --paginate \
-            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -n1 || true)
-          if [ -n "$CID" ]; then
-            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/${CID}" -f body="$BODY" >/dev/null
-            echo "Updated demo comment $CID with 'no clip' note"
-          else
-            gh api -X POST "repos/${{ github.repository }}/issues/${PR}/comments" -f body="$BODY" >/dev/null
-            echo "Posted 'no clip' note"
-          fi
+          tools/ci/upsert-pr-comment.sh \
+            "${{ github.repository }}" "$PR" "$MARKER" "$BODY" "'no clip' note"
