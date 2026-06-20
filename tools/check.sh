@@ -279,7 +279,7 @@ main() {
     case "$arg" in
       -h|--help) usage; exit 0 ;;
       -l|--list) list_checks; exit 0 ;;
-      all)       checks=("${ALL_CHECKS[@]}") ;;
+      all)       checks+=("${ALL_CHECKS[@]}") ;;
       validate|test|chars|links) checks+=("$arg") ;;
       *) err "Unknown argument: $arg"; usage; exit 2 ;;
     esac
@@ -287,6 +287,20 @@ main() {
   if [ ${#checks[@]} -eq 0 ]; then
     checks=("${DEFAULT_CHECKS[@]}")
   fi
+
+  # De-duplicate (order-preserving) so e.g. `all validate` or repeated names run
+  # each check once and print one summary line apiece.
+  local deduped=() c seen
+  for c in "${checks[@]}"; do
+    seen=""
+    if [ ${#deduped[@]} -gt 0 ]; then
+      for name in "${deduped[@]}"; do
+        if [ "$name" = "$c" ]; then seen=1; break; fi
+      done
+    fi
+    [ -z "$seen" ] && deduped+=("$c")
+  done
+  checks=("${deduped[@]}")
 
   for name in "${checks[@]}"; do
     run_check "$name" || true
