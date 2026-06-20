@@ -16,8 +16,11 @@ controls, tactics, the replay system, architecture, and roadmap, with gameplay c
 1. Install **Godot 4.6.x — Standard build** (not the .NET/C# build) from
    <https://godotengine.org/download/windows/>.
 2. Open Godot, click **Import**, and select this folder's `project.godot`.
-3. Press **F5** (Play). The battle starts immediately — no art download required;
-   units render as colored placeholder tokens.
+3. Press **F5** (Play). A title menu opens with two modes — no art download required:
+   - **Tactical Battle** — the M1 real-time battle (units render as colored tokens).
+   - **Campaign: Gallic War** — the M2 turn-based province-conquest map (Rome vs the
+     Gallic tribes). Click one of your (blue) armies, then an adjacent province to
+     move or attack; **End Turn** runs the enemy; conquer every province to win.
 
 ## How to play
 
@@ -54,8 +57,10 @@ so they're handy for both re-watching battles and debugging. See
 ## Project layout
 
 ```
-project.godot          Godot project config (main scene = scenes/Battle.tscn)
-scenes/Battle.tscn     Main scene: camera + units container + selection + HUD
+project.godot          Godot project config (main scene = scenes/MainMenu.tscn)
+scenes/MainMenu.tscn   Title screen: launch the battle (M1) or the campaign (M2)
+scenes/Battle.tscn     Battle scene: camera + units container + selection + HUD
+scenes/Campaign.tscn   Campaign map: province view/controller + campaign HUD
 scripts/
   Battle.gd            Spawns armies, enemy AI, win/lose check, tick clock + replay orders
   Replay.gd            Deterministic record/playback (autoload): seeded RNG + order log
@@ -63,6 +68,12 @@ scripts/
   SelectionManager.gd  Click + drag-box selection, move/attack orders
   CameraController.gd  WASD / edge pan, wheel zoom
   HUD.gd               Hint bar, unit info panel, victory/defeat overlay
+  MainMenu.gd          Title screen UI (built in code)
+  campaign/            M2 campaign map (#70):
+    CampaignState.gd     Province/turn/combat rules — pure logic, unit-tested
+    GallicWar.gd         The first map's data (provinces, owners, adjacency, polygons)
+    CampaignMap.gd       Renders provinces, handles clicks, runs the enemy turn
+    CampaignHUD.gd       Turn banner, End Turn, standings, victory overlay
 assets/                CC0 art goes here (see ASSETS.md) — not required to run
 ```
 
@@ -116,6 +127,8 @@ setup beyond a Godot 4.6 binary on `PATH` (or set `GODOT_BIN`). See
 ## Roadmap
 - **M1 (here):** one playable tactical battle. ✅ scaffolded
 - **M2:** campaign map — provinces, characters, turn-based diplomacy; battles auto-resolved.
+  🚧 first slice in (#70): a Gallic War conquest map (provinces, army moves,
+  auto-resolved battles, enemy AI, victory). Diplomacy/characters are follow-ups.
 - **M3:** integration — armies on the map launch into this battle scene and return a result.
 
 ## License
