@@ -8,26 +8,32 @@ const CampaignScene = preload("res://scenes/Campaign.tscn")
 const GallicWar = preload("res://scripts/campaign/GallicWar.gd")
 
 
-func _centroid(poly: PackedVector2Array) -> Vector2:
-	var sum := Vector2.ZERO
+# A point guaranteed inside the polygon: the centroid of one triangle from its
+# triangulation lies within that triangle, hence within the polygon. (The vertex
+# average can fall outside a concave polygon.)
+func _interior_point(poly: PackedVector2Array) -> Vector2:
+	var tris := Geometry2D.triangulate_polygon(poly)
+	if tris.size() >= 3:
+		return (poly[tris[0]] + poly[tris[1]] + poly[tris[2]]) / 3.0
+	var sum := Vector2.ZERO   # degenerate fallback
 	for v in poly:
 		sum += v
 	return sum / poly.size()
 
 
-# province id -> a point guaranteed inside its polygon (the vertex average).
+# province id -> a point guaranteed inside its polygon.
 func _centroids() -> Dictionary:
 	var out := {}
 	for p in GallicWar.new_map()["provinces"]:
-		out[int(p["id"])] = _centroid(p["polygon"])
+		out[int(p["id"])] = _interior_point(p["polygon"])
 	return out
 
 
 func _scene() -> Node:
 	var s := CampaignScene.instantiate()
 	add_child_autofree(s)   # runs _ready on CampaignMap + CampaignHUD
-	# CampaignMap defers its initial _start_campaign until the HUD is ready; let that
-	# deferred call run before the assertions.
+	# CampaignMap builds its state synchronously but defers the first HUD refresh
+	# (its _ready runs before the sibling HUD's); let that deferred call run first.
 	await get_tree().process_frame
 	return s
 

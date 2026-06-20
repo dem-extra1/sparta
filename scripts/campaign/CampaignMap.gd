@@ -240,5 +240,7 @@ func _draw() -> void:
 		var title: String = str(p["name"])
 		draw_string(font, label - Vector2(title.length() * 3.2, 6), title,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.95))
-		draw_string(font, label + Vector2(-8, 16), "⚔ %d" % int(p["army"]),
+		# Army count comes from the live state, not the static map data (which keeps
+		# the starting values), so it reflects moves and combat.
+		draw_string(font, label + Vector2(-8, 16), "⚔ %d" % _state.army_of(id),
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 1, 0.85))
