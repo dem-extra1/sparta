@@ -146,7 +146,19 @@ ensure_gut() {
     return 1
   fi
   rm -rf "$gut_tmp"
-  mv "$staging" "$PROJECT_ROOT/addons/gut"
+  # A concurrent run may have installed GUT between the early-return check above
+  # and now; if so, use theirs and drop our staging copy. This also sidesteps
+  # POSIX `mv`'s "move into an existing directory" behaviour, which would
+  # otherwise deposit the staging dir *inside* a valid addons/gut.
+  if [ -d "$PROJECT_ROOT/addons/gut" ]; then
+    rm -rf "$staging"
+    return 0
+  fi
+  if ! mv "$staging" "$PROJECT_ROOT/addons/gut"; then
+    err "Failed to move GUT into addons/gut."
+    rm -rf "$staging"
+    return 1
+  fi
 }
 
 # --- checks ----------------------------------------------------------------
