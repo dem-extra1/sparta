@@ -1180,6 +1180,95 @@ func test_formation_is_wider_than_deep() -> void:
 	assert_gt(max_x - min_x, max_y - min_y, "the formation is wider than it is deep")
 
 
+# --- individual-soldier flocking (issue #32, Stage B) -----------------------
+# _flock_step() is the pure, deterministic per-mark steering (arrival spring +
+# separation + clamps). It's cosmetic — never read by the sim — but unit-tested so the
+# motion stays stable: marks converge onto formation, push apart when overlapping, and
+# can't smear across the map from a far/teleported start.
+
+func test_flock_mark_converges_to_its_slot() -> void:
+	var pos := Vector2(40, -25)
+	var vel := Vector2.ZERO
+	var target := Vector2.ZERO
+	var none := PackedVector2Array()
+	for _i in range(600):   # ~10s at 60 fps
+		var res := Unit._flock_step(pos, vel, target, none, 3.0, 1.0 / 60.0)
+		pos = res[0]
+		vel = res[1]
+	assert_lt(pos.distance_to(target), Unit.FLOCK_SETTLE_POS, "mark eases onto its slot")
+	assert_lt(vel.length(), Unit.FLOCK_SETTLE_VEL, "and comes to rest there (no ringing)")
+
+
+func test_flock_overlapping_marks_push_apart() -> void:
+	# Two marks almost on the same spot shove each other apart, so the block never
+	# collapses to a point. Each steers toward its own current spot so arrival is neutral
+	# and separation is the only net force.
+	var sep: float = Unit.FORMATION_SPACING * 0.9
+	var a := Vector2(0, 0)
+	var b := Vector2(0.4, 0)   # well inside the separation distance
+	var va := Vector2.ZERO
+	var vb := Vector2.ZERO
+	var start: float = a.distance_to(b)
+	for _i in range(180):
+		var ra := Unit._flock_step(a, va, a, PackedVector2Array([b]), sep, 1.0 / 60.0)
+		var rb := Unit._flock_step(b, vb, b, PackedVector2Array([a]), sep, 1.0 / 60.0)
+		a = ra[0]
+		va = ra[1]
+		b = rb[0]
+		vb = rb[1]
+	assert_gt(a.distance_to(b), start, "overlapping marks separate")
+
+
+func test_flock_mark_never_trails_its_slot_too_far() -> void:
+	# A step from far away (a spawn/teleport) is clamped to within FLOCK_MAX_LAG of the
+	# slot and stays finite — bounds the integration so a hitch can't smear the block.
+	var res := Unit._flock_step(Vector2(5000, -3000), Vector2.ZERO, Vector2.ZERO,
+			PackedVector2Array(), 3.0, 1.0 / 60.0)
+	var pos: Vector2 = res[0]
+	assert_lte(pos.length(), Unit.FLOCK_MAX_LAG + 0.001, "a mark stays within max-lag of its slot")
+	assert_false(is_nan(pos.x) or is_nan(pos.y), "position stays finite")
+
+
+func test_flock_render_tracks_soldier_count() -> void:
+	# The two MultiMeshes carry one instance per living soldier and follow casualties, so
+	# the block thins as men fall (the sim's `soldiers` drives the render, never vice versa).
+	var u := _make_unit(120)
+	u._update_flock(1.0 / 60.0)
+	# Settled + unmoved, so this _update_flock takes the early-return fast-path: the count
+	# of 120 comes from _seed_soldiers (steady state). The casualty step below is what
+	# actually exercises _update_flock's resize/refresh path.
+	assert_eq(u._mm_body.instance_count, 120, "one body instance per soldier")
+	assert_eq(u._mm_outline.instance_count, 120, "one outline instance per soldier")
+	u.soldiers = 40
+	u._update_flock(1.0 / 60.0)
+	assert_eq(u._mm_body.instance_count, 40, "instance count tracks casualties")
+
+
+func test_flock_merge_growth_spawns_distinct_marks() -> void:
+	# New marks from a merge must not stack on the exact centre (where the separation step
+	# can't tell them apart and they'd drift as one blob); they spawn fanned out. #32 Stage B.
+	var u := _make_unit(60)
+	u._resize_soldiers(120)   # simulate a merge growing the regiment
+	var seen := {}
+	for i in range(60, 120):
+		var key: String = str(u._soldier_pos[i])
+		assert_false(seen.has(key), "merge-spawned mark %d is distinct, not stacked at centre" % i)
+		seen[key] = true
+
+
+func test_flock_marks_stay_finite_and_bounded_while_moving() -> void:
+	# Marching + wheeling for a while never smears the block across the map or produces
+	# NaNs — the per-mark clamps hold. (Cosmetic layer; the unit's own position is the sim.)
+	var u := _make_unit(120)
+	for _i in range(30):
+		u.position += Vector2(6, 0)
+		u.facing = Vector2(1, 0.3).normalized()
+		u._update_flock(1.0 / 60.0)
+	for p in u._soldier_pos:
+		assert_true(is_finite(p.x) and is_finite(p.y), "a mark stays finite while moving")
+		assert_lt(p.length(), 200.0, "a mark stays near the block, never smears off")
+
+
 func test_can_rally_at_exactly_the_strength_floor() -> void:
 	# Boundary: soldiers == floor(max * SHATTER_STRENGTH_FRAC) still rallies (the gate is
 	# "< floor" → shatter, ">= floor" → can rally). Pins the >= semantics in the doc.
