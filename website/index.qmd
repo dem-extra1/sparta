@@ -9,8 +9,8 @@ page-layout: full
 # ΣPARTA
 
 ::: {.tagline}
-A prototype that fuses **CK3-style grand strategy** with **Total War-style
-real-time tactical battles** --- built in **Godot 4.6** with GDScript.
+A prototype that fuses **dynastic grand strategy** with **real-time
+tactical battles** --- built in **Godot 4.6** with GDScript.
 :::
 
 [Get started →](getting-started.qmd){.btn .btn-sparta .btn-lg role="button"}
@@ -71,8 +71,8 @@ cavalry to flank, spears to screen. Read more in [Tactics](tactics.qmd).
 
 ::: {.g-col-12 .g-col-md-6}
 ### 🎬 Deterministic replays
-Every battle records as a tiny seed-plus-orders log --- the same approach Total War
-uses. Re-watch any battle, or re-run it to debug. See [Replays](replays.qmd).
+Every battle records as a tiny seed-plus-orders log --- the same approach many
+strategy games use. Re-watch any battle, or re-run it to debug. See [Replays](replays.qmd).
 :::
 
 :::

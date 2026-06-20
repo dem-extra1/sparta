@@ -1,8 +1,8 @@
 extends Node
 ## Reproducible battle replays (autoload singleton: "Replay").
 ##
-## Approach: *deterministic simulation + input log* — the same model Total War
-## uses. We do NOT record the state of every unit each frame. Instead we record
+## Approach: *deterministic simulation + input log* — the same model many
+## strategy games use. We do NOT record the state of every unit each frame. Instead we record
 ## just two things:
 ##   1. the RNG seed, and
 ##   2. the player's orders, each stamped with the physics tick it took effect.

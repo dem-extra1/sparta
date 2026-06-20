@@ -2,7 +2,7 @@
 
 Orientation and standing policies for any AI session working in this repo.
 Sparta is a **Godot 4.6** (GDScript, Standard build — not .NET/C#) prototype
-fusing CK3-style grand strategy with Total War-style tactical battles. See
+fusing dynastic grand strategy with real-time tactical battles. See
 `README.md` for layout and `PLAN.md` for project vision, roadmap, architecture,
 and verification steps — read `PLAN.md` first.
 

@@ -32,7 +32,7 @@ Pixabay / BBC RemArc → no.
 :::
 
 ::: {.callout-warning}
-## Do not use Total War mod assets
+## Do not use commercial-game mod assets
 They are **not** public domain --- modders retain copyright and many derive from
 copyrighted base-game art. Shipping them is legally risky. Stick to the CC0 sources
 below.

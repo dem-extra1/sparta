@@ -35,7 +35,7 @@ You command the **blue** army (top). Defeat the **red** army (bottom).
 Every battle is recorded automatically (`● REC`, top-center). When it ends, hit
 **Watch Replay** to re-run it (`▶ REPLAY`), or **Load Replay** (top-right, also
 on the end screen) to pick any earlier saved battle. Logs are tiny deterministic
-seed-plus-orders files in `user://replays/` — the same approach Total War uses —
+seed-plus-orders files in `user://replays/` — the same approach many strategy games use —
 so they're handy for both re-watching battles and debugging. See
 [REPLAY.md](REPLAY.md).
 

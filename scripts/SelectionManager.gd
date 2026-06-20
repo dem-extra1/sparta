@@ -11,7 +11,7 @@ const CLICK_THRESHOLD: float = 6.0
 const DOUBLE_CLICK_MS: int = 350
 const CURSOR_SIZE: int = 24   # generated order-mode cursor (#35)
 
-# Order-overlay colours (Total War convention: green = move, red = attack). Teal marks
+# Order-overlay colours (common RTS convention: green = move, red = attack). Teal marks
 # a SUPPORT link (#101) — same hue as the SUPPORT order cursor (_order_mode_color).
 const ORDER_MOVE_COLOR: Color = Color(0.45, 0.95, 0.55, 0.9)
 const ORDER_ATTACK_COLOR: Color = Color(0.96, 0.40, 0.32, 0.95)
@@ -372,7 +372,7 @@ func _draw() -> void:
 	draw_rect(rect, Color(0.5, 1.0, 0.5, 0.9), false, 1.5)
 
 
-## Draw units' current orders on the field (Total War style): a dashed line to
+## Draw units' current orders on the field (RTS style): a dashed line to
 ## each unit's destination or to the enemy it's attacking, with a marker at the
 ## far end. SelectionManager sits at the world origin with no parent transform —
 ## the same assumption the drag-box selection relies on — so unit world
