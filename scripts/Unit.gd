@@ -74,6 +74,14 @@ const ROUT_TIME: float = 6.0
 # Radius over which a rout shakes friendly morale (#72). Shared by the morale-spread
 # loop and the cosmetic shockwave so the visual matches the actual area of effect.
 const ROUT_SHOCK_RADIUS: float = 140.0
+# Rout recovery (#68): when a unit's rout timer runs out it RALLIES — recovers to your
+# control — if it has broken contact (no living enemy within RALLY_CONTACT_RADIUS) and
+# still fields enough men (>= SHATTER_STRENGTH_FRAC of its max). Otherwise it SHATTERS:
+# run down or gutted past reforming, it leaves play for good. A rallied unit comes back
+# at RALLY_MORALE, kept low so it stays fragile and can break again.
+const RALLY_CONTACT_RADIUS: float = 160.0   # = RANGED_RANGE: in archer reach = not broken contact
+const RALLY_MORALE: float = 30.0
+const SHATTER_STRENGTH_FRAC: float = 0.15
 
 # Ranged combat (#37). A ranged unit looses volleys at any enemy within
 # RANGED_RANGE that isn't already in melee contact — far outreaching melee's
@@ -161,7 +169,7 @@ func _physics_process(delta: float) -> void:
 
 	if state == State.ROUTING:
 		_process_rout(delta)
-		if state != State.DEAD:   # the timer may have expired and freed us
+		if state != State.DEAD:   # timer expired: rallied (IDLE) or shattered (DEAD -> freed)
 			_separate()   # routers still shoulder past anyone in their path
 		return
 
@@ -814,14 +822,48 @@ func _process_rout(delta: float) -> void:
 	facing = flee
 	position += flee * (move_speed * 1.3) * delta
 	_rout_timer -= delta
-	if _rout_timer <= 0.0:
-		# Godot defers queue_free() to end of frame, so the unit would otherwise
-		# linger in the "routers" group — and the spatial hash / separation scans
-		# that fold it in — for the rest of the tick after its state goes DEAD.
-		# _remove_from_play() drops it from its groups synchronously.
-		_remove_from_play()
-	else:
+	if _rout_timer > 0.0:
 		queue_redraw()
+		return
+	# Rout over (#68): a unit that broke contact and kept enough men RALLIES back into
+	# the fight; one still in contact, or gutted past reforming, SHATTERS for good.
+	if _can_rally():
+		_rally()
+	else:
+		_shatter()
+
+
+## Whether a routed unit recovers rather than shatters when its rout times out (#68):
+## it must have broken contact — no living enemy within RALLY_CONTACT_RADIUS — and still
+## field enough men to reform (>= SHATTER_STRENGTH_FRAC of its max). Positions + counts
+## only, so it's deterministic and replay-safe.
+func _can_rally() -> bool:
+	if soldiers < int(round(max_soldiers * SHATTER_STRENGTH_FRAC)):
+		return false
+	return _nearest_enemy_to(position, RALLY_CONTACT_RADIUS) == null
+
+
+## Recover from a rout (#68): the unit reforms under the player's control at low,
+## fragile morale and rejoins the fightable units — the inverse of the state/group
+## changes _rout() made. It can be re-ordered, and can break again, from here.
+func _rally() -> void:
+	state = State.IDLE
+	morale = RALLY_MORALE
+	_rout_timer = 0.0
+	# has_move_target was cleared on rout, so a stale waypoint queue is never consulted;
+	# clear it anyway so a unit that was mid-march before routing reforms with no orders.
+	waypoints.clear()
+	remove_from_group("routers")
+	add_to_group("units")
+	queue_redraw()
+
+
+## Shatter (#68): a routed unit that couldn't escape, or was gutted past recovery, is
+## destroyed for good — the terminal counterpart to a rally. Reuses the synchronous
+## group teardown (#61) so it never lingers in a spatial-hash / separation scan after
+## leaving play (queue_free() alone defers to end of frame).
+func _shatter() -> void:
+	_remove_from_play()
 
 
 # --- Visuals ------------------------------------------------------------------
