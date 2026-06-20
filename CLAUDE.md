@@ -24,6 +24,11 @@ commit a **`demos/demo.json`** so CI records a short clip and posts it on the PR
   template.
 - If you skip this, CI still posts a *generic* build demo, but it won't show your
   specific change — so add a tailored manifest whenever the change is worth seeing.
+- If your change genuinely **can't** be shown by a recorded battle (a paused-overlay
+  interaction, an editor-only tool, a non-visual refactor), don't let CI post an
+  unrelated generic clip: commit a `demos/demo.json` with `"skip": true` and a
+  `"reason"`. CI then posts a short note explaining the absence instead
+  (`demos/demo.skip.example.json` is a template).
 
 ## Code review handling policy
 When addressing review feedback (human or automated) on a PR, triage each finding:
