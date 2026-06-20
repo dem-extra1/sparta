@@ -90,11 +90,28 @@ rm /tmp/godot.zip
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Once installed, `godot --headless` can run exports or a GDScript test suite (e.g. [GUT](https://github.com/bitwes/Gut)). This project does not currently have a test suite configured.
+Once installed, `godot --headless` validates the project and runs the unit-test
+suite ([GUT](https://github.com/bitwes/Gut)) — see [`test/README.md`](test/README.md).
 
 > **Note:** The snippet above targets Godot 4.6 to match the project. If the engine version changes, update both the download URL and the binary filename.
 
 **To actually play the game**, pull the branch locally and open it in the Godot 4.6 desktop editor — the cloud environment has no display.
+
+## Local checks (reproduce CI before pushing)
+
+[`tools/check.sh`](tools/check.sh) runs the same gating checks as CI so you can
+catch failures without waiting on the runners:
+
+```sh
+tools/check.sh            # default: validate (import) + GUT tests + doc char-check
+tools/check.sh test       # just one (or several) named checks
+tools/check.sh all        # add the lychee link-check (if lychee is installed)
+tools/check.sh --list     # list the available checks
+```
+
+It vendors GUT on demand (it isn't committed), so a fresh checkout needs no
+setup beyond a Godot 4.6 binary on `PATH` (or set `GODOT_BIN`). See
+[`tools/README.md`](tools/README.md) for details.
 
 ## Roadmap
 - **M1 (here):** one playable tactical battle. ✅ scaffolded

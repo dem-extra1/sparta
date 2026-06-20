@@ -22,6 +22,10 @@ godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://test -ginclude_subdirs -
 Or, in the editor, enable the GUT plugin (**Project → Project Settings →
 Plugins**) and use the GUT bottom panel.
 
+Or run [`tools/check.sh`](../tools/check.sh) (no args), which vendors GUT on
+demand and runs the suite alongside the project's other CI checks — see
+[`tools/README.md`](../tools/README.md).
+
 ## Layout
 
 ```

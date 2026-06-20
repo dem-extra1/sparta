@@ -11,6 +11,13 @@ and verification steps — read `PLAN.md` first.
 - Main scene: `scenes/Battle.tscn`. Core scripts live in `scripts/`.
 - Issues are tracked on this repo with `P0`–`P3` labels; `PLAN.md` mirrors the roadmap.
 
+## Verify before you push
+Run `tools/check.sh` to reproduce CI's gating checks locally (Godot import
+validation + GUT unit suite + the docs char-check; `tools/check.sh all` adds the
+lychee link-check). It vendors GUT on demand and needs only a Godot 4.6 binary on
+`PATH` (or `GODOT_BIN`). See `tools/README.md`. Prefer it over invoking the
+individual checks by hand so local and CI results stay in sync.
+
 ## Gameplay demos in PRs
 When your change is **user-visible** — it affects how the game looks or plays
 (`scenes/`, `scripts/`, `assets/`, `project.godot`) — help reviewers *see* it:
