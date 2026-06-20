@@ -1,8 +1,8 @@
 # Reproducible Battle Replays
 
 Sparta records every battle so it can be re-watched and — more importantly —
-re-run for debugging. This is the same technique **Total War** uses, and the
-reason its replay files are tiny.
+re-run for debugging. This is the same technique **many strategy games** use, and the
+reason such replay files stay tiny.
 
 ## How it works
 

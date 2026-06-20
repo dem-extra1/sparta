@@ -83,7 +83,7 @@ reference-only.
 
 The game ships **no** art yet — units draw as placeholder tokens in `Unit.gd`.
 See [`ASSETS.md`](../ASSETS.md) for the standing CC0 art shortlist and the
-**do-not-use Total War mod assets** warning. Summary here for one-stop browsing:
+**do-not-use commercial-game mod assets** warning. Summary here for one-stop browsing:
 
 | Source | Licence | Bundle? | Best for |
 | --- | --- | :---: | --- |
