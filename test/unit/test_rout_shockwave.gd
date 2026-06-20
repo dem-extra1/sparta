@@ -12,6 +12,7 @@ func test_spawn_adds_one_positioned_ripple() -> void:
 	var fx: RoutShockwave = parent.get_child(0)
 	assert_eq(fx.global_position, Vector2(30, 40), "the ripple is centred on the router")
 	assert_eq(fx._radius, 140.0, "and sized to the morale-shock radius")
+	assert_eq(fx._color, Color.BLUE, "and tinted with the supplied (team) colour")
 
 
 func test_ripple_frees_itself_after_its_lifetime() -> void:

@@ -41,6 +41,6 @@ func _draw() -> void:
 	# Soft radial gradient: stacked translucent discs accumulate toward the centre.
 	for i in range(GRADIENT_STEPS):
 		var disc_r: float = r * (1.0 - float(i) / float(GRADIENT_STEPS))
-		draw_circle(Vector2.ZERO, disc_r, Color(_color, fade * 0.10))
+		draw_circle(Vector2.ZERO, disc_r, Color(_color, fade * 0.1))
 	# Brighter leading ring so the expanding edge reads clearly.
-	draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(_color, fade * 0.6), 2.0)
+	draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, Color(_color, fade * 0.6), 2.0)
