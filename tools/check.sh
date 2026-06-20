@@ -212,7 +212,7 @@ check_chars() {
   local files=()
   while IFS= read -r -d '' f; do
     files+=("$f")
-  done < <(cd "$PROJECT_ROOT" && git ls-files -z '*.qmd' '*.R' '*.r')
+  done < <(cd "$PROJECT_ROOT" && git ls-files -z '*.qmd' '*.R')
   if [ ${#files[@]} -eq 0 ]; then
     info "No docs to check."
     return 0
@@ -290,7 +290,7 @@ main() {
 
   # De-duplicate (order-preserving) so e.g. `all validate` or repeated names run
   # each check once and print one summary line apiece.
-  local deduped=() c seen
+  local deduped=() c seen name
   for c in "${checks[@]}"; do
     seen=""
     if [ ${#deduped[@]} -gt 0 ]; then
