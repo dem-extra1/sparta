@@ -4,7 +4,7 @@ description: "Project layout, the scripts, and the collision design pillar."
 ---
 
 Sparta's Milestone&nbsp;1 is one self-contained battle scene wired up in code. The
-codebase is small and deliberately flat — easy to read end to end.
+codebase is small and deliberately flat --- easy to read end to end.
 
 ## Project layout
 
@@ -18,7 +18,7 @@ scripts/
   SelectionManager.gd  Click + drag-box selection, move/attack orders
   CameraController.gd  WASD / edge pan, wheel zoom
   HUD.gd               Hint bar, unit info panel, victory/defeat overlay
-assets/                CC0 art goes here (see Assets) — not required to run
+assets/                CC0 art goes here (see Assets) --- not required to run
 ```
 
 ::: {.callout-note}
@@ -48,7 +48,7 @@ screening spearmen, cavalry charges, and chokepoints are only meaningful if unit
 **cannot** pass through or stack on one another. Collision correctness and
 performance take priority over new-feature breadth.
 
-**Current state — soft separation.** Each frame, a unit pushes out of any overlapping
+**Current state --- soft separation.** Each frame, a unit pushes out of any overlapping
 unit (live or routing) by *half* the overlap; the neighbor corrects the other half.
 The center-to-center floor is `RADIUS + other.RADIUS`. It's intentionally *soft* so
 regiments still press into melee contact (attack reach > separation floor) instead of
@@ -57,17 +57,17 @@ bouncing apart. The logic lives in `Unit.gd` → `_separate()`.
 ### Collision roadmap (priority order)
 
 1. ✅ **No-stack soft separation** between live units.
-2. **Per-type footprint** — cavalry wider than infantry, so charges and screens read
+2. **Per-type footprint** --- cavalry wider than infantry, so charges and screens read
    correctly.
-3. **Formation cohesion** — a regiment holds a block/line shape while moving, not a blob.
-4. **Hard blocking** — spearmen screen and physically stop cavalry passage; lines form
+3. **Formation cohesion** --- a regiment holds a block/line shape while moving, not a blob.
+4. **Hard blocking** --- spearmen screen and physically stop cavalry passage; lines form
    chokepoints. Where collision and the rock-paper-scissors design meet.
-5. **Scale** — replace the O(n²) neighbor scan with a spatial grid (and/or
+5. **Scale** --- replace the O(n²) neighbor scan with a spatial grid (and/or
    `CharacterBody2D` / `move_and_slide`) before unit counts grow past a few dozen.
 
 ## Determinism
 
-The whole simulation is built to be reproducible — one seeded RNG stream, a fixed
+The whole simulation is built to be reproducible --- one seeded RNG stream, a fixed
 60&nbsp;Hz physics tick, and orders applied on the next tick so live play and replay
 share a code path. This is what powers the replay system and the CI demo clips. See
 **[Replays](replays.qmd)** for the full story.

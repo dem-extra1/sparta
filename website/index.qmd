@@ -10,7 +10,7 @@ page-layout: full
 
 ::: {.tagline}
 A prototype that fuses **CK3-style grand strategy** with **Total War-style
-real-time tactical battles** — built in **Godot 4.6** with GDScript.
+real-time tactical battles** --- built in **Godot 4.6** with GDScript.
 :::
 
 [Get started →](getting-started.qmd){.btn .btn-sparta .btn-lg role="button"}
@@ -23,7 +23,7 @@ real-time tactical battles** — built in **Godot 4.6** with GDScript.
   <video class="demo-video" controls muted loop playsinline preload="metadata"
          poster="media/showcase.jpg">
     <source src="media/showcase.mp4" type="video/mp4">
-    Your browser can't play this clip — see the
+    Your browser can't play this clip --- see the
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
   <figcaption>A deterministic auto-battle (seed&nbsp;12345): two armies advance,
@@ -34,7 +34,7 @@ real-time tactical battles** — built in **Godot 4.6** with GDScript.
 ## What is Sparta?
 
 Sparta is a solo prototype with a deliberate strategy: build the **hardest, most
-differentiating piece first** — a real-time tactical battle — as a self-contained
+differentiating piece first** --- a real-time tactical battle --- as a self-contained
 vertical slice, get it playable, then grow outward into a campaign.
 
 This repository currently contains **Milestone 1**: a single, self-contained
@@ -42,7 +42,7 @@ tactical battle. You command the [**blue army**]{.army-blue}; defeat the
 [**red army**]{.army-red} on a top-down field where *where the bodies are* is the
 whole game.
 
-It runs with **zero downloaded art** — units render as colored placeholder tokens —
+It runs with **zero downloaded art** --- units render as colored placeholder tokens ---
 so you can clone, open in Godot, press **F5**, and fight immediately.
 
 ## What makes a battle interesting
@@ -59,7 +59,7 @@ units *can't* pass through or stack on one another.
 ::: {.g-col-12 .g-col-md-6}
 ### 🛡️ Flanking & morale
 Hit a unit from the side (×1.5) or rear (×2) for far more damage and morale loss.
-Units that lose enough soldiers or take flank hits **rout** — and routs spread to
+Units that lose enough soldiers or take flank hits **rout** --- and routs spread to
 nearby allies.
 :::
 
@@ -71,7 +71,7 @@ cavalry to flank, spears to screen. Read more in [Tactics](tactics.qmd).
 
 ::: {.g-col-12 .g-col-md-6}
 ### 🎬 Deterministic replays
-Every battle records as a tiny seed-plus-orders log — the same approach Total War
+Every battle records as a tiny seed-plus-orders log --- the same approach Total War
 uses. Re-watch any battle, or re-run it to debug. See [Replays](replays.qmd).
 :::
 
@@ -79,15 +79,15 @@ uses. Re-watch any battle, or re-run it to debug. See [Replays](replays.qmd).
 
 ## Jump in
 
-- **[Getting Started](getting-started.qmd)** — install Godot, import the project, press play.
-- **[How to Play](how-to-play.qmd)** — controls, the objective, and the battle loop.
-- **[Tactics That Matter](tactics.qmd)** — flanking, routing, and the unit triangle.
-- **[Replays](replays.qmd)** — how the deterministic record/playback system works.
-- **[Architecture](architecture.qmd)** — the scripts, scenes, and the collision design pillar.
-- **[Roadmap](roadmap.qmd)** — milestones and the prioritized issue backlog.
+- **[Getting Started](getting-started.qmd)** --- install Godot, import the project, press play.
+- **[How to Play](how-to-play.qmd)** --- controls, the objective, and the battle loop.
+- **[Tactics That Matter](tactics.qmd)** --- flanking, routing, and the unit triangle.
+- **[Replays](replays.qmd)** --- how the deterministic record/playback system works.
+- **[Architecture](architecture.qmd)** --- the scripts, scenes, and the collision design pillar.
+- **[Roadmap](roadmap.qmd)** --- milestones and the prioritized issue backlog.
 
 ::: {.callout-note}
 This site is generated documentation. The source of truth lives in the
-[Sparta repository](https://github.com/Lacaedemon/sparta) — `README.md`,
+[Sparta repository](https://github.com/Lacaedemon/sparta) --- `README.md`,
 `PLAN.md`, `REPLAY.md`, and `ASSETS.md`.
 :::

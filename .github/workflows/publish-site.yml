@@ -1,11 +1,11 @@
 # Builds the Sparta documentation site (Quarto, in website/) and deploys it to
-# GitHub Pages. The site embeds gameplay demo clips, so the build first records a
-# couple of deterministic replays headlessly (Godot Movie Maker → ffmpeg → mp4 +
-# poster) and drops them into website/media/ — exactly the pipeline demo-video.yml
-# uses for PR demos. That keeps no binaries in git and the clips always reflect the
-# current main build.
+# GitHub Pages. The site embeds gameplay demo clips, so a first job records a
+# couple of deterministic replays headlessly (Godot Movie Maker -> ffmpeg ->
+# mp4 + poster) and uploads them as an artifact; the publish job (the reusable
+# d-morrison/gha quarto-publish workflow) pulls that artifact in before render.
+# So no binaries live in git and the clips always reflect the current main build.
 #
-# One-time setup: in repo Settings → Pages, set "Source" to "GitHub Actions".
+# One-time setup: in repo Settings -> Pages, set "Source" to "GitHub Actions".
 # Until then the deploy step fails with a clear message (the build still runs).
 name: Publish site
 
@@ -25,11 +25,9 @@ on:
       - 'tools/demo/**'
   workflow_dispatch:
 
-# Allow the deploy job to publish to Pages; read-only for everything else.
+# Read-only by default; the publish job grants its own Pages permissions below.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # One in-flight deploy at a time; let a running deploy finish (don't cancel).
 concurrency:
@@ -41,9 +39,10 @@ env:
   GUT_VERSION: v9.6.0
 
 jobs:
-  # Best-effort: record the demo clips. If Godot/Movie Maker flakes (headless GL can
-  # deadlock), this job fails but never blocks the site deploy — the pages just
-  # render without fresh video, and the <video> embeds fall back gracefully.
+  # Best-effort: record the demo clips and hand them to the publish job as an
+  # artifact. If Godot/Movie Maker flakes (headless GL can deadlock) this job
+  # fails but never blocks the deploy (continue-on-error + publish's if: always);
+  # the pages then render without fresh video and the <video> embeds fall back.
   demos:
     if: github.repository == 'Lacaedemon/sparta'
     runs-on: ubuntu-latest
@@ -79,55 +78,29 @@ jobs:
         run: website/tools/record-demos.sh "$GITHUB_WORKSPACE/website/media"
 
       - name: Upload demo media
+        # One artifact carrying both the clips and their posters; the publish job
+        # extracts it into website/media before Quarto renders.
         uses: actions/upload-artifact@v4
         with:
           name: demo-media
-          path: website/media/*.mp4
+          path: |
+            website/media/*.mp4
+            website/media/*.jpg
           if-no-files-found: warn
           retention-days: 1
 
-      - name: Upload demo posters
-        uses: actions/upload-artifact@v4
-        with:
-          name: demo-posters
-          path: website/media/*.jpg
-          if-no-files-found: warn
-          retention-days: 1
-
-  build-deploy:
-    # Run even if the demos job failed/flaked (if: always) — the site must publish
-    # regardless. Only on the canonical repo (Pages lives there).
+  # Render + deploy via the shared reusable workflow (d-morrison/gha). It checks
+  # out the repo, pulls the demo-media artifact into website/media, renders the
+  # Quarto project, and deploys to Pages. Runs even if the demos job flaked.
+  publish:
     needs: [demos]
     if: always() && github.repository == 'Lacaedemon/sparta'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-
-      # Pull recorded clips back into website/media (best-effort — may be absent if
-      # the demos job flaked; the merge-multiple downloads both mp4 and jpg).
-      - name: Download demo media
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          pattern: demo-*
-          merge-multiple: true
-          path: website/media
-
-      - name: Set up Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
-
-      - name: Render site
-        run: quarto render
-        working-directory: website
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: website/_site
-
-      - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: d-morrison/gha/.github/workflows/quarto-publish.yml@v1
+    with:
+      path: website
+      pre-render-artifact: demo-media
+      pre-render-artifact-path: website/media

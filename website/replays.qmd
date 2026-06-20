@@ -1,9 +1,9 @@
 ---
 title: "Replays"
-description: "How Sparta's deterministic record/playback system works — and why the logs are tiny."
+description: "How Sparta's deterministic record/playback system works, and why the logs are tiny."
 ---
 
-Sparta records every battle so it can be **re-watched** and — more importantly —
+Sparta records every battle so it can be **re-watched** and --- more importantly ---
 **re-run for debugging**. This is the same technique **Total War** uses, and the
 reason its replay files are tiny.
 
@@ -11,10 +11,10 @@ reason its replay files are tiny.
 
 | Approach | How | Trade-off |
 | --- | --- | --- |
-| **State-snapshot** | Save every unit's position/health each frame, play it back like a video. | Simple, but logs are large and it's "dumb" playback — you can't re-run the logic to investigate a bug. |
+| **State-snapshot** | Save every unit's position/health each frame, play it back like a video. | Simple, but logs are large and it's "dumb" playback --- you can't re-run the logic to investigate a bug. |
 | **Deterministic sim + input log** *(Sparta)* | Record only the RNG **seed** and the player's **orders** (each stamped with its physics tick). Replaying re-seeds the RNG and re-injects the orders on the same ticks, so the **real simulation** re-runs identically. | Tiny logs *and* reproduces bugs in the live sim. |
 
-Godot has no built-in system for either — both are something you build. Sparta uses
+Godot has no built-in system for either --- both are something you build. Sparta uses
 the deterministic approach because it gives small logs *and* reproduces bugs in the
 live simulation, which is exactly what makes it useful.
 
@@ -24,7 +24,7 @@ The simulation is deterministic by construction:
 
 - **One RNG stream.** All gameplay randomness goes through `Replay.rng`, a single
   seeded `RandomNumberGenerator`, drawn in a stable order.
-- **Fixed timestep.** The sim advances on the 60&nbsp;Hz physics tick — never on a
+- **Fixed timestep.** The sim advances on the 60&nbsp;Hz physics tick --- never on a
   variable-framerate / wall-clock timer. Enemy AI re-evaluates on a fixed tick
   cadence for the same reason.
 - **Orders, not selections.** Only right-click orders change the outcome; selection,

@@ -4,12 +4,12 @@ description: "Install Godot, import the project, and run your first battle."
 ---
 
 Sparta is a **Godot 4.6** project. It needs no environment variables, no build
-step, and — crucially — **no downloaded art**: units draw themselves as colored
+step, and --- crucially --- **no downloaded art**: units draw themselves as colored
 placeholder tokens, so the battle is playable the moment you press play.
 
 ## 1. Install Godot 4.6 (Standard build)
 
-Download **Godot 4.6.x — Standard build** (GDScript, *not* the .NET/C# build) from
+Download **Godot 4.6.x --- Standard build** (GDScript, *not* the .NET/C# build) from
 the [official downloads page](https://godotengine.org/download/).
 
 ::: {.callout-important}
@@ -27,16 +27,16 @@ is for C# projects and is not what this project targets.
 
 Press **F5** (Play). The battle starts immediately:
 
-- Two armies spawn — [**blue**]{.army-blue} at the top (yours),
+- Two armies spawn --- [**blue**]{.army-blue} at the top (yours),
   [**red**]{.army-red} at the bottom (the enemy).
 - Units are colored tokens on a green field. No art download is required.
 
-That's it — you're in a battle. Head to **[How to Play](how-to-play.qmd)** for the
+That's it --- you're in a battle. Head to **[How to Play](how-to-play.qmd)** for the
 controls, or **[Tactics That Matter](tactics.qmd)** to start winning.
 
 ## Running headlessly (optional)
 
-You don't need a display to *validate* the project — handy for CI or a cloud
+You don't need a display to *validate* the project --- handy for CI or a cloud
 editor. From the project root:
 
 ```bash
@@ -44,7 +44,7 @@ editor. From the project root:
 godot --headless --path . --quit
 ```
 
-To actually *play*, though, you need the desktop editor with a display — a headless
+To actually *play*, though, you need the desktop editor with a display --- a headless
 environment has no window to render the battle into.
 
 ### Installing Godot in a cloud/Linux environment
