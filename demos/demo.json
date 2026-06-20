@@ -1,7 +1,7 @@
 {
-  "_comment": "Rout-effect visuals (#72). Visible in any battle as units break, so this reuses the bundled showcase battle — when a unit routs, a translucent team-tinted ripple flashes at its position and expands+fades over the radius (140px) where it shakes friendly morale. Purely cosmetic (spawned on the sim tick, faded on render time); no sim/replay/determinism impact.",
+  "_comment": "Routed vs shattered units (#68). Routs happen in any battle, so this reuses the bundled showcase. Behaviour change: a routing unit no longer always dies after fleeing — when its rout timer runs out it RALLIES (returns to play, idle, low morale) if it broke contact and kept enough men, otherwise it SHATTERS (removed for good). Whether a given rout rallies depends on the fight, so the clip shows routs resolving rather than a guaranteed rally. Deterministic (positions + counts only).",
   "replay": "demos/showcase.json",
-  "caption": "Rout-effect visuals (#72): when a unit routs, a translucent team-tinted shockwave now flashes at its position and expands+fades across the radius where its rout shakes nearby allies' morale (a soft centre-dense gradient). Previously the morale contagion was invisible. Purely cosmetic: no sim/replay impact.",
+  "caption": "Routed vs shattered (#68): a routing unit can now RECOVER. When its rout times out it rallies — reforms under your control at low morale — if it broke contact and isn't gutted; otherwise it shatters and is gone for good. Previously every rout simply died after fleeing. (Whether a given rout rallies depends on the battle.) Deterministic: no RNG.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,
