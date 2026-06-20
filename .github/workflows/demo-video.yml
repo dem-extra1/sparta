@@ -315,7 +315,8 @@ jobs:
         if: steps.demo.outputs.skip == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          # Author-controlled free text; via env (not ${{ }}) so it can't inject the script.
+          # Author-controlled free text; accessed as "$REASON" (quoted) in the script,
+          # so shell metacharacters in it cannot inject commands.
           REASON: ${{ steps.demo.outputs.reason }}
         run: |
           set -euo pipefail
