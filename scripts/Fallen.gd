@@ -10,7 +10,7 @@ extends Node2D
 const LIFETIME := 2.2           # seconds a heap stays before it has fully faded
 const MAX_MARKS := 6            # cap on bodies drawn per casualty event (keeps it light)
 const SCATTER := 7.0            # radius the bodies are strewn over (px)
-const MARK_RADIUS := 1.7        # matches a foot-soldier mark (Unit.MARK_RADIUS)
+const MARK_RADIUS: float = Unit.MARK_RADIUS   # mirror the foot-soldier mark size (no drift)
 const FADE_START := 0.5         # fraction of LIFETIME the heap stays opaque before fading
 
 var _color: Color = Color(0.2, 0.2, 0.2)
@@ -27,6 +27,11 @@ static func spawn(parent: Node, at: Vector2, color: Color, count: int) -> void:
 	for i in range(n):
 		# Deterministic golden-angle scatter (no RNG): an even, non-repeating spread that
 		# reads as a small heap rather than a ring, and never stacks two bodies exactly.
+		# The radius denominator is MAX_MARKS (not n) on purpose: the heap's spread scales
+		# with the casualty count — a lone death stays a tight ~2px speck at the drop point,
+		# a big hit fans out to the full SCATTER radius — so deadlier blows leave visibly
+		# bigger piles. (Using n instead would fix every heap to one radius and push a single
+		# body further off the drop point.)
 		var a: float = float(i) * 2.39996323
 		var rad: float = SCATTER * sqrt((float(i) + 0.5) / float(MAX_MARKS))
 		fx._marks.push_back(Vector2.from_angle(a) * rad)

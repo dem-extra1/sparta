@@ -1301,11 +1301,15 @@ func test_combat_lunge_surges_and_recoils_over_time() -> void:
 
 func test_fighting_block_keeps_animating_instead_of_settling() -> void:
 	# A standing, fighting unit must not sleep: the churn fast-path is skipped so the front
-	# rank keeps moving each frame (contrast: an idle block settles and stops integrating).
+	# rank keeps moving each frame. Start from a genuinely settled, unmoved block (seeded on
+	# its slots in _ready) and assert that precondition first, so this actually exercises the
+	# `not fighting` guard — without it, a settled unit that isn't moving or turning would
+	# take the at-rest fast-path and stay settled, failing the second assert.
 	var u := _make_unit(60)
+	assert_true(u._flock_settled, "a freshly-seeded, unmoved block starts settled")
 	u.state = Unit.State.FIGHTING
 	u._update_flock(1.0 / 60.0)
-	assert_false(u._flock_settled, "a fighting block never settles (its front rank churns)")
+	assert_false(u._flock_settled, "but a fighting block un-settles and keeps churning")
 
 
 func test_can_rally_at_exactly_the_strength_floor() -> void:
