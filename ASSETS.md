@@ -7,7 +7,7 @@ The game runs **without any downloaded art** — units draw as placeholder token
 > reference-only libraries we can't bundle), see
 > [`docs/asset-sources.md`](docs/asset-sources.md).
 
-> ⚠️ **Do not use Total War mod assets.** They are *not* public domain — modders retain
+> ⚠️ **Do not use commercial-game mod assets.** They are *not* public domain — modders retain
 > copyright and many derive from copyrighted base-game art. Shipping them is legally risky.
 > The sources below are CC0 (public-domain equivalent): free for any use, no attribution
 > required (crediting is still polite — see the table).

@@ -18,7 +18,7 @@ website:
   title: "Sparta"
   site-url: https://lacaedemon.github.io/sparta/
   description: >-
-    A prototype fusing CK3-style grand strategy with Total War-style tactical
+    A prototype fusing dynastic grand strategy with real-time tactical
     battles, built in Godot 4.6.
   favicon: /favicon.svg
   back-to-top-navigation: true

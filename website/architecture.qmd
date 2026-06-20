@@ -41,7 +41,7 @@ Fewer scene files to corrupt, functionally equivalent.
 
 ## Design pillar: collision is core
 
-In a Total War-style battle, *where the bodies are* **is** the game. Sparta treats
+In a large-scale tactical battle, *where the bodies are* **is** the game. Sparta treats
 collision as a first-class system, not polish: units must physically occupy space,
 press against each other, hold formation, and be blocked by friend and foe. Flanking,
 screening spearmen, cavalry charges, and chokepoints are only meaningful if units

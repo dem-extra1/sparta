@@ -4,8 +4,8 @@
 > Last updated: 2026-06-15.
 
 ## Vision
-A game fusing **Crusader Kings 3** grand-strategy campaign mechanics with **Total War**-style
-real-time tactical battles. Built solo by a developer **new to gamedev**, so the strategy is a
+A game fusing **dynastic grand-strategy** campaign mechanics with **real-time
+tactical battles**. Built solo by a developer **new to gamedev**, so the strategy is a
 **vertical slice**: build the hardest/most-differentiating piece (a battle) first, get it playable,
 then grow outward.
 
@@ -13,11 +13,11 @@ then grow outward.
 - **Engine:** Godot **4.6.x Standard build** (GDScript, *not* the C#/.NET build).
 - **Battles:** 2D top-down sprite tokens (not 3D).
 - **Art:** **CC0 only** — Kenney, OpenGameArt (Toen's Medieval Strategy pack). See `ASSETS.md`.
-  - ⚠️ **Not** Total War mod assets — they are copyrighted, not public domain.
+  - ⚠️ **Not** commercial-game mod assets — they are copyrighted, not public domain.
 - **First milestone:** one self-contained tactical battle. No campaign map yet.
 
 ## Design pillars
-1. **Collision is core — treat it as a first-class system, not polish.** In a Total War-style
+1. **Collision is core — treat it as a first-class system, not polish.** In a large-scale tactical
    battle, where bodies are on the field *is* the game: units must physically occupy space,
    press against each other, hold formation, and be blocked by friend and foe. Flanking, screening
    spearmen, cavalry charges, and chokepoints are only meaningful if units cannot pass through or
@@ -106,7 +106,7 @@ hand-authored GDScript that hasn't been engine-checked.
 
 ## Added since scaffold
 - **Reproducible replays** (`scripts/Replay.gd`): deterministic sim + order log
-  (Total War-style). Every battle auto-records to `user://replays/`; "Watch
+  (a genre-standard approach). Every battle auto-records to `user://replays/`; "Watch
   Replay" re-runs it. Made the sim deterministic (single seeded RNG via
   `Replay.rng`; AI + orders on the fixed physics tick). Verified end-to-end:
   a recorded battle replays bit-identically tick-for-tick. See `REPLAY.md`.
@@ -115,8 +115,8 @@ hand-authored GDScript that hasn't been engine-checked.
 - **M1 polish (optional, after first run is fun):**
   - Swap token `_draw()` for real CC0 `Sprite2D` art (see README "Swapping placeholder art").
   - Stretch: render each regiment as an N×M block of soldier sprites that thins with casualties
-    (the true Total War look); unit facing arrows; pre-battle deployment phase.
-- **M2 — CK3-style campaign map:** clickable provinces, characters/realms, turn-based
+    (the true massed-formation look); unit facing arrows; pre-battle deployment phase.
+- **M2 — dynastic campaign map:** clickable provinces, characters/realms, turn-based
   diplomacy & war. Battles **auto-resolved** at first (no tactical layer yet).
 - **M3 — Integration:** an army battle on the campaign map launches into the M1 battle scene
   and returns a result (winner, casualties) to the campaign. This is where the two genres meet;

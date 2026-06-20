@@ -11,7 +11,7 @@ The strategy is a **vertical slice**: build the hardest, most-differentiating pi
 | Milestone | Scope | Status |
 | --- | --- | --- |
 | **M1** | One playable, self-contained tactical battle. | ✅ Scaffolded & playable |
-| **M2** | CK3-style **campaign map** --- clickable provinces, characters/realms, turn-based diplomacy & war. Battles **auto-resolved** at first. | Not started |
+| **M2** | A dynastic **campaign map** --- clickable provinces, characters/realms, turn-based diplomacy & war. Battles **auto-resolved** at first. | Not started |
 | **M3** | **Integration** --- an army battle on the campaign map launches into the M1 battle scene and returns a result (winner, casualties). Where the two genres meet. | Not started |
 
 The battle scene was kept self-contained specifically to make the M3 hand-off clean.
