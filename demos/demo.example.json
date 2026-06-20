@@ -1,5 +1,5 @@
 {
-  "_comment": "Copy this to demos/demo.json (and tailor it) on a PR to publish a demo. The 'replay' path is repo-relative with no res:// prefix. See demos/README.md.",
+  "_comment": "Copy this to demos/demo.json (and tailor it) on a PR to publish a demo. The 'replay' path is repo-relative with no res:// prefix. If your change can't be shown by a recorded battle (a paused-overlay interaction, an editor-only tool, a non-visual refactor), use demos/demo.skip.example.json instead. See demos/README.md.",
   "replay": "demos/showcase.json",
   "caption": "Describe what this PR changes and what to watch for in the clip.",
   "fixed_fps": 30,

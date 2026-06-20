@@ -1,0 +1,5 @@
+{
+  "_comment": "Copy this to demos/demo.json when your user-visible change CAN'T be shown by a recorded battle (a paused-overlay interaction, an editor-only tool, a non-visual refactor). CI then records no clip and posts a short note with 'reason' instead of an unrelated generic GIF. See demos/README.md ('No clip applies'). For anything visible in a normal battle, use demo.example.json instead.",
+  "skip": true,
+  "reason": "Describe why a recorded battle can't show this change (e.g. it's a paused-overlay interaction)."
+}
