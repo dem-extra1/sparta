@@ -186,7 +186,10 @@ func _announce(result: Dictionary) -> void:
 	var to_name: String = _state.provinces[result["to"]]["name"]
 	var text := ""
 	if not result["combat"]:
-		text = "Moved into %s." % to_name
+		# Distinguish merging into a friendly province from taking an undefended one
+		# (owner_of(to) is the player in both cases, so use the result's flag).
+		text = "Reinforced %s." % to_name if result.get("reinforced", false) \
+				else "Occupied %s." % to_name
 	elif result["attacker_won"]:
 		text = "%s taken from %s (%d survive)." % [to_name, _enemy_name(), int(result["survivors"])]
 	else:

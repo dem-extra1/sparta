@@ -100,7 +100,7 @@ func move_or_attack(from_id: int, to_id: int) -> Dictionary:
 	var to: Dictionary = provinces[to_id]
 	var moving: int = int(from["army"])
 	var result := {
-		"ok": true, "combat": false, "attacker_won": true,
+		"ok": true, "combat": false, "reinforced": false, "attacker_won": true,
 		"from": from_id, "to": to_id, "attacker": moving,
 		"defender": int(to["army"]), "survivors": moving,
 	}
@@ -109,6 +109,7 @@ func move_or_attack(from_id: int, to_id: int) -> Dictionary:
 		# Reinforce a friendly province: stacks merge.
 		to["army"] = int(to["army"]) + moving
 		from["army"] = 0
+		result["reinforced"] = true
 		result["survivors"] = int(to["army"])
 		_mark_acted(from_id, to_id)
 		return result

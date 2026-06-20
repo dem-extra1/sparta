@@ -56,6 +56,7 @@ func test_move_into_undefended_occupies() -> void:
 	var r: Dictionary = s.move_or_attack(0, 2)
 	assert_true(r["ok"])
 	assert_false(r["combat"], "no fight against an undefended province")
+	assert_false(r["reinforced"], "occupying an enemy province isn't a reinforce")
 	assert_eq(s.owner_of(2), ROME, "province changes hands")
 	assert_eq(s.army_of(2), 5, "the whole army garrisons it")
 	assert_eq(s.army_of(0), 0, "origin is left empty")
