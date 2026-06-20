@@ -72,6 +72,21 @@ func test_bindings_round_trip_through_disk() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 
 
+func test_set_sfx_enabled_session_flips_value_without_persisting() -> void:
+	# The demo recorder turns SFX on so recordings carry sound, but must not rewrite a
+	# developer's saved preference: the session setter flips the in-memory flag while
+	# suppressing the persist + `changed` signal. A fresh, NOT-loading instance proves
+	# the suppression is the method's own doing (not the test harness's _loading=true).
+	var s = SettingsScript.new()
+	autofree(s)
+	watch_signals(s)
+	assert_false(s.sfx_enabled, "sfx default off")
+	s.set_sfx_enabled_session(true)
+	assert_true(s.sfx_enabled, "session setter flips the in-memory value")
+	assert_signal_not_emitted(s, "changed",
+		"a session override neither persists nor emits changed")
+
+
 func test_default_bindings_cover_exactly_battles_hotkey_slugs() -> void:
 	# Settings.DEFAULT_ORDER_BINDINGS and Battle.ORDER_MODE_HOTKEYS must agree on the
 	# slug set, or a mode would be unbindable (or a default binding orphaned).

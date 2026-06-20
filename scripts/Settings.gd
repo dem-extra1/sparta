@@ -51,6 +51,16 @@ func _ready() -> void:
 	_load()
 
 
+## Set sfx_enabled for this run only — no persist to disk, no `changed` signal
+## (reusing the _load() guard). The demo recorder (tools/demo/DemoRunner.gd) calls
+## this so a recording carries the game's sound (SFX default off) without rewriting
+## a developer's saved preference when the recorder is run locally.
+func set_sfx_enabled_session(value: bool) -> void:
+	_loading = true
+	sfx_enabled = value
+	_loading = false
+
+
 ## The physical keycode currently bound to a mode slug (or its default / KEY_NONE).
 func order_binding(slug: String) -> int:
 	return int(order_bindings.get(slug, DEFAULT_ORDER_BINDINGS.get(slug, KEY_NONE)))
