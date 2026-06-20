@@ -1141,6 +1141,45 @@ func test_rout_shatters_when_gutted_even_if_clear() -> void:
 	assert_eq(u.state, Unit.State.DEAD, "a gutted rout shatters even with no enemy near")
 
 
+# --- individual-soldier formation layout (issue #32, Stage A) ---------------
+
+func test_formation_slots_one_per_soldier() -> void:
+	var u := _make_unit(120)
+	assert_eq(u._formation_slots(120).size(), 120, "one slot per living soldier")
+	assert_eq(u._formation_slots(1).size(), 1, "a single soldier gets one slot")
+	assert_eq(u._formation_slots(0).size(), 0, "no soldiers -> no slots (an empty block)")
+
+
+func test_formation_block_is_horizontally_centered() -> void:
+	# Each rank is centred on its own count, so the block's horizontal centroid stays on
+	# the unit even when the last rank is partial (non-perfect n) — not just for a perfect
+	# grid. (#32 review: a left-aligned partial rank used to drift small/depleted blocks.)
+	var u := _make_unit()
+	for n in [50, 51, 53, 87, 7]:
+		var slots := u._formation_slots(n)
+		var sum_x := 0.0
+		for s in slots:
+			sum_x += s.x
+		var mean_x: float = sum_x / float(slots.size())
+		assert_almost_eq(mean_x, 0.0, 0.001, "x-centroid stays on the unit for n=%d" % n)
+
+
+func test_formation_is_wider_than_deep() -> void:
+	# Soldiers form up wider than they are deep (files > ranks for a full block).
+	var u := _make_unit()
+	var slots := u._formation_slots(100)
+	var min_x := INF
+	var max_x := -INF
+	var min_y := INF
+	var max_y := -INF
+	for s in slots:
+		min_x = minf(min_x, s.x)
+		max_x = maxf(max_x, s.x)
+		min_y = minf(min_y, s.y)
+		max_y = maxf(max_y, s.y)
+	assert_gt(max_x - min_x, max_y - min_y, "the formation is wider than it is deep")
+
+
 func test_can_rally_at_exactly_the_strength_floor() -> void:
 	# Boundary: soldiers == floor(max * SHATTER_STRENGTH_FRAC) still rallies (the gate is
 	# "< floor" → shatter, ">= floor" → can rally). Pins the >= semantics in the doc.
