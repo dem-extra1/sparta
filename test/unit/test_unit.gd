@@ -1083,18 +1083,72 @@ func test_merge_blends_using_current_soldiers_not_max() -> void:
 
 func test_rout_timeout_leaves_groups_synchronously() -> void:
 	var u := _make_unit()
+	# An enemy in contact means the rout can't rally, so it SHATTERS at timeout (#68) —
+	# the removal path that must still tear groups down synchronously (#61).
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(20, 0)   # well inside RALLY_CONTACT_RADIUS
 	u._rout()
 	assert_true(u.is_in_group("routers"), "a routing unit joins the routers group")
 	assert_false(u.is_in_group("units"), "a routing unit has left the units group")
 	# Expire the rout timer so the next call triggers the timeout.
 	u._rout_timer = 0.0
 	u._process_rout(0.016)
-	assert_eq(u.state, Unit.State.DEAD, "the rout timeout kills the unit")
+	assert_eq(u.state, Unit.State.DEAD, "a rout that can't rally shatters at timeout")
 	# queue_free() is deferred to end of frame, but the group memberships must be
 	# dropped synchronously so a DEAD unit never lingers in the spatial-hash /
 	# separation scans (both of which include the routers group) for the rest of
 	# the tick — see issue #61.
 	assert_false(u.is_in_group("routers"),
-		"a routed-out unit leaves the routers group the same tick it dies")
+		"a shattered unit leaves the routers group the same tick it dies")
 	assert_false(u.is_in_group("units"),
-		"a routed-out unit is not in the units group either")
+		"a shattered unit is not in the units group either")
+
+
+# --- rout recovery: rally vs shatter (issue #68) ---------------------------
+
+func test_rout_rallies_after_breaking_contact() -> void:
+	# No enemy nearby and plenty of men left: the rout times out into a RALLY, returning
+	# the unit to play under the player's control at low (fragile) morale.
+	var u := _make_unit()
+	u._rout()
+	u._rout_timer = 0.0
+	u._process_rout(0.016)
+	assert_eq(u.state, Unit.State.IDLE, "a unit that broke contact rallies, not dies")
+	assert_true(u.is_in_group("units"), "a rallied unit rejoins the fightable units")
+	assert_false(u.is_in_group("routers"), "and leaves the routers group")
+	assert_almost_eq(u.morale, Unit.RALLY_MORALE, 0.001, "it reforms at low, fragile morale")
+
+
+func test_rout_shatters_when_still_in_contact() -> void:
+	var u := _make_unit()
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)   # inside RALLY_CONTACT_RADIUS — still pursued
+	u._rout()
+	u._rout_timer = 0.0
+	u._process_rout(0.016)
+	assert_eq(u.state, Unit.State.DEAD, "a unit still in contact shatters")
+
+
+func test_rout_shatters_when_gutted_even_if_clear() -> void:
+	# Broke contact, but too few men remain to reform -> shatter.
+	var u := _make_unit(100)
+	u._rout()
+	u.soldiers = 5   # below SHATTER_STRENGTH_FRAC * 100 (= 15)
+	u._rout_timer = 0.0
+	u._process_rout(0.016)
+	assert_eq(u.state, Unit.State.DEAD, "a gutted rout shatters even with no enemy near")
+
+
+func test_can_rally_requires_broken_contact_and_strength() -> void:
+	var u := _make_unit(100)
+	u._rout()
+	assert_true(u._can_rally(), "clear of enemies and at strength -> can rally")
+	u.soldiers = 5
+	assert_false(u._can_rally(), "gutted below the floor -> cannot rally")
+	u.soldiers = 100
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(40, 0)
+	assert_false(u._can_rally(), "an enemy within contact radius -> cannot rally")
