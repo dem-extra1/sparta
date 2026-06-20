@@ -75,16 +75,19 @@ func test_bindings_round_trip_through_disk() -> void:
 func test_set_sfx_enabled_session_flips_value_without_persisting() -> void:
 	# The demo recorder turns SFX on so recordings carry sound, but must not rewrite a
 	# developer's saved preference: the session setter flips the in-memory flag while
-	# suppressing the persist + `changed` signal. A fresh, NOT-loading instance proves
-	# the suppression is the method's own doing (not the test harness's _loading=true).
-	var s = SettingsScript.new()
+	# suppressing both the disk write and the `changed` signal. A partial double (real
+	# code, but calls recorded) lets us assert _save() is never called — pinning the
+	# persistence guarantee directly, not just via the coupled signal, and without
+	# touching the real settings.cfg. A fresh, NOT-loading instance proves the
+	# suppression is the method's own doing (not the test harness's _loading=true).
+	var s = partial_double(SettingsScript).new()
 	autofree(s)
 	watch_signals(s)
 	assert_false(s.sfx_enabled, "sfx default off")
 	s.set_sfx_enabled_session(true)
 	assert_true(s.sfx_enabled, "session setter flips the in-memory value")
-	assert_signal_not_emitted(s, "changed",
-		"a session override neither persists nor emits changed")
+	assert_not_called(s, "_save")
+	assert_signal_not_emitted(s, "changed", "...and emits no `changed`")
 
 
 func test_default_bindings_cover_exactly_battles_hotkey_slugs() -> void:
