@@ -37,6 +37,8 @@ Add a `demos/demo.json` on your PR branch:
 | `max_frames` | no (300) | Recording length in frames (`300 / fixed_fps` ≈ seconds). |
 | `fps` | no (12) | Output GIF framerate. |
 | `width` | no (640) | Output GIF width in px (height auto). |
+| `skip` | no (false) | Set `true` when the change **can't** be shown by a recorded battle (a paused-overlay interaction, an editor-only tool, a non-visual refactor). CI then records nothing and posts a short note instead of an unrelated clip. See [No clip applies](#no-clip-applies). |
+| `reason` | no | Used only with `skip` — the explanation shown in the note (falls back to `caption`). |
 
 `demo.example.json` is a copy-paste starting point. Any **other** keys are
 ignored by the workflow (its `jq` only reads the fields above), so a leading
@@ -68,6 +70,31 @@ CI replays it against *your PR's* build, so the clip reflects your change.
   default `demos/showcase.json` battle, posted with an honest "generic build demo"
   caption that nudges you to add a manifest. So the manifest is how you make the
   demo *demonstrate your change* — skipping it gives a generic clip, not nothing.
+- **Unless you opt out.** A `demos/demo.json` with `"skip": true` posts a short note
+  instead of a clip — see below.
+
+## No clip applies
+
+Some user-visible changes genuinely can't be shown by the recorded-battle pipeline:
+a **paused-overlay** interaction (e.g. previewing a queued waypoint while the sim is
+paused), an **editor-only** tool, or a change that's visible only through input the
+replay format doesn't capture. In those cases a generic showcase clip is worse than
+nothing — it shows an unrelated battle and implies it's a demo of your change (see
+issue #75).
+
+To say so, commit a `demos/demo.json` that opts out:
+
+```json
+{
+  "skip": true,
+  "reason": "Previews a queued waypoint in the paused Space overlay — a paused-overlay interaction the recorded-battle pipeline can't capture."
+}
+```
+
+CI records nothing and upserts the demo comment with an honest note (`🚫 No gameplay
+clip for this PR — <reason>`) rather than a misleading GIF. Only use this when the
+change really can't be filmed — for anything visible in a normal battle, a tailored
+replay (or `showcase.json`) is far better.
 
 ## Where the GIF lives
 
