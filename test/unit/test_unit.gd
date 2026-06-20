@@ -1234,11 +1234,26 @@ func test_flock_render_tracks_soldier_count() -> void:
 	# the block thins as men fall (the sim's `soldiers` drives the render, never vice versa).
 	var u := _make_unit(120)
 	u._update_flock(1.0 / 60.0)
+	# Settled + unmoved, so this _update_flock takes the early-return fast-path: the count
+	# of 120 comes from _seed_soldiers (steady state). The casualty step below is what
+	# actually exercises _update_flock's resize/refresh path.
 	assert_eq(u._mm_body.instance_count, 120, "one body instance per soldier")
 	assert_eq(u._mm_outline.instance_count, 120, "one outline instance per soldier")
 	u.soldiers = 40
 	u._update_flock(1.0 / 60.0)
 	assert_eq(u._mm_body.instance_count, 40, "instance count tracks casualties")
+
+
+func test_flock_merge_growth_spawns_distinct_marks() -> void:
+	# New marks from a merge must not stack on the exact centre (where the separation step
+	# can't tell them apart and they'd drift as one blob); they spawn fanned out. #32 Stage B.
+	var u := _make_unit(60)
+	u._resize_soldiers(120)   # simulate a merge growing the regiment
+	var seen := {}
+	for i in range(60, 120):
+		var key: String = str(u._soldier_pos[i])
+		assert_false(seen.has(key), "merge-spawned mark %d is distinct, not stacked at centre" % i)
+		seen[key] = true
 
 
 func test_flock_marks_stay_finite_and_bounded_while_moving() -> void:

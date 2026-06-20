@@ -1013,7 +1013,7 @@ func _setup_flock_renderer() -> void:
 	_mmi_body.z_index = -1   # eff 2, added after the outline -> drawn in front of it
 	add_child(_mmi_body)
 
-	_flock_last_pos = global_position
+	_flock_last_pos = position   # local-to-parent frame; see _update_flock
 	_flock_last_facing = facing
 	_seed_soldiers()
 
@@ -1082,12 +1082,15 @@ func _update_flock(delta: float) -> void:
 		_resize_soldiers(n)
 		_flock_settled = false
 
-	var displacement: Vector2 = global_position - _flock_last_pos
+	# `position` (local-to-parent), not global_position: the marks live in this node's local
+	# frame, so the trail shove must be in that same frame. They coincide today (units sit
+	# under an identity parent) but tracking `position` stays correct if that ever changes.
+	var displacement: Vector2 = position - _flock_last_pos
 	var turned: bool = not facing.is_equal_approx(_flock_last_facing)
 	if _flock_settled and displacement.is_zero_approx() and not turned:
 		return   # at rest — nothing to do
 
-	_flock_last_pos = global_position
+	_flock_last_pos = position
 	_flock_last_facing = facing
 
 	var slots := _formation_slots(n)
@@ -1143,7 +1146,9 @@ static func _flock_step(pos: Vector2, vel: Vector2, target: Vector2,
 			if d < sep_dist:
 				accel += (away / d) * (FLOCK_SEPARATION * (1.0 - d / sep_dist))
 		else:
-			accel += Vector2(FLOCK_SEPARATION, 0.0)   # coincident: a fixed nudge to part
+			# Exactly coincident — avoided in practice (marks spawn fanned out, see
+			# _resize_soldiers), so this is just a guard nudge to break the symmetry.
+			accel += Vector2(FLOCK_SEPARATION, 0.0)
 	var nvel: Vector2 = vel + accel * dt
 	var sp: float = nvel.length()
 	if sp > FLOCK_MAX_SPEED:
@@ -1153,6 +1158,13 @@ static func _flock_step(pos: Vector2, vel: Vector2, target: Vector2,
 	var lag_len: float = lag.length()
 	if lag_len > FLOCK_MAX_LAG:
 		npos = target + lag * (FLOCK_MAX_LAG / lag_len)
+		# Re-derive velocity from the clamped move so a clamped mark doesn't carry an
+		# inflated velocity that pops once it re-enters the lag boundary, then re-bound it
+		# (the move is huge only in the degenerate far-spawn case, never in normal play).
+		nvel = (npos - pos) / dt
+		var clamped_sp: float = nvel.length()
+		if clamped_sp > FLOCK_MAX_SPEED:
+			nvel *= FLOCK_MAX_SPEED / clamped_sp
 	return [npos, nvel]
 
 
@@ -1185,11 +1197,20 @@ func _neighbors_of(grid: Dictionary, i: int, cell: float) -> PackedVector2Array:
 	return out
 
 
-## Resize the mark arrays to match the live soldier count (truncate on casualties; new
-## marks from a merge appear at the unit centre and rush to formation).
+## Resize the mark arrays to match the live soldier count. Casualties just truncate; a
+## merge grows the array, and the new marks are fanned onto a small deterministic spiral
+## near the centre (a sunflower phyllotaxis) rather than stacked on the exact origin — so
+## they're never coincident, the separation step can tell them apart, and they spread out
+## to formation cleanly instead of drifting as one blob.
 func _resize_soldiers(n: int) -> void:
+	var old: int = _soldier_pos.size()
 	_soldier_pos.resize(n)
 	_soldier_vel.resize(n)
+	for i in range(old, n):
+		var k: int = i - old
+		var a: float = float(k) * 2.39996323   # golden angle (rad): even, non-repeating
+		_soldier_pos[i] = Vector2.from_angle(a) * (0.4 * sqrt(float(k) + 0.5))
+		_soldier_vel[i] = Vector2.ZERO
 
 
 ## Push the current mark positions/colours into the two MultiMeshes (1 instance per mark).
