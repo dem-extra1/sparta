@@ -30,7 +30,7 @@ static func spawn(parent: Node, at: Vector2, color: Color, count: int,
 	fx._mark_radius = mark_radius
 	# Widen the heap in proportion to the body size, so bigger (cavalry) bodies don't pack
 	# into the same footprint as foot soldiers — the whole pile scales, not just the marks.
-	var scatter: float = SCATTER * (mark_radius / MARK_RADIUS)
+	var scaled_scatter: float = SCATTER * (mark_radius / MARK_RADIUS)
 	var n: int = clampi(count, 1, MAX_MARKS)
 	for i in range(n):
 		# Deterministic golden-angle scatter (no RNG): an even, non-repeating spread that
@@ -41,7 +41,7 @@ static func spawn(parent: Node, at: Vector2, color: Color, count: int,
 		# piles. (Using n instead would fix every heap to one radius and push a single body
 		# further off the drop point.)
 		var a: float = float(i) * 2.39996323
-		var rad: float = scatter * sqrt((float(i) + 0.5) / float(MAX_MARKS))
+		var rad: float = scaled_scatter * sqrt((float(i) + 0.5) / float(MAX_MARKS))
 		fx._marks.push_back(Vector2.from_angle(a) * rad)
 	fx._color = Color(color.r * 0.4, color.g * 0.4, color.b * 0.4)
 	parent.add_child(fx)
