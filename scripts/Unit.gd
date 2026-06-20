@@ -688,7 +688,9 @@ func take_casualties(amount: int, attacker: Unit) -> void:
 			var toward: Vector2 = attacker.global_position - global_position
 			if toward.length() > 0.001:
 				edge += toward.normalized() * _block_extent
-		Fallen.spawn(get_parent(), edge, team_color, total)
+		# Cavalry leave bigger bodies (matching their larger live marks); foot soldiers the default.
+		var body_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+		Fallen.spawn(get_parent(), edge, team_color, total, body_r)
 
 	queue_redraw()
 
