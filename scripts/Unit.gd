@@ -682,7 +682,10 @@ func take_casualties(amount: int, attacker: Unit) -> void:
 	if is_inside_tree():
 		var edge: Vector2 = global_position
 		if is_instance_valid(attacker):
-			var toward: Vector2 = attacker.position - position
+			# World-space throughout: edge is global_position, so the direction to the
+			# attacker must be a global delta too. Mixing in local `position` would skew
+			# the offset if the units' parent ever had a non-identity transform.
+			var toward: Vector2 = attacker.global_position - global_position
 			if toward.length() > 0.001:
 				edge += toward.normalized() * _block_extent
 		Fallen.spawn(get_parent(), edge, team_color, total)
