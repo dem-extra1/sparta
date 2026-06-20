@@ -14,6 +14,15 @@ const BATTLE_SCENE := "res://scenes/Battle.tscn"
 
 
 func _ready() -> void:
+	# A recording should carry the game's sound. Movie Maker mixes whatever the
+	# AudioServer plays into the movie's audio track, but SFX default to off
+	# (Settings.sfx_enabled), so a fresh run — CI has no settings.cfg — would capture
+	# silence. Turn SFX on for the recording, session-only so running the recorder
+	# locally never rewrites a developer's saved preference. Sfx is presentation-only
+	# (its own RNG), so this never affects replay determinism — it only adds the
+	# audio that gets captured.
+	Settings.set_sfx_enabled_session(true)
+
 	var replay_path := OS.get_environment("SPARTA_DEMO_REPLAY")
 	if replay_path != "":
 		if Replay.start_playback(replay_path):

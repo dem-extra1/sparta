@@ -84,15 +84,18 @@ The inline preview is a GIF, and **GIF can't carry audio** — so the clip you s
 autoplaying in the comment is silent. The workflow also encodes an **MP4 with
 sound** (Godot's Movie Maker captures the game's audio into the recording; the GIF
 step just drops it) and links it under the GIF as *"watch with sound"*. Click it to
-play the clip with audio.
+play the clip with audio. SFX are off by default in-game, so the recorder turns
+them on for the recording (see [`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd))
+— that's how the MP4 ends up with the battle's sound.
 
 Why a link and not an inline player: GitHub renders an inline, playable `<video>`
 **only** for files uploaded through its browser-only attachment CDN
 (`user-attachments` / `user-images.githubusercontent.com`), which needs a logged-in
 session and is unreachable from CI. A `<video>` tag or bare link pointing at our
 `demo-media` raw URL renders as a dead/greyed player or a download, not an
-autoplaying clip — so a click-to-play link is the honest best CI can post. The MP4
-is silent only if SFX happen not to fire during the recorded battle.
+autoplaying clip — so a click-to-play link is the honest best CI can post. The
+recorder force-enables SFX, so the MP4 is silent only if no sound events happen to
+fire during the recorded battle.
 
 ## Trying the launcher locally
 

@@ -178,10 +178,11 @@ jobs:
           # the AVI; the GIF above drops it (GIF can't carry audio), so this is the
           # only artifact that keeps the soundtrack. H.264 + AAC in yuv420p with
           # +faststart is the most widely browser-playable combination (Safari too);
-          # scale uses -2 so the height stays even (a libx264 requirement). Movie Maker
-          # always writes an audio track (silence when no SFX fire), so there's always
-          # audio to encode. Best-effort: any encode failure is caught by the else
-          # branch and never blocks the GIF, which is the primary demo.
+          # scale uses -2 so the height stays even (a libx264 requirement). The demo
+          # runner force-enables SFX (tools/demo/DemoRunner.gd), so the AVI carries any
+          # battle sound that fires rather than the silent default (still silent if a
+          # replay triggers no sound events). Best-effort: any encode failure is caught
+          # by the else branch and never blocks the GIF, which is the primary demo.
           if ffmpeg -y -i /tmp/demo.avi \
               -vf "scale=$WIDTH:-2:flags=lanczos" \
               -c:v libx264 -pix_fmt yuv420p -profile:v high -movflags +faststart \
