@@ -160,6 +160,7 @@ var separation_radius: float = SEPARATION_RADIUS_INFANTRY
 var _soldier_pos: PackedVector2Array = PackedVector2Array()
 var _soldier_vel: PackedVector2Array = PackedVector2Array()
 var _flock_settled: bool = false        # true once every mark is on its slot and at rest
+var _combat_clock: float = 0.0          # render-time clock driving the melee churn (#32 Stage C)
 var _flock_last_pos: Vector2 = Vector2.ZERO     # unit position last flock frame (for trail shove)
 var _flock_last_facing: Vector2 = Vector2.DOWN  # unit facing last flock frame (for wheel detection)
 var _flock_color: Color = Color(0, 0, 0, 0)     # last body modulate applied to the marks
@@ -673,6 +674,19 @@ func take_casualties(amount: int, attacker: Unit) -> void:
 		_rout()
 		Sfx.play(&"rout")
 
+	# Cosmetic "men fall" markers (#32 Stage C): drop a small fading heap of bodies on the
+	# contact edge where this strike's casualties fell, leaning toward where the blow came
+	# from. Spawned on the deterministic sim tick but render-only — no sim group, no
+	# Replay.rng — so it has no simulation/replay/determinism impact (same contract as the
+	# volley trail #65 and rout shockwave #72). Guarded by is_inside_tree() like those.
+	if is_inside_tree():
+		var edge: Vector2 = global_position
+		if is_instance_valid(attacker):
+			var toward: Vector2 = attacker.position - position
+			if toward.length() > 0.001:
+				edge += toward.normalized() * _block_extent
+		Fallen.spawn(get_parent(), edge, team_color, total)
+
 	queue_redraw()
 
 
@@ -924,6 +938,18 @@ const FLOCK_SETTLE_POS: float = 0.30    # within this of its slot and...
 const FLOCK_SETTLE_VEL: float = 1.5     # ...slower than this -> the block sleeps
 const FLOCK_DT_MAX: float = 1.0 / 30.0  # clamp render dt so a hitch can't blow up integration
 
+# Melee churn (#32 Stage C). While a regiment is FIGHTING, its front-rank soldier marks
+# press into and recoil from the contact line and jitter sideways, so the engaged edge of
+# the block visibly fights instead of two blocks merely touching. The churn fades to
+# nothing a couple of ranks back (COMBAT_REACH), so only the fighting edge moves while the
+# body of the block holds formation. Purely cosmetic — these offsets are layered onto the
+# render-only mark targets and never read by the sim, so determinism and replays are
+# untouched (the clock is render time, not the fixed sim tick).
+const COMBAT_LUNGE: float = 3.2         # max forward press toward the enemy (px)
+const COMBAT_LATERAL: float = 1.5       # sideways churn amplitude (px)
+const COMBAT_REACH: float = 8.0         # depth behind front rank over which churn fades to 0 (px)
+const COMBAT_FREQ: float = 9.0          # churn oscillation rate (rad/s)
+
 
 ## Local-space slot offsets for `n` soldier marks (#32): a centred, wider-than-deep
 ## grid (front rank toward -Y, the rotated "forward"). Pure and deterministic — a
@@ -1087,7 +1113,11 @@ func _update_flock(delta: float) -> void:
 	# under an identity parent) but tracking `position` stays correct if that ever changes.
 	var displacement: Vector2 = position - _flock_last_pos
 	var turned: bool = not facing.is_equal_approx(_flock_last_facing)
-	if _flock_settled and displacement.is_zero_approx() and not turned:
+	# A FIGHTING block never rests: its front rank churns against the contact line each
+	# frame (#32 Stage C), so it skips the at-rest fast-path even when the unit is standing
+	# still and not turning.
+	var fighting: bool = state == State.FIGHTING
+	if _flock_settled and displacement.is_zero_approx() and not turned and not fighting:
 		return   # at rest — nothing to do
 
 	_flock_last_pos = position
@@ -1111,9 +1141,19 @@ func _update_flock(delta: float) -> void:
 	var sep_dist: float = FORMATION_SPACING * 0.9
 	var grid := _build_soldier_grid(sep_dist)
 	var dt: float = minf(delta, FLOCK_DT_MAX)
+	# Front rank depth datum (slot 0 is the front-centre rank, see _formation_slots): a
+	# mark's depth behind it scales how hard it churns while fighting (#32 Stage C).
+	var front_y: float = slots[0].y if n > 0 else 0.0
+	if fighting:
+		_combat_clock += dt
 	var still: bool = true
 	for i in range(n):
 		var target: Vector2 = _slot_target(slots, i, ang)
+		if fighting:
+			# Front-rank marks press into and recoil from the contact line; rotate the
+			# (forward = -Y) lunge onto the unit's facing alongside the slot it modifies.
+			var lunge := _combat_lunge_offset(slots[i].y - front_y, float(i) * 1.3, _combat_clock)
+			target += lunge.rotated(ang)
 		var neighbors := _neighbors_of(grid, i, sep_dist)
 		var res := _flock_step(_soldier_pos[i], _soldier_vel[i], target, neighbors, sep_dist, dt)
 		_soldier_pos[i] = res[0]
@@ -1121,7 +1161,8 @@ func _update_flock(delta: float) -> void:
 		if res[1].length() > FLOCK_SETTLE_VEL or res[0].distance_to(target) > FLOCK_SETTLE_POS:
 			still = false
 
-	if still:
+	# A fighting block keeps churning, so it never sleeps even if a frame reads as "still".
+	if still and not fighting:
 		# Snap exactly onto formation and sleep until the unit next moves or loses men.
 		for i in range(n):
 			_soldier_pos[i] = _slot_target(slots, i, ang)
@@ -1166,6 +1207,23 @@ static func _flock_step(pos: Vector2, vel: Vector2, target: Vector2,
 		if clamped_sp > FLOCK_MAX_SPEED:
 			nvel *= FLOCK_MAX_SPEED / clamped_sp
 	return [npos, nvel]
+
+
+## Melee churn offset for one front-rank mark (#32 Stage C). Returns an offset in the
+## unit's UNROTATED local frame (forward / toward-enemy is -Y, matching _formation_slots),
+## which the caller rotates onto the unit's facing. `depth` is how far behind the front
+## rank the mark sits (0 = front rank): the churn fades linearly to zero by COMBAT_REACH,
+## so only the fighting edge moves. The forward press rides a raised sine (always into the
+## enemy, surging and recoiling rather than pulling back past the line); a separate, faster
+## out-of-phase term jitters it sideways. Pure and deterministic (a function of its
+## arguments) so it's unit-testable; render-only, never read by the sim.
+static func _combat_lunge_offset(depth: float, phase: float, t: float) -> Vector2:
+	var falloff: float = clampf(1.0 - depth / COMBAT_REACH, 0.0, 1.0)
+	if falloff <= 0.0:
+		return Vector2.ZERO
+	var press: float = COMBAT_LUNGE * falloff * (0.55 + 0.45 * sin(t * COMBAT_FREQ + phase))
+	var churn: float = COMBAT_LATERAL * falloff * sin(t * COMBAT_FREQ * 1.7 + phase * 2.0)
+	return Vector2(churn, -press)
 
 
 ## Bucket marks into a uniform grid (cell = sep_dist) so separation is a local 3x3 lookup

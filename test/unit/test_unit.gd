@@ -1269,6 +1269,45 @@ func test_flock_marks_stay_finite_and_bounded_while_moving() -> void:
 		assert_lt(p.length(), 200.0, "a mark stays near the block, never smears off")
 
 
+# --- individual-soldier combat churn (issue #32, Stage C) -------------------
+# _combat_lunge_offset() is the pure, deterministic per-mark melee churn layered onto a
+# fighting block's front rank (press/recoil into the contact line + sideways jitter). It's
+# cosmetic — never read by the sim — but unit-tested so the motion stays bounded and only
+# the fighting edge moves: front-rank marks press toward the enemy, deep ranks hold still.
+
+func test_combat_lunge_presses_front_rank_toward_the_enemy() -> void:
+	# A front-rank mark (depth 0) is pushed forward — toward the enemy, which is -Y in the
+	# unrotated local frame (matching _formation_slots' front rank) — and stays bounded.
+	var off := Unit._combat_lunge_offset(0.0, 0.0, 0.0)
+	assert_lt(off.y, 0.0, "a front-rank mark presses toward the enemy (-Y)")
+	assert_lte(off.length(), Unit.COMBAT_LUNGE + Unit.COMBAT_LATERAL + 0.001,
+			"and the churn never exceeds its amplitude budget")
+
+
+func test_combat_lunge_fades_for_rear_ranks() -> void:
+	# A mark deeper than COMBAT_REACH behind the front doesn't churn at all — only the
+	# fighting edge moves while the body of the block holds formation.
+	var rear := Unit._combat_lunge_offset(Unit.COMBAT_REACH + 5.0, 0.0, 0.0)
+	assert_eq(rear, Vector2.ZERO, "a deep-rank mark stays in formation (no churn)")
+
+
+func test_combat_lunge_surges_and_recoils_over_time() -> void:
+	# The same front-rank mark presses by different amounts at different times — it surges
+	# forward and recoils rather than sitting at a fixed offset, so the contact edge churns.
+	var rest := Unit._combat_lunge_offset(0.0, 0.0, 0.0)
+	var surge := Unit._combat_lunge_offset(0.0, 0.0, (PI * 0.5) / Unit.COMBAT_FREQ)
+	assert_lt(surge.y, rest.y, "the front-rank press deepens toward the enemy as it surges")
+
+
+func test_fighting_block_keeps_animating_instead_of_settling() -> void:
+	# A standing, fighting unit must not sleep: the churn fast-path is skipped so the front
+	# rank keeps moving each frame (contrast: an idle block settles and stops integrating).
+	var u := _make_unit(60)
+	u.state = Unit.State.FIGHTING
+	u._update_flock(1.0 / 60.0)
+	assert_false(u._flock_settled, "a fighting block never settles (its front rank churns)")
+
+
 func test_can_rally_at_exactly_the_strength_floor() -> void:
 	# Boundary: soldiers == floor(max * SHATTER_STRENGTH_FRAC) still rallies (the gate is
 	# "< floor" → shatter, ">= floor" → can rally). Pins the >= semantics in the doc.
