@@ -1,7 +1,7 @@
 {
-  "_comment": "Routed vs shattered units (#68). Routs happen in any battle, so this reuses the bundled showcase. Behaviour change: a routing unit no longer always dies after fleeing — when its rout timer runs out it RALLIES (returns to play, idle, low morale) if it broke contact and kept enough men, otherwise it SHATTERS (removed for good). Whether a given rout rallies depends on the fight, so the clip shows routs resolving rather than a guaranteed rally. Deterministic (positions + counts only).",
+  "_comment": "Individual soldiers, Stage A of #32 (cosmetic). Visible in any battle, so this reuses the bundled showcase. Each regiment now renders as a formation block of one small mark per living soldier (wider-than-deep, facing-oriented), with a small per-type emblem at the centre; the block visibly thins as casualties mount. Purely a rendering change — the deterministic aggregate simulation is untouched (mark positions are a deterministic layout + stable jitter, never fed back into the sim). Flocking (Stage B) and per-soldier combat (Stage C) are follow-ups.",
   "replay": "demos/showcase.json",
-  "caption": "Routed vs shattered (#68): a routing unit can now RECOVER. When its rout times out it rallies — reforms under your control at low morale — if it broke contact and isn't gutted; otherwise it shatters and is gone for good. Previously every rout simply died after fleeing. (Whether a given rout rallies depends on the battle.) Deterministic: no RNG.",
+  "caption": "Individual soldiers — #32 Stage A (cosmetic): each regiment now renders as a formation block of one mark per living soldier (with a small per-type emblem at the centre), thinning visibly as it takes casualties — instead of a single token. Sim is untouched (deterministic layout, no RNG, no balance change). Flocking and per-soldier combat come in later stages.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,

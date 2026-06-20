@@ -1141,6 +1141,43 @@ func test_rout_shatters_when_gutted_even_if_clear() -> void:
 	assert_eq(u.state, Unit.State.DEAD, "a gutted rout shatters even with no enemy near")
 
 
+# --- individual-soldier formation layout (issue #32, Stage A) ---------------
+
+func test_formation_slots_one_per_soldier() -> void:
+	var u := _make_unit(120)
+	assert_eq(u._formation_slots(120).size(), 120, "one slot per living soldier")
+	assert_eq(u._formation_slots(1).size(), 1, "a single soldier gets one slot")
+	assert_eq(u._formation_slots(0).size(), 0, "no soldiers -> no slots (an empty block)")
+
+
+func test_formation_block_is_centered() -> void:
+	# A full block (50 = 10 files x 5 ranks) is centred on the unit origin.
+	var u := _make_unit()
+	var slots := u._formation_slots(50)
+	var sum := Vector2.ZERO
+	for s in slots:
+		sum += s
+	var mean: Vector2 = sum / float(slots.size())
+	assert_almost_eq(mean.x, 0.0, 0.001, "block is centred horizontally on the unit")
+	assert_almost_eq(mean.y, 0.0, 0.001, "and vertically")
+
+
+func test_formation_is_wider_than_deep() -> void:
+	# Soldiers form up wider than they are deep (files > ranks for a full block).
+	var u := _make_unit()
+	var slots := u._formation_slots(100)
+	var min_x := INF
+	var max_x := -INF
+	var min_y := INF
+	var max_y := -INF
+	for s in slots:
+		min_x = minf(min_x, s.x)
+		max_x = maxf(max_x, s.x)
+		min_y = minf(min_y, s.y)
+		max_y = maxf(max_y, s.y)
+	assert_gt(max_x - min_x, max_y - min_y, "the formation is wider than it is deep")
+
+
 func test_can_rally_at_exactly_the_strength_floor() -> void:
 	# Boundary: soldiers == floor(max * SHATTER_STRENGTH_FRAC) still rallies (the gate is
 	# "< floor" → shatter, ">= floor" → can rally). Pins the >= semantics in the doc.

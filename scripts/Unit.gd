@@ -868,6 +868,43 @@ func _shatter() -> void:
 
 # --- Visuals ------------------------------------------------------------------
 
+# Individual-soldier rendering (#32 Stage A). The regiment is drawn as a formation
+# block of one small mark per living soldier (cosmetic only — never fed back into the
+# sim), packed roughly within the unit's footprint so the on-field size still matches
+# the collision RADIUS. Wider-than-deep, like a real formation.
+const FORMATION_SPACING: float = 3.4    # px between soldier marks
+const FORMATION_ASPECT: float = 1.7     # files-to-ranks ratio (> 1 = wider than deep)
+const MARK_RADIUS: float = 1.7          # foot soldier mark
+const CAV_MARK_RADIUS: float = 2.6      # cavalry marks are larger (horses)
+const MARK_JITTER: float = 1.3          # stable per-mark wobble so it's not a rigid grid
+const EMBLEM_SCALE: float = 0.5         # the per-type sprite, shrunk to a centre emblem
+
+
+## Local-space slot offsets for `n` soldier marks (#32): a centred, wider-than-deep
+## grid (front rank toward -Y, the rotated "forward"). Pure and deterministic — a
+## function of n only — so it's unit-testable; _draw_formation() adds stable jitter.
+func _formation_slots(n: int) -> PackedVector2Array:
+	var slots := PackedVector2Array()
+	if n <= 0:
+		return slots
+	var files: int = maxi(1, int(ceil(sqrt(float(n) * FORMATION_ASPECT))))
+	var ranks: int = int(ceil(float(n) / float(files)))
+	var x0: float = -(files - 1) * 0.5 * FORMATION_SPACING
+	var y0: float = -(ranks - 1) * 0.5 * FORMATION_SPACING
+	for i in range(n):
+		var file: int = i % files
+		var rank: int = i / files
+		slots.push_back(Vector2(x0 + file * FORMATION_SPACING, y0 + rank * FORMATION_SPACING))
+	return slots
+
+
+## Deterministic pseudo-random float in [0, 1) from an int, for stable (non-flickering)
+## per-mark jitter in the formation render. Cosmetic only — never used by the simulation.
+func _hash01(i: int) -> float:
+	var x: float = sin(float(i) * 12.9898) * 43758.5453
+	return x - floor(x)
+
+
 func _draw() -> void:
 	var alpha: float = 0.45 if state == State.ROUTING else 1.0
 	var body_c := Color(team_color.r, team_color.g, team_color.b, alpha)
@@ -875,24 +912,38 @@ func _draw() -> void:
 	var lite_c := Color(minf(body_c.r + 0.30, 1.0), minf(body_c.g + 0.30, 1.0),
 			minf(body_c.b + 0.30, 1.0), alpha)
 
-	# Drop shadow (squished ellipse anchors the token to the ground).
+	# Individual soldiers (#32 Stage A): the regiment renders as a formation block of one
+	# mark per living soldier, so it visibly thins with casualties. Positions are cosmetic
+	# (deterministic layout + stable jitter), never fed back into the sim. `extent` sizes
+	# the state ring / selection / bars to the block rather than the bare collision radius.
+	var slots := _formation_slots(soldiers)
+	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+	var extent: float = RADIUS
+	for s in slots:
+		extent = maxf(extent, s.length())
+	extent += mark_r + 2.0
+
+	# Drop shadow (squished ellipse anchors the block to the ground).
 	draw_set_transform(Vector2(0, RADIUS * 0.60), 0.0, Vector2(1.15, 0.38))
 	draw_circle(Vector2.ZERO, RADIUS, Color(0, 0, 0, 0.28))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	# State ring drawn behind the sprite: red = engaged, orange = routing.
+	# State ring behind the block: red = engaged, orange = routing.
 	match state:
 		State.FIGHTING:
-			draw_arc(Vector2.ZERO, RADIUS + 3.5, 0, TAU, 28,
-					Color(0.90, 0.15, 0.15, alpha), 3.5)
+			draw_arc(Vector2.ZERO, extent + 2.0, 0, TAU, 36,
+					Color(0.90, 0.15, 0.15, alpha), 3.0)
 		State.ROUTING:
-			# alpha=1.0 intentional: ring stays fully visible on the faded routing token.
-			draw_arc(Vector2.ZERO, RADIUS + 3.5, 0, TAU, 28,
-					Color(0.95, 0.50, 0.05, 1.0), 4.0)
+			# alpha=1.0 intentional: ring stays fully visible on the faded routing block.
+			draw_arc(Vector2.ZERO, extent + 2.0, 0, TAU, 36,
+					Color(0.95, 0.50, 0.05, 1.0), 3.5)
 
-	# Rotate drawing so the sprite's "forward" aligns with the unit's facing direction.
+	# Soldiers + a small per-type emblem (kept for at-a-glance type), drawn in the
+	# facing-rotated local frame (forward = up).
 	draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5, Vector2.ONE)
-
+	_draw_formation(slots, body_c, dark_c)
+	draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5,
+			Vector2(EMBLEM_SCALE, EMBLEM_SCALE))
 	if is_cavalry:
 		_draw_cavalry_sprite(body_c, dark_c, lite_c)
 	elif anti_cavalry:
@@ -906,11 +957,11 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if selected:
-		draw_arc(Vector2.ZERO, RADIUS + 5.0, 0, TAU, 28, Color(0.95, 0.95, 0.3), 2.5)
+		draw_arc(Vector2.ZERO, extent + 4.0, 0, TAU, 36, Color(0.95, 0.95, 0.3), 2.5)
 
-	# Strength bar + morale bar stacked above the token.
+	# Strength bar + morale bar stacked above the block.
 	var bw: float = 38.0
-	var by: float = -RADIUS - 22.0
+	var by: float = -extent - 16.0
 	var frac: float = clampf(float(soldiers) / float(max_soldiers), 0.0, 1.0)
 	var morale_frac: float = clampf(morale / 100.0, 0.0, 1.0)
 	var morale_color: Color
@@ -930,6 +981,19 @@ func _draw() -> void:
 	# Morale (green → yellow → red as it degrades).
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw, 4.0), Color(0.15, 0.15, 0.15, alpha))
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw * morale_frac, 4.0), morale_color)
+
+
+## Draw the regiment as its individual soldiers (#32 Stage A): one small outlined mark
+## per slot, with stable per-mark jitter so the block reads as a crowd rather than a
+## rigid grid. Cosmetic only. Called inside the facing-rotated transform set in _draw().
+func _draw_formation(slots: PackedVector2Array, body: Color, dark: Color) -> void:
+	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+	for i in range(slots.size()):
+		var jx: float = (_hash01(i * 2) - 0.5) * MARK_JITTER
+		var jy: float = (_hash01(i * 2 + 1) - 0.5) * MARK_JITTER
+		var p: Vector2 = slots[i] + Vector2(jx, jy)
+		draw_circle(p, mark_r + 0.6, dark)   # outline for definition
+		draw_circle(p, mark_r, body)
 
 
 ## Infantry: kite (heater) shield with a cross motif and sword pommel.
