@@ -153,13 +153,38 @@ var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
 
+# --- Cosmetic soldier flocking state (#32 Stage B) -------------------------
+# Per-mark render positions/velocities in the unit's (unrotated) local frame. Cosmetic
+# only — never read by the sim. _soldier_pos[i] is where mark i is drawn; it chases its
+# rotated, jittered formation slot via _flock_step().
+var _soldier_pos: PackedVector2Array = PackedVector2Array()
+var _soldier_vel: PackedVector2Array = PackedVector2Array()
+var _flock_settled: bool = false        # true once every mark is on its slot and at rest
+var _flock_last_pos: Vector2 = Vector2.ZERO     # unit position last flock frame (for trail shove)
+var _flock_last_facing: Vector2 = Vector2.DOWN  # unit facing last flock frame (for wheel detection)
+var _flock_color: Color = Color(0, 0, 0, 0)     # last body modulate applied to the marks
+var _block_extent: float = RADIUS       # block half-size; sizes the ring/halo/bars/shadow
+var _mm_body: MultiMesh = null
+var _mm_outline: MultiMesh = null
+var _mmi_body: MultiMeshInstance2D = null
+var _mmi_outline: MultiMeshInstance2D = null
+var _shadow: Polygon2D = null
+# Disc meshes are shared across all units by radius (foot/cav marks come in two sizes
+# each — a body disc and a slightly larger outline disc), built once on demand.
+static var _disc_mesh_cache: Dictionary = {}
+
 
 func _ready() -> void:
 	soldiers = max_soldiers
 	team_color = Color("4a7fd6") if team == 0 else Color("d65a4a")
 	separation_radius = _type_separation_radius()
 	add_to_group("units")
-	z_index = 1
+	# Layer budget: field=0, then this unit's cosmetic stack sits 1..3 — shadow (eff 1),
+	# marks (eff 2), chrome (this _draw, eff 3) — all below the z=4 rout shockwave / z=5
+	# volley trails / z=100 selection box. The marks/shadow are child nodes (MultiMeshes /
+	# Polygon2D) layered just under this node via their relative z_index (#32 Stage B).
+	z_index = 3
+	_setup_flock_renderer()
 	queue_redraw()
 
 
@@ -879,10 +904,30 @@ const CAV_MARK_RADIUS: float = 2.6      # cavalry marks are larger (horses)
 const MARK_JITTER: float = 1.3          # stable per-mark wobble so it's not a rigid grid
 const EMBLEM_SCALE: float = 0.5         # the per-type sprite, shrunk to a centre emblem
 
+# Soldier flocking (#32 Stage B). The marks no longer snap to their formation slot:
+# each soldier eases toward its slot (an arrival spring) while pushing off its
+# neighbours (separation), so the block visibly deforms and trails when the regiment
+# advances or wheels, then reforms when it halts. Purely COSMETIC — these positions are
+# never read by the simulation (combat, morale, movement and collisions all use the
+# unit's single point), so determinism and replays are untouched. The marks render
+# through two MultiMeshes (body + outline), giving 2 draw calls per unit regardless of
+# soldier count — replacing Stage A's draw_circle pair per soldier (240/unit at full
+# strength). Integration runs in _process (render time), decoupled from the fixed-step
+# sim, and sleeps entirely once the block has settled.
+const FLOCK_STIFFNESS: float = 90.0     # arrival spring pulling a soldier to its slot
+const FLOCK_DAMPING: float = 19.0       # ~critical (2*sqrt(stiffness)): settles without ringing
+const FLOCK_SEPARATION: float = 140.0   # push accel keeping marks from piling up
+const FLOCK_MAX_SPEED: float = 320.0    # cap on a mark's catch-up speed (bounds integration)
+# A mark never trails its slot by more than this, keeping the block tight at speed.
+const FLOCK_MAX_LAG: float = 26.0
+const FLOCK_SETTLE_POS: float = 0.30    # within this of its slot and...
+const FLOCK_SETTLE_VEL: float = 1.5     # ...slower than this -> the block sleeps
+const FLOCK_DT_MAX: float = 1.0 / 30.0  # clamp render dt so a hitch can't blow up integration
+
 
 ## Local-space slot offsets for `n` soldier marks (#32): a centred, wider-than-deep
 ## grid (front rank toward -Y, the rotated "forward"). Pure and deterministic — a
-## function of n only — so it's unit-testable; _draw_formation() adds stable jitter.
+## function of n only — so it's unit-testable; _slot_target() adds stable jitter.
 func _formation_slots(n: int) -> PackedVector2Array:
 	var slots := PackedVector2Array()
 	if n <= 0:
@@ -908,6 +953,301 @@ func _hash01(i: int) -> float:
 	return x - floor(x)
 
 
+# --- Soldier flocking (#32 Stage B) ------------------------------------------
+# Render-time only: the cosmetic mark layer eases toward the formation and trails the
+# unit's motion. None of this writes back into the simulation.
+
+## A unit-local circle of radius 1, shared by all units; scaled per use. Cached.
+static func _disc_mesh(radius: float) -> ArrayMesh:
+	var key: float = snappedf(radius, 0.01)
+	if _disc_mesh_cache.has(key):
+		return _disc_mesh_cache[key]
+	var segments: int = 10
+	var verts := PackedVector2Array()
+	verts.push_back(Vector2.ZERO)   # fan centre
+	for i in range(segments + 1):
+		var a: float = TAU * float(i) / float(segments)
+		verts.push_back(Vector2(cos(a), sin(a)) * radius)
+	var idx := PackedInt32Array()
+	for i in range(segments):
+		idx.append(0)
+		idx.append(1 + i)
+		idx.append(2 + i)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_disc_mesh_cache[key] = mesh
+	return mesh
+
+
+## Build the cosmetic render layer: a ground shadow (Polygon2D) and two MultiMeshes
+## (outline behind, body in front) for the soldier marks. z_index is RELATIVE to this
+## node (z=3), so the children sit at: shadow eff 1, outline/body eff 2 — under this
+## node's chrome (_draw at eff 3) but above the field (z=0). The body is added after the
+## outline so it draws in front of it at the same effective z. One-time setup in _ready().
+func _setup_flock_renderer() -> void:
+	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+
+	_shadow = Polygon2D.new()
+	_shadow.polygon = _ellipse_polygon()
+	_shadow.color = Color(0, 0, 0, 0.22)
+	_shadow.z_index = -2   # eff 1: above the field, below the marks
+	add_child(_shadow)
+
+	_mm_outline = MultiMesh.new()
+	_mm_outline.transform_format = MultiMesh.TRANSFORM_2D
+	_mm_outline.mesh = _disc_mesh(mark_r + 0.6)
+	_mmi_outline = MultiMeshInstance2D.new()
+	_mmi_outline.multimesh = _mm_outline
+	_mmi_outline.z_index = -1   # eff 2
+	add_child(_mmi_outline)
+
+	_mm_body = MultiMesh.new()
+	_mm_body.transform_format = MultiMesh.TRANSFORM_2D
+	_mm_body.mesh = _disc_mesh(mark_r)
+	_mmi_body = MultiMeshInstance2D.new()
+	_mmi_body.multimesh = _mm_body
+	_mmi_body.z_index = -1   # eff 2, added after the outline -> drawn in front of it
+	add_child(_mmi_body)
+
+	_flock_last_pos = position   # local-to-parent frame; see _update_flock
+	_flock_last_facing = facing
+	_seed_soldiers()
+
+
+## Unit-radius ellipse outline (pre-squished) for the ground shadow; scaled in _update_shadow().
+func _ellipse_polygon(segments: int = 18) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in range(segments):
+		var a: float = TAU * float(i) / float(segments)
+		pts.push_back(Vector2(cos(a) * 1.1, sin(a) * 0.36))
+	return pts
+
+
+## Start the marks already formed up on their slots (the regiment spawns in formation,
+## not scrambling in from the centre).
+func _seed_soldiers() -> void:
+	var n: int = soldiers
+	_soldier_pos.resize(n)
+	_soldier_vel.resize(n)
+	var slots := _formation_slots(n)
+	var ang: float = facing.angle() + PI * 0.5
+	for i in range(n):
+		_soldier_pos[i] = _slot_target(slots, i, ang)
+		_soldier_vel[i] = Vector2.ZERO
+	_block_extent = _compute_extent(slots)
+	_update_shadow()
+	_refresh_flock_render()
+	_flock_settled = true
+
+
+## Local-frame target for mark i: its formation slot plus stable per-mark jitter (so a
+## settled block reads as a crowd, not a rigid grid), rotated into the unit's facing.
+func _slot_target(slots: PackedVector2Array, i: int, ang: float) -> Vector2:
+	var jx: float = (_hash01(i * 2) - 0.5) * MARK_JITTER
+	var jy: float = (_hash01(i * 2 + 1) - 0.5) * MARK_JITTER
+	return (slots[i] + Vector2(jx, jy)).rotated(ang)
+
+
+## Block half-size: the farthest slot plus a mark radius, floored at the collision RADIUS.
+## Sizes the state ring, selection halo, stat bars (in _draw) and the ground shadow.
+func _compute_extent(slots: PackedVector2Array) -> float:
+	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+	var extent: float = RADIUS
+	for s in slots:
+		extent = maxf(extent, s.length())
+	return extent + mark_r + 2.0
+
+
+func _process(delta: float) -> void:
+	_update_flock(delta)
+
+
+## Advance the cosmetic mark layer one render frame. Cheap fast-path when the block is
+## settled and the unit hasn't moved/turned (no allocation, no integration).
+func _update_flock(delta: float) -> void:
+	if _mm_body == null:
+		return
+	if state == State.DEAD:
+		if _mm_body.instance_count != 0:
+			_mm_body.instance_count = 0
+			_mm_outline.instance_count = 0
+		return
+
+	var n: int = soldiers
+	if _soldier_pos.size() != n:   # casualties (shrink) or a merge (grow)
+		_resize_soldiers(n)
+		_flock_settled = false
+
+	# `position` (local-to-parent), not global_position: the marks live in this node's local
+	# frame, so the trail shove must be in that same frame. They coincide today (units sit
+	# under an identity parent) but tracking `position` stays correct if that ever changes.
+	var displacement: Vector2 = position - _flock_last_pos
+	var turned: bool = not facing.is_equal_approx(_flock_last_facing)
+	if _flock_settled and displacement.is_zero_approx() and not turned:
+		return   # at rest — nothing to do
+
+	_flock_last_pos = position
+	_flock_last_facing = facing
+
+	var slots := _formation_slots(n)
+	var ang: float = facing.angle() + PI * 0.5
+
+	var new_extent: float = _compute_extent(slots)
+	if not is_equal_approx(new_extent, _block_extent):
+		_block_extent = new_extent
+		_update_shadow()
+		queue_redraw()   # chrome (ring / halo / bars) is sized to the block
+
+	# Trail: shove every mark back by the unit's displacement so the block lags behind the
+	# advancing/wheeling regiment; the arrival spring then reels them back onto formation.
+	if not displacement.is_zero_approx():
+		for i in range(n):
+			_soldier_pos[i] -= displacement
+
+	var sep_dist: float = FORMATION_SPACING * 0.9
+	var grid := _build_soldier_grid(sep_dist)
+	var dt: float = minf(delta, FLOCK_DT_MAX)
+	var still: bool = true
+	for i in range(n):
+		var target: Vector2 = _slot_target(slots, i, ang)
+		var neighbors := _neighbors_of(grid, i, sep_dist)
+		var res := _flock_step(_soldier_pos[i], _soldier_vel[i], target, neighbors, sep_dist, dt)
+		_soldier_pos[i] = res[0]
+		_soldier_vel[i] = res[1]
+		if res[1].length() > FLOCK_SETTLE_VEL or res[0].distance_to(target) > FLOCK_SETTLE_POS:
+			still = false
+
+	if still:
+		# Snap exactly onto formation and sleep until the unit next moves or loses men.
+		for i in range(n):
+			_soldier_pos[i] = _slot_target(slots, i, ang)
+			_soldier_vel[i] = Vector2.ZERO
+		_flock_settled = true
+	else:
+		_flock_settled = false
+
+	_refresh_flock_render()
+
+
+## Step one mark: a damped arrival spring toward its slot plus separation from neighbours,
+## with a speed cap and a max-lag clamp for stability. Pure and deterministic (a function
+## of its arguments only) so it is unit-testable. Returns [new_pos, new_vel].
+static func _flock_step(pos: Vector2, vel: Vector2, target: Vector2,
+		neighbors: PackedVector2Array, sep_dist: float, dt: float) -> Array:
+	var accel: Vector2 = (target - pos) * FLOCK_STIFFNESS - vel * FLOCK_DAMPING
+	for nb in neighbors:
+		var away: Vector2 = pos - nb
+		var d: float = away.length()
+		if d > 0.0001:
+			if d < sep_dist:
+				accel += (away / d) * (FLOCK_SEPARATION * (1.0 - d / sep_dist))
+		else:
+			# Exactly coincident — avoided in practice (marks spawn fanned out, see
+			# _resize_soldiers), so this is just a guard nudge to break the symmetry.
+			accel += Vector2(FLOCK_SEPARATION, 0.0)
+	var nvel: Vector2 = vel + accel * dt
+	var sp: float = nvel.length()
+	if sp > FLOCK_MAX_SPEED:
+		nvel *= FLOCK_MAX_SPEED / sp
+	var npos: Vector2 = pos + nvel * dt
+	var lag: Vector2 = npos - target
+	var lag_len: float = lag.length()
+	if lag_len > FLOCK_MAX_LAG:
+		npos = target + lag * (FLOCK_MAX_LAG / lag_len)
+		# Re-derive velocity from the clamped move so a clamped mark doesn't carry an
+		# inflated velocity that pops once it re-enters the lag boundary, then re-bound it
+		# (the move is huge only in the degenerate far-spawn case, never in normal play).
+		nvel = (npos - pos) / dt
+		var clamped_sp: float = nvel.length()
+		if clamped_sp > FLOCK_MAX_SPEED:
+			nvel *= FLOCK_MAX_SPEED / clamped_sp
+	return [npos, nvel]
+
+
+## Bucket marks into a uniform grid (cell = sep_dist) so separation is a local 3x3 lookup
+## rather than O(n^2). Keyed by integer cell coords -> indices into _soldier_pos.
+func _build_soldier_grid(cell: float) -> Dictionary:
+	var grid := {}
+	for i in range(_soldier_pos.size()):
+		var p: Vector2 = _soldier_pos[i]
+		var k := Vector2i(int(floor(p.x / cell)), int(floor(p.y / cell)))
+		if not grid.has(k):
+			grid[k] = PackedInt32Array()
+		grid[k].append(i)
+	return grid
+
+
+## Positions of marks within one cell of mark i (its separation neighbourhood).
+func _neighbors_of(grid: Dictionary, i: int, cell: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var p: Vector2 = _soldier_pos[i]
+	var cx: int = int(floor(p.x / cell))
+	var cy: int = int(floor(p.y / cell))
+	for ox in range(-1, 2):
+		for oy in range(-1, 2):
+			var k := Vector2i(cx + ox, cy + oy)
+			if grid.has(k):
+				for j in grid[k]:
+					if j != i:
+						out.append(_soldier_pos[j])
+	return out
+
+
+## Resize the mark arrays to match the live soldier count. Casualties just truncate; a
+## merge grows the array, and the new marks are fanned onto a small deterministic spiral
+## near the centre (a sunflower phyllotaxis) rather than stacked on the exact origin — so
+## they're never coincident, the separation step can tell them apart, and they spread out
+## to formation cleanly instead of drifting as one blob.
+func _resize_soldiers(n: int) -> void:
+	var old: int = _soldier_pos.size()
+	_soldier_pos.resize(n)
+	_soldier_vel.resize(n)
+	for i in range(old, n):
+		var k: int = i - old
+		var a: float = float(k) * 2.39996323   # golden angle (rad): even, non-repeating
+		_soldier_pos[i] = Vector2.from_angle(a) * (0.4 * sqrt(float(k) + 0.5))
+		_soldier_vel[i] = Vector2.ZERO
+
+
+## Push the current mark positions/colours into the two MultiMeshes (1 instance per mark).
+func _refresh_flock_render() -> void:
+	var n: int = _soldier_pos.size()
+	if _mm_body.instance_count != n:
+		_mm_body.instance_count = n
+		_mm_outline.instance_count = n
+	for i in range(n):
+		var t := Transform2D(0.0, _soldier_pos[i])
+		_mm_body.set_instance_transform_2d(i, t)
+		_mm_outline.set_instance_transform_2d(i, t)
+	_apply_flock_color()
+
+
+## Tint the marks via the MultiMeshInstance modulate (one colour for the whole block, so
+## no per-instance colour buffer): team colour for the body, a darkened shade for the
+## outline, faded while routing. Only re-applied when the colour actually changes.
+func _apply_flock_color() -> void:
+	var alpha: float = 0.45 if state == State.ROUTING else 1.0
+	var body_c := Color(team_color.r, team_color.g, team_color.b, alpha)
+	if body_c == _flock_color:
+		return
+	_flock_color = body_c
+	_mmi_body.modulate = body_c
+	_mmi_outline.modulate = Color(body_c.r * 0.35, body_c.g * 0.35, body_c.b * 0.35, alpha)
+
+
+## Size/position the ground shadow ellipse to the current block extent.
+func _update_shadow() -> void:
+	if _shadow == null:
+		return
+	var r: float = _block_extent * 0.95
+	_shadow.position = Vector2(0, _block_extent * 0.45)
+	_shadow.scale = Vector2(r, r)
+
+
 func _draw() -> void:
 	var alpha: float = 0.45 if state == State.ROUTING else 1.0
 	var body_c := Color(team_color.r, team_color.g, team_color.b, alpha)
@@ -915,24 +1255,14 @@ func _draw() -> void:
 	var lite_c := Color(minf(body_c.r + 0.30, 1.0), minf(body_c.g + 0.30, 1.0),
 			minf(body_c.b + 0.30, 1.0), alpha)
 
-	# Individual soldiers (#32 Stage A): the regiment renders as a formation block of one
-	# mark per living soldier, so it visibly thins with casualties. Positions are cosmetic
-	# (deterministic layout + stable jitter), never fed back into the sim. `extent` sizes
-	# the state ring / selection / bars to the block rather than the bare collision radius.
-	var slots := _formation_slots(soldiers)
-	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
-	var extent: float = RADIUS
-	for s in slots:
-		extent = maxf(extent, s.length())
-	extent += mark_r + 2.0
+	# The soldier marks (#32 Stage B) are rendered by the flocking MultiMeshes and the
+	# ground shadow by a Polygon2D — both child nodes layered under this chrome via
+	# z_index. _draw() handles only the screen-relative chrome: state ring, type emblem,
+	# selection halo and stat bars. `_block_extent` (maintained by _update_flock) sizes
+	# them to the live block rather than the bare collision radius.
+	var extent: float = _block_extent
 
-	# Drop shadow (squished ellipse) sized to the block, so it anchors the whole
-	# formation to the ground instead of just the old single-token footprint.
-	draw_set_transform(Vector2(0, extent * 0.45), 0.0, Vector2(1.1, 0.36))
-	draw_circle(Vector2.ZERO, extent * 0.95, Color(0, 0, 0, 0.22))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-	# State ring behind the block: red = engaged, orange = routing.
+	# State ring around the block: red = engaged, orange = routing.
 	match state:
 		State.FIGHTING:
 			draw_arc(Vector2.ZERO, extent + 2.0, 0, TAU, 36,
@@ -942,10 +1272,8 @@ func _draw() -> void:
 			draw_arc(Vector2.ZERO, extent + 2.0, 0, TAU, 36,
 					Color(0.95, 0.50, 0.05, 1.0), 3.5)
 
-	# Soldiers + a small per-type emblem (kept for at-a-glance type), drawn in the
-	# facing-rotated local frame (forward = up).
-	draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5, Vector2.ONE)
-	_draw_formation(slots, body_c, dark_c)
+	# A small per-type emblem (kept for at-a-glance type) at the block centre, like a
+	# standard, drawn in the facing-rotated local frame (forward = up).
 	draw_set_transform(Vector2.ZERO, facing.angle() + PI * 0.5,
 			Vector2(EMBLEM_SCALE, EMBLEM_SCALE))
 	if is_cavalry:
@@ -985,19 +1313,6 @@ func _draw() -> void:
 	# Morale (green → yellow → red as it degrades).
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw, 4.0), Color(0.15, 0.15, 0.15, alpha))
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw * morale_frac, 4.0), morale_color)
-
-
-## Draw the regiment as its individual soldiers (#32 Stage A): one small outlined mark
-## per slot, with stable per-mark jitter so the block reads as a crowd rather than a
-## rigid grid. Cosmetic only. Called inside the facing-rotated transform set in _draw().
-func _draw_formation(slots: PackedVector2Array, body: Color, dark: Color) -> void:
-	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
-	for i in range(slots.size()):
-		var jx: float = (_hash01(i * 2) - 0.5) * MARK_JITTER
-		var jy: float = (_hash01(i * 2 + 1) - 0.5) * MARK_JITTER
-		var p: Vector2 = slots[i] + Vector2(jx, jy)
-		draw_circle(p, mark_r + 0.6, dark)   # outline for definition
-		draw_circle(p, mark_r, body)
 
 
 ## Infantry: kite (heater) shield with a cross motif and sword pommel.
