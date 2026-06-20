@@ -79,7 +79,7 @@ jobs:
             # "skip": true to suppress an unrelated generic clip. CI then posts a
             # short note explaining the absence instead of a misleading GIF (#75).
             if [ "$(jq -r '.skip // false' "$M")" = "true" ]; then
-              REASON=$(jq -r '.reason // .caption // "this change cannot be shown by a recorded battle clip."' "$M")
+              REASON=$(jq -r '.reason // .caption // "This change cannot be shown by a recorded battle clip."' "$M")
               echo "demos/demo.json sets skip=true — posting a note instead of a clip."
               DELIM="reason_eof_$(openssl rand -hex 8)"
               {
