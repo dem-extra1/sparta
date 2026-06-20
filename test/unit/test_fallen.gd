@@ -31,6 +31,30 @@ func test_body_count_is_capped() -> void:
 	assert_eq(fx._marks.size(), Fallen.MAX_MARKS, "a big casualty event caps at MAX_MARKS bodies")
 
 
+func test_cavalry_casualties_leave_larger_bodies() -> void:
+	# A cavalry heap uses the bigger cavalry mark size (and a proportionally wider spread),
+	# so fallen horses read as bigger than fallen foot soldiers — matching the live marks.
+	var foot_parent := Node2D.new()
+	add_child_autofree(foot_parent)
+	Fallen.spawn(foot_parent, Vector2.ZERO, Color.WHITE, 4)   # default foot-soldier size
+	var foot: Fallen = foot_parent.get_child(0)
+
+	var cav_parent := Node2D.new()
+	add_child_autofree(cav_parent)
+	Fallen.spawn(cav_parent, Vector2.ZERO, Color.WHITE, 4, Unit.CAV_MARK_RADIUS)
+	var cav: Fallen = cav_parent.get_child(0)
+
+	assert_gt(cav._mark_radius, foot._mark_radius, "cavalry casualties leave larger bodies")
+	# The heap also widens in proportion, so the bigger bodies don't pack into a foot footprint.
+	var foot_max := 0.0
+	for m in foot._marks:
+		foot_max = maxf(foot_max, m.length())
+	var cav_max := 0.0
+	for m in cav._marks:
+		cav_max = maxf(cav_max, m.length())
+	assert_gt(cav_max, foot_max, "and the cavalry heap is proportionally wider")
+
+
 func test_heap_frees_itself_after_its_lifetime() -> void:
 	var parent := Node2D.new()
 	add_child_autofree(parent)
