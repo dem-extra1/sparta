@@ -35,6 +35,8 @@ func _ready() -> void:
 func _start_campaign() -> void:
 	# Used for restart, when the HUD is already up — refresh immediately.
 	_build_state()
+	if _hud != null:
+		_hud.reset_for_new_campaign()   # clear the end overlay, re-enable End Turn
 	_refresh_hud()
 	queue_redraw()
 
@@ -128,7 +130,9 @@ func _run_enemy_ai() -> void:
 				target = n
 		if target == -1:
 			continue
-		if target_def == 0 or _state.army_of(id) >= target_def:
+		# Account for the defender's home edge so the AI doesn't pick even fights it's
+		# actually the underdog in.
+		if target_def == 0 or _state.army_of(id) >= target_def * CampaignStateRef.DEFENDER_BONUS:
 			_state.move_or_attack(id, target)
 
 
@@ -140,7 +144,7 @@ func _check_winner() -> bool:
 	queue_redraw()
 	var won := w == PLAYER_FACTION
 	var who: String = _state.faction_names[w] if w < _state.faction_names.size() else "Someone"
-	var msg := "🏆 Victory — Rome rules all Gaul!" if won \
+	var msg := "🏆 Victory — %s conquers all!" % _state.faction_names[PLAYER_FACTION] if won \
 			else "☠ Defeat — %s has overrun you." % who
 	if _hud != null:
 		_hud.show_victory(msg)
@@ -184,10 +188,17 @@ func _announce(result: Dictionary) -> void:
 	if not result["combat"]:
 		text = "Moved into %s." % to_name
 	elif result["attacker_won"]:
-		text = "%s taken from the Gauls (%d survive)." % [to_name, int(result["survivors"])]
+		text = "%s taken from %s (%d survive)." % [to_name, _enemy_name(), int(result["survivors"])]
 	else:
 		text = "Assault on %s repulsed; the attacking army is lost." % to_name
 	_hud.flash(text)
+
+
+## The non-player faction's display name (two-faction slice); falls back gracefully.
+func _enemy_name() -> String:
+	if _state.faction_names.size() > 1:
+		return _state.faction_names[1 - PLAYER_FACTION]
+	return "the enemy"
 
 
 func _restart() -> void:
@@ -201,8 +212,8 @@ func _to_menu() -> void:
 # --- rendering ------------------------------------------------------------
 
 func _draw() -> void:
-	# Sea backdrop behind the provinces (the map fills the default viewport).
-	draw_rect(Rect2(0, 0, 1280, 720), Color(0.16, 0.28, 0.40))
+	# Sea backdrop behind the provinces (covers the viewport at any size).
+	draw_rect(get_viewport_rect(), Color(0.16, 0.28, 0.40))
 	var font := ThemeDB.fallback_font
 	for p in _map["provinces"]:
 		var id := int(p["id"])

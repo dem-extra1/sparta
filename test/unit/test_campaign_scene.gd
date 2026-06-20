@@ -61,6 +61,19 @@ func test_click_selects_then_orders() -> void:
 			"the order resolved to a valid outcome")
 
 
+func test_restart_re_enables_end_turn() -> void:
+	# Regression: show_victory disables End Turn; restarting must re-enable it and
+	# clear the end overlay, or "New Campaign" leaves an unplayable board.
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	var hud := s.get_node("CampaignHUD")
+	hud.show_victory("test")
+	assert_true(hud._end_turn_button.disabled, "End Turn is disabled at game over")
+	map._restart()
+	assert_false(hud._end_turn_button.disabled, "restarting re-enables End Turn")
+	assert_false(hud._overlay.visible, "and hides the end overlay")
+
+
 func test_end_turn_runs_enemy_and_returns_to_player() -> void:
 	var s = await _scene()
 	var map := s.get_node("CampaignMap")

@@ -141,8 +141,8 @@ func move_or_attack(from_id: int, to_id: int) -> Dictionary:
 		from["army"] = 0   # the attacking army is spent
 		result["attacker_won"] = false
 		result["survivors"] = survivors
-		# The attacker's army is gone; nothing left in `from` to flag.
-		_acted.erase(from_id)
+		# from_id was never in _acted (can_move guards against that); nothing to erase,
+		# and its army is gone, so it can't act again this turn regardless.
 	return result
 
 

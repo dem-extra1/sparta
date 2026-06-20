@@ -129,3 +129,11 @@ func show_victory(text: String) -> void:
 	_overlay_label.text = text
 	_overlay.visible = true
 	_end_turn_button.disabled = true
+
+
+## Restore the HUD for a fresh campaign: hide the end overlay and re-enable End Turn
+## (show_victory disables it). Called by CampaignMap when (re)starting a campaign.
+func reset_for_new_campaign() -> void:
+	_overlay.visible = false
+	_end_turn_button.disabled = false
+	_flash_label.text = ""
