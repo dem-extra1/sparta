@@ -88,6 +88,20 @@ func test_set_sfx_enabled_session_flips_value_without_persisting() -> void:
 	assert_true(s.sfx_enabled, "session setter flips the in-memory value")
 	assert_not_called(s, "_save")
 	assert_signal_not_emitted(s, "changed", "...and emits no `changed`")
+	assert_false(s._loading, "_loading restored to its prior value (false) after the call")
+
+
+func test_set_sfx_enabled_session_restores_an_in_progress_load_guard() -> void:
+	# fe7d166 made the setter save/restore _loading instead of hard-clearing it to
+	# false, so a nested call (while a load is already in progress) doesn't drop the
+	# guard. Pin that directly: with _loading already true, it must still be true
+	# afterward — an assertion that fails against the old hard `_loading = false`.
+	var s = SettingsScript.new()
+	autofree(s)
+	s._loading = true
+	s.set_sfx_enabled_session(true)
+	assert_true(s.sfx_enabled, "the value still flips while a load is in progress")
+	assert_true(s._loading, "_loading restored to its prior (true) value, not hard-cleared")
 
 
 func test_default_bindings_cover_exactly_battles_hotkey_slugs() -> void:
