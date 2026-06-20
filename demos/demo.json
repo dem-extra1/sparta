@@ -1,7 +1,7 @@
 {
-  "_comment": "Projectile (arrow-volley) trails (#65). Visible in any battle with archers, so this reuses the bundled showcase battle — watch the Archers: each volley now throws a short cluster of streaks from the shooter toward its target, fading as it lands. Purely cosmetic (spawned on the sim tick, faded on render time); no sim/replay/determinism impact.",
+  "_comment": "Rout-effect visuals (#72). Visible in any battle as units break, so this reuses the bundled showcase battle — when a unit routs, a translucent team-tinted ripple flashes at its position and expands+fades over the radius (140px) where it shakes friendly morale. Purely cosmetic (spawned on the sim tick, faded on render time); no sim/replay/determinism impact.",
   "replay": "demos/showcase.json",
-  "caption": "Projectile trails (#65): ranged volleys now show — each time Archers loose, a small cluster of arrow streaks flies from the unit to its target and fades as it lands (tinted by team colour). Previously volleys were invisible hitscan + a sound. Purely cosmetic: no sim/replay impact.",
+  "caption": "Rout-effect visuals (#72): when a unit routs, a translucent team-tinted shockwave now flashes at its position and expands+fades across the radius where its rout shakes nearby allies' morale (a soft centre-dense gradient). Previously the morale contagion was invisible. Purely cosmetic: no sim/replay impact.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,

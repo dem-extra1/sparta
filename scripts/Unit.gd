@@ -71,6 +71,9 @@ const RADIUS: float = 18.0
 const DETECTION_RANGE: float = 190.0
 const ATTACK_INTERVAL: float = 0.6
 const ROUT_TIME: float = 6.0
+# Radius over which a rout shakes friendly morale (#72). Shared by the morale-spread
+# loop and the cosmetic shockwave so the visual matches the actual area of effect.
+const ROUT_SHOCK_RADIUS: float = 140.0
 
 # Ranged combat (#37). A ranged unit looses volleys at any enemy within
 # RANGED_RANGE that isn't already in melee contact — far outreaching melee's
@@ -795,8 +798,13 @@ func _rout() -> void:
 	for u in get_tree().get_nodes_in_group("units"):
 		var friend: Unit = u as Unit
 		if friend != null and friend.team == team:
-			if position.distance_to(friend.position) < 140.0:
+			if position.distance_to(friend.position) < ROUT_SHOCK_RADIUS:
 				friend.morale -= 12.0
+	# Cosmetic morale-shock ripple (#72) marking the area allies were shaken. Spawned on
+	# the deterministic sim tick but animated/faded on render time, in no sim group, so
+	# it has no simulation/replay/determinism impact. Guarded like the volley trail (#65).
+	if is_inside_tree():
+		RoutShockwave.spawn(get_parent(), global_position, ROUT_SHOCK_RADIUS, team_color)
 	queue_redraw()
 
 
