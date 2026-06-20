@@ -71,6 +71,7 @@ func test_reinforce_friendly_merges() -> void:
 	var r: Dictionary = s.move_or_attack(0, 1)
 	assert_true(r["ok"])
 	assert_false(r["combat"])
+	assert_true(r["reinforced"], "reinforce sets the flag _announce reads")
 	assert_eq(s.army_of(1), 8, "stacks merge (5 + 3)")
 	assert_eq(s.army_of(0), 0)
 
