@@ -118,12 +118,14 @@ func at_war(a: int, b: int) -> bool:
 	return not _peace.has(_pair_key(a, b))
 
 
+## Put factions `a` and `b` at war (symmetric). No-op if a == b.
 func declare_war(a: int, b: int) -> void:
 	if a == b:
 		return
 	_peace.erase(_pair_key(a, b))
 
 
+## Put factions `a` and `b` at peace (symmetric). No-op if a == b.
 func make_peace(a: int, b: int) -> void:
 	if a == b:
 		return
