@@ -5,7 +5,8 @@ extends GutTest
 ## isolation) by exercising the Node/scene layer.
 
 const CampaignScene = preload("res://scenes/Campaign.tscn")
-const GallicWar = preload("res://scripts/campaign/GallicWar.gd")
+const CampaignLoader = preload("res://scripts/campaign/CampaignLoader.gd")
+const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
 
 
 # A point guaranteed inside the polygon: the centroid of one triangle from its
@@ -24,7 +25,7 @@ func _interior_point(poly: PackedVector2Array) -> Vector2:
 # province id -> a point guaranteed inside its polygon.
 func _centroids() -> Dictionary:
 	var out := {}
-	for p in GallicWar.new_map()["provinces"]:
+	for p in CampaignLoader.load_map(Campaigns.DEFAULT_PATH)["provinces"]:
 		out[int(p["id"])] = _interior_point(p["polygon"])
 	return out
 
@@ -65,6 +66,15 @@ func test_click_selects_then_orders() -> void:
 	# we only assert the order resolved without error and consumed the army.
 	assert_true(map._state.owner_of(6) == 0 or map._state.owner_of(6) == before_owner,
 			"the order resolved to a valid outcome")
+
+
+func test_falls_back_to_default_when_selected_missing() -> void:
+	# An unreadable selected campaign must fall back to the default, not crash.
+	Campaigns.selected_path = "res://data/campaigns/__does_not_exist__.json"
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	assert_eq(map._state.provinces.size(), 7, "fell back to the default Gallic War map")
+	Campaigns.selected_path = Campaigns.DEFAULT_PATH   # restore for other tests
 
 
 func test_restart_re_enables_end_turn() -> void:

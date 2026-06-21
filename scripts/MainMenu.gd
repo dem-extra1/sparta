@@ -4,6 +4,8 @@ extends Control
 ## stays untouched for the eventual M3 campaign→battle hand-off. UI built in code,
 ## matching the rest of the project's HUDs.
 
+const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
+
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -38,13 +40,22 @@ func _ready() -> void:
 	battle_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Battle.tscn"))
 	box.add_child(battle_btn)
 
-	var campaign_btn := _menu_button("Campaign: Gallic War")
-	campaign_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Campaign.tscn"))
-	box.add_child(campaign_btn)
+	# One button per registered campaign (#125): selecting it records the map path,
+	# then opens the shared campaign scene which loads that data file.
+	for c in Campaigns.LIST:
+		var path: String = c["path"]
+		var btn := _menu_button("Campaign: %s" % c["name"])
+		btn.pressed.connect(func(): _start_campaign(path))
+		box.add_child(btn)
 
 	var quit_btn := _menu_button("Quit")
 	quit_btn.pressed.connect(func(): get_tree().quit())
 	box.add_child(quit_btn)
+
+
+func _start_campaign(path: String) -> void:
+	Campaigns.selected_path = path
+	get_tree().change_scene_to_file("res://scenes/Campaign.tscn")
 
 
 func _menu_button(text: String) -> Button:

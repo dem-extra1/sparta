@@ -8,7 +8,7 @@ extends RefCounted
 ## friendly one or attacking an enemy/neutral one (battles are auto-resolved here;
 ## the tactical-battle hookup is M3). A faction wins by owning every province.
 ##
-## State is built from a map dictionary (see scripts/campaign/GallicWar.gd); only
+## State is built from a map dictionary (see scripts/campaign/CampaignLoader.gd); only
 ## the dynamic fields (owner, army) and the adjacency/names are kept here — geometry
 ## (polygons, label positions, colours) lives with the map data for the renderer.
 

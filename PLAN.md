@@ -123,8 +123,11 @@ hand-authored GDScript that hasn't been engine-checked.
     army into an adjacent province, auto-resolved combat, a greedy enemy AI, and a
     conquest victory. Reached from a new `scenes/MainMenu.tscn` (now the main scene)
     that also launches the M1 battle. Logic lives in `scripts/campaign/` with the
-    rules (`CampaignState.gd`) unit-tested headlessly. Diplomacy, characters/dynasty,
-    map externalization, and the M3 battle hook-up are tracked as #70 follow-ups.
+    rules (`CampaignState.gd`) unit-tested headlessly.
+  - **Maps are data-driven (#125):** campaigns load from JSON under `data/campaigns/`
+    via `CampaignLoader.gd`; the menu lists them from `Campaigns.gd`. Adding a
+    campaign is a JSON file + one registry row. Diplomacy (#123), characters/dynasty
+    (#124), the M3 battle hook-up (#122), and the saga layer (#126) remain follow-ups.
 - **M3 — Integration:** an army battle on the campaign map launches into the M1 battle scene
   and returns a result (winner, casualties) to the campaign. This is where the two genres meet;
   the battle scene was kept self-contained specifically to make this hand-off clean.

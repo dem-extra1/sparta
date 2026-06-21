@@ -8,7 +8,8 @@ extends Node2D
 ## hookup is M3).
 
 const CampaignStateRef = preload("res://scripts/campaign/CampaignState.gd")
-const GallicWar = preload("res://scripts/campaign/GallicWar.gd")
+const CampaignLoader = preload("res://scripts/campaign/CampaignLoader.gd")
+const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
 
 const PLAYER_FACTION := 0
 
@@ -42,7 +43,17 @@ func _start_campaign() -> void:
 
 
 func _build_state() -> void:
-	_map = GallicWar.new_map()
+	# Load the campaign the menu selected; fall back to the default if it failed to
+	# load so the scene is never left without a map.
+	_map = CampaignLoader.load_map(Campaigns.selected_path)
+	if _map.is_empty():
+		# Recoverable: fall back to the default campaign.
+		push_warning("Campaign: could not load '%s'; using the default." % Campaigns.selected_path)
+		_map = CampaignLoader.load_map(Campaigns.DEFAULT_PATH)
+	if _map.is_empty():
+		# Even the default failed (shipped data broken). Keep a valid empty state so
+		# nothing crashes; the draw/input/HUD paths guard against an empty map.
+		push_error("Campaign: default map '%s' is also unreadable." % Campaigns.DEFAULT_PATH)
 	_state = CampaignStateRef.new(_map)
 	_selected = -1
 
@@ -91,7 +102,7 @@ func _on_click(pos: Vector2) -> void:
 
 
 func _province_at(pos: Vector2) -> int:
-	for p in _map["provinces"]:
+	for p in _map.get("provinces", []):
 		if Geometry2D.is_point_in_polygon(pos, p["polygon"]):
 			return int(p["id"])
 	return -1
@@ -158,7 +169,8 @@ func _refresh_hud() -> void:
 		return
 	var faction: int = _state.current_faction
 	var fname: String = _state.faction_names[faction] if faction < _state.faction_names.size() else "?"
-	var color: Color = _map["faction_colors"][faction] if faction < _map["faction_colors"].size() else Color.WHITE
+	var colors: Array = _map.get("faction_colors", [])
+	var color: Color = colors[faction] if faction < colors.size() else Color.WHITE
 	_hud.update_turn(_state.turn, fname, color)
 	_hud.update_standings(_standings())
 	if _selected != -1:
@@ -217,12 +229,13 @@ func _to_menu() -> void:
 func _draw() -> void:
 	# Sea backdrop behind the provinces (covers the viewport at any size).
 	draw_rect(get_viewport_rect(), Color(0.16, 0.28, 0.40))
+	var colors: Array = _map.get("faction_colors", [])
 	var font := ThemeDB.fallback_font
-	for p in _map["provinces"]:
+	for p in _map.get("provinces", []):
 		var id := int(p["id"])
 		var poly: PackedVector2Array = p["polygon"]
 		var owner: int = _state.owner_of(id)
-		var base: Color = _map["faction_colors"][owner] if owner < _map["faction_colors"].size() else Color.GRAY
+		var base: Color = colors[owner] if owner < colors.size() else Color.GRAY
 		# Dim provinces whose army has already acted so the player sees what's spent.
 		var fill := base
 		if _state.has_acted(id):

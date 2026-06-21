@@ -71,9 +71,12 @@ scripts/
   MainMenu.gd          Title screen UI (built in code)
   campaign/            M2 campaign map (#70):
     CampaignState.gd     Province/turn/combat rules — pure logic, unit-tested
-    GallicWar.gd         The first map's data (provinces, owners, adjacency, polygons)
+    CampaignLoader.gd    Loads + validates a campaign map from a JSON data file (#125)
+    Campaigns.gd         Registry of available campaigns (what the menu lists)
     CampaignMap.gd       Renders provinces, handles clicks, runs the enemy turn
     CampaignHUD.gd       Turn banner, End Turn, standings, victory overlay
+data/campaigns/        Campaign map data files (gallic_war.json) — add a JSON + a
+                       Campaigns.gd row to ship a new campaign
 assets/                CC0 art goes here (see ASSETS.md) — not required to run
 ```
 

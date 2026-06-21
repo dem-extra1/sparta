@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Adds the campaign map (M2, #70) — a new turn-based, province-conquest scene reached from the new main menu. The demo pipeline records a tactical-battle replay, which can't exercise the campaign map, so no clip applies."
+  "reason": "Externalizes campaign maps to JSON data files and adds a campaign picker on the main menu (#125). This is a campaign-map/data refactor with no tactical-battle behaviour, so a recorded battle replay can't show it."
 }

@@ -1,0 +1,31 @@
+{
+  "name": "Gallic War",
+  "blurb": "Rome vs the Gallic tribes. Conquer every province to win.",
+  "factions": [
+    { "name": "Rome", "color": "#5c85db" },
+    { "name": "Gallic Tribes", "color": "#d15c52" }
+  ],
+  "provinces": [
+    { "id": 0, "name": "Narbonensis", "owner": 0, "army": 5, "adj": [1, 2, 5, 6],
+      "label": [560, 565],
+      "polygon": [[460, 500], [660, 500], [700, 600], [540, 640], [440, 590]] },
+    { "id": 1, "name": "Aquitania", "owner": 1, "army": 3, "adj": [0, 2, 4],
+      "label": [300, 490],
+      "polygon": [[220, 400], [400, 420], [420, 540], [300, 600], [200, 500]] },
+    { "id": 2, "name": "Celtica", "owner": 1, "army": 4, "adj": [0, 1, 3, 4, 6],
+      "label": [520, 380],
+      "polygon": [[420, 300], [640, 300], [640, 440], [440, 460], [400, 380]] },
+    { "id": 3, "name": "Belgica", "owner": 1, "army": 5, "adj": [2, 4, 6],
+      "label": [620, 190],
+      "polygon": [[520, 120], [740, 120], [760, 240], [560, 260], [500, 200]] },
+    { "id": 4, "name": "Armorica", "owner": 1, "army": 3, "adj": [1, 2, 3],
+      "label": [260, 240],
+      "polygon": [[160, 160], [360, 160], [380, 300], [220, 320], [140, 260]] },
+    { "id": 5, "name": "Cisalpina", "owner": 0, "army": 6, "adj": [0, 6],
+      "label": [960, 540],
+      "polygon": [[860, 460], [1060, 460], [1080, 600], [900, 620], [840, 540]] },
+    { "id": 6, "name": "Helvetia", "owner": 1, "army": 4, "adj": [0, 2, 3, 5],
+      "label": [820, 380],
+      "polygon": [[720, 300], [920, 300], [940, 440], [760, 460], [700, 400]] }
+  ]
+}
