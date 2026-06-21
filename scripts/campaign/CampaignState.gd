@@ -28,6 +28,12 @@ var turn: int = 1
 # owning faction's next turn). Reset whenever play returns to a faction.
 var _acted: Dictionary = {}
 
+# Diplomacy (#123): factions are at war by default (this is a war campaign); only
+# explicitly-made peace is recorded here, as a set of normalized "a-b" pair keys.
+# A faction is never at war with itself. Maps/UI can later seed/change stances via
+# make_peace()/declare_war(); for now the rules layer just gates attacks on it.
+var _peace: Dictionary = {}
+
 var _rng := RandomNumberGenerator.new()
 
 # Home-ground edge for the defender, and the casualty severity of a fight. Pulled
@@ -75,7 +81,8 @@ func are_adjacent(a: int, b: int) -> bool:
 
 
 ## True if the army in `from_id` may act on `to_id` this turn: same-faction mover,
-## the mover holds an army that hasn't acted, and the two provinces are adjacent.
+## the mover holds an army that hasn't acted, the two provinces are adjacent, and —
+## if `to_id` belongs to another faction — the mover is at war with that faction.
 func can_move(from_id: int, to_id: int) -> bool:
 	if from_id == to_id:
 		return false
@@ -87,7 +94,40 @@ func can_move(from_id: int, to_id: int) -> bool:
 		return false
 	if _acted.has(from_id):
 		return false
-	return are_adjacent(from_id, to_id)
+	if not are_adjacent(from_id, to_id):
+		return false
+	# Entering another faction's province (occupy or attack) is an act of war, so it
+	# requires being at war with them. Reinforcing your own is always allowed.
+	var to_owner := owner_of(to_id)
+	if to_owner != current_faction and not at_war(current_faction, to_owner):
+		return false
+	return true
+
+
+# --- diplomacy (#123) ------------------------------------------------------
+
+func _pair_key(a: int, b: int) -> String:
+	return "%d-%d" % [mini(a, b), maxi(a, b)]
+
+
+## Whether factions `a` and `b` are at war. Factions are at war by default; a faction
+## is never at war with itself.
+func at_war(a: int, b: int) -> bool:
+	if a == b:
+		return false
+	return not _peace.has(_pair_key(a, b))
+
+
+func declare_war(a: int, b: int) -> void:
+	if a == b:
+		return
+	_peace.erase(_pair_key(a, b))
+
+
+func make_peace(a: int, b: int) -> void:
+	if a == b:
+		return
+	_peace[_pair_key(a, b)] = true
 
 
 ## Move/attack the army in `from_id` into `to_id`. Caller must check can_move first.

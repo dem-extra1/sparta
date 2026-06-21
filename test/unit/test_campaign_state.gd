@@ -128,3 +128,46 @@ func test_movable_provinces_excludes_empty_and_acted() -> void:
 	assert_true(s.has_acted(2), "the army now sits in P2 and has acted")
 	assert_eq(s.movable_provinces(ROME), [] as Array[int],
 			"so Rome has no army left to move this turn")
+
+
+# --- diplomacy (#123) ------------------------------------------------------
+
+func test_factions_at_war_by_default() -> void:
+	var s := _state()
+	assert_true(s.at_war(ROME, GAULS), "a war campaign starts with the factions at war")
+	assert_true(s.at_war(GAULS, ROME), "stance is symmetric")
+	assert_false(s.at_war(ROME, ROME), "a faction is never at war with itself")
+
+
+func test_make_peace_then_declare_war() -> void:
+	var s := _state()
+	s.make_peace(ROME, GAULS)
+	assert_false(s.at_war(ROME, GAULS), "make_peace ends the war")
+	assert_false(s.at_war(GAULS, ROME), "...symmetrically")
+	s.declare_war(GAULS, ROME)
+	assert_true(s.at_war(ROME, GAULS), "declare_war (order-independent) restores the war")
+
+
+func test_cannot_enter_a_faction_at_peace() -> void:
+	var s := _state()
+	assert_true(s.can_move(0, 1), "at war: Rome can attack the Gallic P1")
+	s.make_peace(ROME, GAULS)
+	assert_false(s.can_move(0, 1), "at peace: entering their province is not allowed")
+	# Peace doesn't block reinforcing your own province.
+	var m := _map()
+	m["provinces"][1]["owner"] = ROME
+	var s2 := CampaignState.new(m, 1)
+	s2.make_peace(ROME, GAULS)
+	assert_true(s2.can_move(0, 1), "reinforcing your own province is always allowed")
+	# Declaring war re-opens the attack.
+	s.declare_war(ROME, GAULS)
+	assert_true(s.can_move(0, 1), "after declaring war the attack is legal again")
+
+
+func test_move_or_attack_blocked_by_peace() -> void:
+	var s := _state()
+	s.make_peace(ROME, GAULS)
+	var r: Dictionary = s.move_or_attack(0, 1)
+	assert_false(r["ok"], "an at-peace move is rejected by move_or_attack's can_move guard")
+	assert_eq(s.owner_of(1), GAULS, "the target is untouched")
+	assert_eq(s.army_of(0), 5, "and the mover keeps its army")
