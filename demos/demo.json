@@ -1,9 +1,4 @@
 {
-  "_comment": "Follow-up to #32 Stage C (cosmetic): fallen-body heaps now scale with the unit type. A cavalry casualty leaves bigger bodies (Unit.CAV_MARK_RADIUS) strewn over a proportionally wider heap, matching the larger live cavalry marks, while foot soldiers leave the smaller default bodies. Visible in any battle where cavalry die, so this reuses the bundled showcase auto-battle (it fields cavalry that charge and fall). Still purely render-time: the heaps are never fed back into the deterministic aggregate sim (index-based scatter, no seeded RNG), so combat, morale, balance and replays are untouched.",
-  "replay": "demos/showcase.json",
-  "caption": "Fallen bodies now scale with unit type (#32 Stage C follow-up, cosmetic): cavalry casualties leave bigger bodies over a proportionally wider heap, matching the larger live cavalry marks; foot soldiers leave the smaller default bodies. Still purely visual — the heaps never feed back into the sim (index-based scatter, no RNG), so combat, morale and replays are unchanged.",
-  "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 12,
-  "width": 640
+  "skip": true,
+  "reason": "Adds the campaign map (M2, #70) — a new turn-based, province-conquest scene reached from the new main menu. The demo pipeline records a tactical-battle replay, which can't exercise the campaign map, so no clip applies."
 }

@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/CampaignMap.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/campaign/CampaignHUD.gd" id="2"]
+
+[node name="Campaign" type="Node2D"]
+
+[node name="CampaignMap" type="Node2D" parent="."]
+script = ExtResource("1")
+
+[node name="CampaignHUD" type="CanvasLayer" parent="."]
+script = ExtResource("2")

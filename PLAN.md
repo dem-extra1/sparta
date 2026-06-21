@@ -118,6 +118,13 @@ hand-authored GDScript that hasn't been engine-checked.
     (the true massed-formation look); unit facing arrows; pre-battle deployment phase.
 - **M2 — dynastic campaign map:** clickable provinces, characters/realms, turn-based
   diplomacy & war. Battles **auto-resolved** at first (no tactical layer yet).
+  - **Thin slice landed (#70):** a Gallic War map (`scenes/Campaign.tscn`) — Rome vs
+    the Gallic tribes over 7 clickable polygon provinces. Turn-based: move/attack an
+    army into an adjacent province, auto-resolved combat, a greedy enemy AI, and a
+    conquest victory. Reached from a new `scenes/MainMenu.tscn` (now the main scene)
+    that also launches the M1 battle. Logic lives in `scripts/campaign/` with the
+    rules (`CampaignState.gd`) unit-tested headlessly. Diplomacy, characters/dynasty,
+    map externalization, and the M3 battle hook-up are tracked as #70 follow-ups.
 - **M3 — Integration:** an army battle on the campaign map launches into the M1 battle scene
   and returns a result (winner, casualties) to the campaign. This is where the two genres meet;
   the battle scene was kept self-contained specifically to make this hand-off clean.
