@@ -126,8 +126,12 @@ hand-authored GDScript that hasn't been engine-checked.
     rules (`CampaignState.gd`) unit-tested headlessly.
   - **Maps are data-driven (#125):** campaigns load from JSON under `data/campaigns/`
     via `CampaignLoader.gd`; the menu lists them from `Campaigns.gd`. Adding a
-    campaign is a JSON file + one registry row. Diplomacy (#123), characters/dynasty
-    (#124), the M3 battle hook-up (#122), and the saga layer (#126) remain follow-ups.
+    campaign is a JSON file + one registry row.
+  - **Diplomacy framework (#123):** `CampaignState` tracks per-faction war/peace
+    stances and gates province entry on being at war (factions default to war, so the
+    Gallic War plays unchanged). UI to declare war / sue for peace and a neutral third
+    faction are follow-ups. Characters/dynasty (#124), the M3 battle hook-up (#122),
+    and the saga layer (#126) also remain follow-ups.
 - **M3 — Integration:** an army battle on the campaign map launches into the M1 battle scene
   and returns a result (winner, casualties) to the campaign. This is where the two genres meet;
   the battle scene was kept self-contained specifically to make this hand-off clean.
