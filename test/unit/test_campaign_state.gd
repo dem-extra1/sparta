@@ -151,8 +151,11 @@ func test_make_peace_then_declare_war() -> void:
 func test_cannot_enter_a_faction_at_peace() -> void:
 	var s := _state()
 	assert_true(s.can_move(0, 1), "at war: Rome can attack the Gallic P1")
+	assert_true(s.can_move(0, 2), "at war: Rome can occupy the undefended Gallic P2")
 	s.make_peace(ROME, GAULS)
 	assert_false(s.can_move(0, 1), "at peace: entering their province is not allowed")
+	assert_false(s.can_move(0, 2),
+			"at peace: even an undefended enemy province is blocked (gate fires before occupy)")
 	# Peace doesn't block reinforcing your own province.
 	var m := _map()
 	m["provinces"][1]["owner"] = ROME
