@@ -1478,7 +1478,21 @@ func test_is_melee_intermixing_with_requires_both_fighting() -> void:
 func test_is_melee_intermixing_with_false_for_friendlies() -> void:
 	var a: Unit = _make_unit()
 	var b: Unit = _make_unit()
+	a.team = 0
+	b.team = 0   # same team — explicit, not relying on _make_unit default
 	a.state = Unit.State.FIGHTING
 	b.state = Unit.State.FIGHTING
 	assert_false(a._is_melee_intermixing_with(b),
 		"intermixing only applies between enemies, not friendlies")
+
+
+func test_is_melee_intermixing_with_false_when_hold() -> void:
+	var a: Unit = _make_unit()
+	var b: Unit = _make_unit()
+	a.team = 0
+	b.team = 1
+	a.state = Unit.State.FIGHTING
+	b.state = Unit.State.FIGHTING
+	a.order_mode = Unit.ORDER_HOLD
+	assert_false(a._is_melee_intermixing_with(b),
+		"a HOLD unit never intermixes even while fighting")

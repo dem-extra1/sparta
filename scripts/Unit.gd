@@ -68,9 +68,12 @@ const TIGHT_CHARGE_ABSORPTION: float = 0.55
 const TIGHT_SEPARATION_SCALE: float = 0.75
 const LOOSE_SEPARATION_SCALE: float = 1.35
 # Melee intermixing: how fast enemy separation dissolves when two non-hold units are
-# locked in mutual combat. Rate is fraction per second; max is the dissolution ceiling
-# (so a floor of 1-MAX of normal separation always remains — spears still feel solid).
+# locked in mutual combat. Rise rate is fraction per second; max is the dissolution
+# ceiling (so a floor of 1-MAX always remains — spears still feel solid). Decay is 4×
+# faster than rise so a unit that breaks contact re-solidifies in roughly 3 s at max
+# instead of 12 s, matching the "disengages promptly" expectation.
 const MELEE_INTERMIX_RATE: float = 0.07
+const MELEE_INTERMIX_DECAY_RATE: float = 0.28
 const MELEE_INTERMIX_MAX: float = 0.85
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
@@ -567,7 +570,7 @@ func _tick_intermixing(delta: float) -> void:
 				_combat_intermixing + MELEE_INTERMIX_RATE * delta)
 	else:
 		_combat_intermixing = maxf(0.0,
-				_combat_intermixing - MELEE_INTERMIX_RATE * delta)
+				_combat_intermixing - MELEE_INTERMIX_DECAY_RATE * delta)
 
 
 ## True when mutual melee intermixing should soften the separation push between
@@ -940,6 +943,7 @@ func _rout() -> void:
 	target_enemy = null
 	has_move_target = false
 	_rout_timer = ROUT_TIME
+	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
 	add_to_group("routers")
 	# Routing is contagious: shake nearby friends.
