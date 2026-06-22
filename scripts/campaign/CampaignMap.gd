@@ -131,11 +131,15 @@ func _province_at(pos: Vector2) -> int:
 
 # --- tactical battle hand-off (M3, #122) ----------------------------------
 
-## True if moving from->to is a real fight (a defended province of another faction),
-## as opposed to reinforcing a friendly province or walking into an undefended one —
-## only those launch the tactical battle.
+## True if moving from->to is a real fight: a defended province of a faction the
+## mover is at war with — as opposed to reinforcing a friendly province, walking into
+## an undefended one, or a peace-faction province. Only a real fight launches the
+## tactical battle. Self-contained (doesn't assume the can_move guard at its call site).
 func _is_contested(from_id: int, to_id: int) -> bool:
-	return _state.owner_of(to_id) != _state.owner_of(from_id) and _state.army_of(to_id) > 0
+	var from_owner: int = _state.owner_of(from_id)
+	var to_owner: int = _state.owner_of(to_id)
+	return to_owner != from_owner and _state.army_of(to_id) > 0 \
+			and _state.at_war(from_owner, to_owner)
 
 
 ## Stash the clash + a snapshot of the campaign in CampaignBattle and switch to the
@@ -182,9 +186,15 @@ func _resume_from_battle() -> bool:
 func _finish_battle_resume() -> void:
 	var clash: Dictionary = CampaignBattle.pending
 	var outcome: Dictionary = CampaignBattle.result
+	var from_id := int(clash["from"])
+	var to_id := int(clash["to"])
+	# resolve_attack trusts the clash was validated at launch; the restored snapshot
+	# reproduces that exact pre-battle state, so the move is legal again here. Assert it
+	# so a snapshot that doesn't round-trip fails loudly instead of corrupting state.
+	assert(_state.can_move(from_id, to_id),
+			"battle resume: restored state isn't a legal pre-battle move (snapshot drift)")
 	var result: Dictionary = _state.resolve_attack(
-			int(clash["from"]), int(clash["to"]),
-			bool(outcome["attacker_won"]), int(outcome["survivors"]))
+			from_id, to_id, bool(outcome["attacker_won"]), int(outcome["survivors"]))
 	CampaignBattle.clear()
 	_announce(result)
 	if not _check_winner():

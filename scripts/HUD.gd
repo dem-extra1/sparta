@@ -187,7 +187,9 @@ func _ready() -> void:
 
 	# A campaign-launched battle (#122) returns its result to the map instead of
 	# restarting; "Fight Again"/"Load Replay" (which replace this battle) would strand
-	# the campaign, so only offer Return + Watch Replay there.
+	# the campaign, so only offer Return + Watch Replay there. Safe to decide at _ready
+	# (rather than in show_end): `active` is set before the battle scene loads and stays
+	# fixed for the battle's whole lifetime — nothing toggles it mid-battle.
 	if CampaignBattleRef.active:
 		var ret := Button.new()
 		ret.text = "⮐ Return to Campaign"

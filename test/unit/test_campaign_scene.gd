@@ -142,8 +142,12 @@ func test_contested_attack_launches_battle_not_auto_resolve() -> void:
 	assert_true(CampaignBattle.active, "a battle is now in flight")
 	assert_eq(int(CampaignBattle.pending["from"]), 0)
 	assert_eq(int(CampaignBattle.pending["to"]), 6)
-	assert_eq(int(CampaignBattle.pending["attacker_strength"]), 5, "attacker strength captured")
-	assert_eq(int(CampaignBattle.pending["defender_strength"]), 4, "defender strength captured")
+	# Read expected strengths from the live state, not hardcoded map values, so a map
+	# rebalance doesn't fail this with a misleading "capture is wrong" message.
+	assert_eq(int(CampaignBattle.pending["attacker_strength"]), map._state.army_of(0),
+			"attacker strength captured")
+	assert_eq(int(CampaignBattle.pending["defender_strength"]), map._state.army_of(6),
+			"defender strength captured")
 	assert_false(CampaignBattle.snapshot.is_empty(), "the pre-battle state is snapshotted")
 
 
