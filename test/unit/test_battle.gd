@@ -200,3 +200,34 @@ func test_append_preserves_a_support_ward() -> void:
 	b._apply_order_cmd({"units": [1], "x": 400.0, "y": 0.0,
 		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.NORMAL})
 	assert_eq(supporter.support_target, ward, "a waypoint append leaves the support ward intact")
+
+
+# --- terrain / pathfinding integration ---------------------------------
+
+func test_battle_terrain_patches_block_pathfinding() -> void:
+	# Verify the TERRAIN constant's patches, when fed into a PathField, actually
+	# block movement through them and force A* to route around.
+	var pf := PathField.new(BattleScript.FIELD)
+	for patch in BattleScript.TERRAIN:
+		pf.block_rect(patch["rect"])
+	# A point at the centre of the first terrain patch (forest) should be blocked.
+	var forest: Dictionary = BattleScript.TERRAIN[0]
+	var forest_center := forest["rect"].position + forest["rect"].size * 0.5
+	assert_true(pf.is_blocked(forest_center),
+			"the forest terrain patch blocks movement at its centre")
+
+
+func test_battle_terrain_route_avoids_patches() -> void:
+	# A direct north–south path through the forest must detour around it.
+	var pf := PathField.new(BattleScript.FIELD)
+	for patch in BattleScript.TERRAIN:
+		pf.block_rect(patch["rect"])
+	var forest: Dictionary = BattleScript.TERRAIN[0]
+	var cx: float = forest["rect"].position.x + forest["rect"].size.x * 0.5
+	# Start just above the patch, end just below — straight line passes through it.
+	var above := Vector2(cx, forest["rect"].position.y - 100)
+	var below := Vector2(cx, forest["rect"].end.y + 100)
+	var route := pf.find_path(above, below)
+	for p in route:
+		assert_false(pf.is_blocked(p),
+				"no A* waypoint sits inside the blocked terrain patch")
