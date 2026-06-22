@@ -1414,8 +1414,8 @@ func test_formation_summary_returns_correct_names() -> void:
 
 
 func test_absorb_reapplies_formation_scale() -> void:
-	var a: Unit = _make_unit(Unit.Kind.INFANTRY)
-	var b: Unit = _make_unit(Unit.Kind.INFANTRY)
+	var a: Unit = _make_unit()
+	var b: Unit = _make_unit()
 	a.set_formation(Unit.FORMATION_TIGHT)
 	var before_base := a._base_separation_radius
 	a.absorb(b)

@@ -190,7 +190,7 @@ func _issue_merge() -> void:
 func _cycle_formation() -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
-	if _selected.is_empty():
+	if _selected.is_empty() or not is_instance_valid(_selected[0]):
 		return
 	var current: int = _selected[0].formation_mode
 	var next: int = (current + 1) % 3
