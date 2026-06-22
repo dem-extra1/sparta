@@ -1648,3 +1648,70 @@ func test_morale_does_not_recover_while_routing_via_physics_process() -> void:
 	u._rout_timer = 10.0   # keep timer alive so _process_rout returns early
 	u._physics_process(0.01)
 	assert_almost_eq(u.morale, 50.0, 0.001, "a routing unit does not recover morale")
+
+
+# --- order response delay -----------------------------------------------
+
+func test_unit_does_not_move_during_response_delay() -> void:
+	var u := _make_unit()
+	u.order_response_delay = 0.5
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true
+	u.start_order_response()
+	var before := u.position
+	u._think(0.1)   # 0.1 s < 0.5 s delay
+	assert_eq(u.position, before, "unit holds position while the response delay is active")
+
+
+func test_unit_moves_after_response_delay_expires() -> void:
+	var u := _make_unit()
+	u.order_response_delay = 0.5
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true
+	u.start_order_response()
+	var before := u.position
+	u._think(0.6)   # 0.6 s > 0.5 s delay — timer expires, unit steps off
+	assert_ne(u.position, before, "unit starts moving once the response delay has passed")
+
+
+func test_order_response_timer_ticks_while_fighting() -> void:
+	# An engaged unit is not gated by the delay (stays in combat), but the timer
+	# still counts down so it expires on time.
+	var u := _make_unit()
+	u._order_response_timer = 0.5
+	u.state = Unit.State.FIGHTING
+	u._think(0.3)
+	assert_almost_eq(u._order_response_timer, 0.2, 0.001,
+			"response timer ticks down even while the unit is fighting")
+
+
+func test_fighting_unit_executes_disengage_order_without_delay() -> void:
+	# FIGHTING units are not gated: _think() runs fully even with the timer live,
+	# so a disengage order (move target set, target_enemy cleared) takes effect on
+	# the same frame it arrives, before the response timer expires.
+	var u := _make_unit()
+	u.team = 0
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)   # within melee contact range
+	u.state = Unit.State.FIGHTING
+	u.order_response_delay = 0.5
+	u.has_move_target = true
+	u.move_target = Vector2(-200, 0)
+	u.target_enemy = null   # plain move = disengage
+	u.start_order_response()
+	var before := u.position
+	u._think(0.1)   # timer still live (0.4 s remaining), but FIGHTING bypass applies
+	assert_ne(u.position, before,
+			"a fighting unit executes a disengage order immediately, not after the delay")
+
+
+func test_zero_delay_gives_instant_response() -> void:
+	var u := _make_unit()
+	u.order_response_delay = 0.0
+	u.move_target = Vector2(200, 0)
+	u.has_move_target = true
+	u.start_order_response()   # timer set to 0.0 — no delay
+	var before := u.position
+	u._think(0.1)
+	assert_ne(u.position, before, "zero delay: unit moves on the very first think tick")

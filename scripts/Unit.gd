@@ -21,6 +21,10 @@ var uid: int = -1
 @export var is_cavalry: bool = false
 @export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
 @export var is_ranged: bool = false   # archers: loose volleys from a distance
+# Seconds before the unit starts executing a new order. Models the real-world
+# lag between a signal and the regiment actually stepping off. Default 0.5 s;
+# faster units (cavalry) can be given a lower value at spawn time.
+@export var order_response_delay: float = 0.5
 
 # --- Runtime state ---
 var soldiers: int
@@ -172,6 +176,11 @@ const ANTI_CAV_CHARGE_FLOOR: float = 0.6
 
 var _attack_cd: float = 0.0
 var _rout_timer: float = 0.0
+# Counts down after a new order is received; the unit holds its current action
+# until this reaches zero. A fighting unit ticks it down but is not gated by it
+# (it keeps executing _think() — retargets, disengages, and support orders all
+# take effect immediately regardless of the timer).
+var _order_response_timer: float = 0.0
 var _moved_last_frame: bool = false
 # Velocity the unit carried into its last move; the cavalry charge bonus reads it
 # at contact. Spent by _strike (so only the contact strike charges, not the grinding
@@ -264,6 +273,17 @@ func _physics_process(delta: float) -> void:
 
 ## Decide what to do this frame: fight if in contact, otherwise move.
 func _think(delta: float) -> void:
+	# Order-response delay: tick down on every frame. Non-fighting units are frozen
+	# until the timer expires; fighting units are not gated — they keep executing
+	# _think() normally, so a disengage or retarget order issued mid-combat takes
+	# effect on the same frame, not after the delay. When the timer hits 0 this
+	# tick, fall through so motion starts immediately rather than waiting an
+	# extra frame.
+	if _order_response_timer > 0.0:
+		_order_response_timer = maxf(0.0, _order_response_timer - delta)
+		if _order_response_timer > 0.0 and state != State.FIGHTING:
+			return
+
 	# Support stance: guard a friendly ward — engage threats near it, else
 	# shadow it. Handled up front so it overrides the normal target/move logic. If
 	# the ward is gone (dead, routed, or cleared) the order is spent, so drop it and
@@ -865,6 +885,13 @@ func tick_cohesion(delta: float) -> void:
 func tick_morale(delta: float) -> void:
 	if state != State.FIGHTING and morale < 100.0:
 		morale = minf(100.0, morale + MORALE_RECOVER_PER_SEC * delta)
+
+
+## Start the order-response countdown. Called by Battle after stamping new
+## motion fields onto the unit. The unit holds its current action for
+## order_response_delay seconds before executing the new order.
+func start_order_response() -> void:
+	_order_response_timer = order_response_delay
 
 
 ## Fold another friendly regiment into this one: pool soldiers, blend the

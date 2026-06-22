@@ -187,6 +187,22 @@ func test_plain_order_clears_a_prior_support_ward() -> void:
 	assert_eq(supporter.order_mode, BattleScript.OrderMode.NORMAL, "and resets the stance")
 
 
+func test_relief_order_skips_response_delay() -> void:
+	# The primary reliever must advance immediately — a delay lets the tired unit
+	# retreat into an uncovered gap. _apply_order_cmd skips start_order_response()
+	# for the unit that calls begin_relief(), so its timer stays at 0.0.
+	var fresh := _unit(1, Vector2.ZERO)
+	fresh.team = 0
+	fresh.order_response_delay = 0.5
+	var tired := _unit(2, Vector2(100, 0))
+	tired.team = 0
+	tired.state = UnitScript.State.FIGHTING
+	var b := _battle([fresh, tired])
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0, "target": 2})
+	assert_eq(fresh._order_response_timer, 0.0,
+			"the primary reliever is not delayed — it advances into the gap immediately")
+
+
 func test_append_preserves_a_support_ward() -> void:
 	# An append continues the current order, so — like the stance — it leaves a
 	# unit's support ward intact rather than clearing it.

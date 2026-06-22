@@ -40,7 +40,8 @@ under pressure.
 1. **Select** --- left-click a unit, or drag a box to grab several at once. The info
    panel fills with the selected unit's stats.
 2. **Order** --- right-click to send them. Move them onto an enemy's flank, or
-   right-click the enemy directly to attack.
+   right-click the enemy directly to attack. There is a brief **reaction delay**
+   (~0.5 s, faster for cavalry) before units execute --- orders aren't instant.
 3. **Watch the bars** --- each unit shows a strength bar that drops as it takes
    casualties. Morale matters as much as numbers (see [Tactics](tactics.qmd)).
 4. **Navigate terrain** --- the field has two terrain patches: a **dark-green forest**
