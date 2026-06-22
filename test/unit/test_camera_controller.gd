@@ -94,3 +94,21 @@ func test_pan_clamped_to_bounds_y() -> void:
 	cam._unhandled_input(event)
 	assert_lte(cam.position.y, cam.bounds.position.y + cam.bounds.size.y,
 		"pan cannot exceed the bottom bound")
+
+
+func test_pinch_anchors_on_gesture_position() -> void:
+	var cam := _make_camera()
+	cam.zoom = Vector2(1.0, 1.0)
+	# Use a gesture position offset from center so the anchor matters.
+	var gesture_pos := Vector2(200.0, 150.0)
+	var vp_center: Vector2 = cam.get_viewport().get_visible_rect().size * 0.5
+	var world_before: Vector2 = cam.position + (gesture_pos - vp_center) / cam.zoom.x
+	var event := InputEventMagnifyGesture.new()
+	event.position = gesture_pos
+	event.factor = 2.0   # zoom in
+	cam._unhandled_input(event)
+	var world_after: Vector2 = cam.position + (gesture_pos - vp_center) / cam.zoom.x
+	assert_almost_eq(world_after.x, world_before.x, 0.01,
+		"pinch anchor keeps the X world coordinate fixed under the gesture")
+	assert_almost_eq(world_after.y, world_before.y, 0.01,
+		"pinch anchor keeps the Y world coordinate fixed under the gesture")

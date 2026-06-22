@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Touchpad gesture support (two-finger pan, pinch zoom) — live input events the recorded-battle pipeline cannot capture."
+  "reason": "Pinch-to-zoom anchor on gesture midpoint — live trackpad input the recorded-battle pipeline cannot capture."
 }
