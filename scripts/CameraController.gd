@@ -10,7 +10,7 @@ class_name CameraController
 @export var zoom_max: float = 2.2
 # Two-finger swipe sensitivity: world units per pixel of trackpad delta.
 # Divided by zoom.x so the pan speed stays consistent across zoom levels.
-const PAN_GESTURE_SENSITIVITY := 1.5
+@export var pan_gesture_sensitivity: float = 1.5
 
 # Battlefield extents (world coords); Battle.gd overrides these.
 var bounds: Rect2 = Rect2(0, 0, 1600, 1000)
@@ -61,7 +61,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_zoom_anchored(1.0 / 1.1, event.position)
 	elif event is InputEventPanGesture:
-		position += event.delta * PAN_GESTURE_SENSITIVITY / zoom.x
+		position += event.delta * pan_gesture_sensitivity / zoom.x
 		_clamp_position()
 	elif event is InputEventMagnifyGesture:
 		_zoom_anchored(event.factor, event.position)
