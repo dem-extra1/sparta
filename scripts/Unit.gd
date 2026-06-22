@@ -204,9 +204,9 @@ var _mm_outline: MultiMesh = null
 var _mmi_body: MultiMeshInstance2D = null
 var _mmi_outline: MultiMeshInstance2D = null
 var _shadow: Polygon2D = null
-# Disc meshes are shared across all units by radius (foot/cav marks come in two sizes
-# each — a body disc and a slightly larger outline disc), built once on demand.
-static var _disc_mesh_cache: Dictionary = {}
+# Meshes are shared across all units (foot/cav marks come in two sizes each —
+# a body mesh and a slightly larger outline mesh), built once on demand.
+static var _mesh_cache: Dictionary = {}
 
 
 func _ready() -> void:
@@ -1123,8 +1123,8 @@ func _hash01(i: int) -> float:
 ## A unit-local circle of radius 1, shared by all units; scaled per use. Cached.
 static func _disc_mesh(radius: float) -> ArrayMesh:
 	var key: float = snappedf(radius, 0.01)
-	if _disc_mesh_cache.has(key):
-		return _disc_mesh_cache[key]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
 	var segments: int = 10
 	var verts := PackedVector2Array()
 	verts.push_back(Vector2.ZERO)   # fan centre
@@ -1142,7 +1142,46 @@ static func _disc_mesh(radius: float) -> ArrayMesh:
 	arrays[Mesh.ARRAY_INDEX] = idx
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	_disc_mesh_cache[key] = mesh
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+static func _rect_mesh(w: float, h: float) -> ArrayMesh:
+	var key: String = "r%.2f_%.2f" % [w, h]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var hw := w * 0.5
+	var hh := h * 0.5
+	var verts := PackedVector2Array([
+		Vector2(-hw, -hh), Vector2(hw, -hh), Vector2(hw, hh), Vector2(-hw, hh),
+	])
+	var idx := PackedInt32Array([0, 1, 2, 0, 2, 3])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+static func _diamond_mesh(radius: float) -> ArrayMesh:
+	var key: String = "d%.2f" % [radius]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var verts := PackedVector2Array([
+		Vector2(0.0, -radius), Vector2(radius, 0.0),
+		Vector2(0.0, radius),  Vector2(-radius, 0.0),
+	])
+	var idx := PackedInt32Array([0, 1, 2, 0, 2, 3])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_mesh_cache[key] = mesh
 	return mesh
 
 
@@ -1153,6 +1192,19 @@ static func _disc_mesh(radius: float) -> ArrayMesh:
 ## outline so it draws in front of it at the same effective z. One-time setup in _ready().
 func _setup_flock_renderer() -> void:
 	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+	# Per-type mesh shapes so soldiers read differently at a glance:
+	# spearmen = tall thin rectangle (shaft), archers = diamond (arrow), cavalry/infantry = disc.
+	var body_mesh: ArrayMesh
+	var outline_mesh: ArrayMesh
+	if anti_cavalry:
+		body_mesh    = _rect_mesh(mark_r * 0.65, mark_r * 1.7)
+		outline_mesh = _rect_mesh(mark_r * 0.65 + 1.2, mark_r * 1.7 + 1.2)
+	elif is_ranged:
+		body_mesh    = _diamond_mesh(mark_r * 1.15)
+		outline_mesh = _diamond_mesh(mark_r * 1.15 + 0.6)
+	else:
+		body_mesh    = _disc_mesh(mark_r)
+		outline_mesh = _disc_mesh(mark_r + 0.6)
 
 	_shadow = Polygon2D.new()
 	_shadow.polygon = _ellipse_polygon()
@@ -1162,7 +1214,7 @@ func _setup_flock_renderer() -> void:
 
 	_mm_outline = MultiMesh.new()
 	_mm_outline.transform_format = MultiMesh.TRANSFORM_2D
-	_mm_outline.mesh = _disc_mesh(mark_r + 0.6)
+	_mm_outline.mesh = outline_mesh
 	_mmi_outline = MultiMeshInstance2D.new()
 	_mmi_outline.multimesh = _mm_outline
 	_mmi_outline.z_index = -1   # eff 2
@@ -1170,7 +1222,7 @@ func _setup_flock_renderer() -> void:
 
 	_mm_body = MultiMesh.new()
 	_mm_body.transform_format = MultiMesh.TRANSFORM_2D
-	_mm_body.mesh = _disc_mesh(mark_r)
+	_mm_body.mesh = body_mesh
 	_mmi_body = MultiMeshInstance2D.new()
 	_mmi_body.multimesh = _mm_body
 	_mmi_body.z_index = -1   # eff 2, added after the outline -> drawn in front of it
