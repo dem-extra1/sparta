@@ -14,6 +14,9 @@ const FIELD := Rect2(0, 0, 1600, 1000)
 # Overloads the existing int field (like merge/relief) so the replay format is
 # unchanged — real merge/attack/relief targets are uids >= 0, a plain move is -1.
 const ORDER_APPEND_WAYPOINT := -2
+# Sentinel for a formation-change-only order (no movement, no target). Handled
+# before the main move/attack/merge logic so it doesn't clear waypoints or stances.
+const ORDER_FORMATION_ONLY := -3
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
@@ -186,7 +189,8 @@ func _physics_process(_delta: float) -> void:
 	else:
 		for o in _pending_orders:
 			Replay.record_order(_tick, o["units"], Vector2(o["x"], o["y"]), o["target"],
-					int(o.get("mode", OrderMode.NORMAL)))
+					int(o.get("mode", OrderMode.NORMAL)),
+					int(o.get("formation", UnitRef.FORMATION_NORMAL)))
 			_apply_order_cmd(o)
 		_pending_orders.clear()
 
@@ -227,10 +231,35 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		_apply_order_cmd(cmd)
 
 
+## Change the formation mode for a set of units. Recorded so replays stay exact.
+func enqueue_formation(uids: Array, formation: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_FORMATION_ONLY,
+		"mode": OrderMode.NORMAL,
+		"formation": formation,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_cmd(cmd)
+
+
 ## Apply one order (move or attack) to its units. Shared by live play and
 ## playback so both produce identical results.
 func _apply_order_cmd(cmd: Dictionary) -> void:
 	var target_uid: int = int(cmd["target"])
+	# Formation-change-only: update each unit's formation and separation footprint,
+	# leaving all movement and order-mode state untouched.
+	if target_uid == ORDER_FORMATION_ONLY:
+		var fm: int = int(cmd.get("formation", UnitRef.FORMATION_NORMAL))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null:
+				u.set_formation(fm)
+		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
 	# disambiguator). Handle it first, then fall through to attack/relief/move.

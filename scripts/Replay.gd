@@ -44,8 +44,9 @@ var seed_value: int = 0
 
 # Orders for the battle being recorded or played back.
 # Each entry: { "tick": int, "units": Array[int] (uids), "x": float, "y": float,
-#               "target": int (enemy uid, or -1 for a move order),
-#               "mode": int (Battle.OrderMode; 0 = NORMAL) }.
+#               "target": int (enemy uid, -1 move, -3 formation-only),
+#               "mode": int (Battle.OrderMode; 0 = NORMAL),
+#               "formation"?: int (Unit.FORMATION_*; omitted when 0 = NORMAL) }.
 var _orders: Array = []
 var _play_index: int = 0
 # Bumped per save so two battles finishing in the same wall-clock second don't
@@ -101,14 +102,17 @@ func start_playback(path: String) -> bool:
 		var uids: Array = []
 		for u in o.get("units", []):
 			uids.append(int(u))
-		_orders.append({
+		var entry := {
 			"tick": int(o.get("tick", 0)),
 			"units": uids,
 			"x": float(o.get("x", 0.0)),
 			"y": float(o.get("y", 0.0)),
 			"target": int(o.get("target", -1)),
 			"mode": int(o.get("mode", 0)),   # 0 = OrderMode.NORMAL
-		})
+		}
+		if o.has("formation"):
+			entry["formation"] = int(o["formation"])
+		_orders.append(entry)
 	_play_index = 0
 	loaded_path = path
 	mode = Mode.PLAYBACK
@@ -129,17 +133,20 @@ func replays_dir() -> String:
 
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
-		order_mode: int = 0) -> void:
+		order_mode: int = 0, formation: int = 0) -> void:
 	if mode != Mode.RECORD:
 		return
-	_orders.append({
+	var entry := {
 		"tick": tick,
 		"units": uids.duplicate(),
 		"x": pos.x,
 		"y": pos.y,
 		"target": target_uid,
 		"mode": order_mode,   # 0 = OrderMode.NORMAL
-	})
+	}
+	if formation != 0:
+		entry["formation"] = formation
+	_orders.append(entry)
 
 
 ## PLAYBACK: return all orders scheduled for `tick` (in record order), advancing
