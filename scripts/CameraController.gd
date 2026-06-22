@@ -57,26 +57,29 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_zoom_by(1.1)
+			_zoom_anchored(1.1, event.position)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_zoom_by(1.0 / 1.1)
+			_zoom_anchored(1.0 / 1.1, event.position)
 	elif event is InputEventPanGesture:
 		position += event.delta * PAN_GESTURE_SENSITIVITY / zoom.x
 		_clamp_position()
 	elif event is InputEventMagnifyGesture:
-		var old_z: float = zoom.x
-		_zoom_by(event.factor)
-		# Anchor the zoom on the pinch midpoint: the world point under the
-		# gesture stays fixed as zoom changes.
-		var vp_center: Vector2 = get_viewport().get_visible_rect().size * 0.5
-		var screen_offset: Vector2 = event.position - vp_center
-		position += screen_offset / old_z - screen_offset / zoom.x
-		_clamp_position()
+		_zoom_anchored(event.factor, event.position)
 
 
 func _zoom_by(factor: float) -> void:
 	var z: float = clampf(zoom.x * factor, zoom_min, zoom_max)
 	zoom = Vector2(z, z)
+
+
+func _zoom_anchored(factor: float, screen_pos: Vector2) -> void:
+	var old_z: float = zoom.x
+	_zoom_by(factor)
+	# Keep the world point under screen_pos fixed as zoom changes.
+	var vp_center: Vector2 = get_viewport().get_visible_rect().size * 0.5
+	var screen_offset: Vector2 = screen_pos - vp_center
+	position += screen_offset / old_z - screen_offset / zoom.x
+	_clamp_position()
 
 
 func _clamp_position() -> void:

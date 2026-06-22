@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Pinch-to-zoom anchor on gesture midpoint — live trackpad input the recorded-battle pipeline cannot capture."
+  "reason": "Mouse-wheel zoom cursor anchor — live mouse input the recorded-battle pipeline cannot capture."
 }
