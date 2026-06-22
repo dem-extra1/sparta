@@ -64,7 +64,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		position += event.delta * PAN_GESTURE_SENSITIVITY / zoom.x
 		_clamp_position()
 	elif event is InputEventMagnifyGesture:
+		var old_z: float = zoom.x
 		_zoom_by(event.factor)
+		# Anchor the zoom on the pinch midpoint: the world point under the
+		# gesture stays fixed as zoom changes.
+		var vp_center: Vector2 = get_viewport().get_visible_rect().size * 0.5
+		var screen_offset: Vector2 = event.position - vp_center
+		position += screen_offset / old_z - screen_offset / zoom.x
+		_clamp_position()
 
 
 func _zoom_by(factor: float) -> void:
