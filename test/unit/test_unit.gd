@@ -1098,7 +1098,7 @@ func test_rout_timeout_leaves_groups_synchronously() -> void:
 	# queue_free() is deferred to end of frame, but the group memberships must be
 	# dropped synchronously so a DEAD unit never lingers in the spatial-hash /
 	# separation scans (both of which include the routers group) for the rest of
-	# the tick — see issue.
+	# the tick.
 	assert_false(u.is_in_group("routers"),
 		"a shattered unit leaves the routers group the same tick it dies")
 	assert_false(u.is_in_group("units"),

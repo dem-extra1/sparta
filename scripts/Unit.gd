@@ -319,8 +319,8 @@ func _nearest_enemy() -> Unit:
 
 
 ## Nearest living, non-routing enemy within `radius` of `center`. Backs both normal
-## auto-acquisition (centred on this unit, DETECTION_RANGE) and the support stance
-##, which scans around the WARD's position so a supporter meets threats
+## auto-acquisition (centred on this unit, DETECTION_RANGE) and the support stance,
+## which scans around the WARD's position so a supporter meets threats
 ## closing on its charge rather than only ones near itself.
 func _nearest_enemy_to(center: Vector2, radius: float) -> Unit:
 	var best: Unit = null

@@ -18,8 +18,8 @@ const ORDER_APPEND_WAYPOINT := -2
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
 ## mode (SelectionManager), recorded in the replay ("mode") and stamped on
-## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues
-##. Until then a non-NORMAL stance is stored but behaves as
+## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
+## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
 enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT }
 
@@ -419,8 +419,8 @@ func _end(text: String) -> void:
 	# re-save (the file already exists).
 	if Replay.mode == Replay.Mode.RECORD:
 		Replay.save(text, _tick)
-	# Report the outcome back to the campaign if this clash was launched from the map
-	#, before the HUD's "Return to Campaign" button can act on it.
+	# Report the outcome back to the campaign if this clash was launched from the map,
+	# before the HUD's "Return to Campaign" button can act on it.
 	if CampaignBattle.active:
 		_report_campaign_result(text)
 	# Fanfare on a win; the somber sting otherwise. A mutual-destruction draw
