@@ -2,11 +2,12 @@ extends RefCounted
 ## Campaign-map game state and rules (M2, #70) — pure logic, no scene/Node deps so
 ## it runs headless and is unit-tested directly (test/unit/test_campaign_state.gd).
 ##
-## A campaign is a single war (#70): two factions contest a set of provinces. Each
-## province has an owner and a stationed army (an integer strength). On a faction's
-## turn each of its armies may move once into an adjacent province — reinforcing a
-## friendly one or attacking an enemy/neutral one (battles are auto-resolved here;
-## the tactical-battle hookup is M3). A faction wins by owning every province.
+## A campaign is a single war (#70): two or more factions contest a set of provinces,
+## with per-pair war/peace stances (#123). Each province has an owner and a stationed
+## army (an integer strength). On a faction's turn each of its armies may move once
+## into an adjacent province — reinforcing a friendly one or attacking an enemy one it
+## is at war with (battles are auto-resolved here; the tactical-battle hookup is M3).
+## A faction wins by owning every province.
 ##
 ## State is built from a map dictionary (see scripts/campaign/CampaignLoader.gd); only
 ## the dynamic fields (owner, army) and the adjacency/names are kept here — geometry
@@ -44,8 +45,10 @@ const ROLL_MAX := 1.25
 const CASUALTY_SEVERITY := 0.6
 
 
-## Build from a map dict: {faction_names:[...], provinces:[{id,name,owner,army,adj}, ...]}.
-## A fixed `rng_seed` (>= 0) makes auto-resolve deterministic for tests; -1 randomises.
+## Build from a map dict: {faction_names:[...], provinces:[{id,name,owner,army,adj}, ...],
+## peace:[[a,b], ...]}. `peace` is optional — listed pairs start at peace, everything
+## else at war (#123). A fixed `rng_seed` (>= 0) makes auto-resolve deterministic for
+## tests; -1 randomises.
 func _init(map: Dictionary, rng_seed: int = -1) -> void:
 	faction_names = []
 	for fname in map.get("faction_names", []):
@@ -62,6 +65,14 @@ func _init(map: Dictionary, rng_seed: int = -1) -> void:
 		for n in p.get("adj", []):
 			adj.append(int(n))
 		adjacency[id] = adj
+	# Optional initial diplomacy: a map may list faction pairs that start at peace
+	# (everything else defaults to war). This is how a neutral faction is seeded —
+	# at peace with all belligerents until someone declares war (#123). The shape
+	# check is a defensive guard, not the primary validator: CampaignLoader.parse_map
+	# already rejects malformed peace entries, so a well-formed map never trips it.
+	for pair in map.get("peace", []):
+		if typeof(pair) == TYPE_ARRAY and pair.size() >= 2:
+			make_peace(int(pair[0]), int(pair[1]))
 	if rng_seed >= 0:
 		_rng.seed = rng_seed
 	else:
@@ -94,14 +105,12 @@ func can_move(from_id: int, to_id: int) -> bool:
 		return false
 	if _acted.has(from_id):
 		return false
-	if not are_adjacent(from_id, to_id):
-		return false
-	# Entering another faction's province (occupy or attack) is an act of war, so it
-	# requires being at war with them. Reinforcing your own is always allowed.
+	# Must be adjacent, and — entering another faction's province (occupy or attack)
+	# being an act of war — the mover must be at war with them. Reinforcing your own
+	# province is always allowed.
 	var to_owner := owner_of(to_id)
-	if to_owner != current_faction and not at_war(current_faction, to_owner):
-		return false
-	return true
+	return are_adjacent(from_id, to_id) \
+			and (to_owner == current_faction or at_war(current_faction, to_owner))
 
 
 # --- diplomacy (#123) ------------------------------------------------------
@@ -134,7 +143,9 @@ func make_peace(a: int, b: int) -> void:
 
 ## Move/attack the army in `from_id` into `to_id`. Caller must check can_move first.
 ## Returns a result dict describing what happened:
-##   {ok, combat, attacker_won, from, to, attacker, defender, survivors}
+##   {ok, combat, attacker_won, from, to, attacker, defender, defender_owner, survivors}
+## `defender_owner` is the faction that held `to` before the move (useful for messaging
+## with 3+ factions, since `to`'s owner may change on capture).
 func move_or_attack(from_id: int, to_id: int) -> Dictionary:
 	if not can_move(from_id, to_id):
 		return {"ok": false}
@@ -144,7 +155,7 @@ func move_or_attack(from_id: int, to_id: int) -> Dictionary:
 	var result := {
 		"ok": true, "combat": false, "reinforced": false, "attacker_won": true,
 		"from": from_id, "to": to_id, "attacker": moving,
-		"defender": int(to["army"]), "survivors": moving,
+		"defender": int(to["army"]), "defender_owner": int(to["owner"]), "survivors": moving,
 	}
 
 	if to["owner"] == from["owner"]:

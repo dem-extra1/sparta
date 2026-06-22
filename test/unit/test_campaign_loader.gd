@@ -84,12 +84,64 @@ func test_rejects_malformed_polygon_point() -> void:
 	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a malformed polygon point -> rejected")
 
 
+func test_parses_peace_pairs() -> void:
+	var raw := _valid_raw()
+	raw["peace"] = [[0, 1]]
+	var m := CampaignLoader.parse_map(raw)
+	assert_false(m.is_empty(), "a valid peace pair parses")
+	assert_eq(m["peace"], [[0, 1]], "peace pairs are carried through")
+
+
+func test_peace_defaults_to_empty() -> void:
+	var m := CampaignLoader.parse_map(_valid_raw())
+	assert_eq(m["peace"], [], "no 'peace' key -> empty list (everyone at war)")
+
+
+func test_rejects_peace_with_unknown_faction() -> void:
+	var raw := _valid_raw()
+	raw["peace"] = [[0, 9]]
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "peace referencing a missing faction -> rejected")
+
+
+func test_rejects_malformed_peace_pair() -> void:
+	var raw := _valid_raw()
+	raw["peace"] = [[0]]
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a peace entry that isn't a pair -> rejected")
+
+
+func test_rejects_self_peace_pair() -> void:
+	var raw := _valid_raw()
+	raw["peace"] = [[0, 0]]
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a faction at peace with itself -> rejected (likely a typo)")
+
+
+func test_rejects_duplicate_peace_pair() -> void:
+	var raw := _valid_raw()
+	raw["peace"] = [[0, 1], [1, 0]]
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a duplicate peace pair (even reversed) -> rejected")
+
+
 func test_loads_real_gallic_war_file() -> void:
 	var m := CampaignLoader.load_map(Campaigns.DEFAULT_PATH)
 	assert_false(m.is_empty(), "the shipped Gallic War map loads")
 	assert_eq(m["name"], "Gallic War")
-	assert_eq(m["provinces"].size(), 7, "7 provinces")
-	assert_eq(m["faction_names"].size(), 2)
+	assert_eq(m["provinces"].size(), 9, "9 provinces (7 Gallic War + 2 Germanic)")
+	assert_eq(m["faction_names"].size(), 3, "Rome, Gauls, Germanic tribes")
+	# The Germanic tribes (faction 2) start at peace with both belligerents.
+	assert_eq(m["peace"], [[0, 2], [1, 2]], "neutral faction's starting peace is loaded")
+
+
+func test_real_gallic_war_adjacency_is_mutual() -> void:
+	# Movement is two-way, so every listed neighbour must list us back. Guards against
+	# hand-edit typos in the shipped map (the general validator is tracked in #128).
+	var m := CampaignLoader.load_map(Campaigns.DEFAULT_PATH)
+	var adj := {}
+	for p in m["provinces"]:
+		adj[int(p["id"])] = p["adj"]
+	for id in adj:
+		for n in adj[id]:
+			assert_true(adj.has(n) and id in adj[n],
+					"province %d <-> %d adjacency must be mutual" % [id, n])
 
 
 func test_load_missing_file_returns_empty() -> void:
