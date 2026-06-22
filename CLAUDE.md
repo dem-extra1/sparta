@@ -54,6 +54,16 @@ media.
   static UI a recorded battle can't film, `skip` the clip (above) and rely on the
   image.
 
+## Website updates in user-facing PRs
+When a PR is **user-facing** — it changes how the game looks, plays, or is
+documented (`scenes/`, `scripts/`, `assets/`, `project.godot`) — include
+corresponding updates to the docs site (`website/`) in the same PR. The site
+documents gameplay and features; if the game changes, the docs should reflect it.
+
+- Update or add pages under `website/` that describe the changed behavior.
+- If a new mechanic or UI element is introduced, add it to the relevant section.
+- See `website/` layout and the Sparta docs site memory for publishing details.
+
 ## Code conventions
 
 ### Comments: no issue-number references
