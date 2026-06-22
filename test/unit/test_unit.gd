@@ -1603,3 +1603,37 @@ func test_interceptor_skips_unit_past_target() -> void:
 
 	assert_null(archer._friendly_interceptor(enemy),
 		"friendly unit past the target is not counted as an interceptor")
+
+
+# --- morale recovery -----------------------------------------------
+
+func test_morale_recovers_while_idle() -> void:
+	var u := _make_unit()
+	u.morale = 50.0
+	u.state = Unit.State.IDLE
+	u.tick_morale(1.0)
+	assert_almost_eq(u.morale, 52.0, 0.001, "an idle unit recovers morale at MORALE_RECOVER_PER_SEC")
+
+
+func test_morale_does_not_recover_while_fighting() -> void:
+	var u := _make_unit()
+	u.morale = 50.0
+	u.state = Unit.State.FIGHTING
+	u.tick_morale(1.0)
+	assert_almost_eq(u.morale, 50.0, 0.001, "a fighting unit does not recover morale")
+
+
+func test_morale_recovers_while_moving() -> void:
+	var u := _make_unit()
+	u.morale = 80.0
+	u.state = Unit.State.MOVING
+	u.tick_morale(1.0)
+	assert_almost_eq(u.morale, 82.0, 0.001, "a moving unit also recovers morale")
+
+
+func test_morale_caps_at_100_during_recovery() -> void:
+	var u := _make_unit()
+	u.morale = 99.5
+	u.state = Unit.State.IDLE
+	u.tick_morale(1.0)
+	assert_almost_eq(u.morale, 100.0, 0.001, "morale recovery does not exceed 100")

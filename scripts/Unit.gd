@@ -124,6 +124,10 @@ const FATIGUE_PER_SEC: float = 8.0
 const FATIGUE_RECOVER_PER_SEC: float = 5.0
 const FATIGUE_MAX_ATTACK_PENALTY: float = 0.4
 
+# Morale recovers slowly when a unit is not engaged in combat, rewarding
+# players who pull battered regiments back from the line to rest.
+const MORALE_RECOVER_PER_SEC: float = 2.0
+
 # Merging two regiments starts the result with a "strangers" cohesion debuff
 # (scales attack) that ramps back to full as the merged unit gels.
 const MERGE_COHESION_FLOOR: float = 0.6
@@ -246,6 +250,7 @@ func _physics_process(delta: float) -> void:
 
 	tick_fatigue(delta)
 	tick_cohesion(delta)
+	tick_morale(delta)
 	_update_relief()
 
 	# A stationary, non-fighting unit carries no momentum: drop any leftover approach
@@ -852,6 +857,12 @@ func fatigue_attack_factor() -> float:
 func tick_cohesion(delta: float) -> void:
 	if cohesion < 1.0:
 		cohesion = minf(1.0, cohesion + COHESION_RECOVER_PER_SEC * delta)
+
+
+## Morale recovers while the unit is not fighting; builds back toward 100 at rest.
+func tick_morale(delta: float) -> void:
+	if state != State.FIGHTING and morale < 100.0:
+		morale = minf(100.0, morale + MORALE_RECOVER_PER_SEC * delta)
 
 
 ## Fold another friendly regiment into this one: pool soldiers, blend the
