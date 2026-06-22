@@ -218,7 +218,7 @@ func _registered_pathfield() -> PathField:
 
 func _patch_by_type(type: String) -> Dictionary:
 	var matches := BattleScript.TERRAIN.filter(func(p): return p["type"] == type)
-	assert_true(matches.size() > 0, "TERRAIN has no patch of type '%s'" % type)
+	assert(matches.size() > 0, "TERRAIN has no patch of type '%s'" % type)
 	return matches[0]
 
 

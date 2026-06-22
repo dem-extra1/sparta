@@ -9,10 +9,7 @@ const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 
 const FIELD := Rect2(0, 0, 1600, 1000)
 
-# Terrain patches: {rect, type} pairs; type keys into TERRAIN_COLOR.
-# "block" types are registered as PathField obstacles (units route around).
-# "slow" types are registered as PathField speed zones (units can enter but
-# move slower; the scale is the fraction of normal speed).
+# Terrain patches; type keys into TERRAIN_COLOR. kind="block" is impassable; kind="slow" is a speed zone.
 const TERRAIN: Array = [
 	{"rect": Rect2(200,  380, 250, 200), "type": "forest", "kind": "slow", "speed": 0.6},
 	{"rect": Rect2(1150, 380, 250, 200), "type": "hill",   "kind": "block"},
@@ -110,10 +107,7 @@ func _ready() -> void:
 	_camera.bounds = FIELD
 	_camera.position = FIELD.position + FIELD.size * 0.5
 
-	# Publish the pathfinding layer and register terrain patches as obstacles
-	# or speed zones. Units route around blocked patches via A*; slow patches
-	# are passable but reduce movement speed. Deterministic (grid A*) so
-	# replays stay reproducible. Cleared in _exit_tree().
+	# Register terrain patches as PathField obstacles or speed zones; cleared in _exit_tree().
 	PathField.active = PathField.new(FIELD)
 	for patch in TERRAIN:
 		if patch.get("kind", "block") == "slow":
