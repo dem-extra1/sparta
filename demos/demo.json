@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "CLAUDE.md policy addition — no game behaviour changes; a recorded battle can't show documentation."
+  "reason": "Test-only fix: explicit type annotations in GUT helpers. No game behaviour changes; a recorded battle would show nothing new."
 }
