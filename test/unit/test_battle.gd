@@ -204,32 +204,47 @@ func test_append_preserves_a_support_ward() -> void:
 
 # --- terrain / pathfinding integration ---------------------------------
 
-func test_battle_terrain_patches_block_pathfinding() -> void:
-	# Verify the TERRAIN constant's patches, when fed into a PathField, actually
-	# block movement through them and force A* to route around.
+func _registered_pathfield() -> PathField:
 	var pf := PathField.new(BattleScript.FIELD)
 	for patch in BattleScript.TERRAIN:
-		pf.block_rect(patch["rect"])
-	# A point at the centre of the first terrain patch (forest) should be blocked.
-	var forest: Dictionary = BattleScript.TERRAIN[0]
-	var forest_center := forest["rect"].position + forest["rect"].size * 0.5
-	assert_true(pf.is_blocked(forest_center),
-			"the forest terrain patch blocks movement at its centre")
+		if patch.get("kind", "block") == "slow":
+			pf.set_speed_rect(patch["rect"], float(patch.get("speed", 1.0)))
+		else:
+			pf.block_rect(patch["rect"])
+	return pf
 
 
-func test_battle_terrain_route_avoids_patches() -> void:
-	# A direct north–south path through the forest must detour around it.
-	var pf := PathField.new(BattleScript.FIELD)
-	for patch in BattleScript.TERRAIN:
-		pf.block_rect(patch["rect"])
-	var forest: Dictionary = BattleScript.TERRAIN[0]
-	var cx: float = forest["rect"].position.x + forest["rect"].size.x * 0.5
-	# Start just above the patch, end just below — straight line passes through it.
-	var above := Vector2(cx, forest["rect"].position.y - 100)
-	var below := Vector2(cx, forest["rect"].end.y + 100)
+func test_hill_blocks_pathfinding() -> void:
+	var pf := _registered_pathfield()
+	var hill: Dictionary = BattleScript.TERRAIN[1]
+	var center := hill["rect"].position + hill["rect"].size * 0.5
+	assert_true(pf.is_blocked(center), "the hill terrain patch blocks movement at its centre")
+
+
+func test_hill_route_avoids_patch() -> void:
+	var pf := _registered_pathfield()
+	var hill: Dictionary = BattleScript.TERRAIN[1]
+	var cx: float = hill["rect"].position.x + hill["rect"].size.x * 0.5
+	var above := Vector2(cx, hill["rect"].position.y - 100)
+	var below := Vector2(cx, hill["rect"].end.y + 100)
 	var route := pf.find_path(above, below)
 	assert_true(route.size() > 0,
-			"A* finds a route around the terrain patch (field is wide enough to detour)")
+			"A* finds a route around the hill (field is wide enough to detour)")
 	for p in route:
-		assert_false(pf.is_blocked(p),
-				"no A* waypoint sits inside the blocked terrain patch")
+		assert_false(pf.is_blocked(p), "no A* waypoint sits inside the blocked hill")
+
+
+func test_forest_is_not_blocked() -> void:
+	# Forest is a slow zone, not impassable: units can enter it.
+	var pf := _registered_pathfield()
+	var forest: Dictionary = BattleScript.TERRAIN[0]
+	var center := forest["rect"].position + forest["rect"].size * 0.5
+	assert_false(pf.is_blocked(center), "the forest patch is passable (slow, not blocked)")
+
+
+func test_forest_slows_movement() -> void:
+	var pf := _registered_pathfield()
+	var forest: Dictionary = BattleScript.TERRAIN[0]
+	var center := forest["rect"].position + forest["rect"].size * 0.5
+	assert_almost_eq(pf.speed_at(center), float(forest["speed"]), 0.001,
+			"the forest speed zone returns the configured speed scale")

@@ -10,9 +10,12 @@ const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 const FIELD := Rect2(0, 0, 1600, 1000)
 
 # Terrain patches: {rect, type} pairs; type keys into TERRAIN_COLOR.
+# "block" types are registered as PathField obstacles (units route around).
+# "slow" types are registered as PathField speed zones (units can enter but
+# move slower; the scale is the fraction of normal speed).
 const TERRAIN: Array = [
-	{"rect": Rect2(200,  380, 250, 200), "type": "forest"},
-	{"rect": Rect2(1150, 380, 250, 200), "type": "hill"},
+	{"rect": Rect2(200,  380, 250, 200), "type": "forest", "kind": "slow", "speed": 0.6},
+	{"rect": Rect2(1150, 380, 250, 200), "type": "hill",   "kind": "block"},
 ]
 const TERRAIN_COLOR := {
 	"forest": Color(0.12, 0.28, 0.10),
@@ -113,7 +116,10 @@ func _ready() -> void:
 	# stay reproducible. Cleared in _exit_tree() so it doesn't outlive this battle.
 	PathField.active = PathField.new(FIELD)
 	for patch in TERRAIN:
-		PathField.active.block_rect(patch["rect"])
+		if patch.get("kind", "block") == "slow":
+			PathField.active.set_speed_rect(patch["rect"], float(patch.get("speed", 1.0)))
+		else:
+			PathField.active.block_rect(patch["rect"])
 
 	# Army sizes: a campaign-launched clash deploys units scaled to the two
 	# clashing armies' strengths; a standalone battle uses the default 5-unit line.
