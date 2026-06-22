@@ -2,7 +2,7 @@ extends GutTest
 ## Tests for CameraController gesture input: two-finger pan and pinch zoom.
 
 func _make_camera() -> CameraController:
-	var cam: CameraController = load("res://scripts/CameraController.gd").new()
+	var cam: CameraController = CameraController.new()
 	add_child_autofree(cam)
 	cam.bounds = Rect2(0, 0, 1600, 1000)
 	cam.position = Vector2(800, 500)   # center of bounds
@@ -84,3 +84,13 @@ func test_pan_clamped_to_bounds() -> void:
 	cam._unhandled_input(event)
 	assert_lte(cam.position.x, cam.bounds.position.x + cam.bounds.size.x,
 		"pan cannot exceed the right bound")
+
+
+func test_pan_clamped_to_bounds_y() -> void:
+	var cam := _make_camera()
+	cam.position = Vector2(800, 990)   # near bottom edge
+	var event := InputEventPanGesture.new()
+	event.delta = Vector2(0, 1000)   # huge downward swipe
+	cam._unhandled_input(event)
+	assert_lte(cam.position.y, cam.bounds.position.y + cam.bounds.size.y,
+		"pan cannot exceed the bottom bound")
