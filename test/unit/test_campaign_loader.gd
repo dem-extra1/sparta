@@ -71,6 +71,13 @@ func test_rejects_unknown_neighbour() -> void:
 	assert_true(CampaignLoader.parse_map(raw).is_empty(), "adjacency to a missing id -> rejected")
 
 
+func test_rejects_asymmetric_adjacency() -> void:
+	var raw := _valid_raw()
+	# P0 lists P1 as a neighbour but P1 does not list P0 -> one-way edge.
+	raw["provinces"][1]["adj"] = []
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "asymmetric adjacency -> rejected")
+
+
 func test_rejects_degenerate_polygon() -> void:
 	var raw := _valid_raw()
 	raw["provinces"][0]["polygon"] = [[0, 0], [1, 1]]

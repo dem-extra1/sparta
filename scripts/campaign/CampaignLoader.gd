@@ -135,6 +135,17 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 			return {}
 		peace.append([lo, hi])
 
+	# Adjacency must be symmetric: if A lists B, B must list A.
+	var adj_index: Dictionary = {}
+	for prov in provinces:
+		adj_index[prov["id"]] = prov["adj"]
+	for prov in provinces:
+		for n in prov["adj"]:
+			if not (prov["id"] in adj_index[n]):
+				push_warning("Campaign map: adjacency between province %d and %d is not symmetric"
+						% [prov["id"], n])
+				return {}
+
 	return {
 		"name": str(raw.get("name", "Campaign")),
 		"blurb": str(raw.get("blurb", "")),
