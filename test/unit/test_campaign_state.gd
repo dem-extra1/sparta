@@ -1,5 +1,5 @@
 extends GutTest
-## Campaign-map rules (#70): exercises CampaignState directly (pure logic, no scene)
+## Campaign-map rules: exercises CampaignState directly (pure logic, no scene)
 ## with small hand-made maps. Geometry (polygons/labels) is omitted — CampaignState
 ## reads only owner/army/adj/name.
 
@@ -130,7 +130,7 @@ func test_movable_provinces_excludes_empty_and_acted() -> void:
 			"so Rome has no army left to move this turn")
 
 
-# --- diplomacy (#123) ------------------------------------------------------
+# --- diplomacy ------------------------------------------------------
 
 func test_factions_at_war_by_default() -> void:
 	var s := _state()
@@ -191,7 +191,7 @@ func test_result_reports_defender_owner() -> void:
 	assert_eq(int(r["defender_owner"]), GAULS, "the result records who held the target before the move")
 
 
-# --- tactical-battle hand-off (#122) --------------------------------------
+# --- tactical-battle hand-off --------------------------------------
 
 func test_resolve_attack_win_captures_like_auto_resolve() -> void:
 	# A battle-decided win applies the same transition as a winning auto-resolve:

@@ -1,5 +1,5 @@
 extends GutTest
-## Smoke test for the campaign scene (#70): instantiates Campaign.tscn so _ready,
+## Smoke test for the campaign scene: instantiates Campaign.tscn so _ready,
 ## the CampaignMap/CampaignHUD signal wiring, and a click→move→end-turn round all run
 ## without error. Complements test_campaign_state.gd (which covers the rules in
 ## isolation) by exercising the Node/scene layer.
@@ -11,7 +11,7 @@ const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 
 
 # CampaignBattle is a process-wide static holder; clear it around every test so a
-# campaign-launched battle (#122) set up in one test can't leak into another's scene
+# campaign-launched battle set up in one test can't leak into another's scene
 # load (where _ready would try to resume from it).
 func before_each() -> void:
 	CampaignBattle.clear()
@@ -66,7 +66,7 @@ func test_click_selects_then_orders() -> void:
 	var c := _centroids()
 
 	# Use quick-resolve so a contested attack resolves on the map instead of launching
-	# the tactical battle (#122) — this test exercises the move/attack order path.
+	# the tactical battle — this test exercises the move/attack order path.
 	map._auto_resolve = true
 
 	# Click a Roman, manned province (Narbonensis = id 0) -> it becomes selected.
@@ -108,7 +108,7 @@ func test_restart_re_enables_end_turn() -> void:
 
 func test_diplomacy_toggle_declares_and_makes_peace() -> void:
 	# The Germanic tribes (faction 2) start neutral; the HUD toggle declares war and
-	# then sues for peace, and the change is reflected in the rules immediately (#123).
+	# then sues for peace, and the change is reflected in the rules immediately.
 	var s = await _scene()
 	var map := s.get_node("CampaignMap")
 	assert_false(map._state.at_war(0, 2), "Germanic tribes start at peace with Rome")

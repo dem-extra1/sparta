@@ -25,7 +25,7 @@ func _attacker_at(p: Vector2) -> Unit:
 	return a
 
 
-# --- hold location (#84) ---------------------------------------------------
+# --- hold location ---------------------------------------------------
 
 func test_hold_unit_does_not_chase_a_nearby_enemy() -> void:
 	var u := _make_unit()
@@ -81,7 +81,7 @@ func test_hold_ranged_unit_still_fires_within_range() -> void:
 	assert_eq(u.state, Unit.State.FIGHTING, "a held ranged unit still looses volleys in range")
 
 
-# --- skirmish kiting (#85) -------------------------------------------------
+# --- skirmish kiting -------------------------------------------------
 
 func test_skirmish_ranged_unit_retreats_from_a_close_enemy() -> void:
 	var u := _make_unit()
@@ -148,7 +148,7 @@ func test_skirmish_ranged_unit_does_not_kite_on_a_plain_move_order() -> void:
 	assert_gt(u.position.x, 500.0, "a skirmisher under a move order marches to its destination, not away")
 
 
-# --- support / defend a friendly (#86) -------------------------------------
+# --- support / defend a friendly -------------------------------------
 
 func test_support_unit_moves_toward_its_ward_with_no_threat() -> void:
 	var u := _make_unit()
@@ -259,7 +259,7 @@ func test_order_summary_reports_support_ward() -> void:
 		"a supporting unit reports the ward it's guarding")
 
 
-# --- attack flank / rear approach (#82) ------------------------------------
+# --- attack flank / rear approach ------------------------------------
 
 func test_attack_rear_approach_point_is_behind_the_target() -> void:
 	var u := _make_unit()
@@ -433,7 +433,7 @@ func test_order_summary_ignores_dead_target() -> void:
 		"a dead target is not reported as an attack order")
 
 
-# --- physics-based cavalry charge (issue #100) -----------------------------
+# --- physics-based cavalry charge -----------------------------
 
 func test_charge_full_on_headon_gallop() -> void:
 	var u := _cavalry()
@@ -573,7 +573,7 @@ func test_approach_velocity_survives_a_cooldown_wait_in_contact() -> void:
 
 
 func test_stationary_cavalry_takes_no_spear_penalty() -> void:
-	# Physics model (#100): the anti-cavalry penalty IS the charge backfiring, so a
+	# Physics model: the anti-cavalry penalty IS the charge backfiring, so a
 	# cavalry unit that isn't charging (no impact velocity) fights spearmen at full
 	# effectiveness — unlike the old flat first-strike x0.6. Recorded as intended.
 	var u := _cavalry()
@@ -586,7 +586,7 @@ func test_stationary_cavalry_takes_no_spear_penalty() -> void:
 		"a stationary (non-charging) cavalry unit takes no anti-cavalry penalty")
 
 
-# --- per-type footprint (issue #6) -----------------------------------------
+# --- per-type footprint -----------------------------------------
 
 func _cavalry() -> Unit:
 	var u: Unit = Unit.new()
@@ -652,7 +652,7 @@ func test_spearmen_pair_overlap_at_38px_pushed_apart() -> void:
 	assert_lt(a.position.x, 0.0, "spearmen at 38px overlap by footprint and push apart")
 
 
-# --- co-located fan-out determinism (issue #50) ----------------------------
+# --- co-located fan-out determinism ----------------------------
 
 func test_co_located_pair_fans_apart_by_uid() -> void:
 	# Two regiments stacked on the exact same spot must push in OPPOSITE
@@ -674,7 +674,7 @@ func test_co_located_pair_fans_apart_by_uid() -> void:
 
 
 func test_co_located_push_matches_uid_formula() -> void:
-	# The fan-out angle and sign are keyed off the stable uid (issue #50): keyed
+	# The fan-out angle and sign are keyed off the stable uid: keyed
 	# off get_instance_id() — which is assigned per launch — a live run and its
 	# replay would push co-located units different ways and desync. Pin the exact
 	# vector the uid formula produces so a regression to instance ids is caught.
@@ -717,7 +717,7 @@ func test_co_located_equal_uid_pair_still_fans_apart() -> void:
 		"equal-uid co-located units fall back to the instance-id sign and fan apart")
 
 
-# --- waypoints (issue #34) -------------------------------------------------
+# --- waypoints -------------------------------------------------
 
 func test_unit_advances_to_next_waypoint_on_arrival() -> void:
 	var u := _make_unit()
@@ -766,7 +766,7 @@ func test_order_summary_singular_waypoint() -> void:
 	)
 
 
-# --- ranged units (issue #37) ----------------------------------------------
+# --- ranged units ----------------------------------------------
 
 func _archer() -> Unit:
 	var u: Unit = Unit.new()
@@ -818,7 +818,7 @@ func test_archer_melees_when_enemy_in_contact() -> void:
 	assert_lt(enemy.soldiers, before, "and deals melee casualties")
 
 
-# --- friendly pass-through (issue #5) --------------------------------------
+# --- friendly pass-through --------------------------------------
 
 func test_mover_passes_through_idle_friendly() -> void:
 	var mover := _make_unit()
@@ -890,7 +890,7 @@ func test_mover_does_not_pass_through_fighting_friendly() -> void:
 	assert_lt(mover.position.x, 0.0, "a moving unit cannot pass through a fighting friendly")
 
 
-# --- hard blocking: spearmen stop cavalry (issue #8) -----------------------
+# --- hard blocking: spearmen stop cavalry -----------------------
 
 func test_spearman_holds_line_against_enemy_cavalry() -> void:
 	var spear := _spearman_unit()              # team 0
@@ -927,7 +927,7 @@ func test_enemy_infantry_still_separates_softly_from_spearman() -> void:
 		"a spearman is only a hard wall to cavalry — infantry shoves it normally")
 
 
-# --- fatigue + line relief (issue #4) --------------------------------------
+# --- fatigue + line relief --------------------------------------
 
 func test_fatigue_builds_while_fighting() -> void:
 	var u := _make_unit()
@@ -1015,7 +1015,7 @@ func test_relief_exemption_clears_once_pair_moves_apart() -> void:
 		"the exemption ends once the swapping pair has moved apart")
 
 
-# --- unit merging (issue #3) -----------------------------------------------
+# --- unit merging -----------------------------------------------
 
 func test_merge_pools_soldiers_and_sums_max() -> void:
 	var a := _make_unit(100)
@@ -1079,12 +1079,12 @@ func test_merge_blends_using_current_soldiers_not_max() -> void:
 	assert_eq(a.attack, 15, "attack weights by current soldiers, not max")
 
 
-# --- rout timeout teardown (issue #61) -------------------------------------
+# --- rout timeout teardown -------------------------------------
 
 func test_rout_timeout_leaves_groups_synchronously() -> void:
 	var u := _make_unit()
-	# An enemy in contact means the rout can't rally, so it SHATTERS at timeout (#68) —
-	# the removal path that must still tear groups down synchronously (#61).
+	# An enemy in contact means the rout can't rally, so it SHATTERS at timeout —
+	# the removal path that must still tear groups down synchronously.
 	var enemy := _make_unit()
 	enemy.team = 1
 	enemy.position = Vector2(20, 0)   # well inside RALLY_CONTACT_RADIUS
@@ -1098,14 +1098,14 @@ func test_rout_timeout_leaves_groups_synchronously() -> void:
 	# queue_free() is deferred to end of frame, but the group memberships must be
 	# dropped synchronously so a DEAD unit never lingers in the spatial-hash /
 	# separation scans (both of which include the routers group) for the rest of
-	# the tick — see issue #61.
+	# the tick.
 	assert_false(u.is_in_group("routers"),
 		"a shattered unit leaves the routers group the same tick it dies")
 	assert_false(u.is_in_group("units"),
 		"a shattered unit is not in the units group either")
 
 
-# --- rout recovery: rally vs shatter (issue #68) ---------------------------
+# --- rout recovery: rally vs shatter ---------------------------
 
 func test_rout_rallies_after_breaking_contact() -> void:
 	# No enemy nearby and plenty of men left: the rout times out into a RALLY, returning
@@ -1141,7 +1141,7 @@ func test_rout_shatters_when_gutted_even_if_clear() -> void:
 	assert_eq(u.state, Unit.State.DEAD, "a gutted rout shatters even with no enemy near")
 
 
-# --- individual-soldier formation layout (issue #32, Stage A) ---------------
+# --- individual-soldier formation layout (Stage A) ---------------
 
 func test_formation_slots_one_per_soldier() -> void:
 	var u := _make_unit(120)
@@ -1153,7 +1153,7 @@ func test_formation_slots_one_per_soldier() -> void:
 func test_formation_block_is_horizontally_centered() -> void:
 	# Each rank is centred on its own count, so the block's horizontal centroid stays on
 	# the unit even when the last rank is partial (non-perfect n) — not just for a perfect
-	# grid. (#32 review: a left-aligned partial rank used to drift small/depleted blocks.)
+	# grid. (A left-aligned partial rank used to drift small/depleted blocks.)
 	var u := _make_unit()
 	for n in [50, 51, 53, 87, 7]:
 		var slots := u._formation_slots(n)
@@ -1180,7 +1180,7 @@ func test_formation_is_wider_than_deep() -> void:
 	assert_gt(max_x - min_x, max_y - min_y, "the formation is wider than it is deep")
 
 
-# --- individual-soldier flocking (issue #32, Stage B) -----------------------
+# --- individual-soldier flocking (Stage B) -----------------------
 # _flock_step() is the pure, deterministic per-mark steering (arrival spring +
 # separation + clamps). It's cosmetic — never read by the sim — but unit-tested so the
 # motion stays stable: marks converge onto formation, push apart when overlapping, and
@@ -1246,7 +1246,7 @@ func test_flock_render_tracks_soldier_count() -> void:
 
 func test_flock_merge_growth_spawns_distinct_marks() -> void:
 	# New marks from a merge must not stack on the exact centre (where the separation step
-	# can't tell them apart and they'd drift as one blob); they spawn fanned out. #32 Stage B.
+	# can't tell them apart and they'd drift as one blob); they spawn fanned out.
 	var u := _make_unit(60)
 	u._resize_soldiers(120)   # simulate a merge growing the regiment
 	var seen := {}
@@ -1269,7 +1269,7 @@ func test_flock_marks_stay_finite_and_bounded_while_moving() -> void:
 		assert_lt(p.length(), 200.0, "a mark stays near the block, never smears off")
 
 
-# --- individual-soldier combat churn (issue #32, Stage C) -------------------
+# --- individual-soldier combat churn (Stage C) -------------------
 # _combat_lunge_offset() is the pure, deterministic per-mark melee churn layered onto a
 # fighting block's front rank (press/recoil into the contact line + sideways jitter). It's
 # cosmetic — never read by the sim — but unit-tested so the motion stays bounded and only

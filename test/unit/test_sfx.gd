@@ -1,5 +1,5 @@
 extends GutTest
-## Sound-effects autoload (issue #54). Exercises the Sfx singleton's stream
+## Sound-effects autoload. Exercises the Sfx singleton's stream
 ## construction and the play() gating/throttle logic. Playback itself produces no
 ## audible output under the headless dummy driver, so "did it play" is observed
 ## via _next_voice advancing (play() consumes the next voice only when it fires).

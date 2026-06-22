@@ -1,5 +1,5 @@
 extends GutTest
-## VolleyTrail (#65): the cosmetic arrow-volley streak spawned by a ranged volley.
+## VolleyTrail: the cosmetic arrow-volley streak spawned by a ranged volley.
 ## It's a render-time visual, but the spawn geometry and self-cleanup are plain logic
 ## worth pinning (the drawing itself is verified visually / in the demo clip).
 

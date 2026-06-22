@@ -1,5 +1,5 @@
 extends GutTest
-## SelectionManager order-overlay helpers (#101): the SUPPORT-ward resolution that
+## SelectionManager order-overlay helpers: the SUPPORT-ward resolution that
 ## decides whether the hold-Space overlay draws a supporter→ward link. The drawing
 ## itself is visual, but the ward-validity guard is pure logic and worth pinning.
 ## (The freed-instance `is_instance_valid(ward) == false` path isn't exercised — it
@@ -10,7 +10,7 @@ const SelectionManagerScript = preload("res://scripts/SelectionManager.gd")
 const UnitScript = preload("res://scripts/Unit.gd")
 const BattleScript = preload("res://scripts/Battle.gd")
 
-# Snapshot/restore the global Settings hotkeys around tests that rebind them (#87),
+# Snapshot/restore the global Settings hotkeys around tests that rebind them,
 # so a rebinding test can't leak into others or the real user://settings.cfg.
 var _orig_bindings: Dictionary
 
@@ -76,7 +76,7 @@ func test_support_ward_skips_self() -> void:
 	assert_null(sm._support_ward_of(u), "a unit can't guard itself")
 
 
-# --- order-mode hotkeys read from Settings (#87) ---------------------------
+# --- order-mode hotkeys read from Settings ---------------------------
 
 func test_selector_reads_rebound_key_from_settings() -> void:
 	var sm := _sm()

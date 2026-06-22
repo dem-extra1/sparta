@@ -1,5 +1,5 @@
 extends GutTest
-## CampaignBattle (#122): the campaign<->tactical-battle hand-off holder. The scene
+## CampaignBattle: the campaign<->tactical-battle hand-off holder. The scene
 ## swap itself isn't unit-tested, but the pure strength<->units mapping and the
 ## holder lifecycle are.
 

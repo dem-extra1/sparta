@@ -1,6 +1,6 @@
 extends GutTest
-## Settings: order-mode keybindings (#87) — defaults, lookup, rebind, reset, and the
-## save/load round-trip. The keybindings dialog UI itself is verified manually (#12);
+## Settings: order-mode keybindings — defaults, lookup, rebind, reset, and the
+## save/load round-trip. The keybindings dialog UI itself is verified manually;
 ## here we pin the persistence + query logic the dialog and selector rely on.
 
 const SettingsScript = preload("res://scripts/Settings.gd")
