@@ -91,8 +91,13 @@ func test_one_way_flag_marks_intentional_asymmetry() -> void:
 	raw["provinces"][1]["adj"] = []   # P0 -> P1 one-way, intentionally
 	var m := CampaignLoader.parse_map(raw)
 	assert_false(m.is_empty(), "a one_way-flagged map loads")
-	assert_true(bool(m["provinces"][0]["one_way"]), "the one_way flag is carried through")
-	assert_false(bool(m["provinces"][1]["one_way"]), "unflagged provinces default to false")
+	# Look up by id rather than positional index so the assertions don't depend on the
+	# loader preserving input order.
+	var flags := {}
+	for p in m["provinces"]:
+		flags[int(p["id"])] = bool(p["one_way"])
+	assert_true(flags[0], "the one_way flag is carried through")
+	assert_false(flags[1], "unflagged provinces default to false")
 
 
 func test_rejects_degenerate_polygon() -> void:

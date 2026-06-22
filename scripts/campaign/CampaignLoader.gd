@@ -11,8 +11,8 @@ extends RefCounted
 ##     "factions": [{"name","color"}, ...],   # color is an HTML hex string
 ##     "provinces": [
 ##       {"id","name","owner","army","adj":[ids], "polygon":[[x,y],...], "label":[x,y],
-##        "one_way": false}      # optional; declares this province's one-way exits
-##                               # intentional, suppressing the asymmetry warning
+##        "one_way": <bool>}     # optional, default false; declares this province's
+##                               # one-way exits intentional, suppressing the asymmetry warning
 ##     ],
 ##     "peace": [[factionA, factionB], ...]    # optional; pairs that start at peace.
 ##                                              # A 3rd element sets an initial truce in
