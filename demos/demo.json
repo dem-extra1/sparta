@@ -1,4 +1,4 @@
 {
-  "skip": true,
-  "reason": "In-scene order cursor — the animated cursor disc is live mouse-position-driven and cannot be captured by the recorded-battle pipeline."
+  "replay": "demos/showcase.json",
+  "caption": "Unit flags: each regiment now carries a coloured standard above its stat bars. The flag's emblem shows the unit type at a glance — diagonal lance for cavalry, vertical spear for anti-cavalry, arc for archers, cross for infantry."
 }
