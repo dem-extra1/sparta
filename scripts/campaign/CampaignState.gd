@@ -2,11 +2,12 @@ extends RefCounted
 ## Campaign-map game state and rules (M2, #70) — pure logic, no scene/Node deps so
 ## it runs headless and is unit-tested directly (test/unit/test_campaign_state.gd).
 ##
-## A campaign is a single war (#70): two factions contest a set of provinces. Each
-## province has an owner and a stationed army (an integer strength). On a faction's
-## turn each of its armies may move once into an adjacent province — reinforcing a
-## friendly one or attacking an enemy/neutral one (battles are auto-resolved here;
-## the tactical-battle hookup is M3). A faction wins by owning every province.
+## A campaign is a single war (#70): two or more factions contest a set of provinces,
+## with per-pair war/peace stances (#123). Each province has an owner and a stationed
+## army (an integer strength). On a faction's turn each of its armies may move once
+## into an adjacent province — reinforcing a friendly one or attacking an enemy one it
+## is at war with (battles are auto-resolved here; the tactical-battle hookup is M3).
+## A faction wins by owning every province.
 ##
 ## State is built from a map dictionary (see scripts/campaign/CampaignLoader.gd); only
 ## the dynamic fields (owner, army) and the adjacency/names are kept here — geometry
@@ -66,7 +67,9 @@ func _init(map: Dictionary, rng_seed: int = -1) -> void:
 		adjacency[id] = adj
 	# Optional initial diplomacy: a map may list faction pairs that start at peace
 	# (everything else defaults to war). This is how a neutral faction is seeded —
-	# at peace with all belligerents until someone declares war (#123).
+	# at peace with all belligerents until someone declares war (#123). The shape
+	# check is a defensive guard, not the primary validator: CampaignLoader.parse_map
+	# already rejects malformed peace entries, so a well-formed map never trips it.
 	for pair in map.get("peace", []):
 		if typeof(pair) == TYPE_ARRAY and pair.size() >= 2:
 			make_peace(int(pair[0]), int(pair[1]))

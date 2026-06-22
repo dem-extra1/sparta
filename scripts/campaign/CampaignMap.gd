@@ -120,6 +120,9 @@ func _on_end_turn() -> void:
 	_state.end_turn()        # -> first non-player faction
 	# Run every AI faction in turn until control returns to the player. With three+
 	# factions this may be several factions (e.g. Gauls then the Germanic tribes).
+	# end_turn() advances current_faction with `% n`, and PLAYER_FACTION is part of
+	# that rotation, so control is guaranteed back to the player within n-1 steps —
+	# the loop always terminates (no infinite-loop risk).
 	while _state.current_faction != PLAYER_FACTION:
 		_run_enemy_ai()
 		if _check_winner():

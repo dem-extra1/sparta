@@ -120,6 +120,11 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 		if a < 0 or a >= faction_names.size() or b < 0 or b >= faction_names.size():
 			push_warning("Campaign map: 'peace' pair [%d, %d] references an unknown faction" % [a, b])
 			return {}
+		if a == b:
+			# A faction can't be at peace with itself; this is almost certainly a typo,
+			# so surface it at load time rather than silently dropping it.
+			push_warning("Campaign map: 'peace' pair [%d, %d] lists a faction with itself" % [a, b])
+			return {}
 		peace.append([a, b])
 
 	return {

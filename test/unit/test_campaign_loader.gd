@@ -109,6 +109,12 @@ func test_rejects_malformed_peace_pair() -> void:
 	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a peace entry that isn't a pair -> rejected")
 
 
+func test_rejects_self_peace_pair() -> void:
+	var raw := _valid_raw()
+	raw["peace"] = [[0, 0]]
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a faction at peace with itself -> rejected (likely a typo)")
+
+
 func test_loads_real_gallic_war_file() -> void:
 	var m := CampaignLoader.load_map(Campaigns.DEFAULT_PATH)
 	assert_false(m.is_empty(), "the shipped Gallic War map loads")
