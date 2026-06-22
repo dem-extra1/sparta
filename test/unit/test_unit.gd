@@ -1507,3 +1507,13 @@ func test_intermixing_does_not_rise_for_ranged_units() -> void:
 	u._tick_intermixing(1.0)
 	assert_eq(u._combat_intermixing, 0.0,
 		"ranged units firing at distance do not build up intermixing")
+
+
+func test_rout_resets_combat_intermixing() -> void:
+	var u: Unit = _make_unit()
+	u.state = Unit.State.FIGHTING
+	u._tick_intermixing(60.0)
+	assert_gt(u._combat_intermixing, 0.0, "meter built up before rout")
+	u._rout()
+	assert_eq(u._combat_intermixing, 0.0,
+		"_rout() clears intermixing so a rallied unit re-solidifies")
