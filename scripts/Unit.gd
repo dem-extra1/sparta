@@ -734,18 +734,47 @@ func _strike(enemy: Unit) -> void:
 ## rear deals the full 1.5x / 2.0x bonus, so archers in a pincer hit notably
 ## harder than head-on.
 func _shoot(enemy: Unit) -> void:
+	# RNG consumed first so the seeded stream stays deterministic regardless of
+	# which unit is ultimately hit.
+	var rng_roll: float = Replay.rng.randf_range(0.6, 1.4)
+	var interceptor: Unit = _friendly_interceptor(enemy)
+	var target: Unit = enemy if interceptor == null else interceptor
 	var eff_attack: float = float(attack) * fatigue_attack_factor() * cohesion
-	var base: float = maxf(1.0, eff_attack - float(enemy.defense))
-	var dmg: float = base * RANGED_DAMAGE_FACTOR * Replay.rng.randf_range(0.6, 1.4) \
-			* enemy.missile_defense_factor()
+	var base: float = maxf(1.0, eff_attack - float(target.defense))
+	var dmg: float = base * RANGED_DAMAGE_FACTOR * rng_roll * target.missile_defense_factor()
 	Sfx.play(&"shoot")
-	# Cosmetic volley trail: arrows streak from the shooter to the target. Spawned
-	# on the (deterministic) sim tick but animated/faded on render time, so it has no
-	# effect on the simulation or replays. Skipped if we're somehow outside the scene
-	# tree (is_inside_tree() also guarantees get_parent() is a live tree node to add to).
+	# Cosmetic volley trail: arrows streak toward whoever was actually hit, so the
+	# player can see why a friendly is taking damage. Spawned on the (deterministic)
+	# sim tick but animated/faded on render time — no effect on replays.
 	if is_inside_tree():
-		VolleyTrail.spawn(get_parent(), global_position, enemy.global_position, team_color)
-	enemy.take_casualties(int(round(dmg)), self)
+		VolleyTrail.spawn(get_parent(), global_position, target.global_position, team_color)
+	target.take_casualties(int(round(dmg)), self)
+
+
+## Return the nearest living friendly unit that lies in the straight-line flight
+## path from this unit toward `target`, or null if the path is clear. A friendly
+## blocks a shot when their centre is within their own separation_radius of the
+## flight line AND the closest point on that line is strictly between shooter and
+## target (projection in [0.05, 0.95]).
+func _friendly_interceptor(target: Unit) -> Unit:
+	var seg: Vector2 = target.position - position
+	var seg_len_sq: float = seg.length_squared()
+	if seg_len_sq < 0.001:
+		return null
+	var closest: Unit = null
+	var closest_proj: float = INF
+	for u_node in get_tree().get_nodes_in_group("units"):
+		var u: Unit = u_node as Unit
+		if u == null or u == self or u.team != team or u.state == State.DEAD:
+			continue
+		var proj: float = (u.position - position).dot(seg) / seg_len_sq
+		if proj < 0.05 or proj > 0.95:
+			continue
+		var foot: Vector2 = position + seg * proj
+		if (u.position - foot).length() < u.separation_radius and proj < closest_proj:
+			closest = u
+			closest_proj = proj
+	return closest
 
 
 ## Called by an attacker. Applies flanking from THIS unit's facing.
