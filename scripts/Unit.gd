@@ -178,7 +178,8 @@ var _attack_cd: float = 0.0
 var _rout_timer: float = 0.0
 # Counts down after a new order is received; the unit holds its current action
 # until this reaches zero. A fighting unit ticks it down but is not gated by it
-# (already committed to combat).
+# (it keeps executing _think() — retargets, disengages, and support orders all
+# take effect immediately regardless of the timer).
 var _order_response_timer: float = 0.0
 var _moved_last_frame: bool = false
 # Velocity the unit carried into its last move; the cavalry charge bonus reads it

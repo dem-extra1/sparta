@@ -320,6 +320,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# unit's target_enemy, so later relievers can't read it from there).
 				relief_foe = u.target_enemy
 				relieved = true
+				# Skip the order-response delay for the primary reliever — it needs
+				# to advance immediately or the tired unit retreats into an uncovered gap.
+				continue
 			else:
 				u.target_enemy = relief_foe
 				u.has_move_target = false
