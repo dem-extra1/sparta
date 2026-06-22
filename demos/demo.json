@@ -1,4 +1,4 @@
 {
   "replay": "demos/showcase.json",
-  "caption": "Formation modes: press T during battle to cycle Tight / Loose / Normal. HUD shows current formation; Tight shrinks unit footprint and reduces missile damage, Loose spreads units out."
+  "caption": "Melee intermixing: units locked in sustained close combat gradually drift through each other's separation zone (non-hold units only), letting lines naturally blend rather than bouncing apart."
 }

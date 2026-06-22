@@ -1423,3 +1423,97 @@ func test_absorb_reapplies_formation_scale() -> void:
 		Unit.SEPARATION_RADIUS_MAX)
 	assert_eq(a.separation_radius, expected,
 		"absorb on a TIGHT unit keeps separation_radius at the scaled value")
+
+
+# --- melee intermixing ---------------------------------------------------
+
+func test_intermixing_rises_while_fighting_without_hold() -> void:
+	var u: Unit = _make_unit()
+	u.state = Unit.State.FIGHTING
+	u.order_mode = 0   # NORMAL — the default
+	u._tick_intermixing(1.0)
+	assert_gt(u._combat_intermixing, 0.0,
+		"intermixing rises when FIGHTING without hold")
+
+
+func test_intermixing_does_not_rise_when_hold() -> void:
+	var u: Unit = _make_unit()
+	u.state = Unit.State.FIGHTING
+	u.order_mode = Unit.ORDER_HOLD
+	u._tick_intermixing(1.0)
+	assert_eq(u._combat_intermixing, 0.0,
+		"intermixing stays zero when HOLD mode")
+
+
+func test_intermixing_decays_while_idle() -> void:
+	var u: Unit = _make_unit()
+	u.state = Unit.State.FIGHTING
+	u._tick_intermixing(5.0)
+	u.state = Unit.State.IDLE
+	var after_fight := u._combat_intermixing
+	u._tick_intermixing(1.0)
+	assert_lt(u._combat_intermixing, after_fight,
+		"intermixing decays when no longer fighting")
+
+
+func test_intermixing_capped_at_max() -> void:
+	var u: Unit = _make_unit()
+	u.state = Unit.State.FIGHTING
+	u._tick_intermixing(1000.0)
+	assert_lte(u._combat_intermixing, Unit.MELEE_INTERMIX_MAX,
+		"intermixing never exceeds MELEE_INTERMIX_MAX")
+
+
+func test_is_melee_intermixing_with_requires_both_fighting() -> void:
+	var a: Unit = _make_unit()
+	var b: Unit = _make_unit()
+	a.team = 0
+	b.team = 1
+	a.state = Unit.State.FIGHTING
+	b.state = Unit.State.IDLE
+	assert_false(a._is_melee_intermixing_with(b),
+		"intermixing requires BOTH units to be fighting")
+
+
+func test_is_melee_intermixing_with_false_for_friendlies() -> void:
+	var a: Unit = _make_unit()
+	var b: Unit = _make_unit()
+	a.team = 0
+	b.team = 0   # same team — explicit, not relying on _make_unit default
+	a.state = Unit.State.FIGHTING
+	b.state = Unit.State.FIGHTING
+	assert_false(a._is_melee_intermixing_with(b),
+		"intermixing only applies between enemies, not friendlies")
+
+
+func test_is_melee_intermixing_with_false_when_hold() -> void:
+	var a: Unit = _make_unit()
+	var b: Unit = _make_unit()
+	a.team = 0
+	b.team = 1
+	a.state = Unit.State.FIGHTING
+	b.state = Unit.State.FIGHTING
+	a.order_mode = Unit.ORDER_HOLD
+	assert_false(a._is_melee_intermixing_with(b),
+		"a HOLD unit never intermixes even while fighting")
+	assert_false(b._is_melee_intermixing_with(a),
+		"a non-HOLD unit does not intermix with a HOLD defender")
+
+
+func test_intermixing_does_not_rise_for_ranged_units() -> void:
+	var u: Unit = _make_unit()
+	u.is_ranged = true
+	u.state = Unit.State.FIGHTING
+	u._tick_intermixing(1.0)
+	assert_eq(u._combat_intermixing, 0.0,
+		"ranged units firing at distance do not build up intermixing")
+
+
+func test_rout_resets_combat_intermixing() -> void:
+	var u: Unit = _make_unit()
+	u.state = Unit.State.FIGHTING
+	u._tick_intermixing(60.0)
+	assert_gt(u._combat_intermixing, 0.0, "meter built up before rout")
+	u._rout()
+	assert_eq(u._combat_intermixing, 0.0,
+		"_rout() clears intermixing so a rallied unit re-solidifies")
