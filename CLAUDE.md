@@ -37,6 +37,23 @@ commit a **`demos/demo.json`** so CI records a short clip and posts it on the PR
   `"reason"`. CI then posts a short note explaining the absence instead
   (`demos/demo.skip.example.json` is a template).
 
+### Static features: images in the PR description
+For changes a still shows better than motion — new **interfaces/menus/HUD**, **new
+or improved art**, layout/visual polish — also embed informative **image(s) in the
+PR description itself** (in addition to the CI clip when motion matters). A labelled
+screenshot in the body lets a reviewer judge the change at a glance without opening
+media.
+
+- Capture a PNG, commit it under `demos/shots/` on your PR branch, and embed it in
+  the description by raw URL with a caption — referencing the **commit SHA** so the
+  image keeps rendering after the branch is deleted on merge.
+- See `demos/README.md` for how to produce the PNG (pull a frame from the demo
+  recording, or screenshot a scene) and the full image contract.
+- This is separate from the `demos/demo.json` video manifest: images go in the PR
+  **body** (you post them), the gameplay clip still posts as a CI comment. For a
+  static UI a recorded battle can't film, `skip` the clip (above) and rely on the
+  image.
+
 ## Code review handling policy
 When addressing review feedback (human or automated) on a PR, triage each finding:
 
