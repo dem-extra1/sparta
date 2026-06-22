@@ -1,4 +1,4 @@
-# Records a short gameplay clip for Claude-authored PRs that change the game and
+# Records a short gameplay clip for same-repo PRs that change the game and
 # posts it as an inline GIF in the PR conversation, plus a link to an MP4 with sound
 # (the GIF is silent — GIF can't carry audio).
 #
