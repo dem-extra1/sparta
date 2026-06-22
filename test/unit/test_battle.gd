@@ -204,6 +204,7 @@ func test_append_preserves_a_support_ward() -> void:
 
 # --- terrain / pathfinding integration ---------------------------------
 
+## Mirrors Battle._ready() terrain registration — keep in sync if Battle changes.
 func _registered_pathfield() -> PathField:
 	var pf := PathField.new(BattleScript.FIELD)
 	for patch in BattleScript.TERRAIN:
@@ -214,16 +215,22 @@ func _registered_pathfield() -> PathField:
 	return pf
 
 
+func _patch_by_type(type: String) -> Dictionary:
+	var matches := BattleScript.TERRAIN.filter(func(p): return p["type"] == type)
+	assert_true(matches.size() > 0, "TERRAIN has no patch of type '%s'" % type)
+	return matches[0]
+
+
 func test_hill_blocks_pathfinding() -> void:
 	var pf := _registered_pathfield()
-	var hill: Dictionary = BattleScript.TERRAIN[1]
+	var hill: Dictionary = _patch_by_type("hill")
 	var center := hill["rect"].position + hill["rect"].size * 0.5
 	assert_true(pf.is_blocked(center), "the hill terrain patch blocks movement at its centre")
 
 
 func test_hill_route_avoids_patch() -> void:
 	var pf := _registered_pathfield()
-	var hill: Dictionary = BattleScript.TERRAIN[1]
+	var hill: Dictionary = _patch_by_type("hill")
 	var cx: float = hill["rect"].position.x + hill["rect"].size.x * 0.5
 	var above := Vector2(cx, hill["rect"].position.y - 100)
 	var below := Vector2(cx, hill["rect"].end.y + 100)
@@ -237,14 +244,14 @@ func test_hill_route_avoids_patch() -> void:
 func test_forest_is_not_blocked() -> void:
 	# Forest is a slow zone, not impassable: units can enter it.
 	var pf := _registered_pathfield()
-	var forest: Dictionary = BattleScript.TERRAIN[0]
+	var forest: Dictionary = _patch_by_type("forest")
 	var center := forest["rect"].position + forest["rect"].size * 0.5
 	assert_false(pf.is_blocked(center), "the forest patch is passable (slow, not blocked)")
 
 
 func test_forest_slows_movement() -> void:
 	var pf := _registered_pathfield()
-	var forest: Dictionary = BattleScript.TERRAIN[0]
+	var forest: Dictionary = _patch_by_type("forest")
 	var center := forest["rect"].position + forest["rect"].size * 0.5
 	assert_almost_eq(pf.speed_at(center), float(forest["speed"]), 0.001,
 			"the forest speed zone returns the configured speed scale")

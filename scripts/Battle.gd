@@ -110,14 +110,15 @@ func _ready() -> void:
 	_camera.bounds = FIELD
 	_camera.position = FIELD.position + FIELD.size * 0.5
 
-	# Publish the pathfinding layer and register terrain patches as impassable
-	# obstacles. Units route around them via A*; with no patches the path is a
-	# straight line (unchanged from before). Deterministic (grid A*) so replays
-	# stay reproducible. Cleared in _exit_tree() so it doesn't outlive this battle.
+	# Publish the pathfinding layer and register terrain patches as obstacles
+	# or speed zones. Units route around blocked patches via A*; slow patches
+	# are passable but reduce movement speed. Deterministic (grid A*) so
+	# replays stay reproducible. Cleared in _exit_tree().
 	PathField.active = PathField.new(FIELD)
 	for patch in TERRAIN:
 		if patch.get("kind", "block") == "slow":
-			PathField.active.set_speed_rect(patch["rect"], float(patch.get("speed", 1.0)))
+			assert(patch.has("speed"), "slow terrain patch missing required 'speed' key")
+			PathField.active.set_speed_rect(patch["rect"], float(patch["speed"]))
 		else:
 			PathField.active.block_rect(patch["rect"])
 

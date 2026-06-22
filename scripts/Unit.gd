@@ -470,6 +470,8 @@ func _move_to(point: Vector2, delta: float) -> void:
 	_moved_last_frame = true
 	# Record the velocity carried this frame so a strike on the next (contact) frame
 	# can scale the charge bonus by the actual closing speed and direction.
+	# effective_speed already incorporates terrain_speed, so a cavalry unit moving
+	# through forest builds a reduced charge — intentional (can't sprint in trees).
 	_approach_velocity = dir * effective_speed
 
 

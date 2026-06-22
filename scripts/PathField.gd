@@ -55,6 +55,8 @@ func is_blocked(world: Vector2) -> bool:
 
 ## Mark every cell overlapping `rect` with a movement speed scale (1.0 = full
 ## speed; 0.6 = 60%). Does not block passage — units can enter but move slower.
+## A* routing does not factor speed into its cost, so it never detours around a
+## slow zone; the penalty applies only when a unit physically traverses the cell.
 func set_speed_rect(rect: Rect2, scale: float) -> void:
 	var lo := _cell_coord(rect.position)
 	var hi := _cell_coord(rect.end - Vector2(0.001, 0.001))
