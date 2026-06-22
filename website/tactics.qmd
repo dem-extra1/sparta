@@ -84,20 +84,6 @@ charge bonus --- it can't build full speed in the trees. Stage your charges from
 ground whenever possible.
 :::
 
-## Order-response delay
-
-Units don't react instantly to orders. There is a brief **reaction delay** before they
-execute --- about **0.5 s** for infantry and spearmen, **0.3 s** for cavalry. A unit
-already in melee is not slowed by the delay.
-
-This models the time for orders to travel down the chain of command. In practice:
-
-- **Commit cavalry early.** If you wait until the last moment to redirect horse, they
-  may not reach the flank in time.
-- **Feints are risky.** A unit you pull away from melee takes rear hits during the
-  disengage *and* takes a moment to start moving --- don't disengage into a second
-  threat without enough margin.
-
 ## Disengaging --- a risky lever
 
 Right-click the ground (a **move** order) to pull a unit *out* of melee. It's how
