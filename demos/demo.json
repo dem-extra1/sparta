@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Wires the campaign map to launch the real tactical battle for a contested province clash, sizing each army from the clashing strengths and applying the winner + survivors back to the map (#122). The demo recorder replays a single saved battle file, which has no campaign context, so it can't show the map->battle->map hand-off or the strength-scaled deployment that defines this change."
+  "reason": "Pure loader validation: rejects asymmetric adjacency in parse_map() (#128). No scene, HUD, or gameplay change — a recorded battle can't demonstrate a parse-time schema check."
 }
