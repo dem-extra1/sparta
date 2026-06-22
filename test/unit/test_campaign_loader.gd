@@ -181,7 +181,8 @@ func test_loads_four_kingdoms_file() -> void:
 	assert_false(m.is_empty(), "the four-faction map loads")
 	assert_eq(m["faction_names"].size(), 4, "four factions")
 	assert_eq(m["provinces"].size(), 8, "eight provinces")
-	# The shipped map is fully mutual (the loader only warns on asymmetry, so assert it here).
+	# The shipped map is fully mutual. The loader rejects asymmetric adjacency (#128), so a
+	# successful load already implies symmetry — this asserts the invariant explicitly.
 	var adj := {}
 	for p in m["provinces"]:
 		adj[int(p["id"])] = p["adj"]
