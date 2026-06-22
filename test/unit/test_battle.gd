@@ -209,7 +209,8 @@ func _registered_pathfield() -> PathField:
 	var pf := PathField.new(BattleScript.FIELD)
 	for patch in BattleScript.TERRAIN:
 		if patch.get("kind", "block") == "slow":
-			pf.set_speed_rect(patch["rect"], float(patch.get("speed", 1.0)))
+			assert_true(patch.has("speed"), "slow terrain patch missing required 'speed' key")
+			pf.set_speed_rect(patch["rect"], float(patch["speed"]))
 		else:
 			pf.block_rect(patch["rect"])
 	return pf
@@ -238,7 +239,7 @@ func test_hill_route_avoids_patch() -> void:
 	assert_true(route.size() > 0,
 			"A* finds a route around the hill (field is wide enough to detour)")
 	for p in route:
-		assert_false(pf.is_blocked(p), "no A* waypoint sits inside the blocked hill")
+		assert_false(hill["rect"].has_point(p), "no A* waypoint passes through the hill rect")
 
 
 func test_forest_is_not_blocked() -> void:
