@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Pure logic change: morale recovery tick. No visual change is visible in a normal battle replay."
+  "reason": "Fatigue display is only visible in the info panel when a unit is selected; a passive battle replay doesn't exercise it."
 }
