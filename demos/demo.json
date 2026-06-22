@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Pinch-to-zoom anchor on gesture midpoint — live trackpad input the recorded-battle pipeline cannot capture."
+  "reason": "Non-visual refactor — converting a const to an @export var adds no observable battle behaviour."
 }
