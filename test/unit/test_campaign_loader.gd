@@ -133,7 +133,7 @@ func test_loads_real_gallic_war_file() -> void:
 
 func test_real_gallic_war_adjacency_is_mutual() -> void:
 	# Movement is two-way, so every listed neighbour must list us back. Guards against
-	# hand-edit typos in the shipped map (the general validator is tracked in #128).
+	# hand-edit typos in the shipped map (linted by the loader as of #128).
 	var m := CampaignLoader.load_map(Campaigns.DEFAULT_PATH)
 	var adj := {}
 	for p in m["provinces"]:
