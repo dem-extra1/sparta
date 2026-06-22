@@ -144,10 +144,11 @@ func update_standings(text: String) -> void:
 	_standings_label.text = text
 
 
-## Rebuild the diplomacy panel from `entries`, each {id, name, color, at_war}. One row
-## per other surviving faction: a stance label and a button that toggles war/peace
-## (emitting diplomacy_toggled with the faction id). An empty list clears the panel
-## (e.g. when only the player remains).
+## Rebuild the diplomacy panel from `entries`, each {id, name, color, at_war, truce}.
+## One row per other surviving faction: a stance label and a button that toggles
+## war/peace (emitting diplomacy_toggled with the faction id). While a truce is active
+## (truce > 0) the row shows the turns left and the Declare War button is disabled
+## (#138). An empty list clears the panel (e.g. when only the player remains).
 func update_diplomacy(entries: Array) -> void:
 	for child in _diplomacy_box.get_children():
 		child.queue_free()
@@ -155,9 +156,15 @@ func update_diplomacy(entries: Array) -> void:
 		var fid: int = int(e["id"])
 		var at_war: bool = bool(e["at_war"])
 		var color: Color = e.get("color", Color.WHITE)
+		var truce: int = int(e.get("truce", 0))
 
 		var label := Label.new()
-		label.text = "%s %s %s" % [e["name"], "⚔" if at_war else "☮", "War" if at_war else "Peace"]
+		if at_war:
+			label.text = "%s ⚔ War" % e["name"]
+		elif truce > 0:
+			label.text = "%s ☮ Truce (%d)" % [e["name"], truce]
+		else:
+			label.text = "%s ☮ Peace" % e["name"]
 		label.add_theme_font_size_override("font_size", 13)
 		label.add_theme_color_override("font_color", color)
 		_diplomacy_box.add_child(label)
@@ -166,6 +173,11 @@ func update_diplomacy(entries: Array) -> void:
 		button.text = "Sue for Peace" if at_war else "Declare War"
 		button.add_theme_font_size_override("font_size", 13)
 		button.custom_minimum_size = Vector2(192, 26)
+		# A truce blocks declaring war until it expires (#138): grey the toggle out and
+		# spell out why, so the player isn't left wondering why the button does nothing.
+		if not at_war and truce > 0:
+			button.disabled = true
+			button.tooltip_text = "Truce: %d turn(s) left" % truce
 		button.pressed.connect(func(): diplomacy_toggled.emit(fid))
 		_diplomacy_box.add_child(button)
 

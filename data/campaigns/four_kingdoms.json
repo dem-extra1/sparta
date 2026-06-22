@@ -1,0 +1,36 @@
+{
+  "name": "The Four Kingdoms",
+  "blurb": "A four-sided war on a 2x4 march: Azure and Golden hold the flanks; Crimson and Verdant fight in the middle on every side. Conquer every province to win — or play one rival against another.",
+  "factions": [
+    { "name": "Azure Realm", "color": "#5c85db" },
+    { "name": "Crimson Realm", "color": "#d15c52" },
+    { "name": "Verdant Realm", "color": "#5fa869" },
+    { "name": "Golden Realm", "color": "#d6b14a" }
+  ],
+  "provinces": [
+    { "id": 0, "name": "Azure North", "owner": 0, "army": 5, "adj": [1, 4],
+      "label": [200, 200],
+      "polygon": [[100, 100], [300, 100], [300, 300], [100, 300]] },
+    { "id": 1, "name": "Crimson North", "owner": 1, "army": 4, "adj": [0, 2, 5],
+      "label": [400, 200],
+      "polygon": [[300, 100], [500, 100], [500, 300], [300, 300]] },
+    { "id": 2, "name": "Crimson East", "owner": 1, "army": 5, "adj": [1, 3, 6],
+      "label": [600, 200],
+      "polygon": [[500, 100], [700, 100], [700, 300], [500, 300]] },
+    { "id": 3, "name": "Golden North", "owner": 3, "army": 4, "adj": [2, 7],
+      "label": [800, 200],
+      "polygon": [[700, 100], [900, 100], [900, 300], [700, 300]] },
+    { "id": 4, "name": "Azure South", "owner": 0, "army": 4, "adj": [0, 5],
+      "label": [200, 400],
+      "polygon": [[100, 300], [300, 300], [300, 500], [100, 500]] },
+    { "id": 5, "name": "Verdant West", "owner": 2, "army": 5, "adj": [1, 4, 6],
+      "label": [400, 400],
+      "polygon": [[300, 300], [500, 300], [500, 500], [300, 500]] },
+    { "id": 6, "name": "Verdant East", "owner": 2, "army": 4, "adj": [2, 5, 7],
+      "label": [600, 400],
+      "polygon": [[500, 300], [700, 300], [700, 500], [500, 500]] },
+    { "id": 7, "name": "Golden South", "owner": 3, "army": 5, "adj": [3, 6],
+      "label": [800, 400],
+      "polygon": [[700, 300], [900, 300], [900, 500], [700, 500]] }
+  ]
+}

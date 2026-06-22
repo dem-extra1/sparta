@@ -136,9 +136,16 @@ hand-authored GDScript that hasn't been engine-checked.
     (declare war). The HUD has a **diplomacy panel** to declare war / sue for peace per
     faction and surfaces current stances; the AI only attacks factions it's at war with.
     Total-conquest victory is unchanged, so finishing the war means eventually dealing
-    with the neutral too. Remaining for #123: truce timers, AI-initiated diplomacy, and
-    multi-sided wars beyond three factions (#138/#139/#140). Characters/dynasty (#124)
-    and the saga layer (#126) also remain follow-ups.
+    with the neutral too.
+  - **Diplomacy follow-ups landed (#138, #139, #140):** suing for peace can carry a
+    **truce** (a set number of turns during which war can't be re-declared; the HUD
+    greys the toggle out and counts the turns down, and a map's `peace` entries take an
+    optional third truce-length element). The AI now has **diplomatic agency** — on its
+    turn it sues for peace with its strongest enemy when overextended and outmatched, and
+    declares war on a weak bordering neighbour it clearly outweighs (deterministic, no
+    RNG; truces respected). A second campaign, **The Four Kingdoms**, ships a balanced
+    four-faction map to exercise multi-sided war. Characters/dynasty (#124) and the saga
+    layer (#126) remain follow-ups.
 - **M3 — Integration:** an army battle on the campaign map launches into the M1 battle scene
   and returns a result (winner, casualties) to the campaign. This is where the two genres meet;
   the battle scene was kept self-contained specifically to make this hand-off clean.

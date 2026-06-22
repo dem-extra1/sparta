@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Pure loader validation: rejects asymmetric adjacency in parse_map() (#128). No scene, HUD, or gameplay change — a recorded battle can't demonstrate a parse-time schema check."
+  "reason": "Campaign-layer diplomacy follow-ups: truce timers (#138), AI-initiated war/peace (#139), and 4+-faction wars with a new map (#140). These are campaign-map rules + HUD changes; the demo recorder captures tactical-battle replays only, so a recorded battle can't show them."
 }

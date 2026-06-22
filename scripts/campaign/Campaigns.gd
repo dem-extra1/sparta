@@ -15,6 +15,11 @@ const LIST := [
 		"name": "Gallic War",
 		"path": "res://data/campaigns/gallic_war.json",
 	},
+	{
+		"id": "four_kingdoms",
+		"name": "The Four Kingdoms",
+		"path": "res://data/campaigns/four_kingdoms.json",
+	},
 ]
 
 const DEFAULT_PATH := "res://data/campaigns/gallic_war.json"

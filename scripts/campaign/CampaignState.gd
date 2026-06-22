@@ -16,6 +16,12 @@ extends RefCounted
 
 const NO_WINNER := -1
 
+# Default truce length (in turns) applied when a faction sues for peace in normal play
+# (#138). Suing for peace is meant to carry a commitment, so the gameplay callers
+# (player toggle, AI diplomacy) pass this; the low-level make_peace() still defaults to
+# no truce so map-seeded stances and tests can opt out.
+const DEFAULT_TRUCE_TURNS := 3
+
 # province id -> {id, name, owner, army}
 var provinces: Dictionary = {}
 # province id -> Array[int] of adjacent province ids
@@ -35,6 +41,11 @@ var _acted: Dictionary = {}
 # A faction is never at war with itself. Maps/UI can later seed/change stances via
 # make_peace()/declare_war(); for now the rules layer just gates attacks on it.
 var _peace: Dictionary = {}
+
+# Truce timers (#138): pair_key -> turns remaining until war may be declared again.
+# Only present while a truce is active; absent means no truce, so war is declarable.
+# Ticked down once per full round in end_turn().
+var _truce: Dictionary = {}
 
 var _rng := RandomNumberGenerator.new()
 
@@ -73,7 +84,9 @@ func _init(map: Dictionary, rng_seed: int = -1) -> void:
 	# already rejects malformed peace entries, so a well-formed map never trips it.
 	for pair in map.get("peace", []):
 		if typeof(pair) == TYPE_ARRAY and pair.size() >= 2:
-			make_peace(int(pair[0]), int(pair[1]))
+			# An optional third element seeds an initial truce length (#138).
+			var truce_turns := int(pair[2]) if pair.size() >= 3 else 0
+			make_peace(int(pair[0]), int(pair[1]), truce_turns)
 	if rng_seed >= 0:
 		_rng.seed = rng_seed
 	else:
@@ -128,18 +141,46 @@ func at_war(a: int, b: int) -> bool:
 	return not _peace.has(_pair_key(a, b))
 
 
-## Put factions `a` and `b` at war (symmetric). No-op if a == b.
-func declare_war(a: int, b: int) -> void:
+## Put factions `a` and `b` at war (symmetric). Blocked while a truce is active (#138)
+## and a no-op if a == b. Returns true if the two are now at war.
+func declare_war(a: int, b: int) -> bool:
 	if a == b:
-		return
+		return false
+	if truce_remaining(a, b) > 0:
+		return false
 	_peace.erase(_pair_key(a, b))
+	return true
 
 
-## Put factions `a` and `b` at peace (symmetric). No-op if a == b.
-func make_peace(a: int, b: int) -> void:
+## Put factions `a` and `b` at peace (symmetric). No-op if a == b. A positive
+## `truce_turns` records a truce: declaring war is blocked until it expires (#138).
+## A larger value extends an existing truce; 0 leaves any current truce untouched.
+func make_peace(a: int, b: int, truce_turns: int = 0) -> void:
 	if a == b:
 		return
-	_peace[_pair_key(a, b)] = true
+	var key := _pair_key(a, b)
+	_peace[key] = true
+	if truce_turns > 0:
+		_truce[key] = maxi(int(_truce.get(key, 0)), truce_turns)
+
+
+## Turns remaining on the truce between `a` and `b` (0 if none, or for a == b). While
+## this is positive, declare_war() is blocked (#138).
+func truce_remaining(a: int, b: int) -> int:
+	if a == b:
+		return 0
+	return int(_truce.get(_pair_key(a, b), 0))
+
+
+## Tick every active truce down one turn; expired ones are removed, which just
+## re-enables declaring war (it does not auto-declare). Called once per full round.
+func _tick_truces() -> void:
+	for key in _truce.keys():
+		var left := int(_truce[key]) - 1
+		if left <= 0:
+			_truce.erase(key)
+		else:
+			_truce[key] = left
 
 
 ## Move/attack the army in `from_id` into `to_id`. Caller must check can_move first.
@@ -244,6 +285,7 @@ func end_turn() -> void:
 	_acted.clear()
 	if current_faction == 0:
 		turn += 1
+		_tick_truces()
 
 
 ## The faction owning every province, or NO_WINNER while the war is undecided.
@@ -270,6 +312,123 @@ func has_acted(id: int) -> bool:
 	return _acted.has(id)
 
 
+# --- AI-initiated diplomacy (#139) -----------------------------------------
+# The AI gets agency over war/peace, not just attacks. Heuristics are deterministic
+# (no RNG) so replays and tests stay reproducible.
+
+# Declare war only on a bordering faction you outweigh by at least 3:2 (1.5x). Kept as
+# an exact integer ratio (cross-multiplied at the comparison) so there's no float
+# rounding ambiguity at the threshold.
+const AI_WAR_RATIO_NUM := 3
+const AI_WAR_RATIO_DEN := 2
+# Sue for peace when your strength is below 3:5 (0.6x) of your strongest enemy's...
+const AI_PEACE_RATIO_NUM := 3
+const AI_PEACE_RATIO_DEN := 5
+# ...and only once you're fighting on at least this many bordering fronts.
+const AI_OVEREXTENDED_FRONTS := 2
+
+
+## Total army strength a faction fields across every province it owns.
+func faction_strength(faction: int) -> int:
+	var total := 0
+	for id in provinces:
+		if owner_of(id) == faction:
+			total += army_of(id)
+	return total
+
+
+## Faction ids that still own at least one province, ascending. Eliminated factions
+## drop out — there's nothing left to negotiate with.
+func surviving_factions() -> Array[int]:
+	var seen := {}
+	for id in provinces:
+		seen[owner_of(id)] = true
+	var out: Array[int] = []
+	for f in seen:
+		out.append(int(f))
+	out.sort()
+	return out
+
+
+## Whether any province of `a` is adjacent to a province of `b` (they share a front).
+func factions_border(a: int, b: int) -> bool:
+	if a == b:
+		return false
+	for id in provinces:
+		if owner_of(id) != a:
+			continue
+		for n in adjacency.get(id, []):
+			if owner_of(n) == b:
+				return true
+	return false
+
+
+## Let `faction` reconsider its stances (AI-initiated diplomacy, #139). Deterministic:
+## it sues for peace with its strongest enemy when overextended and outmatched, then
+## declares war on the weakest bordering neutral it clearly outweighs. Respects truces
+## (declare_war is gated on them). Returns human-readable messages for the UI/log —
+## empty when nothing changed.
+func run_ai_diplomacy(faction: int) -> Array[String]:
+	var messages: Array[String] = []
+	var peace_target := _ai_peace_target(faction)
+	if peace_target != -1:
+		# Sue for peace *with a truce* so the peace is a real commitment, not a one-turn
+		# flip the AI immediately undoes (#138).
+		make_peace(faction, peace_target, DEFAULT_TRUCE_TURNS)
+		messages.append("%s sues for peace with %s." % [_faction_label(faction), _faction_label(peace_target)])
+	var war_target := _ai_war_target(faction)
+	if war_target != -1 and declare_war(faction, war_target):
+		messages.append("%s declares war on %s!" % [_faction_label(faction), _faction_label(war_target)])
+	return messages
+
+
+## The strongest bordering enemy `faction` should sue for peace with, or -1. Fires only
+## when overextended (fighting >= AI_OVEREXTENDED_FRONTS bordering enemies) and below the
+## AI peace ratio (0.6x) of that strongest enemy's strength.
+func _ai_peace_target(faction: int) -> int:
+	var enemies: Array[int] = []
+	for o in surviving_factions():
+		if o != faction and at_war(faction, o) and factions_border(faction, o):
+			enemies.append(o)
+	if enemies.size() < AI_OVEREXTENDED_FRONTS:
+		return -1
+	var strongest := -1
+	var strongest_strength := -1
+	for o in enemies:
+		var s := faction_strength(o)
+		if s > strongest_strength:
+			strongest_strength = s
+			strongest = o
+	# Exact integer compare for "my strength < 0.6 x strongest": my * 5 < strongest * 3.
+	if strongest != -1 and faction_strength(faction) * AI_PEACE_RATIO_DEN < strongest_strength * AI_PEACE_RATIO_NUM:
+		return strongest
+	return -1
+
+
+## The weakest bordering faction `faction` is at peace with (no active truce) and
+## clearly outweighs (by at least the AI war ratio), or -1 if none qualify.
+func _ai_war_target(faction: int) -> int:
+	var my_strength := faction_strength(faction)
+	var target := -1
+	var target_strength := 1 << 30
+	for o in surviving_factions():
+		if o == faction or at_war(faction, o):
+			continue
+		if truce_remaining(faction, o) > 0 or not factions_border(faction, o):
+			continue
+		var s := faction_strength(o)
+		# Exact integer compare for "my strength >= 1.5 x s": my * 2 >= s * 3.
+		if my_strength * AI_WAR_RATIO_DEN >= s * AI_WAR_RATIO_NUM and s < target_strength:
+			target_strength = s
+			target = o
+	return target
+
+
+func _faction_label(faction: int) -> String:
+	return faction_names[faction] if faction >= 0 and faction < faction_names.size() \
+			else "Faction %d" % faction
+
+
 # --- serialization (#122) --------------------------------------------------
 # The campaign->battle hand-off swaps scenes, which destroys this state object, so
 # the dynamic fields are snapshotted into a plain Dictionary (held in CampaignBattle)
@@ -289,6 +448,7 @@ func snapshot() -> Dictionary:
 		"armies": armies,
 		"acted": _acted.keys(),
 		"peace": _peace.keys(),
+		"truce": _truce.duplicate(),
 		"current_faction": current_faction,
 		"turn": turn,
 	}
@@ -310,5 +470,9 @@ func restore(snap: Dictionary) -> void:
 	_peace.clear()
 	for key in snap.get("peace", []):
 		_peace[key] = true
+	_truce.clear()
+	var truce_snap: Dictionary = snap.get("truce", {})
+	for key in truce_snap:
+		_truce[key] = int(truce_snap[key])
 	current_faction = int(snap.get("current_faction", current_faction))
 	turn = int(snap.get("turn", turn))

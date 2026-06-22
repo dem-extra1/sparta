@@ -140,9 +140,49 @@ func test_loads_real_gallic_war_file() -> void:
 
 func test_real_gallic_war_adjacency_is_mutual() -> void:
 	# Movement is two-way, so every listed neighbour must list us back. Guards against
-	# hand-edit typos in the shipped map (the general validator is tracked in #128).
+	# hand-edit typos in the shipped map (linted by the loader as of #128).
 	var m := CampaignLoader.load_map(Campaigns.DEFAULT_PATH)
 	assert_false(m.is_empty(), "gallic war must load for this test to be meaningful")
+	var adj := {}
+	for p in m["provinces"]:
+		adj[int(p["id"])] = p["adj"]
+	for id in adj:
+		for n in adj[id]:
+			assert_true(adj.has(n) and id in adj[n],
+					"province %d <-> %d adjacency must be mutual" % [id, n])
+
+
+func test_parses_peace_pair_with_truce() -> void:
+	# #138: an optional third element seeds an initial truce length, carried through.
+	var raw := _valid_raw()
+	raw["peace"] = [[0, 1, 4]]
+	var m := CampaignLoader.parse_map(raw)
+	assert_false(m.is_empty(), "a peace pair with a truce length parses")
+	assert_eq(m["peace"], [[0, 1, 4]], "the truce length is carried through")
+
+
+func test_zero_truce_peace_pair_drops_to_bare_pair() -> void:
+	# A truce of 0 means "peace, no truce" — identical to a bare [a, b] pair.
+	var raw := _valid_raw()
+	raw["peace"] = [[0, 1, 0]]
+	var m := CampaignLoader.parse_map(raw)
+	assert_eq(m["peace"], [[0, 1]], "a zero truce is normalized to a bare pair")
+
+
+func test_rejects_negative_truce() -> void:
+	var raw := _valid_raw()
+	raw["peace"] = [[0, 1, -2]]
+	assert_true(CampaignLoader.parse_map(raw).is_empty(), "a negative truce length -> rejected")
+
+
+func test_loads_four_kingdoms_file() -> void:
+	# #140: the shipped four-faction map loads and is well-formed.
+	var m := CampaignLoader.load_map("res://data/campaigns/four_kingdoms.json")
+	assert_false(m.is_empty(), "the four-faction map loads")
+	assert_eq(m["faction_names"].size(), 4, "four factions")
+	assert_eq(m["provinces"].size(), 8, "eight provinces")
+	# The shipped map is fully mutual. The loader rejects asymmetric adjacency (#128), so a
+	# successful load already implies symmetry — this asserts the invariant explicitly.
 	var adj := {}
 	for p in m["provinces"]:
 		adj[int(p["id"])] = p["adj"]
