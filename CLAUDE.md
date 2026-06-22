@@ -69,7 +69,7 @@ architecture, and CI changes are exempt.
 - `website/how-to-play.qmd` — step-by-step guide for new players. Add a step,
   update a control description, or note a new interaction.
 - `website/tactics.qmd` — tactical guidance. Add a section when a new mechanic
-  creates strategic decisions (terrain, stance modes, order delay, etc.).
+  creates strategic decisions (terrain types, order delay, unit interactions, etc.).
 - Other pages (`website/index.qmd`, `website/roadmap.qmd`) when the change is
   milestone-level.
 
