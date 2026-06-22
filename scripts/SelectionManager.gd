@@ -1,4 +1,5 @@
 extends Node2D
+class_name SelectionManager
 ## Mouse control for the player's army (team 0):
 ##   Left click        — select one friendly unit
 ##   Left click + drag — box-select friendly units
@@ -16,6 +17,10 @@ const CURSOR_SIZE: int = 24   # generated order-mode cursor
 const ORDER_MOVE_COLOR: Color = Color(0.45, 0.95, 0.55, 0.9)
 const ORDER_ATTACK_COLOR: Color = Color(0.96, 0.40, 0.32, 0.95)
 const ORDER_SUPPORT_COLOR: Color = Color(0.4, 0.95, 0.7, 0.9)
+
+var _cursor_canvas: CanvasLayer
+var _cursor_sprite: Sprite2D
+var _cursor_textures: Dictionary = {}   # mode int -> ImageTexture; cached to avoid redundant image allocs
 
 var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
@@ -45,6 +50,13 @@ func _ready() -> void:
 	# Stay responsive during active pause: the player can survey, select, and
 	# queue orders while the simulation is frozen (orders apply on resume).
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_cursor_canvas = CanvasLayer.new()
+	_cursor_canvas.layer = 127
+	add_child(_cursor_canvas)
+	_cursor_sprite = Sprite2D.new()
+	_cursor_sprite.centered = true
+	_cursor_sprite.visible = false
+	_cursor_canvas.add_child(_cursor_sprite)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -266,6 +278,8 @@ func _process(_delta: float) -> void:
 	if showing_orders or _was_showing_orders:
 		queue_redraw()
 	_was_showing_orders = showing_orders
+	if _cursor_sprite.visible:
+		_cursor_sprite.position = get_viewport().get_mouse_position()
 
 
 # --- control groups --------------------------------------------------------
@@ -313,9 +327,10 @@ func _recall_group(n: int) -> void:
 # --- order modes -----------------------------------------------------
 
 func _exit_tree() -> void:
-	# The custom cursor is global engine state; restore the system cursor so an
-	# armed mode doesn't persist past this scene (e.g. across reload_current_scene).
-	Input.set_custom_mouse_cursor(null)
+	# Hide the sprite and restore the OS cursor so armed mode doesn't leak
+	# across scenes (e.g. after reload_current_scene).
+	_cursor_sprite.visible = false
+	DisplayServer.mouse_set_mode(DisplayServer.MOUSE_MODE_VISIBLE)
 
 
 ## Order-mode hotkeys: keyed on the PHYSICAL keycode (layout-independent, like
@@ -345,16 +360,19 @@ func _set_armed_mode(mode: int) -> void:
 		_hud.set_order_mode(label)
 
 
-## Reflect the armed mode in the mouse cursor: a coloured disc per smart
-## mode, or the system arrow for NORMAL. First-pass art; richer per-mode icons are
-## deferred (see the epic).
+## Reflect the armed mode in the mouse cursor: a coloured disc (in-scene Sprite2D)
+## per smart mode, or the system arrow for NORMAL. Bypasses Input.set_custom_mouse_cursor
+## to avoid the macOS imgrep null-conversion crash.
 func _update_order_cursor() -> void:
 	if _armed_mode == BattleRef.OrderMode.NORMAL:
-		Input.set_custom_mouse_cursor(null)
+		_cursor_sprite.visible = false
+		DisplayServer.mouse_set_mode(DisplayServer.MOUSE_MODE_VISIBLE)
 		return
-	var tex := _order_cursor_texture(_order_mode_color(_armed_mode))
-	var hotspot := Vector2(CURSOR_SIZE / 2.0, CURSOR_SIZE / 2.0)
-	Input.set_custom_mouse_cursor(tex, Input.CURSOR_ARROW, hotspot)
+	if not _cursor_textures.has(_armed_mode):
+		_cursor_textures[_armed_mode] = _order_cursor_texture(_order_mode_color(_armed_mode))
+	_cursor_sprite.texture = _cursor_textures[_armed_mode]
+	_cursor_sprite.visible = true
+	DisplayServer.mouse_set_mode(DisplayServer.MOUSE_MODE_HIDDEN)
 
 
 func _order_mode_color(mode: int) -> Color:

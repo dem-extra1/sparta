@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Mouse-wheel zoom cursor anchor — live mouse input the recorded-battle pipeline cannot capture."
+  "reason": "In-scene order cursor — the animated cursor disc is live mouse-position-driven and cannot be captured by the recorded-battle pipeline."
 }
