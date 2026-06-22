@@ -1496,3 +1496,14 @@ func test_is_melee_intermixing_with_false_when_hold() -> void:
 	a.order_mode = Unit.ORDER_HOLD
 	assert_false(a._is_melee_intermixing_with(b),
 		"a HOLD unit never intermixes even while fighting")
+	assert_false(b._is_melee_intermixing_with(a),
+		"a non-HOLD unit does not intermix with a HOLD defender")
+
+
+func test_intermixing_does_not_rise_for_ranged_units() -> void:
+	var u: Unit = _make_unit()
+	u.is_ranged = true
+	u.state = Unit.State.FIGHTING
+	u._tick_intermixing(1.0)
+	assert_eq(u._combat_intermixing, 0.0,
+		"ranged units firing at distance do not build up intermixing")

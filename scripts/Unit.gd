@@ -562,10 +562,10 @@ func _separate() -> void:
 		position += push
 
 
-## Advance or decay this unit's intermixing meter. Rises while actively fighting
-## without a hold order; resets to zero otherwise so a disengaged unit re-solidifies.
+## Advance or decay this unit's intermixing meter. Rises while a non-ranged unit is
+## actively fighting without a hold order; decays at 4x speed when not fighting.
 func _tick_intermixing(delta: float) -> void:
-	if state == State.FIGHTING and order_mode != ORDER_HOLD:
+	if state == State.FIGHTING and order_mode != ORDER_HOLD and not is_ranged:
 		_combat_intermixing = minf(MELEE_INTERMIX_MAX,
 				_combat_intermixing + MELEE_INTERMIX_RATE * delta)
 	else:
