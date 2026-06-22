@@ -121,12 +121,14 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 	# un-flagged one-way edge — unless the source province opts in with "one_way": true,
 	# declaring its asymmetric exits intentional. Either way the map still loads; this is
 	# a lint, not a hard error (the unknown-neighbour check above already rejects edges to
-	# ids that don't exist).
+	# ids that don't exist). The flag is province-level: it silences the warning for *all*
+	# of the province's exits, not one edge (simple common case; an edge-level opt-in can
+	# follow if a map ever needs mixed intentional/typo exits on the same province).
 	var adj_index: Dictionary = {}
 	for prov in provinces:
 		adj_index[prov["id"]] = prov["adj"]
 	for prov in provinces:
-		if bool(prov.get("one_way", false)):
+		if prov["one_way"]:
 			continue
 		for n in prov["adj"]:
 			if not (prov["id"] in adj_index[n]):

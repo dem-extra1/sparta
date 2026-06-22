@@ -74,6 +74,8 @@ func test_rejects_unknown_neighbour() -> void:
 func test_asymmetric_adjacency_warns_but_loads() -> void:
 	# #148: one-way edges are legal (movement is directed), so an asymmetric edge is a
 	# lint, not a hard error — the map still loads (a push_warning flags the likely typo).
+	# We assert only the load here: GUT 9.6 can't cleanly intercept push_warning on a
+	# static function, so the warning call itself isn't asserted.
 	var raw := _valid_raw()
 	# P0 lists P1 as a neighbour but P1 does not list P0 -> one-way edge.
 	raw["provinces"][1]["adj"] = []
