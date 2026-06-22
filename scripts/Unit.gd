@@ -1051,6 +1051,9 @@ const MARK_RADIUS: float = 1.7          # foot soldier mark
 const CAV_MARK_RADIUS: float = 2.6      # cavalry marks are larger (horses)
 const MARK_JITTER: float = 1.3          # stable per-mark wobble so it's not a rigid grid
 const EMBLEM_SCALE: float = 0.5         # the per-type sprite, shrunk to a centre emblem
+const FLAG_POLE_HEIGHT: float = 18.0    # pole from above-bar to flag attachment point
+const FLAG_WIDTH: float = 12.0          # horizontal extent of the flag rectangle
+const FLAG_HEIGHT: float = 8.0          # vertical extent of the flag rectangle
 
 # Soldier flocking (Stage B). The marks no longer snap to their formation slot:
 # each soldier eases toward its slot (an arrival spring) while pushing off its
@@ -1506,6 +1509,8 @@ func _draw() -> void:
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw, 4.0), Color(0.15, 0.15, 0.15, alpha))
 	draw_rect(Rect2(-bw * 0.5, by + 7.0, bw * morale_frac, 4.0), morale_color)
 
+	_draw_unit_flag(body_c, alpha, extent)
+
 
 ## Infantry: kite (heater) shield with a cross motif and sword pommel.
 func _draw_infantry_sprite(body: Color, dark: Color, lite: Color) -> void:
@@ -1624,3 +1629,33 @@ func _draw_cavalry_sprite(body: Color, dark: Color, lite: Color) -> void:
 	draw_colored_polygon(tip_blade, metal)
 	draw_polyline(PackedVector2Array([tip_blade[0], tip_blade[1], tip_blade[2], tip_blade[0]]),
 			dark, 1.0)
+
+
+## A regimental standard: a pole rising above the stat bars with a coloured flag bearing a
+## per-type emblem. Drawn in screen space (called after draw_set_transform reset) so it
+## always stands upright regardless of the unit's facing direction. Dead units skip it.
+func _draw_unit_flag(body_c: Color, alpha: float, extent: float) -> void:
+	if state == State.DEAD:
+		return
+	# Pole rises from just above the soldier-count text (which sits ~14 px above bar top).
+	var pole_base := Vector2(0.0, -extent - 34.0)
+	var pole_top  := Vector2(0.0, pole_base.y - FLAG_POLE_HEIGHT)
+	draw_line(pole_base, pole_top, Color(0.85, 0.85, 0.85, alpha), 1.5)
+	# Flag rectangle hangs below the pole tip (positive-Y in screen space = downward).
+	var fx: float = pole_top.x
+	var fy: float = pole_top.y
+	draw_rect(Rect2(fx, fy, FLAG_WIDTH, FLAG_HEIGHT), body_c)
+	draw_rect(Rect2(fx, fy, FLAG_WIDTH, FLAG_HEIGHT),
+			Color(1.0, 1.0, 1.0, alpha * 0.5), false, 1.0)
+	# Type emblem centred on the flag: spear = vertical, bow = arc, lance = diagonal, cross = infantry.
+	var fc := Vector2(fx + FLAG_WIDTH * 0.5, fy + FLAG_HEIGHT * 0.5)
+	var sym_c := Color(1.0, 1.0, 1.0, alpha)
+	if is_cavalry:
+		draw_line(fc + Vector2(-3.0, 2.5), fc + Vector2(3.0, -2.5), sym_c, 1.5)
+	elif anti_cavalry:
+		draw_line(fc + Vector2(0.0, 3.0), fc + Vector2(0.0, -3.0), sym_c, 1.5)
+	elif is_ranged:
+		draw_arc(fc, 2.5, -PI * 0.55, PI * 0.55, 6, sym_c, 1.5)
+	else:
+		draw_line(fc + Vector2(-2.5, 0.0), fc + Vector2(2.5, 0.0), sym_c, 1.5)
+		draw_line(fc + Vector2(0.0, -2.5), fc + Vector2(0.0, 2.5), sym_c, 1.5)
