@@ -245,7 +245,7 @@ func _refresh_hint() -> void:
 		if keys != "":
 			keys += "/"
 		keys += OS.get_keycode_string(Settings.order_binding(entry["slug"]))
-	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (rebind in ☰ Menu; Esc clear)   •   WASD pan   •   wheel zoom   •   P / Shift+Space pause   •   hold Space show orders" % keys
+	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Normal/Loose)   •   WASD pan   •   wheel zoom   •   P pause   •   hold Space show orders" % keys
 
 
 ## Dispatch a Menu popup selection by its stable item id.
@@ -308,8 +308,9 @@ func show_unit(u, group_count: int) -> void:
 		kind = "Archers"
 	else:
 		kind = "Infantry"
-	_info.text = "%s%s\nType: %s\nSoldiers: %d / %d\nMorale: %d\nOrder: %s" % [
-		u.unit_name, extra, kind, u.soldiers, u.max_soldiers, int(u.morale), u.order_summary()
+	_info.text = "%s%s\nType: %s\nSoldiers: %d / %d\nMorale: %d\nFormation: %s  Order: %s" % [
+		u.unit_name, extra, kind, u.soldiers, u.max_soldiers, int(u.morale),
+		u.formation_summary(), u.order_summary()
 	]
 
 

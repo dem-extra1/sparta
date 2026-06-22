@@ -71,6 +71,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_set_armed_mode(mode)   # arm a smart-order stance
 		elif event.keycode == KEY_M:
 			_issue_merge()   # merge the selected friendly regiments into one
+		elif event.keycode == KEY_T:
+			_cycle_formation()   # cycle tight → normal → loose for selected units
 		else:
 			_handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall
 
@@ -181,6 +183,23 @@ func _issue_merge() -> void:
 	if uids.size() < 2:
 		return   # need at least two regiments to merge
 	_battle.enqueue_order(uids, Vector2.ZERO, uids[0])
+	Sfx.play(&"order")
+
+
+## Cycle the formation of all selected friendly units: Normal → Tight → Loose → Normal.
+func _cycle_formation() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if _selected.is_empty():
+		return
+	var current: int = _selected[0].formation_mode
+	var next: int = (current + 1) % 3
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit):
+			uids.append(unit.uid)
+	_battle.enqueue_formation(uids, next)
+	_refresh_hud()
 	Sfx.play(&"order")
 
 

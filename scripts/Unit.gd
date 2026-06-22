@@ -41,6 +41,7 @@ var selected: bool = false
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
 var order_mode: int = 0
+var formation_mode: int = FORMATION_NORMAL
 # Stance values from Battle.OrderMode that Unit's own behaviour reacts to, mirrored
 # as plain ints to avoid a Unit<->Battle preload cycle (kept in sync with the enum;
 # Battle._ready asserts they match). NORMAL is 0 (Unit's default order_mode).
@@ -49,6 +50,23 @@ const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
+
+# Formation modes: how tightly the regiment is packed.
+# TIGHT: soldiers close ranks — better missile defense (shields raised) and
+#        better charge resistance, at the cost of a smaller footprint.
+# NORMAL: default spacing.
+# LOOSE: soldiers spread out — wider area coverage.
+const FORMATION_NORMAL := 0
+const FORMATION_TIGHT := 1
+const FORMATION_LOOSE := 2
+# In tight formation, shields reduce incoming missile damage by this fraction.
+const TIGHT_MISSILE_DEFENSE: float = 0.25
+# In tight formation, this fraction of a cavalry charge bonus is absorbed
+# (braced soldiers brace against the impact — not a full reversal like anti-cav).
+const TIGHT_CHARGE_ABSORPTION: float = 0.55
+# Separation-radius scale factors per formation mode.
+const TIGHT_SEPARATION_SCALE: float = 0.75
+const LOOSE_SEPARATION_SCALE: float = 1.35
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
@@ -448,6 +466,26 @@ func _type_separation_radius() -> float:
 	return SEPARATION_RADIUS_INFANTRY
 
 
+## Change the regiment's formation and recalculate its separation footprint.
+func set_formation(mode: int) -> void:
+	formation_mode = mode
+	var base := _type_separation_radius()
+	if mode == FORMATION_TIGHT:
+		# Floor at half the base so even a small unit doesn't collapse to zero,
+		# but still tangibly tighter than the default.
+		separation_radius = maxf(base * 0.5, base * TIGHT_SEPARATION_SCALE)
+	elif mode == FORMATION_LOOSE:
+		separation_radius = minf(SEPARATION_RADIUS_MAX, base * LOOSE_SEPARATION_SCALE)
+	else:
+		separation_radius = base
+
+
+## Multiplier applied to incoming ranged damage. Tight formation: shields raised,
+## reducing missile casualties. Normal/loose: no modifier.
+func missile_defense_factor() -> float:
+	return 1.0 - TIGHT_MISSILE_DEFENSE if formation_mode == FORMATION_TIGHT else 1.0
+
+
 ## Push out of any overlapping unit so regiments form a solid line instead of
 ## passing through each other. Each pair shares the correction half each by
 ## default; an anti-cavalry spearman yields nothing to enemy cavalry (a hard
@@ -535,6 +573,17 @@ func order_summary() -> String:
 	return "Holding position"
 
 
+## Human-readable formation name for the HUD.
+func formation_summary() -> String:
+	match formation_mode:
+		FORMATION_TIGHT:
+			return "Tight"
+		FORMATION_LOOSE:
+			return "Loose"
+		_:
+			return "Normal"
+
+
 ## Shared "collision-exemption" primitive: a moving unit may pass cleanly through
 ## an IDLE friendly (and vice versa), so the pair interpenetrates instead of
 ## shoving. Re-enables on its own once the mover stops (both IDLE) or the friendly
@@ -607,6 +656,10 @@ func charge_multiplier(enemy: Unit) -> float:
 		# A braced spear line reverses the charge into a penalty that grows with the
 		# closing speed, floored so it never drops below the old flat x0.6.
 		return maxf(ANTI_CAV_CHARGE_FLOOR, 1.0 - charge * ANTI_CAV_CHARGE_BACKFIRE)
+	# Tight formation: soldiers brace for impact, absorbing a fraction of the
+	# charge bonus (but not reversing it — that's the spearmen's specialty).
+	if enemy.formation_mode == FORMATION_TIGHT:
+		return 1.0 + charge * (1.0 - TIGHT_CHARGE_ABSORPTION)
 	return 1.0 + charge
 
 
@@ -640,7 +693,8 @@ func _strike(enemy: Unit) -> void:
 func _shoot(enemy: Unit) -> void:
 	var eff_attack: float = float(attack) * fatigue_attack_factor() * cohesion
 	var base: float = maxf(1.0, eff_attack - float(enemy.defense))
-	var dmg: float = base * RANGED_DAMAGE_FACTOR * Replay.rng.randf_range(0.6, 1.4)
+	var dmg: float = base * RANGED_DAMAGE_FACTOR * Replay.rng.randf_range(0.6, 1.4) \
+			* enemy.missile_defense_factor()
 	Sfx.play(&"shoot")
 	# Cosmetic volley trail: arrows streak from the shooter to the target. Spawned
 	# on the (deterministic) sim tick but animated/faded on render time, so it has no

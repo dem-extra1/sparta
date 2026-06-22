@@ -1334,3 +1334,80 @@ func test_can_rally_requires_broken_contact_and_strength() -> void:
 	enemy.team = 1
 	enemy.position = Vector2(40, 0)
 	assert_false(u._can_rally(), "an enemy within contact radius -> cannot rally")
+
+
+# --- formation modes ---------------------------------------------------
+
+func test_formation_normal_has_unity_missile_defense() -> void:
+	var u := _make_unit()
+	assert_eq(u.formation_mode, Unit.FORMATION_NORMAL, "default formation is NORMAL")
+	assert_almost_eq(u.missile_defense_factor(), 1.0, 0.001,
+		"NORMAL formation applies no missile reduction")
+
+
+func test_formation_tight_reduces_missile_damage() -> void:
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_TIGHT)
+	var factor: float = u.missile_defense_factor()
+	assert_lt(factor, 1.0, "TIGHT formation reduces incoming missile damage")
+	assert_almost_eq(factor, 1.0 - Unit.TIGHT_MISSILE_DEFENSE, 0.001,
+		"by exactly TIGHT_MISSILE_DEFENSE")
+
+
+func test_formation_loose_has_unity_missile_defense() -> void:
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_LOOSE)
+	assert_almost_eq(u.missile_defense_factor(), 1.0, 0.001,
+		"LOOSE formation applies no missile reduction")
+
+
+func test_set_formation_tight_shrinks_separation_radius() -> void:
+	var u := _make_unit()
+	var base := u.separation_radius
+	u.set_formation(Unit.FORMATION_TIGHT)
+	assert_lt(u.separation_radius, base, "TIGHT formation packs units closer")
+
+
+func test_set_formation_loose_grows_separation_radius() -> void:
+	var u := _make_unit()
+	var base := u.separation_radius
+	u.set_formation(Unit.FORMATION_LOOSE)
+	assert_gt(u.separation_radius, base, "LOOSE formation spreads units wider")
+
+
+func test_set_formation_normal_restores_base_radius() -> void:
+	var u := _make_unit()
+	var base := u.separation_radius
+	u.set_formation(Unit.FORMATION_TIGHT)
+	u.set_formation(Unit.FORMATION_NORMAL)
+	assert_almost_eq(u.separation_radius, base, 0.001,
+		"resetting to NORMAL restores the base type radius")
+
+
+func test_tight_formation_reduces_cavalry_charge_bonus() -> void:
+	var cav := _cavalry()
+	cav.position = Vector2.ZERO
+	cav._approach_velocity = Vector2(cav.move_speed, 0)
+	var normal_target := _make_unit()
+	normal_target.team = 1
+	normal_target.position = Vector2(100, 0)
+	var full_charge: float = cav.charge_multiplier(normal_target)
+	var tight_target := _make_unit()
+	tight_target.team = 1
+	tight_target.position = Vector2(100, 0)
+	tight_target.set_formation(Unit.FORMATION_TIGHT)
+	var reduced_charge: float = cav.charge_multiplier(tight_target)
+	assert_gt(full_charge, reduced_charge,
+		"TIGHT formation absorbs part of the cavalry charge bonus")
+	assert_gt(reduced_charge, 1.0,
+		"but the charge still deals bonus damage (not reversed like anti-cav)")
+
+
+func test_formation_summary_returns_correct_names() -> void:
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_NORMAL)
+	assert_eq(u.formation_summary(), "Normal")
+	u.set_formation(Unit.FORMATION_TIGHT)
+	assert_eq(u.formation_summary(), "Tight")
+	u.set_formation(Unit.FORMATION_LOOSE)
+	assert_eq(u.formation_summary(), "Loose")
