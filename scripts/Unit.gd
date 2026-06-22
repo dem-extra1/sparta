@@ -475,19 +475,21 @@ func _move_to(point: Vector2, delta: float) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
 	var step: Vector2 = point
+	var terrain_speed: float = 1.0
 	if PathField.active != null:
 		step = PathField.active.next_step(position, point)
+		terrain_speed = PathField.active.speed_at(position)
 	var to: Vector2 = step - position
 	if to.length() < 1.0:
 		return
 	var dir: Vector2 = to.normalized()
+	var effective_speed: float = move_speed * terrain_speed
 	_face_dir(dir)
-	position += dir * move_speed * delta
+	position += dir * effective_speed * delta
 	state = State.MOVING
 	_moved_last_frame = true
-	# Record the velocity carried this frame so a strike on the next (contact) frame
-	# can scale the charge bonus by the actual closing speed and direction.
-	_approach_velocity = dir * move_speed
+	# Charge velocity; terrain-scaled so forest reduces the charge bonus (intentional — can't sprint in trees).
+	_approach_velocity = dir * effective_speed
 
 
 func _face(point: Vector2) -> void:

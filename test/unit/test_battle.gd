@@ -216,3 +216,59 @@ func test_append_preserves_a_support_ward() -> void:
 	b._apply_order_cmd({"units": [1], "x": 400.0, "y": 0.0,
 		"target": BattleScript.ORDER_APPEND_WAYPOINT, "mode": BattleScript.OrderMode.NORMAL})
 	assert_eq(supporter.support_target, ward, "a waypoint append leaves the support ward intact")
+
+
+# --- terrain / pathfinding integration ---------------------------------
+
+## Mirrors Battle._ready() terrain registration — keep in sync if Battle changes.
+func _registered_pathfield() -> PathField:
+	var pf := PathField.new(BattleScript.FIELD)
+	for patch in BattleScript.TERRAIN:
+		if patch.get("kind", "block") == "slow":
+			assert(patch.has("speed"), "slow terrain patch missing required 'speed' key")
+			pf.set_speed_rect(patch["rect"], float(patch["speed"]))
+		else:
+			pf.block_rect(patch["rect"])
+	return pf
+
+
+func _patch_by_type(type: String) -> Dictionary:
+	var matches := BattleScript.TERRAIN.filter(func(p): return p["type"] == type)
+	assert(matches.size() > 0, "TERRAIN has no patch of type '%s'" % type)
+	return matches[0]
+
+
+func test_hill_blocks_pathfinding() -> void:
+	var pf := _registered_pathfield()
+	var hill: Dictionary = _patch_by_type("hill")
+	var center := hill["rect"].position + hill["rect"].size * 0.5
+	assert_true(pf.is_blocked(center), "the hill terrain patch blocks movement at its centre")
+
+
+func test_hill_route_avoids_patch() -> void:
+	var pf := _registered_pathfield()
+	var hill: Dictionary = _patch_by_type("hill")
+	var cx: float = hill["rect"].position.x + hill["rect"].size.x * 0.5
+	var above := Vector2(cx, hill["rect"].position.y - 100)
+	var below := Vector2(cx, hill["rect"].end.y + 100)
+	var route := pf.find_path(above, below)
+	assert_true(route.size() > 0,
+			"A* finds a route around the hill (field is wide enough to detour)")
+	for p in route:
+		assert_false(hill["rect"].has_point(p), "no A* waypoint passes through the hill rect")
+
+
+func test_forest_is_not_blocked() -> void:
+	# Forest is a slow zone, not impassable: units can enter it.
+	var pf := _registered_pathfield()
+	var forest: Dictionary = _patch_by_type("forest")
+	var center := forest["rect"].position + forest["rect"].size * 0.5
+	assert_false(pf.is_blocked(center), "the forest patch is passable (slow, not blocked)")
+
+
+func test_forest_slows_movement() -> void:
+	var pf := _registered_pathfield()
+	var forest: Dictionary = _patch_by_type("forest")
+	var center := forest["rect"].position + forest["rect"].size * 0.5
+	assert_almost_eq(pf.speed_at(center), float(forest["speed"]), 0.001,
+			"the forest speed zone returns the configured speed scale")

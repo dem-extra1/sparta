@@ -61,3 +61,27 @@ func test_blocked_goal_falls_back_to_target() -> void:
 	# stalling, so callers always make progress.
 	assert_eq(pf.next_step(Vector2(50, 50), to), to,
 		"an unreachable goal falls back to a straight step")
+
+
+func test_speed_rect_returns_configured_scale() -> void:
+	var pf := PathField.new(FIELD)
+	pf.set_speed_rect(Rect2(200, 200, 128, 128), 0.6)
+	var inside := Vector2(264, 264)   # centre of the rect
+	assert_almost_eq(pf.speed_at(inside), 0.6, 0.001,
+		"a cell inside a speed zone returns the configured scale")
+
+
+func test_speed_at_returns_one_outside_any_zone() -> void:
+	var pf := PathField.new(FIELD)
+	pf.set_speed_rect(Rect2(200, 200, 128, 128), 0.6)
+	var outside := Vector2(50, 50)
+	assert_almost_eq(pf.speed_at(outside), 1.0, 0.001,
+		"a cell with no speed zone returns full speed (1.0)")
+
+
+func test_speed_zone_does_not_block_movement() -> void:
+	var pf := PathField.new(FIELD)
+	pf.set_speed_rect(Rect2(200, 200, 128, 128), 0.6)
+	var inside := Vector2(264, 264)
+	assert_false(pf.is_blocked(inside),
+		"a speed zone does not block movement (units can enter)")

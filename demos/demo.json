@@ -1,4 +1,4 @@
 {
-  "skip": true,
-  "reason": "Order-response delay is a timing behaviour: units pause ~0.5 s before stepping off. A passive showcase replay has no player orders, so the hesitation is never triggered. A dedicated recording with move orders would be needed to show it."
+  "replay": "demos/showcase.json",
+  "caption": "Terrain patches now appear on the battlefield: a forest (dark green) on the left flank and a hill (tan) on the right. Units route around them via A* pathfinding."
 }

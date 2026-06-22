@@ -26,6 +26,7 @@ var _origin: Vector2
 var _cols: int
 var _rows: int
 var _blocked: Dictionary = {}   # Vector2i -> true
+var _speed: Dictionary = {}     # Vector2i -> float (speed scale; absent = 1.0)
 
 
 func _init(bounds: Rect2, cell: float = CELL) -> void:
@@ -50,6 +51,22 @@ func block_rect(rect: Rect2) -> void:
 
 func is_blocked(world: Vector2) -> bool:
 	return _blocked.has(_cell_coord(world))
+
+
+## Speed zone (not obstacle): units slow on entry but A* never detours around it — penalty applies on traversal only.
+func set_speed_rect(rect: Rect2, scale: float) -> void:
+	var lo := _cell_coord(rect.position)
+	var hi := _cell_coord(rect.end - Vector2(0.001, 0.001))
+	for cx in range(lo.x, hi.x + 1):
+		for cy in range(lo.y, hi.y + 1):
+			var c := Vector2i(cx, cy)
+			if _in_bounds(c):
+				_speed[c] = scale
+
+
+## Speed scale at `world` position (1.0 if no speed zone is registered there).
+func speed_at(world: Vector2) -> float:
+	return _speed.get(_cell_coord(world), 1.0)
 
 
 ## The next world-space waypoint a unit at `from` should steer toward to reach

@@ -44,10 +44,13 @@ under pressure.
    (~0.5 s, faster for cavalry) before units execute --- orders aren't instant.
 3. **Watch the bars** --- each unit shows a strength bar that drops as it takes
    casualties. Morale matters as much as numbers (see [Tactics](tactics.qmd)).
-4. **Exploit the break** --- when a unit **routs**, it flees (shown faded) and stops
+4. **Navigate terrain** --- the field has two terrain patches: a **dark-green forest**
+   (slows movement to 60%) on the left flank, and a **tan hill** (impassable) on the
+   right. Units route around the hill automatically. See [Tactics → Terrain](tactics.qmd#terrain).
+5. **Exploit the break** --- when a unit **routs**, it flees (shown faded) and stops
    counting toward the battle. Routs spread to nearby allies, so a single break can
    cascade.
-5. **Win** --- eliminate or rout the entire enemy army and a **Victory** overlay
+6. **Win** --- eliminate or rout the entire enemy army and a **Victory** overlay
    appears, with **Fight Again** to restart.
 
 ## Recording & replays

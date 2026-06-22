@@ -9,6 +9,16 @@ const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 
 const FIELD := Rect2(0, 0, 1600, 1000)
 
+# Terrain patches; type keys into TERRAIN_COLOR. kind="block" is impassable; kind="slow" is a speed zone.
+const TERRAIN: Array = [
+	{"rect": Rect2(200,  380, 250, 200), "type": "forest", "kind": "slow", "speed": 0.6},
+	{"rect": Rect2(1150, 380, 250, 200), "type": "hill",   "kind": "block"},
+]
+const TERRAIN_COLOR := {
+	"forest": Color(0.12, 0.28, 0.10),
+	"hill":   Color(0.55, 0.48, 0.32),
+}
+
 # Sentinel order target: a move order carrying this as its `target` appends
 # its destination to the units' waypoint queue instead of replacing the route.
 # Overloads the existing int field (like merge/relief) so the replay format is
@@ -97,12 +107,14 @@ func _ready() -> void:
 	_camera.bounds = FIELD
 	_camera.position = FIELD.position + FIELD.size * 0.5
 
-	# Publish the pathfinding layer over the field. No terrain obstacles are
-	# registered yet, so routes are straight lines today; placing a block_rect()
-	# here (e.g. for a future rock/wall) is all it takes to make units route
-	# around it. Kept deterministic (grid A*) so replays stay reproducible.
-	# Cleared in _exit_tree() so it doesn't outlive this battle.
+	# Register terrain patches as PathField obstacles or speed zones; cleared in _exit_tree().
 	PathField.active = PathField.new(FIELD)
+	for patch in TERRAIN:
+		if patch.get("kind", "block") == "slow":
+			assert(patch.has("speed"), "slow terrain patch missing required 'speed' key")
+			PathField.active.set_speed_rect(patch["rect"], float(patch["speed"]))
+		else:
+			PathField.active.block_rect(patch["rect"])
 
 	# Army sizes: a campaign-launched clash deploys units scaled to the two
 	# clashing armies' strengths; a standalone battle uses the default 5-unit line.
@@ -131,6 +143,11 @@ func _draw() -> void:
 	draw_rect(FIELD, Color(0.2, 0.25, 0.16), false, 4.0)
 	draw_line(Vector2(0, FIELD.size.y * 0.5), Vector2(FIELD.size.x, FIELD.size.y * 0.5),
 		Color(1, 1, 1, 0.08), 2.0)
+	# Terrain patches — drawn over the field, under units (Battle is the parent).
+	for patch in TERRAIN:
+		var col: Color = TERRAIN_COLOR.get(patch["type"], Color(0.4, 0.4, 0.4))
+		draw_rect(patch["rect"], col)
+		draw_rect(patch["rect"], col.darkened(0.35), false, 2.0)
 
 
 func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
