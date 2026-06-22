@@ -1,11 +1,16 @@
 extends Camera2D
+class_name CameraController
 ## RTS camera: WASD / arrow-keys or screen-edge to pan, mouse wheel to zoom.
+## Two-finger swipe pans and pinch-to-zoom scales on trackpads.
 ## Bounds are clamped to the battlefield set by Battle.gd.
 
 @export var pan_speed: float = 700.0
 @export var edge_margin: float = 18.0
 @export var zoom_min: float = 0.45
 @export var zoom_max: float = 2.2
+# Two-finger swipe sensitivity: world units per pixel of trackpad delta.
+# Divided by zoom.x so the pan speed stays consistent across zoom levels.
+const PAN_GESTURE_SENSITIVITY := 1.5
 
 # Battlefield extents (world coords); Battle.gd overrides these.
 var bounds: Rect2 = Rect2(0, 0, 1600, 1000)
@@ -55,6 +60,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_zoom_by(1.1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_zoom_by(1.0 / 1.1)
+	elif event is InputEventPanGesture:
+		position += event.delta * PAN_GESTURE_SENSITIVITY / zoom.x
+		_clamp_position()
+	elif event is InputEventMagnifyGesture:
+		_zoom_by(event.factor)
 
 
 func _zoom_by(factor: float) -> void:

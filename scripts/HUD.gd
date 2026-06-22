@@ -245,7 +245,7 @@ func _refresh_hint() -> void:
 		if keys != "":
 			keys += "/"
 		keys += OS.get_keycode_string(Settings.order_binding(entry["slug"]))
-	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Normal)   •   WASD pan   •   wheel zoom   •   P pause   •   hold Space show orders" % keys
+	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Normal)   •   WASD / two-finger pan   •   wheel / pinch zoom   •   P pause   •   hold Space show orders" % keys
 
 
 ## Dispatch a Menu popup selection by its stable item id.

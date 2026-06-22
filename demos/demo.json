@@ -1,4 +1,4 @@
 {
-  "replay": "demos/showcase.json",
-  "caption": "Ranged improvements: volley trails now fly in a parabolic arc instead of straight lines, and volleys redirect to any friendly unit standing in the flight path (friendly fire)."
+  "skip": true,
+  "reason": "Touchpad gesture support (two-finger pan, pinch zoom) — live input events the recorded-battle pipeline cannot capture."
 }
