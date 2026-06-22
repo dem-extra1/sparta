@@ -125,7 +125,15 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 			# so surface it at load time rather than silently dropping it.
 			push_warning("Campaign map: 'peace' pair [%d, %d] lists a faction with itself" % [a, b])
 			return {}
-		peace.append([a, b])
+		var lo := mini(a, b)
+		var hi := maxi(a, b)
+		if [lo, hi] in peace:
+			# Duplicate pair (possibly reversed, e.g. [0, 2] and [2, 0]); make_peace is
+			# idempotent so it's harmless, but a redundant entry is a hand-edit slip —
+			# reject it at load time to stay consistent with the checks above.
+			push_warning("Campaign map: duplicate 'peace' pair [%d, %d]" % [a, b])
+			return {}
+		peace.append([lo, hi])
 
 	return {
 		"name": str(raw.get("name", "Campaign")),
