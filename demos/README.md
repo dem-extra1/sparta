@@ -96,6 +96,56 @@ clip for this PR — <reason>`) rather than a misleading GIF. Only use this when
 change really can't be filmed — for anything visible in a normal battle, a tailored
 replay (or `showcase.json`) is far better.
 
+## Still images for static features
+
+A recorded battle is the right tool for *motion* — a charge, a rout, an ability
+firing. For **static** changes a single labelled frame is clearer: a new
+**interface/menu/HUD**, **new or improved art**, a layout or visual-polish change.
+For those, post informative **image(s) in the PR description** (the body), in
+addition to a clip when motion also matters — a reviewer then judges the change at a
+glance without opening media.
+
+### Producing the PNG
+
+- **Battle-visible art** (units, HUD, effects): record as usual with the launcher
+  command from [Trying the launcher locally](#trying-the-launcher-locally), then pull
+  a single frame out of the AVI:
+
+  ```sh
+  ffmpeg -ss 5 -i /tmp/demo.avi -frames:v 1 demos/shots/your-change.png
+  ```
+
+  `-ss 5` grabs the frame ~5s in; pick a moment that shows your change.
+
+- **A new menu/HUD/screen** the replay-driven battle doesn't reach: run that scene
+  under Xvfb and save a viewport screenshot from a short throwaway script — after the
+  frame draws, call
+
+  ```gdscript
+  get_viewport().get_texture().get_image().save_png("res://demos/shots/your-change.png")
+  ```
+
+  Crop or scale with ffmpeg or an image tool afterwards if needed.
+
+### Posting it
+
+Commit the PNG under `demos/shots/` on your PR branch (create the dir if needed),
+then embed it in the **PR description** by raw URL with a caption:
+
+```md
+![New roster panel](https://github.com/lacaedemon/sparta/raw/<commit-sha>/demos/shots/roster-panel.png)
+```
+
+Use the **commit SHA** (immutable) so the image keeps rendering after the branch is
+deleted on merge — a branch-name URL works while the PR is open but breaks once the
+branch is gone. The PNG is committed in-repo, so it's permanent in `main` after merge.
+
+This is independent of the `demos/demo.json` manifest: the manifest drives the CI
+gameplay **clip** (posted as a comment), while these images live in the PR **body**
+and you add them yourself. For a static UI a battle can't film, combine them — opt
+the clip out with `"skip": true` (see [No clip applies](#no-clip-applies)) and post a
+still in the description instead.
+
 ## Where the GIF lives
 
 The GIF (and the MP4 — see [Sound](#sound)) is pushed to a long-lived
