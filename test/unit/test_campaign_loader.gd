@@ -142,6 +142,7 @@ func test_real_gallic_war_adjacency_is_mutual() -> void:
 	# Movement is two-way, so every listed neighbour must list us back. Guards against
 	# hand-edit typos in the shipped map (the general validator is tracked in #128).
 	var m := CampaignLoader.load_map(Campaigns.DEFAULT_PATH)
+	assert_false(m.is_empty(), "gallic war must load for this test to be meaningful")
 	var adj := {}
 	for p in m["provinces"]:
 		adj[int(p["id"])] = p["adj"]
