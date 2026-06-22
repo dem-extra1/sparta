@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Campaign-layer diplomacy follow-ups: truce timers (#138), AI-initiated war/peace (#139), and 4+-faction wars with a new map (#140). These are campaign-map rules + HUD changes; the demo recorder captures tactical-battle replays only, so a recorded battle can't show them."
+  "reason": "Comment-only change: scrubs issue-number references from code comments and docstrings across the GDScript sources and tests, and documents the convention in CLAUDE.md. No scene, script, or gameplay change for a recorded battle to show."
 }
