@@ -1,5 +1,5 @@
 extends GutTest
-## PathField (issue #10): deterministic grid A* routing. With no obstacles the
+## PathField: deterministic grid A* routing. With no obstacles the
 ## path is a straight line (movement unchanged); with a wall, units route around.
 
 const FIELD := Rect2(0, 0, 640, 640)

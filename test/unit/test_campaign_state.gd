@@ -1,5 +1,5 @@
 extends GutTest
-## Campaign-map rules (#70): exercises CampaignState directly (pure logic, no scene)
+## Campaign-map rules: exercises CampaignState directly (pure logic, no scene)
 ## with small hand-made maps. Geometry (polygons/labels) is omitted — CampaignState
 ## reads only owner/army/adj/name.
 
@@ -44,7 +44,7 @@ func test_adjacency() -> void:
 
 func test_are_adjacent_is_directed() -> void:
 	# are_adjacent checks only the source province's list, so it reflects the data as-is
-	# (the loader rejects asymmetric maps, #128, but the rules layer itself is directed).
+	# (the loader rejects asymmetric maps, but the rules layer itself is directed).
 	var m := {
 		"faction_names": ["A", "B"],
 		"provinces": [
@@ -145,7 +145,7 @@ func test_movable_provinces_excludes_empty_and_acted() -> void:
 			"so Rome has no army left to move this turn")
 
 
-# --- diplomacy (#123) ------------------------------------------------------
+# --- diplomacy ------------------------------------------------------
 
 func test_factions_at_war_by_default() -> void:
 	var s := _state()
@@ -206,7 +206,7 @@ func test_result_reports_defender_owner() -> void:
 	assert_eq(int(r["defender_owner"]), GAULS, "the result records who held the target before the move")
 
 
-# --- truce timers (#138) ---------------------------------------------------
+# --- truce timers ---------------------------------------------------------
 
 func test_truce_blocks_declare_war_until_it_expires() -> void:
 	var s := _state()
@@ -257,7 +257,7 @@ func test_initial_truce_from_map() -> void:
 	assert_eq(s.truce_remaining(ROME, GAULS), 3, "...with the seeded truce length")
 
 
-# --- AI-initiated diplomacy (#139) -----------------------------------------
+# --- AI-initiated diplomacy -----------------------------------------
 
 func _map4() -> Dictionary:
 	# Four factions in a row, each owning one province; geometry omitted (rules only).
@@ -317,7 +317,7 @@ func test_ai_sues_for_peace_when_overextended_and_outmatched() -> void:
 
 
 func test_ai_peace_imposes_a_truce() -> void:
-	# Suing for peace should be a commitment, not a one-turn flip (#138): the AI's peace
+	# Suing for peace should be a commitment, not a one-turn flip: the AI's peace
 	# carries the default truce so it can't re-declare war straight away.
 	var m := _map4()
 	m["provinces"][0]["army"] = 1
@@ -342,7 +342,7 @@ func test_ai_respects_an_active_truce() -> void:
 	assert_false(s.at_war(1, 0), "the AI can't declare war on a truce-bound neighbour")
 
 
-# --- multi-faction (4+) campaigns (#140) -----------------------------------
+# --- multi-faction (4+) campaigns -----------------------------------
 
 func test_four_factions_start_at_war_multi_front() -> void:
 	var s := CampaignState.new(_map4(), 1)
@@ -373,7 +373,7 @@ func test_winner_undecided_with_several_survivors() -> void:
 	assert_eq(s.winner(), 1, "owning every province wins, even in a multi-faction war")
 
 
-# --- tactical-battle hand-off (#122) --------------------------------------
+# --- tactical-battle hand-off --------------------------------------
 
 func test_resolve_attack_win_captures_like_auto_resolve() -> void:
 	# A battle-decided win applies the same transition as a winning auto-resolve:
@@ -404,7 +404,7 @@ func test_snapshot_restore_round_trips_state() -> void:
 	# and confirm it matches — this is the campaign->battle->campaign round-trip.
 	var s := _state()
 	s.move_or_attack(0, 2)        # occupy P2 -> owner/army/acted change
-	s.make_peace(ROME, GAULS, 3)  # diplomacy + truce change (#138)
+	s.make_peace(ROME, GAULS, 3)  # diplomacy + truce change
 	s.end_turn()                  # current_faction / turn change
 	var snap: Dictionary = s.snapshot()
 

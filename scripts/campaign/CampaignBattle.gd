@@ -1,5 +1,5 @@
 extends RefCounted
-## Hand-off between the campaign map and a tactical battle (M3, #122).
+## Hand-off between the campaign map and a tactical battle (M3).
 ##
 ## A contested province clash on the campaign map can be fought out in the real
 ## tactical battle (scenes/Battle.tscn) instead of being auto-resolved by dice in

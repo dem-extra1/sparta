@@ -1,7 +1,7 @@
 extends Control
 ## Title screen / entry point. Lets the player pick the self-contained tactical
-## battle (M1) or the campaign map (M2, #70); the campaign now also launches the
-## tactical battle for province clashes (M3, #122). UI built in code, matching the
+## battle (M1) or the campaign map (M2); the campaign now also launches the
+## tactical battle for province clashes (M3). UI built in code, matching the
 ## rest of the project's HUDs.
 
 const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
@@ -11,7 +11,7 @@ const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
-	# Reaching the main menu ends any campaign->battle hand-off (#122), so a later
+	# Reaching the main menu ends any campaign->battle hand-off, so a later
 	# standalone "Tactical Battle" isn't mistaken for a campaign clash.
 	CampaignBattle.clear()
 
@@ -45,7 +45,7 @@ func _ready() -> void:
 	battle_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Battle.tscn"))
 	box.add_child(battle_btn)
 
-	# One button per registered campaign (#125): selecting it records the map path,
+	# One button per registered campaign: selecting it records the map path,
 	# then opens the shared campaign scene which loads that data file.
 	for c in Campaigns.LIST:
 		var path: String = c["path"]

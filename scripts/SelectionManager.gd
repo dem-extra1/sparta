@@ -5,14 +5,14 @@ extends Node2D
 ##   Right click       — move there, or attack the enemy unit clicked
 
 const UnitRef = preload("res://scripts/Unit.gd")  # avoid global-class-cache dependency
-const BattleRef = preload("res://scripts/Battle.gd")  # for the waypoint-append sentinel (#34)
+const BattleRef = preload("res://scripts/Battle.gd")  # for the waypoint-append sentinel
 
 const CLICK_THRESHOLD: float = 6.0
 const DOUBLE_CLICK_MS: int = 350
-const CURSOR_SIZE: int = 24   # generated order-mode cursor (#35)
+const CURSOR_SIZE: int = 24   # generated order-mode cursor
 
 # Order-overlay colours (common RTS convention: green = move, red = attack). Teal marks
-# a SUPPORT link (#101) — same hue as the SUPPORT order cursor (_order_mode_color).
+# a SUPPORT link — same hue as the SUPPORT order cursor (_order_mode_color).
 const ORDER_MOVE_COLOR: Color = Color(0.45, 0.95, 0.55, 0.9)
 const ORDER_ATTACK_COLOR: Color = Color(0.96, 0.40, 0.32, 0.95)
 const ORDER_SUPPORT_COLOR: Color = Color(0.4, 0.95, 0.7, 0.9)
@@ -31,8 +31,8 @@ var _last_click_unit = null
 var _last_click_ms: int = -100000
 # Control groups: number-key digit -> bound Array of units.
 var _groups: Dictionary = {}
-# Armed order mode (#35): the next right-click issues an order in this stance.
-# Selected by hotkey (rebindable via ☰ Menu → Keybindings, #87) and shown by the
+# Armed order mode: the next right-click issues an order in this stance.
+# Selected by hotkey (rebindable via ☰ Menu → Keybindings) and shown by the
 # cursor + a HUD indicator. Stays armed (sticky) until changed or cleared (Esc).
 var _armed_mode: int = BattleRef.OrderMode.NORMAL
 
@@ -60,7 +60,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				queue_redraw()
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 			# Shift+right-click appends a waypoint to the route instead of replacing
-			# it, so a march can be plotted as a multi-leg path (#34).
+			# it, so a march can be plotted as a multi-leg path.
 			_issue_order(get_global_mouse_position(), event.shift_pressed)
 	elif event is InputEventMouseMotion and _dragging:
 		_drag_cur = get_global_mouse_position()
@@ -68,11 +68,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo:
 		var mode: int = _order_mode_for_keycode(event.physical_keycode)
 		if mode >= 0:
-			_set_armed_mode(mode)   # arm a smart-order stance (#35)
+			_set_armed_mode(mode)   # arm a smart-order stance
 		elif event.keycode == KEY_M:
-			_issue_merge()   # merge the selected friendly regiments into one (#3)
+			_issue_merge()   # merge the selected friendly regiments into one
 		else:
-			_handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall (#11)
+			_handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall
 
 
 func _finish_selection() -> void:
@@ -145,8 +145,8 @@ func _issue_order(world_pos: Vector2, append: bool = false) -> void:
 		target_uid = enemy.uid
 	else:
 		# Right-clicking a friendly that isn't part of the selection targets it: a
-		# line-relief order (#4) on an engaged friendly, or — when SUPPORT is armed
-		# (#86) — a guard order on any friendly, engaged or not. Plain ground stays
+		# line-relief order on an engaged friendly, or — when SUPPORT is armed
+		# — a guard order on any friendly, engaged or not. Plain ground stays
 		# an ordinary move.
 		var friend: UnitRef = _unit_at(world_pos, 0)
 		var supporting: bool = _armed_mode == BattleRef.OrderMode.SUPPORT
@@ -154,7 +154,7 @@ func _issue_order(world_pos: Vector2, append: bool = false) -> void:
 				and (supporting or friend.state == UnitRef.State.FIGHTING):
 			target_uid = friend.uid
 		elif append:
-			# Shift on plain ground queues a waypoint (#34); the sentinel rides the
+			# Shift on plain ground queues a waypoint; the sentinel rides the
 			# target field so Battle appends instead of replacing the route. Append
 			# is ignored when the click resolves to an attack or relief target.
 			target_uid = BattleRef.ORDER_APPEND_WAYPOINT
@@ -168,7 +168,7 @@ func _issue_order(world_pos: Vector2, append: bool = false) -> void:
 	Sfx.play(&"order")
 
 
-## Merge the selected friendly regiments into the first-selected one (#3). Encoded
+## Merge the selected friendly regiments into the first-selected one. Encoded
 ## as an order whose target is the primary uid — which IS in `units`, so Battle
 ## tells it apart from a relief (whose target is a friendly outside the selection).
 func _issue_merge() -> void:
@@ -291,7 +291,7 @@ func _recall_group(n: int) -> void:
 	_refresh_hud()
 
 
-# --- order modes (#35) -----------------------------------------------------
+# --- order modes -----------------------------------------------------
 
 func _exit_tree() -> void:
 	# The custom cursor is global engine state; restore the system cursor so an
@@ -299,7 +299,7 @@ func _exit_tree() -> void:
 	Input.set_custom_mouse_cursor(null)
 
 
-## Order-mode hotkeys (#87): keyed on the PHYSICAL keycode (layout-independent, like
+## Order-mode hotkeys: keyed on the PHYSICAL keycode (layout-independent, like
 ## the camera/pause keys) and now read from the Settings autoload so they're
 ## rebindable. Esc -> NORMAL ("clear stance") stays fixed. -1 = not a mode key.
 func _order_mode_for_keycode(physical_keycode: Key) -> int:
@@ -326,9 +326,9 @@ func _set_armed_mode(mode: int) -> void:
 		_hud.set_order_mode(label)
 
 
-## Reflect the armed mode in the mouse cursor (#35): a coloured disc per smart
+## Reflect the armed mode in the mouse cursor: a coloured disc per smart
 ## mode, or the system arrow for NORMAL. First-pass art; richer per-mode icons are
-## deferred (see the epic, #35).
+## deferred (see the epic).
 func _update_order_cursor() -> void:
 	if _armed_mode == BattleRef.OrderMode.NORMAL:
 		Input.set_custom_mouse_cursor(null)
@@ -411,7 +411,7 @@ func _draw_orders() -> void:
 			draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
 			_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
 		elif ward != null:
-			# A SUPPORT unit (#101) holds no target_enemy/move_target of its own, so draw
+			# A SUPPORT unit holds no target_enemy/move_target of its own, so draw
 			# its guard duty instead: a teal link to the ward it's shadowing.
 			var wp: Vector2 = ward.global_position
 			draw_dashed_line(origin, wp, ORDER_SUPPORT_COLOR, 2.0, 9.0)
@@ -422,7 +422,7 @@ func _draw_orders() -> void:
 				_draw_move_path(origin, route[0], route.slice(1))
 
 
-## The friendly a SUPPORT unit (#101) is guarding, if it's still a valid overlay
+## The friendly a SUPPORT unit is guarding, if it's still a valid overlay
 ## target; else null. Extracted so the overlay branch reads cleanly and the guard is
 ## unit-testable. Fully mirrors the ward checks in Unit._support_valid — alive, not
 ## routing, and not the unit itself (the order_mode == SUPPORT test stays at the call site).
@@ -435,7 +435,7 @@ func _support_ward_of(u: UnitRef) -> UnitRef:
 
 
 ## A unit's full move route for the overlay: its committed destination and queued
-## waypoints, plus any waypoint appends still pending in Battle (#62). While the
+## waypoints, plus any waypoint appends still pending in Battle. While the
 ## sim is paused the physics tick that drains those appends into u.waypoints isn't
 ## running, so without this the overlay wouldn't preview a just-queued leg until
 ## the player unpaused. Returns [] when the unit has no move order and nothing
@@ -449,7 +449,7 @@ func _move_route_for(u: UnitRef) -> Array[Vector2]:
 	return route
 
 
-## Draw a unit's full move route (#34): a dashed line from the unit through its
+## Draw a unit's full move route: a dashed line from the unit through its
 ## current move_target and each queued waypoint, a small dot at every intermediate
 ## stop, and the destination ring at the final point. With no waypoints this is the
 ## original single dashed segment to the destination.

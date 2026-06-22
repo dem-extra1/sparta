@@ -20,26 +20,26 @@ var uid: int = -1
 @export var attack_range: float = 26.0
 @export var is_cavalry: bool = false
 @export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
-@export var is_ranged: bool = false   # archers: loose volleys from a distance (#37)
+@export var is_ranged: bool = false   # archers: loose volleys from a distance
 
 # --- Runtime state ---
 var soldiers: int
 var morale: float = 100.0
-var fatigue: float = 0.0   # 0 fresh .. 100 exhausted; rotated out by relief (#4)
-var cohesion: float = 1.0   # 1.0 gelled; drops on a merge (#3), then ramps back
+var fatigue: float = 0.0   # 0 fresh .. 100 exhausted; rotated out by relief
+var cohesion: float = 1.0   # 1.0 gelled; drops on a merge, then ramps back
 var state: int = State.IDLE
 var facing: Vector2 = Vector2.DOWN
 var move_target: Vector2 = Vector2.ZERO
 var has_move_target: bool = false
 # Queued destinations after move_target: the unit marches the route in order,
-# popping the next point each time it reaches the current one (#34). Filled by
+# popping the next point each time it reaches the current one. Filled by
 # Shift+right-click; a plain move order clears it.
 var waypoints: Array[Vector2] = []
 var target_enemy: Unit = null
 var selected: bool = false
-# Order stance (#35), set by Battle._apply_order_cmd from the order's mode.
+# Order stance, set by Battle._apply_order_cmd from the order's mode.
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
-# The smart-order behaviours (#82/#84/#85/#86) read this; NORMAL is current behaviour.
+# The smart-order behaviours read this; NORMAL is current behaviour.
 var order_mode: int = 0
 # Stance values from Battle.OrderMode that Unit's own behaviour reacts to, mirrored
 # as plain ints to avoid a Unit<->Battle preload cycle (kept in sync with the enum;
@@ -49,11 +49,11 @@ const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
-# Skirmish (#85): a kiting ranged unit backs off when a threat closes inside this
+# Skirmish: a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
 const SKIRMISH_KITE_DISTANCE: float = 100.0
-# Support (#86): a unit ordered to guard a friendly "ward" engages any enemy that
+# Support: a unit ordered to guard a friendly "ward" engages any enemy that
 # closes within SUPPORT_GUARD_RADIUS of the ward, otherwise shadows the ward,
 # holding station SUPPORT_FOLLOW_DISTANCE off so it doesn't pile onto it. The guard
 # radius is near DETECTION_RANGE (190) so it meets threats about as far as it would
@@ -71,10 +71,10 @@ const RADIUS: float = 18.0
 const DETECTION_RANGE: float = 190.0
 const ATTACK_INTERVAL: float = 0.6
 const ROUT_TIME: float = 6.0
-# Radius over which a rout shakes friendly morale (#72). Shared by the morale-spread
+# Radius over which a rout shakes friendly morale. Shared by the morale-spread
 # loop and the cosmetic shockwave so the visual matches the actual area of effect.
 const ROUT_SHOCK_RADIUS: float = 140.0
-# Rout recovery (#68): when a unit's rout timer runs out it RALLIES — recovers to your
+# Rout recovery: when a unit's rout timer runs out it RALLIES — recovers to your
 # control — if it has broken contact (no living enemy within RALLY_CONTACT_RADIUS) and
 # still fields enough men (>= SHATTER_STRENGTH_FRAC of its max). Otherwise it SHATTERS:
 # run down or gutted past reforming, it leaves play for good. A rallied unit comes back
@@ -83,7 +83,7 @@ const RALLY_CONTACT_RADIUS: float = 160.0   # = RANGED_RANGE: in archer reach = 
 const RALLY_MORALE: float = 30.0
 const SHATTER_STRENGTH_FRAC: float = 0.15
 
-# Ranged combat (#37). A ranged unit looses volleys at any enemy within
+# Ranged combat. A ranged unit looses volleys at any enemy within
 # RANGED_RANGE that isn't already in melee contact — far outreaching melee's
 # ~62px contact, so archers skirmish from safety. RANGED_RANGE stays below
 # DETECTION_RANGE so an auto-acquired target is always in detection too. Volleys
@@ -93,12 +93,12 @@ const RANGED_INTERVAL: float = 1.0
 const RANGED_DAMAGE_FACTOR: float = 0.7
 
 # Fatigue builds while FIGHTING and recovers while resting; it bites into attack
-# so rotating tired regiments out via line relief (#4) is a real tactical lever.
+# so rotating tired regiments out via line relief is a real tactical lever.
 const FATIGUE_PER_SEC: float = 8.0
 const FATIGUE_RECOVER_PER_SEC: float = 5.0
 const FATIGUE_MAX_ATTACK_PENALTY: float = 0.4
 
-# Merging two regiments (#3) starts the result with a "strangers" cohesion debuff
+# Merging two regiments starts the result with a "strangers" cohesion debuff
 # (scales attack) that ramps back to full as the merged unit gels.
 const MERGE_COHESION_FLOOR: float = 0.6
 const COHESION_RECOVER_PER_SEC: float = 0.1
@@ -111,17 +111,17 @@ const COHESION_RECOVER_PER_SEC: float = 0.1
 const SEPARATION_RADIUS_INFANTRY: float = 18.0
 const SEPARATION_RADIUS_SPEARMEN: float = 20.0
 const SEPARATION_RADIUS_CAVALRY: float = 24.0
-# Hard ceiling on a footprint (merging widens it, #3). Two maxed units have a
+# Hard ceiling on a footprint (merging widens it). Two maxed units have a
 # floor of 2*28 = 56, still under melee reach (attack_range 26 + RADIUS 18 +
 # RADIUS 18 = 62), so even merged mega-units keep pressing into contact.
 const SEPARATION_RADIUS_MAX: float = 28.0
 
-# Cavalry charge (#100): a physics-based bonus, not a one-shot token. The damage
+# Cavalry charge: a physics-based bonus, not a one-shot token. The damage
 # multiplier scales with the rider's IMPACT VELOCITY at the moment of contact — the
 # component of its approach velocity aimed straight at the target — so both closing
 # speed and angle matter. Calibrated so a full-speed head-on gallop (~a cavalry's
 # move_speed) lands roughly the old flat +0.8 (x1.8 damage); a shallow angle or a
-# near-stationary unit (e.g. a shadowing supporter, #86) earns proportionally less,
+# near-stationary unit (e.g. a shadowing supporter) earns proportionally less,
 # down to nothing. Deterministic (positions + move_speed only) so replays stay exact.
 const CHARGE_BONUS_AT_REF_SPEED: float = 0.8
 # Reference closing speed at which a head-on charge yields the full bonus above. An
@@ -143,24 +143,24 @@ const ANTI_CAV_CHARGE_FLOOR: float = 0.6
 var _attack_cd: float = 0.0
 var _rout_timer: float = 0.0
 var _moved_last_frame: bool = false
-# Velocity the unit carried into its last move; the cavalry charge bonus (#100) reads it
+# Velocity the unit carried into its last move; the cavalry charge bonus reads it
 # at contact. Spent by _strike (so only the contact strike charges, not the grinding
 # strikes after) and cleared when the unit goes idle/holds (a stationary unit carries no
 # momentum); kept while FIGHTING so a strike delayed by attack cooldown still lands it.
 var _approach_velocity: Vector2 = Vector2.ZERO
-var _relief_partner: Unit = null   # unit we're swapping with mid-relief (#4)
+var _relief_partner: Unit = null   # unit we're swapping with mid-relief
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
 
-# --- Cosmetic soldier flocking state (#32 Stage B) -------------------------
+# --- Cosmetic soldier flocking state (Stage B) -------------------------
 # Per-mark render positions/velocities in the unit's (unrotated) local frame. Cosmetic
 # only — never read by the sim. _soldier_pos[i] is where mark i is drawn; it chases its
 # rotated, jittered formation slot via _flock_step().
 var _soldier_pos: PackedVector2Array = PackedVector2Array()
 var _soldier_vel: PackedVector2Array = PackedVector2Array()
 var _flock_settled: bool = false        # true once every mark is on its slot and at rest
-var _combat_clock: float = 0.0          # render-time clock driving the melee churn (#32 Stage C)
+var _combat_clock: float = 0.0          # render-time clock driving the melee churn (Stage C)
 var _flock_last_pos: Vector2 = Vector2.ZERO     # unit position last flock frame (for trail shove)
 var _flock_last_facing: Vector2 = Vector2.DOWN  # unit facing last flock frame (for wheel detection)
 var _flock_color: Color = Color(0, 0, 0, 0)     # last body modulate applied to the marks
@@ -183,7 +183,7 @@ func _ready() -> void:
 	# Layer budget: field=0, then this unit's cosmetic stack sits 1..3 — shadow (eff 1),
 	# marks (eff 2), chrome (this _draw, eff 3) — all below the z=4 rout shockwave / z=5
 	# volley trails / z=100 selection box. The marks/shadow are child nodes (MultiMeshes /
-	# Polygon2D) layered just under this node via their relative z_index (#32 Stage B).
+	# Polygon2D) layered just under this node via their relative z_index (Stage B).
 	z_index = 3
 	_setup_flock_renderer()
 	queue_redraw()
@@ -213,7 +213,7 @@ func _physics_process(delta: float) -> void:
 	_update_relief()
 
 	# A stationary, non-fighting unit carries no momentum: drop any leftover approach
-	# velocity so a later standing strike can't charge off it (#100). While FIGHTING we
+	# velocity so a later standing strike can't charge off it. While FIGHTING we
 	# keep it — a strike held back by attack cooldown on the contact frame still charges
 	# on the next — and _strike spends it, so grinding strikes after the first don't.
 	if not _moved_last_frame and state != State.FIGHTING:
@@ -223,7 +223,7 @@ func _physics_process(delta: float) -> void:
 
 ## Decide what to do this frame: fight if in contact, otherwise move.
 func _think(delta: float) -> void:
-	# Support stance (#86): guard a friendly ward — engage threats near it, else
+	# Support stance: guard a friendly ward — engage threats near it, else
 	# shadow it. Handled up front so it overrides the normal target/move logic. If
 	# the ward is gone (dead, routed, or cleared) the order is spent, so drop it and
 	# fall through to NORMAL auto-behaviour.
@@ -238,7 +238,7 @@ func _think(delta: float) -> void:
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
-		# Skirmish (#85): a ranged unit kites — if a threat is inside the kite
+		# Skirmish: a ranged unit kites — if a threat is inside the kite
 		# distance it backs off (away from the threat, clamped to the field) rather
 		# than standing to fire or being caught in melee; beyond it, it falls through
 		# to the normal ranged fire below. Gated by the same "not disengaging" rule
@@ -255,7 +255,7 @@ func _think(delta: float) -> void:
 			# standing idle.
 			if _moved_last_frame:
 				return
-		# Ranged units (#37) stand and loose volleys at any enemy inside RANGED_RANGE
+		# Ranged units stand and loose volleys at any enemy inside RANGED_RANGE
 		# that hasn't closed to melee — they skirmish at distance instead of charging.
 		# Gated by the same "not disengaging" rule as melee: a plain move order with
 		# no explicit attack target marches them off rather than rooting them to fire.
@@ -280,7 +280,7 @@ func _think(delta: float) -> void:
 			return
 		elif target_enemy != null:
 			# Explicit attack order, not yet in contact: chase past any move target.
-			# A flank/rear stance (#82) closes on the enemy's side or back instead of
+			# A flank/rear stance closes on the enemy's side or back instead of
 			# head-on, so the strike on arrival lands with the flank/rear bonus.
 			var goal: Vector2 = enemy.position
 			if order_mode == ORDER_ATTACK_FLANK or order_mode == ORDER_ATTACK_REAR:
@@ -293,14 +293,14 @@ func _think(delta: float) -> void:
 		if position.distance_to(move_target) > 5.0:
 			_move_to(move_target, delta)
 		elif not waypoints.is_empty():
-			move_target = waypoints.pop_front()   # advance along the queued route (#34)
+			move_target = waypoints.pop_front()   # advance along the queued route
 		else:
 			has_move_target = false
 			state = State.IDLE
 	elif enemy != null and order_mode != ORDER_HOLD:
 		_move_to(enemy.position, delta)
 	else:
-		# Idle: no enemy, or a HOLD stance (#84) that won't chase — the paths above
+		# Idle: no enemy, or a HOLD stance that won't chase — the paths above
 		# still fight/fire whatever reaches a held unit.
 		state = State.IDLE
 
@@ -319,8 +319,8 @@ func _nearest_enemy() -> Unit:
 
 
 ## Nearest living, non-routing enemy within `radius` of `center`. Backs both normal
-## auto-acquisition (centred on this unit, DETECTION_RANGE) and the support stance
-## (#86), which scans around the WARD's position so a supporter meets threats
+## auto-acquisition (centred on this unit, DETECTION_RANGE) and the support stance,
+## which scans around the WARD's position so a supporter meets threats
 ## closing on its charge rather than only ones near itself.
 func _nearest_enemy_to(center: Vector2, radius: float) -> Unit:
 	var best: Unit = null
@@ -338,7 +338,7 @@ func _nearest_enemy_to(center: Vector2, radius: float) -> Unit:
 	return best
 
 
-## Whether this unit's SUPPORT order (#86) still has a valid ward to guard: a
+## Whether this unit's SUPPORT order still has a valid ward to guard: a
 ## living, non-routing friendly that isn't this unit itself.
 func _support_valid() -> bool:
 	return support_target != null and is_instance_valid(support_target) \
@@ -347,7 +347,7 @@ func _support_valid() -> bool:
 		and support_target.state != State.ROUTING
 
 
-## Support stance (#86): guard the ward. If an enemy has closed within
+## Support stance: guard the ward. If an enemy has closed within
 ## SUPPORT_GUARD_RADIUS of the ward, peel off and engage it (firing at standoff if
 ## ranged, melee in contact, else closing on it); otherwise shadow the ward,
 ## holding a short standoff so the supporter doesn't pile onto the unit it guards.
@@ -383,7 +383,7 @@ func _support_tick(delta: float) -> void:
 		state = State.IDLE
 
 
-## Approach point for a flank/rear attack (#82): a spot at melee-contact distance
+## Approach point for a flank/rear attack: a spot at melee-contact distance
 ## on the enemy's flank or rear, relative to its facing, so closing on it brings
 ## this unit alongside/behind the target and its strike lands with the flank/rear
 ## bonus. Recomputed each tick from sim state, so it tracks a turning or moving
@@ -400,7 +400,7 @@ func _attack_approach_point(enemy: Unit) -> Vector2:
 	return enemy.position + perp * (side * contact)
 
 
-## Keep a point inside the playable field (used when a skirmisher kites, #85), so
+## Keep a point inside the playable field (used when a skirmisher kites), so
 ## a retreating unit doesn't back off the map edge.
 func _clamp_to_field(p: Vector2) -> Vector2:
 	return Vector2(
@@ -425,7 +425,7 @@ func _move_to(point: Vector2, delta: float) -> void:
 	state = State.MOVING
 	_moved_last_frame = true
 	# Record the velocity carried this frame so a strike on the next (contact) frame
-	# can scale the charge bonus (#100) by the actual closing speed and direction.
+	# can scale the charge bonus by the actual closing speed and direction.
 	_approach_velocity = dir * move_speed
 
 
@@ -511,7 +511,7 @@ func _separate() -> void:
 func order_summary() -> String:
 	if state == State.ROUTING:
 		return "Routing!"
-	# A SUPPORT order (#86) is reported by its ward, ahead of the target/move lookups
+	# A SUPPORT order is reported by its ward, ahead of the target/move lookups
 	# below — a supporter holds no target_enemy/move_target of its own.
 	if order_mode == ORDER_SUPPORT and _support_valid():
 		return "Supporting %s" % support_target.unit_name
@@ -540,10 +540,10 @@ func order_summary() -> String:
 ## shoving. Re-enables on its own once the mover stops (both IDLE) or the friendly
 ## moves off. Enemies are never exempt; two non-idle friendlies are not exempt;
 ## routers (a separate state/group) are never exempt and still get shouldered.
-## Line relief (#4) and merging (#3) build on this same exemption.
+## Line relief and merging build on this same exemption.
 func _separation_exempt(other: Unit) -> bool:
 	if other == _relief_partner:
-		return true   # the swapping pair interpenetrates during a relief (#4)
+		return true   # the swapping pair interpenetrates during a relief
 	if other.team != team:
 		return false
 	# FIGHTING and ROUTING are implicitly non-exempt (neither is IDLE/MOVING), so
@@ -583,11 +583,11 @@ func _separation_candidates() -> Array:
 
 # --- Combat ----------------------------------------------------------------
 
-## Physics-based cavalry charge multiplier (#100): the bonus is the rider's IMPACT
+## Physics-based cavalry charge multiplier: the bonus is the rider's IMPACT
 ## MOMENTUM, not a one-shot token. It scales with the component of the unit's approach
 ## velocity aimed straight at the target — so a fast, head-on gallop lands the full
 ## bonus, a shallow/glancing approach lands less, and a near-stationary unit (a unit
-## grinding in melee, or a shadowing supporter, #86) lands none. Cavalry only, and not
+## grinding in melee, or a shadowing supporter) lands none. Cavalry only, and not
 ## against other cavalry. Anti-cavalry spearmen brace and turn it into a speed-scaled
 ## penalty (charging onto set spears backfires) — so a cavalry unit that ISN'T moving
 ## carries no momentum and fights spearmen at x1.0, neither charging nor impaling itself
@@ -620,7 +620,7 @@ func _strike(enemy: Unit) -> void:
 	var dmg: float = base * Replay.rng.randf_range(0.6, 1.4)
 
 	# Cavalry charge: a momentum-scaled bonus (or a backfire onto braced spears),
-	# computed from the rider's impact velocity at this contact (#100). Spend it so the
+	# computed from the rider's impact velocity at this contact. Spend it so the
 	# charge lands only on this first, contact-making strike — not the grinding strikes
 	# that follow in the same melee.
 	dmg *= charge_multiplier(enemy)
@@ -630,7 +630,7 @@ func _strike(enemy: Unit) -> void:
 	enemy.take_casualties(int(round(dmg)), self)
 
 
-## A ranged volley (#37): like a melee strike without the cavalry charge, scaled
+## A ranged volley: like a melee strike without the cavalry charge, scaled
 ## by RANGED_DAMAGE_FACTOR — archers trade per-hit punch for striking from beyond
 ## melee reach. Draws from the same seeded RNG stream so battles stay reproducible.
 ## Damage flows through take_casualties, so volleys inherit the same flank/rear
@@ -642,7 +642,7 @@ func _shoot(enemy: Unit) -> void:
 	var base: float = maxf(1.0, eff_attack - float(enemy.defense))
 	var dmg: float = base * RANGED_DAMAGE_FACTOR * Replay.rng.randf_range(0.6, 1.4)
 	Sfx.play(&"shoot")
-	# Cosmetic volley trail (#65): arrows streak from the shooter to the target. Spawned
+	# Cosmetic volley trail: arrows streak from the shooter to the target. Spawned
 	# on the (deterministic) sim tick but animated/faded on render time, so it has no
 	# effect on the simulation or replays. Skipped if we're somehow outside the scene
 	# tree (is_inside_tree() also guarantees get_parent() is a live tree node to add to).
@@ -674,11 +674,11 @@ func take_casualties(amount: int, attacker: Unit) -> void:
 		_rout()
 		Sfx.play(&"rout")
 
-	# Cosmetic "men fall" markers (#32 Stage C): drop a small fading heap of bodies on the
+	# Cosmetic "men fall" markers (Stage C): drop a small fading heap of bodies on the
 	# contact edge where this strike's casualties fell, leaning toward where the blow came
 	# from. Spawned on the deterministic sim tick but render-only — no sim group, no
 	# Replay.rng — so it has no simulation/replay/determinism impact (same contract as the
-	# volley trail #65 and rout shockwave #72). Guarded by is_inside_tree() like those.
+	# volley trail and rout shockwave). Guarded by is_inside_tree() like those.
 	if is_inside_tree():
 		var edge: Vector2 = global_position
 		if is_instance_valid(attacker):
@@ -707,7 +707,7 @@ func _flank_multiplier(attacker: Unit) -> float:
 		return 2.0
 
 
-# --- Fatigue & line relief (#4) --------------------------------------------
+# --- Fatigue & line relief --------------------------------------------
 
 ## Fatigue builds while fighting and recovers while resting. Called each tick.
 func tick_fatigue(delta: float) -> void:
@@ -722,13 +722,13 @@ func fatigue_attack_factor() -> float:
 	return 1.0 - FATIGUE_MAX_ATTACK_PENALTY * (fatigue / 100.0)
 
 
-## The "strangers" cohesion debuff from a merge (#3) ramps back to full over time.
+## The "strangers" cohesion debuff from a merge ramps back to full over time.
 func tick_cohesion(delta: float) -> void:
 	if cohesion < 1.0:
 		cohesion = minf(1.0, cohesion + COHESION_RECOVER_PER_SEC * delta)
 
 
-## Fold another friendly regiment into this one (#3): pool soldiers, blend the
+## Fold another friendly regiment into this one: pool soldiers, blend the
 ## combat stats weighted by strength, and start with a cohesion debuff that
 ## decays. The absorbed unit is removed. Caller guarantees same team.
 func absorb(other: Unit) -> void:
@@ -852,9 +852,9 @@ func _rout() -> void:
 		if friend != null and friend.team == team:
 			if position.distance_to(friend.position) < ROUT_SHOCK_RADIUS:
 				friend.morale -= 12.0
-	# Cosmetic morale-shock ripple (#72) marking the area allies were shaken. Spawned on
+	# Cosmetic morale-shock ripple marking the area allies were shaken. Spawned on
 	# the deterministic sim tick but animated/faded on render time, in no sim group, so
-	# it has no simulation/replay/determinism impact. Guarded like the volley trail (#65).
+	# it has no simulation/replay/determinism impact. Guarded like the volley trail.
 	if is_inside_tree():
 		RoutShockwave.spawn(get_parent(), global_position, ROUT_SHOCK_RADIUS, team_color)
 	queue_redraw()
@@ -869,7 +869,7 @@ func _process_rout(delta: float) -> void:
 	if _rout_timer > 0.0:
 		queue_redraw()
 		return
-	# Rout over (#68): a unit that broke contact and kept enough men RALLIES back into
+	# Rout over: a unit that broke contact and kept enough men RALLIES back into
 	# the fight; one still in contact, or gutted past reforming, SHATTERS for good.
 	if _can_rally():
 		_rally()
@@ -877,7 +877,7 @@ func _process_rout(delta: float) -> void:
 		_shatter()
 
 
-## Whether a routed unit recovers rather than shatters when its rout times out (#68):
+## Whether a routed unit recovers rather than shatters when its rout times out:
 ## it must have broken contact — no living enemy within RALLY_CONTACT_RADIUS — and still
 ## field enough men to reform (>= SHATTER_STRENGTH_FRAC of its max). Positions + counts
 ## only, so it's deterministic and replay-safe.
@@ -887,7 +887,7 @@ func _can_rally() -> bool:
 	return _nearest_enemy_to(position, RALLY_CONTACT_RADIUS) == null
 
 
-## Recover from a rout (#68): the unit reforms under the player's control at low,
+## Recover from a rout: the unit reforms under the player's control at low,
 ## fragile morale and rejoins the fightable units — the inverse of the state/group
 ## changes _rout() made. It can be re-ordered, and can break again, from here.
 func _rally() -> void:
@@ -902,9 +902,9 @@ func _rally() -> void:
 	queue_redraw()
 
 
-## Shatter (#68): a routed unit that couldn't escape, or was gutted past recovery, is
+## Shatter: a routed unit that couldn't escape, or was gutted past recovery, is
 ## destroyed for good — the terminal counterpart to a rally. Reuses the synchronous
-## group teardown (#61) so it never lingers in a spatial-hash / separation scan after
+## group teardown so it never lingers in a spatial-hash / separation scan after
 ## leaving play (queue_free() alone defers to end of frame).
 func _shatter() -> void:
 	_remove_from_play()
@@ -912,7 +912,7 @@ func _shatter() -> void:
 
 # --- Visuals ------------------------------------------------------------------
 
-# Individual-soldier rendering (#32 Stage A). The regiment is drawn as a formation
+# Individual-soldier rendering (Stage A). The regiment is drawn as a formation
 # block of one small mark per living soldier (cosmetic only — never fed back into the
 # sim), packed roughly within the unit's footprint so the on-field size still matches
 # the collision RADIUS. Wider-than-deep, like a real formation.
@@ -923,7 +923,7 @@ const CAV_MARK_RADIUS: float = 2.6      # cavalry marks are larger (horses)
 const MARK_JITTER: float = 1.3          # stable per-mark wobble so it's not a rigid grid
 const EMBLEM_SCALE: float = 0.5         # the per-type sprite, shrunk to a centre emblem
 
-# Soldier flocking (#32 Stage B). The marks no longer snap to their formation slot:
+# Soldier flocking (Stage B). The marks no longer snap to their formation slot:
 # each soldier eases toward its slot (an arrival spring) while pushing off its
 # neighbours (separation), so the block visibly deforms and trails when the regiment
 # advances or wheels, then reforms when it halts. Purely COSMETIC — these positions are
@@ -943,7 +943,7 @@ const FLOCK_SETTLE_POS: float = 0.30    # within this of its slot and...
 const FLOCK_SETTLE_VEL: float = 1.5     # ...slower than this -> the block sleeps
 const FLOCK_DT_MAX: float = 1.0 / 30.0  # clamp render dt so a hitch can't blow up integration
 
-# Melee churn (#32 Stage C). While a regiment is FIGHTING, its front-rank soldier marks
+# Melee churn (Stage C). While a regiment is FIGHTING, its front-rank soldier marks
 # press into and recoil from the contact line and jitter sideways, so the engaged edge of
 # the block visibly fights instead of two blocks merely touching. The churn fades to
 # nothing a couple of ranks back (COMBAT_REACH), so only the fighting edge moves while the
@@ -956,7 +956,7 @@ const COMBAT_REACH: float = 8.0         # depth behind front rank over which chu
 const COMBAT_FREQ: float = 9.0          # churn oscillation rate (rad/s)
 
 
-## Local-space slot offsets for `n` soldier marks (#32): a centred, wider-than-deep
+## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep
 ## grid (front rank toward -Y, the rotated "forward"). Pure and deterministic — a
 ## function of n only — so it's unit-testable; _slot_target() adds stable jitter.
 func _formation_slots(n: int) -> PackedVector2Array:
@@ -984,7 +984,7 @@ func _hash01(i: int) -> float:
 	return x - floor(x)
 
 
-# --- Soldier flocking (#32 Stage B) ------------------------------------------
+# --- Soldier flocking (Stage B) ------------------------------------------
 # Render-time only: the cosmetic mark layer eases toward the formation and trails the
 # unit's motion. None of this writes back into the simulation.
 
@@ -1119,7 +1119,7 @@ func _update_flock(delta: float) -> void:
 	var displacement: Vector2 = position - _flock_last_pos
 	var turned: bool = not facing.is_equal_approx(_flock_last_facing)
 	# A FIGHTING block never rests: its front rank churns against the contact line each
-	# frame (#32 Stage C), so it skips the at-rest fast-path even when the unit is standing
+	# frame (Stage C), so it skips the at-rest fast-path even when the unit is standing
 	# still and not turning.
 	var fighting: bool = state == State.FIGHTING
 	if _flock_settled and displacement.is_zero_approx() and not turned and not fighting:
@@ -1147,7 +1147,7 @@ func _update_flock(delta: float) -> void:
 	var grid := _build_soldier_grid(sep_dist)
 	var dt: float = minf(delta, FLOCK_DT_MAX)
 	# Front rank depth datum (slot 0 is the front-centre rank, see _formation_slots): a
-	# mark's depth behind it scales how hard it churns while fighting (#32 Stage C).
+	# mark's depth behind it scales how hard it churns while fighting (Stage C).
 	var front_y: float = slots[0].y if n > 0 else 0.0
 	if fighting:
 		_combat_clock += dt
@@ -1214,7 +1214,7 @@ static func _flock_step(pos: Vector2, vel: Vector2, target: Vector2,
 	return [npos, nvel]
 
 
-## Melee churn offset for one front-rank mark (#32 Stage C). Returns an offset in the
+## Melee churn offset for one front-rank mark (Stage C). Returns an offset in the
 ## unit's UNROTATED local frame (forward / toward-enemy is -Y, matching _formation_slots),
 ## which the caller rotates onto the unit's facing. `depth` is how far behind the front
 ## rank the mark sits (0 = front rank): the churn fades linearly to zero by COMBAT_REACH,
@@ -1318,7 +1318,7 @@ func _draw() -> void:
 	var lite_c := Color(minf(body_c.r + 0.30, 1.0), minf(body_c.g + 0.30, 1.0),
 			minf(body_c.b + 0.30, 1.0), alpha)
 
-	# The soldier marks (#32 Stage B) are rendered by the flocking MultiMeshes and the
+	# The soldier marks (Stage B) are rendered by the flocking MultiMeshes and the
 	# ground shadow by a Polygon2D — both child nodes layered under this chrome via
 	# z_index. _draw() handles only the screen-relative chrome: state ring, type emblem,
 	# selection halo and stat bars. `_block_extent` (maintained by _update_flock) sizes
@@ -1401,7 +1401,7 @@ func _draw_infantry_sprite(body: Color, dark: Color, lite: Color) -> void:
 	draw_line(Vector2(0, -R + 2.0), Vector2(0, -R + 9.0), metal, 2.0)
 
 
-## Archers: a light skirmisher body with a drawn bow + nocked arrow forward (#37).
+## Archers: a light skirmisher body with a drawn bow + nocked arrow forward.
 func _draw_archer_sprite(body: Color, dark: Color, lite: Color) -> void:
 	var R := RADIUS
 	var metal := Color(0.78, 0.80, 0.85, body.a)

@@ -8,10 +8,10 @@ extends CanvasLayer
 signal end_turn_pressed
 signal restart_pressed
 signal menu_pressed
-## Emitted when the player toggles their stance toward a faction (#123); CampaignMap
+## Emitted when the player toggles their stance toward a faction; CampaignMap
 ## decides whether that means declare war or sue for peace from the current stance.
 signal diplomacy_toggled(faction_id: int)
-## Emitted when the player flips the battle-resolution mode (#122): true = auto-resolve
+## Emitted when the player flips the battle-resolution mode: true = auto-resolve
 ## clashes on the map ("quick resolve"), false = fight them out in the tactical battle.
 signal auto_resolve_toggled(on: bool)
 
@@ -43,7 +43,7 @@ func _ready() -> void:
 	add_child(_standings_label)
 
 	# Battle-resolution toggle (top-left, under standings): off = fight clashes out in
-	# the tactical battle (#122); on = auto-resolve them on the map for a quick game.
+	# the tactical battle; on = auto-resolve them on the map for a quick game.
 	var resolve_toggle := CheckButton.new()
 	resolve_toggle.text = "Auto-resolve battles"
 	resolve_toggle.position = Vector2(12, 66)
@@ -147,8 +147,8 @@ func update_standings(text: String) -> void:
 ## Rebuild the diplomacy panel from `entries`, each {id, name, color, at_war, truce}.
 ## One row per other surviving faction: a stance label and a button that toggles
 ## war/peace (emitting diplomacy_toggled with the faction id). While a truce is active
-## (truce > 0) the row shows the turns left and the Declare War button is disabled
-## (#138). An empty list clears the panel (e.g. when only the player remains).
+## (truce > 0) the row shows the turns left and the Declare War button is disabled.
+## An empty list clears the panel (e.g. when only the player remains).
 func update_diplomacy(entries: Array) -> void:
 	for child in _diplomacy_box.get_children():
 		child.queue_free()
@@ -173,7 +173,7 @@ func update_diplomacy(entries: Array) -> void:
 		button.text = "Sue for Peace" if at_war else "Declare War"
 		button.add_theme_font_size_override("font_size", 13)
 		button.custom_minimum_size = Vector2(192, 26)
-		# A truce blocks declaring war until it expires (#138): grey the toggle out and
+		# A truce blocks declaring war until it expires: grey the toggle out and
 		# spell out why, so the player isn't left wondering why the button does nothing.
 		if not at_war and truce > 0:
 			button.disabled = true

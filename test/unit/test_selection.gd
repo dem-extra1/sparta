@@ -1,7 +1,7 @@
 extends GutTest
-## Selection helpers (issue #11): the pure type classification, number-key
+## Selection helpers: the pure type classification, number-key
 ## mapping, and control-group bind/recall behind double-click type-select and
-## control groups. (Live mouse/key routing is exercised manually — see #12.)
+## control groups. (Live mouse/key routing is exercised manually.)
 
 const SelectionScript = preload("res://scripts/SelectionManager.gd")
 const UnitScript = preload("res://scripts/Unit.gd")
@@ -73,7 +73,7 @@ func test_recall_unbound_group_is_a_noop() -> void:
 	assert_eq(sm._selected.size(), 1, "recalling an empty slot leaves selection intact")
 
 
-# --- _unit_at DEAD filter (issue #52) --------------------------------------
+# --- _unit_at DEAD filter --------------------------------------
 
 func test_unit_at_skips_dead_units() -> void:
 	var sm := _sm()

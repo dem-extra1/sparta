@@ -1,6 +1,6 @@
 class_name RoutShockwave
 extends Node2D
-## A morale-shock ripple (#72) drawn when a unit routs: a translucent ring that flashes
+## A morale-shock ripple drawn when a unit routs: a translucent ring that flashes
 ## at the router and expands while fading, sized to the rout's morale-shock radius and
 ## tinted by the routing unit's team. The fill is a soft radial gradient (denser at the
 ## centre) suggesting the shock is strongest near the router and fades to nothing at the

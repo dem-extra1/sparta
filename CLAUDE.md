@@ -54,6 +54,16 @@ media.
   static UI a recorded battle can't film, `skip` the clip (above) and rely on the
   image.
 
+## Code conventions
+
+### Comments: no issue-number references
+Don't cite issue numbers (`#123`) in code comments. The explanation itself
+should stand on its own; a reader shouldn't need to open a tracker to understand
+the code, and the reference rots as issues close and renumber. Issue numbers
+belong in commit messages, PR descriptions, and `TODO`/`FIXME` comments (where a
+`TODO(#123):` link to outstanding work is useful) — not in ordinary explanatory
+comments or docstrings.
+
 ## Code review handling policy
 When addressing review feedback (human or automated) on a PR, triage each finding:
 
