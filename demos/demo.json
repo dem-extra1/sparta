@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Pure loader validation: rejects asymmetric adjacency in parse_map() (#128). No scene, HUD, or gameplay change — a recorded battle can't demonstrate a parse-time schema check."
+  "reason": "Pure comment refactor — strips issue-number references from .gd files and documents the convention in CLAUDE.md. No gameplay or scene change."
 }

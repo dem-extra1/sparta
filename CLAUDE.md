@@ -37,6 +37,23 @@ commit a **`demos/demo.json`** so CI records a short clip and posts it on the PR
   `"reason"`. CI then posts a short note explaining the absence instead
   (`demos/demo.skip.example.json` is a template).
 
+## Code comment conventions
+
+### No issue-number references in code comments
+
+Issue numbers (`#NNN`) do not belong in ordinary code comments or docstrings. They
+add nothing for a reader of the code and rot as issues close or renumber. Instead:
+
+- **Commit messages and PR descriptions** — cite the issue there, where it belongs.
+- **`TODO`/`FIXME` comments** — issue refs are acceptable here since the comment is
+  explicitly a deferred-work marker, not an explanation.
+- **String literals** — untouched (e.g. hex colour strings like `#ff0000`).
+- **Markdown docs** (`PLAN.md`, `README.md`, `demos/*.json`) — out of scope; issue
+  refs in roadmap/documentation are fine.
+
+When the reviewer bot flags `#NNN` citations in a PR's inline comments, that is a
+real finding under this rule — fix them before merging.
+
 ## Code review handling policy
 When addressing review feedback (human or automated) on a PR, triage each finding:
 
