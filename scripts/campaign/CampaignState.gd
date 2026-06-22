@@ -15,6 +15,12 @@ extends RefCounted
 
 const NO_WINNER := -1
 
+# Default truce length (in turns) applied when a faction sues for peace in normal play
+# (#138). Suing for peace is meant to carry a commitment, so the gameplay callers
+# (player toggle, AI diplomacy) pass this; the low-level make_peace() still defaults to
+# no truce so map-seeded stances and tests can opt out.
+const DEFAULT_TRUCE_TURNS := 3
+
 # province id -> {id, name, owner, army}
 var provinces: Dictionary = {}
 # province id -> Array[int] of adjacent province ids
@@ -280,11 +286,14 @@ func has_acted(id: int) -> bool:
 # The AI gets agency over war/peace, not just attacks. Heuristics are deterministic
 # (no RNG) so replays and tests stay reproducible.
 
-# Declare war only on a bordering faction you outweigh by at least this much
-# (opportunistic expansion against a weak neighbour).
-const AI_WAR_STRENGTH_RATIO := 1.5
-# Sue for peace when your strength is below this fraction of your strongest enemy's...
-const AI_PEACE_WEAKNESS_RATIO := 0.6
+# Declare war only on a bordering faction you outweigh by at least 3:2 (1.5x). Kept as
+# an exact integer ratio (cross-multiplied at the comparison) so there's no float
+# rounding ambiguity at the threshold.
+const AI_WAR_RATIO_NUM := 3
+const AI_WAR_RATIO_DEN := 2
+# Sue for peace when your strength is below 3:5 (0.6x) of your strongest enemy's...
+const AI_PEACE_RATIO_NUM := 3
+const AI_PEACE_RATIO_DEN := 5
 # ...and only once you're fighting on at least this many bordering fronts.
 const AI_OVEREXTENDED_FRONTS := 2
 
@@ -333,7 +342,9 @@ func run_ai_diplomacy(faction: int) -> Array[String]:
 	var messages: Array[String] = []
 	var peace_target := _ai_peace_target(faction)
 	if peace_target != -1:
-		make_peace(faction, peace_target)
+		# Sue for peace *with a truce* so the peace is a real commitment, not a one-turn
+		# flip the AI immediately undoes (#138).
+		make_peace(faction, peace_target, DEFAULT_TRUCE_TURNS)
 		messages.append("%s sues for peace with %s." % [_faction_label(faction), _faction_label(peace_target)])
 	var war_target := _ai_war_target(faction)
 	if war_target != -1 and declare_war(faction, war_target):
@@ -342,8 +353,8 @@ func run_ai_diplomacy(faction: int) -> Array[String]:
 
 
 ## The strongest bordering enemy `faction` should sue for peace with, or -1. Fires only
-## when overextended (fighting >= AI_OVEREXTENDED_FRONTS bordering enemies) and weaker
-## than that strongest enemy by AI_PEACE_WEAKNESS_RATIO.
+## when overextended (fighting >= AI_OVEREXTENDED_FRONTS bordering enemies) and below the
+## AI peace ratio (0.6x) of that strongest enemy's strength.
 func _ai_peace_target(faction: int) -> int:
 	var enemies: Array[int] = []
 	for o in surviving_factions():
@@ -358,13 +369,14 @@ func _ai_peace_target(faction: int) -> int:
 		if s > strongest_strength:
 			strongest_strength = s
 			strongest = o
-	if strongest != -1 and faction_strength(faction) < int(round(strongest_strength * AI_PEACE_WEAKNESS_RATIO)):
+	# Exact integer compare for "my strength < 0.6 x strongest": my * 5 < strongest * 3.
+	if strongest != -1 and faction_strength(faction) * AI_PEACE_RATIO_DEN < strongest_strength * AI_PEACE_RATIO_NUM:
 		return strongest
 	return -1
 
 
 ## The weakest bordering faction `faction` is at peace with (no active truce) and
-## clearly outweighs (>= AI_WAR_STRENGTH_RATIO), or -1 if none qualify.
+## clearly outweighs (by at least the AI war ratio), or -1 if none qualify.
 func _ai_war_target(faction: int) -> int:
 	var my_strength := faction_strength(faction)
 	var target := -1
@@ -375,7 +387,8 @@ func _ai_war_target(faction: int) -> int:
 		if truce_remaining(faction, o) > 0 or not factions_border(faction, o):
 			continue
 		var s := faction_strength(o)
-		if my_strength >= int(round(s * AI_WAR_STRENGTH_RATIO)) and s < target_strength:
+		# Exact integer compare for "my strength >= 1.5 x s": my * 2 >= s * 3.
+		if my_strength * AI_WAR_RATIO_DEN >= s * AI_WAR_RATIO_NUM and s < target_strength:
 			target_strength = s
 			target = o
 	return target

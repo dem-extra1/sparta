@@ -138,10 +138,12 @@ func _on_end_turn() -> void:
 ## CampaignState.run_ai_diplomacy holds the (deterministic) decision logic.
 func _run_ai_diplomacy() -> void:
 	var messages: Array = _state.run_ai_diplomacy(_state.current_faction)
-	if _hud == null:
+	if _hud == null or messages.is_empty():
 		return
-	for msg in messages:
-		_hud.flash(msg)
+	# flash() shows a single transient line, so join this faction's notices into one
+	# message — otherwise a peace + war declaration in the same turn would clobber each
+	# other and only the last would be seen.
+	_hud.flash("\n".join(messages))
 
 
 ## Greedy AI: each ready army takes the weakest adjacent province belonging to a
@@ -266,9 +268,13 @@ func _on_diplomacy_toggled(fid: int) -> void:
 		return
 	var fname: String = _faction_name(fid)
 	if _state.at_war(PLAYER_FACTION, fid):
-		_state.make_peace(PLAYER_FACTION, fid)
+		# Suing for peace carries a commitment: a default truce blocks re-declaring war
+		# for a few turns (#138). Without it the truce UI/rules would be unreachable in
+		# normal play (only map-seeded peace would ever set one).
+		var truce: int = CampaignStateRef.DEFAULT_TRUCE_TURNS
+		_state.make_peace(PLAYER_FACTION, fid, truce)
 		if _hud != null:
-			_hud.flash("Made peace with %s." % fname)
+			_hud.flash("Made peace with %s (truce: %d turns)." % [fname, truce])
 	elif _state.declare_war(PLAYER_FACTION, fid):
 		if _hud != null:
 			_hud.flash("Declared war on %s!" % fname)

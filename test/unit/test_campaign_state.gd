@@ -315,6 +315,23 @@ func test_ai_sues_for_peace_when_overextended_and_outmatched() -> void:
 	assert_gt(msgs.size(), 0, "the peace is reported")
 
 
+func test_ai_peace_imposes_a_truce() -> void:
+	# Suing for peace should be a commitment, not a one-turn flip (#138): the AI's peace
+	# carries the default truce so it can't re-declare war straight away.
+	var m := _map4()
+	m["provinces"][0]["army"] = 1
+	m["provinces"][0]["adj"] = [1, 2]
+	m["provinces"][1]["adj"] = [0, 2]
+	m["provinces"][2]["owner"] = 2
+	m["provinces"][2]["army"] = 9
+	m["provinces"][2]["adj"] = [0, 1, 3]
+	var s := CampaignState.new(m, 1)
+	s.run_ai_diplomacy(0)
+	# F1 (strength 10) is F0's strongest enemy, so that's the pair it sues for peace on.
+	assert_eq(s.truce_remaining(0, 1), CampaignState.DEFAULT_TRUCE_TURNS,
+			"AI-brokered peace carries the default truce")
+
+
 func test_ai_respects_an_active_truce() -> void:
 	var s := CampaignState.new(_map4(), 1)
 	# F1 would love to attack F0, but a truce binds it.

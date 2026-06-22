@@ -1,6 +1,6 @@
 {
   "name": "The Four Kingdoms",
-  "blurb": "A four-sided war: each kingdom borders two rivals in a ring. Conquer every province to win — or play one rival against another.",
+  "blurb": "A four-sided war on a 2x4 march: Azure and Golden hold the flanks; Crimson and Verdant fight in the middle on every side. Conquer every province to win — or play one rival against another.",
   "factions": [
     { "name": "Azure Realm", "color": "#5c85db" },
     { "name": "Crimson Realm", "color": "#d15c52" },
