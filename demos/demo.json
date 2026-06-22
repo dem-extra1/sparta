@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Cohesion display only appears in the info panel after a merge; a passive battle replay won't exercise it."
+  "reason": "Order-response delay is a timing behaviour: units pause ~0.5 s before stepping off. A passive showcase replay has no player orders, so the hesitation is never triggered. A dedicated recording with move orders would be needed to show it."
 }
