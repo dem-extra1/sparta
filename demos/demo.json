@@ -1,4 +1,4 @@
 {
-  "replay": "demos/showcase.json",
-  "caption": "Terrain patches now appear on the battlefield: a forest (dark green) on the left flank and a hill (tan) on the right. Units route around them via A* pathfinding."
+  "skip": true,
+  "reason": "CLAUDE.md policy addition — no game behaviour changes; a recorded battle can't show documentation."
 }
