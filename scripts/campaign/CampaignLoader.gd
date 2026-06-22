@@ -13,7 +13,9 @@ extends RefCounted
 ##       {"id","name","owner","army","adj":[ids], "polygon":[[x,y],...], "label":[x,y],
 ##        "one_way": false}      # optional; opts out of the adjacency-symmetry lint (#128)
 ##     ],
-##     "peace": [[factionA, factionB], ...]    # optional; pairs that start at peace (#123)
+##     "peace": [[factionA, factionB], ...]    # optional; pairs that start at peace (#123).
+##                                              # A 3rd element sets an initial truce in
+##                                              # turns: [factionA, factionB, truceTurns] (#138).
 ##   }
 ##
 ## parse_map() is pure (takes already-parsed JSON) so it's unit-tested without files;

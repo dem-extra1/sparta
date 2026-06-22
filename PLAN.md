@@ -144,11 +144,22 @@ hand-authored GDScript that hasn't been engine-checked.
     turn it sues for peace with its strongest enemy when overextended and outmatched, and
     declares war on a weak bordering neighbour it clearly outweighs (deterministic, no
     RNG; truces respected). A second campaign, **The Four Kingdoms**, ships a balanced
-    four-faction map to exercise multi-sided war. Characters/dynasty (#124), the M3 battle
-    hook-up (#122), and the saga layer (#126) remain follow-ups.
+    four-faction map to exercise multi-sided war. Characters/dynasty (#124) and the saga
+    layer (#126) remain follow-ups.
 - **M3 — Integration:** an army battle on the campaign map launches into the M1 battle scene
   and returns a result (winner, casualties) to the campaign. This is where the two genres meet;
   the battle scene was kept self-contained specifically to make this hand-off clean.
+  - **Hand-off landed (#122):** a player attack on a **defended** enemy province now
+    launches `scenes/Battle.tscn` instead of auto-resolving. Each side deploys units
+    scaled to its campaign army strength (`CampaignBattle.units_for`), and on the battle's
+    end the winner's surviving units scale back to campaign strength and are applied to the
+    province via `CampaignState.resolve_attack` — the same state transition auto-resolve
+    uses, so the two converge. The campaign state is snapshotted across the one-way scene
+    swap (`CampaignState.snapshot`/`restore`, held in the `CampaignBattle` static) and the
+    battle's end screen gains a **Return to Campaign** button. Auto-resolve stays available
+    as a HUD **"quick resolve"** toggle, and **AI attacks always auto-resolve** (no nested
+    scene changes during the enemy turn). Remaining: launching battles for AI-vs-AI or
+    AI-vs-player clashes, and richer army composition from province/unit data.
 
 ## Feature backlog (design goals — captured early, not yet scheduled)
 - **Unit merging — combine two units into one.** Player can merge two friendly units into a single

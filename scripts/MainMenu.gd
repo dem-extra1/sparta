@@ -1,14 +1,19 @@
 extends Control
 ## Title screen / entry point. Lets the player pick the self-contained tactical
-## battle (M1) or the campaign map (M2, #70); kept as its own scene so Battle.tscn
-## stays untouched for the eventual M3 campaign→battle hand-off. UI built in code,
-## matching the rest of the project's HUDs.
+## battle (M1) or the campaign map (M2, #70); the campaign now also launches the
+## tactical battle for province clashes (M3, #122). UI built in code, matching the
+## rest of the project's HUDs.
 
 const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
+const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+
+	# Reaching the main menu ends any campaign->battle hand-off (#122), so a later
+	# standalone "Tactical Battle" isn't mistaken for a campaign clash.
+	CampaignBattle.clear()
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.11, 0.12, 0.15)

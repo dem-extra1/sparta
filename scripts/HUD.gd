@@ -6,6 +6,7 @@ extends CanvasLayer
 ##   - victory/defeat overlay with a restart button
 
 const BattleRef = preload("res://scripts/Battle.gd")
+const CampaignBattleRef = preload("res://scripts/campaign/CampaignBattle.gd")
 
 # Stable ids for the Menu popup's items (independent of index / separators).
 enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX, MENU_KEYBINDINGS }
@@ -184,11 +185,23 @@ func _ready() -> void:
 	_overlay_label.add_theme_font_size_override("font_size", 48)
 	box.add_child(_overlay_label)
 
-	var restart := Button.new()
-	restart.text = "Fight Again"
-	restart.custom_minimum_size = Vector2(180, 44)
-	restart.pressed.connect(_on_restart)
-	box.add_child(restart)
+	# A campaign-launched battle (#122) returns its result to the map instead of
+	# restarting; "Fight Again"/"Load Replay" (which replace this battle) would strand
+	# the campaign, so only offer Return + Watch Replay there. Safe to decide at _ready
+	# (rather than in show_end): `active` is set before the battle scene loads and stays
+	# fixed for the battle's whole lifetime — nothing toggles it mid-battle.
+	if CampaignBattleRef.active:
+		var ret := Button.new()
+		ret.text = "⮐ Return to Campaign"
+		ret.custom_minimum_size = Vector2(220, 44)
+		ret.pressed.connect(_on_return_to_campaign)
+		box.add_child(ret)
+	else:
+		var restart := Button.new()
+		restart.text = "Fight Again"
+		restart.custom_minimum_size = Vector2(180, 44)
+		restart.pressed.connect(_on_restart)
+		box.add_child(restart)
 
 	# Replay the battle that just finished (re-runs the saved log).
 	_watch_button = Button.new()
@@ -197,12 +210,14 @@ func _ready() -> void:
 	_watch_button.pressed.connect(_on_watch_replay)
 	box.add_child(_watch_button)
 
-	# Open an older saved replay (not just the one that just finished).
-	var load_saved := Button.new()
-	load_saved.text = "Load Replay…"
-	load_saved.custom_minimum_size = Vector2(180, 44)
-	load_saved.pressed.connect(_open_load_dialog)
-	box.add_child(load_saved)
+	# Open an older saved replay (not just the one that just finished). Hidden for a
+	# campaign battle, whose only forward path is back to the map.
+	if not CampaignBattleRef.active:
+		var load_saved := Button.new()
+		load_saved.text = "Load Replay…"
+		load_saved.custom_minimum_size = Vector2(180, 44)
+		load_saved.pressed.connect(_open_load_dialog)
+		box.add_child(load_saved)
 
 
 func _exit_tree() -> void:
@@ -324,6 +339,14 @@ func _on_restart() -> void:
 	Replay.reset()
 	get_tree().paused = false
 	get_tree().reload_current_scene()
+
+
+func _on_return_to_campaign() -> void:
+	# Hand control back to the campaign map (#122); CampaignBattle still holds the
+	# result, which CampaignMap applies on load. Drop the recording like a restart.
+	Replay.reset()
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/Campaign.tscn")
 
 
 func _on_restart_replay() -> void:
