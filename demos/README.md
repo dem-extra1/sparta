@@ -1,8 +1,8 @@
 # Gameplay demos in PRs
 
-When a Claude session makes a **user-visible change** (anything affecting how the
-game looks or plays), a short clip is posted in the PR so reviewers can *see* the
-change, not just read the diff.
+When a PR makes a **user-visible change** (anything affecting how the game looks
+or plays), a short clip is posted so reviewers can *see* the change, not just read
+the diff.
 [`.github/workflows/demo-video.yml`](../.github/workflows/demo-video.yml) plays a
 replay back headlessly (Godot Movie Maker → ffmpeg) and posts it as an inline,
 autoplaying GIF in the PR conversation — plus a link to an **MP4 with sound**
@@ -63,8 +63,10 @@ CI replays it against *your PR's* build, so the clip reflects your change.
 
 ## When it runs
 
-- On PRs from `claude/*` branches that touch `scenes/`, `scripts/`, `assets/`, or
+- On any same-repo PR that touches `scenes/`, `scripts/`, `assets/`, or
   `project.godot` (a "user-visible change"). Docs/CI/test-only PRs don't trigger it.
+  Fork PRs are excluded because CI needs write access to push the clip to the
+  `demo-media` branch.
 - **A demo is always posted on those PRs.** With a `demos/demo.json`, it records the
   replay you named (tailored to your change). Without one, it falls back to the
   default `demos/showcase.json` battle, posted with an honest "generic build demo"
