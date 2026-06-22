@@ -1655,7 +1655,7 @@ func _draw_unit_flag(body_c: Color, alpha: float, extent: float) -> void:
 	elif anti_cavalry:
 		draw_line(fc + Vector2(0.0, 3.0), fc + Vector2(0.0, -3.0), sym_c, 1.5)
 	elif is_ranged:
-		draw_arc(fc + Vector2(-1.0, 0.0), 2.5, -PI * 0.55, PI * 0.55, 6, sym_c, 1.5)
+		draw_arc(fc, 2.5, -PI * 0.55, PI * 0.55, 6, sym_c, 1.5)
 	else:
 		draw_line(fc + Vector2(-2.5, 0.0), fc + Vector2(2.5, 0.0), sym_c, 1.5)
-		draw_line(fc + Vector2(-1.0, -2.5), fc + Vector2(-1.0, 2.5), sym_c, 1.5)
+		draw_line(fc + Vector2(0.0, -2.5), fc + Vector2(0.0, 2.5), sym_c, 1.5)
