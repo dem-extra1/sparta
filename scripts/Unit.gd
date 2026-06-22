@@ -1120,7 +1120,7 @@ func _hash01(i: int) -> float:
 # Render-time only: the cosmetic mark layer eases toward the formation and trails the
 # unit's motion. None of this writes back into the simulation.
 
-## A unit-local circle of radius 1, shared by all units; scaled per use. Cached.
+## Disc mesh at the given radius, shared across all units. Built once and cached.
 static func _disc_mesh(radius: float) -> ArrayMesh:
 	var key: float = snappedf(radius, 0.01)
 	if _mesh_cache.has(key):
