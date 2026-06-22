@@ -189,3 +189,49 @@ func test_result_reports_defender_owner() -> void:
 	var r: Dictionary = s.move_or_attack(0, 1)
 	assert_true(r["ok"])
 	assert_eq(int(r["defender_owner"]), GAULS, "the result records who held the target before the move")
+
+
+# --- tactical-battle hand-off (#122) --------------------------------------
+
+func test_resolve_attack_win_captures_like_auto_resolve() -> void:
+	# A battle-decided win applies the same transition as a winning auto-resolve:
+	# the attacker takes the province with `survivors`, its origin empties and is
+	# marked acted.
+	var s := _state()
+	var r: Dictionary = s.resolve_attack(0, 1, true, 4)
+	assert_true(r["ok"] and r["combat"], "resolve_attack reports a combat result")
+	assert_true(r["attacker_won"])
+	assert_eq(s.owner_of(1), ROME, "the attacker captures the province")
+	assert_eq(s.army_of(1), 4, "with the survivors the battle reported")
+	assert_eq(s.army_of(0), 0, "the attacking army left its origin")
+	assert_true(s.has_acted(1), "the army that moved has acted this turn")
+
+
+func test_resolve_attack_loss_spends_attacker() -> void:
+	var s := _state()
+	var r: Dictionary = s.resolve_attack(0, 1, false, 2)
+	assert_false(r["attacker_won"])
+	assert_eq(s.owner_of(1), GAULS, "a repulsed assault leaves the province with its owner")
+	assert_eq(s.army_of(1), 2, "the defender is left with the reported survivors")
+	assert_eq(s.army_of(0), 0, "the attacking army is spent")
+	assert_false(s.has_acted(0), "a spent origin isn't flagged acted (its army is gone anyway)")
+
+
+func test_snapshot_restore_round_trips_state() -> void:
+	# Mutate every dynamic field, snapshot, then restore onto a fresh map-built state
+	# and confirm it matches — this is the campaign->battle->campaign round-trip.
+	var s := _state()
+	s.move_or_attack(0, 2)        # occupy P2 -> owner/army/acted change
+	s.make_peace(ROME, GAULS)     # diplomacy change
+	s.end_turn()                  # current_faction / turn change
+	var snap: Dictionary = s.snapshot()
+
+	var fresh := _state()
+	fresh.restore(snap)
+	for id in [0, 1, 2]:
+		assert_eq(fresh.owner_of(id), s.owner_of(id), "owner of %d restored" % id)
+		assert_eq(fresh.army_of(id), s.army_of(id), "army of %d restored" % id)
+		assert_eq(fresh.has_acted(id), s.has_acted(id), "acted flag of %d restored" % id)
+	assert_eq(fresh.current_faction, s.current_faction, "whose turn restored")
+	assert_eq(fresh.turn, s.turn, "turn counter restored")
+	assert_false(fresh.at_war(ROME, GAULS), "diplomacy restored")

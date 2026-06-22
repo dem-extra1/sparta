@@ -5,6 +5,7 @@ extends Node2D
 # Preload instead of relying on Unit's global class_name, so the project loads
 # without the editor-built global-class cache (works headless / first run / CI).
 const UnitRef = preload("res://scripts/Unit.gd")
+const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 
 const FIELD := Rect2(0, 0, 1600, 1000)
 
@@ -60,6 +61,11 @@ const AI_PERIOD := 60
 var _tick: int = 0
 var _ended: bool = false
 
+# Units deployed per side when this is a campaign-launched battle (#122); used to
+# scale survivors back to campaign army strength when the battle ends.
+var _camp_atk_spawned: int = 0
+var _camp_dfn_spawned: int = 0
+
 # uid -> Unit, so recorded orders can resolve their units after a scene reload.
 var _by_uid: Dictionary = {}
 # Player orders received since the last physics step (live play only). Applied
@@ -95,10 +101,19 @@ func _ready() -> void:
 	# Cleared in _exit_tree() so it doesn't outlive this battle.
 	PathField.active = PathField.new(FIELD)
 
+	# Army sizes: a campaign-launched clash (#122) deploys units scaled to the two
+	# clashing armies' strengths; a standalone battle uses the default 5-unit line.
+	var atk_count := 5
+	var dfn_count := 5
+	if CampaignBattle.active and not CampaignBattle.pending.is_empty():
+		atk_count = CampaignBattle.units_for(int(CampaignBattle.pending["attacker_strength"]))
+		dfn_count = CampaignBattle.units_for(int(CampaignBattle.pending["defender_strength"]))
+		_camp_atk_spawned = atk_count
+		_camp_dfn_spawned = dfn_count
 	# Player army (team 0) deploys along the top, facing down.
-	_spawn_line(0, Vector2.DOWN, 300)
+	_spawn_line(0, Vector2.DOWN, 300, atk_count)
 	# Enemy army (team 1) deploys along the bottom, facing up.
-	_spawn_line(1, Vector2.UP, 700)
+	_spawn_line(1, Vector2.UP, 700, dfn_count)
 
 
 func _exit_tree() -> void:
@@ -115,9 +130,11 @@ func _draw() -> void:
 		Color(1, 1, 1, 0.08), 2.0)
 
 
-func _spawn_line(team: int, facing: Vector2, y: float) -> void:
+func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# Loadout: spearmen, infantry, archers, cavalry, cavalry. The archers (#37)
 	# skirmish from range — softer in melee, but they soften the line before contact.
+	# `count` units deploy, cycling this composition so a larger army (a bigger
+	# campaign stack, #122) fields more of the same mix.
 	var loadout := [
 		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "spd": 80},
 		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "spd": 90},
@@ -125,12 +142,12 @@ func _spawn_line(team: int, facing: Vector2, y: float) -> void:
 		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160},
 		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160},
 	]
-	var count: int = loadout.size()
-	var spacing: float = 150.0
+	# Tighten spacing as the line grows so even a max stack stays on the field.
+	var spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
 	var start_x: float = FIELD.size.x * 0.5 - (count - 1) * spacing * 0.5
 
 	for i in range(count):
-		var d: Dictionary = loadout[i]
+		var d: Dictionary = loadout[i % loadout.size()]
 		var u := UnitRef.new()
 		u.uid = _next_uid
 		_next_uid += 1
@@ -402,7 +419,36 @@ func _end(text: String) -> void:
 	# re-save (the file already exists).
 	if Replay.mode == Replay.Mode.RECORD:
 		Replay.save(text, _tick)
+	# Report the outcome back to the campaign if this clash was launched from the map
+	# (#122), before the HUD's "Return to Campaign" button can act on it.
+	if CampaignBattle.active:
+		_report_campaign_result(text)
 	# Fanfare on a win; the somber sting otherwise. A mutual-destruction draw
 	# isn't a win either, so it shares the defeat sound.
 	Sfx.play(&"victory" if text == "Victory!" else &"defeat")
 	_hud.show_end(text)
+
+
+## Translate the battle's end state into a campaign result (#122): the winning side's
+## surviving units scale back to campaign army strength. Replay playback doesn't
+## overwrite a result the live battle already reported.
+func _report_campaign_result(text: String) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var pending: Dictionary = CampaignBattle.pending
+	if text == "Victory!":
+		CampaignBattle.result = {
+			"attacker_won": true,
+			"survivors": CampaignBattle.survivors_strength(
+					int(pending.get("attacker_strength", 1)), _camp_atk_spawned, _team_units(0).size()),
+		}
+	elif text == "Defeat":
+		CampaignBattle.result = {
+			"attacker_won": false,
+			"survivors": CampaignBattle.survivors_strength(
+					int(pending.get("defender_strength", 1)), _camp_dfn_spawned, _team_units(1).size()),
+		}
+	else:
+		# Mutual destruction: the assault fails and the province holds with a token
+		# garrison (mirrors auto-resolve's guaranteed >= 1 survivor).
+		CampaignBattle.result = {"attacker_won": false, "survivors": 1}
