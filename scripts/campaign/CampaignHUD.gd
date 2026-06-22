@@ -8,10 +8,10 @@ extends CanvasLayer
 signal end_turn_pressed
 signal restart_pressed
 signal menu_pressed
-## Emitted when the player toggles their stance toward a faction (#123); CampaignMap
+## Emitted when the player toggles their stance toward a faction; CampaignMap
 ## decides whether that means declare war or sue for peace from the current stance.
 signal diplomacy_toggled(faction_id: int)
-## Emitted when the player flips the battle-resolution mode (#122): true = auto-resolve
+## Emitted when the player flips the battle-resolution mode: true = auto-resolve
 ## clashes on the map ("quick resolve"), false = fight them out in the tactical battle.
 signal auto_resolve_toggled(on: bool)
 
@@ -43,7 +43,7 @@ func _ready() -> void:
 	add_child(_standings_label)
 
 	# Battle-resolution toggle (top-left, under standings): off = fight clashes out in
-	# the tactical battle (#122); on = auto-resolve them on the map for a quick game.
+	# the tactical battle; on = auto-resolve them on the map for a quick game.
 	var resolve_toggle := CheckButton.new()
 	resolve_toggle.text = "Auto-resolve battles"
 	resolve_toggle.position = Vector2(12, 66)

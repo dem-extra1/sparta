@@ -9,18 +9,17 @@ const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 
 const FIELD := Rect2(0, 0, 1600, 1000)
 
-# Sentinel order target (#34): a move order carrying this as its `target` appends
+# Sentinel order target: a move order carrying this as its `target` appends
 # its destination to the units' waypoint queue instead of replacing the route.
 # Overloads the existing int field (like merge/relief) so the replay format is
 # unchanged — real merge/attack/relief targets are uids >= 0, a plain move is -1.
 const ORDER_APPEND_WAYPOINT := -2
 
-## Order modes (#35): the "stance" an order applies to its units. NORMAL is the
+## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
 ## mode (SelectionManager), recorded in the replay ("mode") and stamped on
-## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues
-## (#82/#84/#85/#86). Until then a non-NORMAL stance is stored but behaves as
-## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
+## Unit.order_mode; the per-unit behaviour for each is implemented in the per-unit
+## code. NORMAL is 0 so it matches Unit.order_mode's default.
 enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT }
 
 ## Human-readable mode names for the HUD / cursor indicator.
@@ -33,7 +32,7 @@ const ORDER_MODE_NAMES := {
 	OrderMode.SUPPORT: "Support",
 }
 
-## Rebindable order-mode hotkeys (#87), in menu/HUD order. Each entry pairs the
+## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
 ## OrderMode it arms with a stable cfg "slug"; the Settings autoload persists
 ## slug -> physical keycode (defaults in Settings.DEFAULT_ORDER_BINDINGS), and the
 ## keybindings dialog labels rows via ORDER_MODE_NAMES. NORMAL (Esc, "clear stance")
@@ -61,7 +60,7 @@ const AI_PERIOD := 60
 var _tick: int = 0
 var _ended: bool = false
 
-# Units deployed per side when this is a campaign-launched battle (#122); used to
+# Units deployed per side when this is a campaign-launched battle; used to
 # scale survivors back to campaign army strength when the battle ends.
 var _camp_atk_spawned: int = 0
 var _camp_dfn_spawned: int = 0
@@ -101,7 +100,7 @@ func _ready() -> void:
 	# Cleared in _exit_tree() so it doesn't outlive this battle.
 	PathField.active = PathField.new(FIELD)
 
-	# Army sizes: a campaign-launched clash (#122) deploys units scaled to the two
+	# Army sizes: a campaign-launched clash deploys units scaled to the two
 	# clashing armies' strengths; a standalone battle uses the default 5-unit line.
 	var atk_count := 5
 	var dfn_count := 5
@@ -131,10 +130,10 @@ func _draw() -> void:
 
 
 func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
-	# Loadout: spearmen, infantry, archers, cavalry, cavalry. The archers (#37)
+	# Loadout: spearmen, infantry, archers, cavalry, cavalry. The archers
 	# skirmish from range — softer in melee, but they soften the line before contact.
 	# `count` units deploy, cycling this composition so a larger army (a bigger
-	# campaign stack, #122) fields more of the same mix.
+	# campaign stack) fields more of the same mix.
 	var loadout := [
 		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "spd": 80},
 		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "spd": 90},
@@ -163,7 +162,7 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 		u.move_speed = d["spd"] * SPEED_SCALE
 		u.facing = facing
 		u.position = Vector2(start_x + i * spacing, y)
-		u.field_bounds = FIELD   # so a skirmisher (#85) kites without backing off the map
+		u.field_bounds = FIELD   # so a skirmisher kites without backing off the map
 		_units.add_child(u)
 
 
@@ -219,7 +218,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 	}
 	_pending_orders.append(cmd)
 	# Apply immediately for zero-latency feedback and paused preview — EXCEPT a
-	# waypoint append (#34), which is NOT idempotent: the tick re-applies every
+	# waypoint append, which is NOT idempotent: the tick re-applies every
 	# pending cmd, and a second u.waypoints.append() would duplicate the leg. An
 	# append is also tick-authoritative anyway (its point is derived from positions
 	# at the tick, matching replay), so it's applied once, on that tick.
@@ -231,19 +230,19 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 ## playback so both produce identical results.
 func _apply_order_cmd(cmd: Dictionary) -> void:
 	var target_uid: int = int(cmd["target"])
-	# Merge (#3): the target is the primary and is itself one of the ordered units
+	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
 	# disambiguator). Handle it first, then fall through to attack/relief/move.
 	if target_uid >= 0 and _uids_contain(cmd["units"], target_uid):
 		_apply_merge(cmd["units"], target_uid)
 		return
 	# A move whose target is the append sentinel queues a waypoint instead of
-	# replacing the route (#34); any other order resets the queue first.
+	# replacing the route; any other order resets the queue first.
 	var append: bool = target_uid == ORDER_APPEND_WAYPOINT
-	# The order's stance (#35), stamped on each ordered unit below for the smart-
+	# The order's stance, stamped on each ordered unit below for the smart-
 	# order behaviours to consume. Defaults to NORMAL for older replays / merges.
 	var mode: int = int(cmd.get("mode", OrderMode.NORMAL))
-	# The target uid may be an enemy (attack) or a friendly (line relief, #4); a
+	# The target uid may be an enemy (attack) or a friendly (line relief); a
 	# plain move has no target. Resolve it and dispatch per ordered unit by team.
 	var target_unit: Unit = _unit_by_uid(target_uid) if target_uid >= 0 else null
 	var is_move: bool = target_unit == null
@@ -264,7 +263,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			continue
 		# A fresh order (anything but a waypoint append) discards the queued route
 		# and sets the unit's stance; an append continues the current march/stance.
-		# Clearing any prior support ward (#86) means a plain order drops the guard
+		# Clearing any prior support ward means a plain order drops the guard
 		# duty; a SUPPORT order re-sets it in the friendly-target branch below.
 		if not append:
 			u.waypoints.clear()
@@ -275,13 +274,13 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.has_move_target = false
 		elif target_unit != null and target_unit != u and target_unit.team == u.team:
 			if mode == OrderMode.SUPPORT:
-				# Support (#86): guard the targeted friendly. Every ordered unit shadows
+				# Support: guard the targeted friendly. Every ordered unit shadows
 				# the same ward and engages threats near it — no relief swap.
 				u.support_target = target_unit
 				u.target_enemy = null
 				u.has_move_target = false
 			elif not relieved:
-				# Relief (#4): the first reliever swaps with the tired unit; any others
+				# Relief: the first reliever swaps with the tired unit; any others
 				# just advance on the same fight so they don't shove the retreating unit.
 				u.begin_relief(target_unit)
 				# Capture the foe begin_relief() resolved (it clears the tired
@@ -312,7 +311,7 @@ func _uids_contain(uids: Array, target: int) -> bool:
 	return false
 
 
-## Merge every other ordered unit into the primary (#3). Same-team only.
+## Merge every other ordered unit into the primary. Same-team only.
 func _apply_merge(uids: Array, primary_uid: int) -> void:
 	var primary: Unit = _unit_by_uid(primary_uid)
 	if primary == null:
@@ -351,7 +350,7 @@ func _centroid_of_uids(uids: Array) -> Vector2:
 	return formation_centroid(ps)
 
 
-## Points for a unit's not-yet-applied waypoint appends (#62), in queue order.
+## Points for a unit's not-yet-applied waypoint appends, in queue order.
 ## While the sim is paused _physics_process doesn't drain _pending_orders, so an
 ## appended leg isn't written to u.waypoints until the player unpauses; the order
 ## overlay calls this to preview those queued legs without mutating state. Each
@@ -419,8 +418,8 @@ func _end(text: String) -> void:
 	# re-save (the file already exists).
 	if Replay.mode == Replay.Mode.RECORD:
 		Replay.save(text, _tick)
-	# Report the outcome back to the campaign if this clash was launched from the map
-	# (#122), before the HUD's "Return to Campaign" button can act on it.
+	# Report the outcome back to the campaign if this clash was launched from the map,
+	# before the HUD's "Return to Campaign" button can act on it.
 	if CampaignBattle.active:
 		_report_campaign_result(text)
 	# Fanfare on a win; the somber sting otherwise. A mutual-destruction draw
@@ -429,7 +428,7 @@ func _end(text: String) -> void:
 	_hud.show_end(text)
 
 
-## Translate the battle's end state into a campaign result (#122): the winning side's
+## Translate the battle's end state into a campaign result: the winning side's
 ## surviving units scale back to campaign army strength. Replay playback doesn't
 ## overwrite a result the live battle already reported.
 func _report_campaign_result(text: String) -> void:
