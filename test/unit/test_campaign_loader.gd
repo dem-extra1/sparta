@@ -71,11 +71,26 @@ func test_rejects_unknown_neighbour() -> void:
 	assert_true(CampaignLoader.parse_map(raw).is_empty(), "adjacency to a missing id -> rejected")
 
 
-func test_rejects_asymmetric_adjacency() -> void:
+func test_asymmetric_adjacency_warns_but_loads() -> void:
+	# #148: one-way edges are legal (movement is directed), so an asymmetric edge is a
+	# lint, not a hard error — the map still loads (a push_warning flags the likely typo).
 	var raw := _valid_raw()
 	# P0 lists P1 as a neighbour but P1 does not list P0 -> one-way edge.
 	raw["provinces"][1]["adj"] = []
-	assert_true(CampaignLoader.parse_map(raw).is_empty(), "asymmetric adjacency -> rejected")
+	var m := CampaignLoader.parse_map(raw)
+	assert_false(m.is_empty(), "an asymmetric edge still loads")
+
+
+func test_one_way_flag_marks_intentional_asymmetry() -> void:
+	# #148: a province flagged one_way declares its asymmetric exits intentional; the
+	# flag is carried through so the asymmetry lint can skip it.
+	var raw := _valid_raw()
+	raw["provinces"][0]["one_way"] = true
+	raw["provinces"][1]["adj"] = []   # P0 -> P1 one-way, intentionally
+	var m := CampaignLoader.parse_map(raw)
+	assert_false(m.is_empty(), "a one_way-flagged map loads")
+	assert_true(bool(m["provinces"][0]["one_way"]), "the one_way flag is carried through")
+	assert_false(bool(m["provinces"][1]["one_way"]), "unflagged provinces default to false")
 
 
 func test_rejects_degenerate_polygon() -> void:
@@ -140,7 +155,7 @@ func test_loads_real_gallic_war_file() -> void:
 
 func test_real_gallic_war_adjacency_is_mutual() -> void:
 	# Movement is two-way, so every listed neighbour must list us back. Guards against
-	# hand-edit typos in the shipped map (linted by the loader as of #128).
+	# hand-edit typos in the shipped map (the loader warns on asymmetry as of #148).
 	var m := CampaignLoader.load_map(Campaigns.DEFAULT_PATH)
 	assert_false(m.is_empty(), "gallic war must load for this test to be meaningful")
 	var adj := {}
