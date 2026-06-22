@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Adds the campaign diplomacy framework (#123): per-faction war/peace stances in CampaignState, gating which provinces an army may enter. Rules-layer only (no UI/visible change yet; factions still start at war), so a recorded battle replay can't show it."
+  "reason": "Pure loader validation: rejects asymmetric adjacency in parse_map() (#128). No scene, HUD, or gameplay change — a recorded battle can't demonstrate a parse-time schema check."
 }

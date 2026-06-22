@@ -11,7 +11,8 @@ extends RefCounted
 ##     "factions": [{"name","color"}, ...],   # color is an HTML hex string
 ##     "provinces": [
 ##       {"id","name","owner","army","adj":[ids], "polygon":[[x,y],...], "label":[x,y]}
-##     ]
+##     ],
+##     "peace": [[factionA, factionB], ...]    # optional; pairs that start at peace (#123)
 ##   }
 ##
 ## parse_map() is pure (takes already-parsed JSON) so it's unit-tested without files;
@@ -107,12 +108,51 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 				push_warning("Campaign map: province %d lists unknown neighbour %d" % [prov["id"], n])
 				return {}
 
+	# Adjacency must be symmetric: if A lists B, B must list A.
+	var adj_index: Dictionary = {}
+	for prov in provinces:
+		adj_index[prov["id"]] = prov["adj"]
+	for prov in provinces:
+		for n in prov["adj"]:
+			if not (prov["id"] in adj_index[n]):
+				push_warning("Campaign map: adjacency between province %d and %d is not symmetric"
+						% [prov["id"], n])
+				return {}
+
+	# Optional initial diplomacy (#123): pairs of faction indices that start at peace.
+	# Validated here so a typo is caught at load time rather than silently ignored.
+	var peace: Array = []
+	for pair in raw.get("peace", []):
+		if typeof(pair) != TYPE_ARRAY or pair.size() < 2:
+			push_warning("Campaign map: each 'peace' entry must be a [factionA, factionB] pair")
+			return {}
+		var a := int(pair[0])
+		var b := int(pair[1])
+		if a < 0 or a >= faction_names.size() or b < 0 or b >= faction_names.size():
+			push_warning("Campaign map: 'peace' pair [%d, %d] references an unknown faction" % [a, b])
+			return {}
+		if a == b:
+			# A faction can't be at peace with itself; this is almost certainly a typo,
+			# so surface it at load time rather than silently dropping it.
+			push_warning("Campaign map: 'peace' pair [%d, %d] lists a faction with itself" % [a, b])
+			return {}
+		var lo := mini(a, b)
+		var hi := maxi(a, b)
+		if [lo, hi] in peace:
+			# Duplicate pair (possibly reversed, e.g. [0, 2] and [2, 0]); make_peace is
+			# idempotent so it's harmless, but a redundant entry is a hand-edit slip —
+			# reject it at load time to stay consistent with the checks above.
+			push_warning("Campaign map: duplicate 'peace' pair [%d, %d]" % [a, b])
+			return {}
+		peace.append([lo, hi])
+
 	return {
 		"name": str(raw.get("name", "Campaign")),
 		"blurb": str(raw.get("blurb", "")),
 		"faction_names": faction_names,
 		"faction_colors": faction_colors,
 		"provinces": provinces,
+		"peace": peace,
 	}
 
 

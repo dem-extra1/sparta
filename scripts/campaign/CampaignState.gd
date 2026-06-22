@@ -2,11 +2,13 @@ extends RefCounted
 ## Campaign-map game state and rules (M2, #70) — pure logic, no scene/Node deps so
 ## it runs headless and is unit-tested directly (test/unit/test_campaign_state.gd).
 ##
-## A campaign is a single war (#70): two factions contest a set of provinces. Each
-## province has an owner and a stationed army (an integer strength). On a faction's
-## turn each of its armies may move once into an adjacent province — reinforcing a
-## friendly one or attacking an enemy/neutral one (battles are auto-resolved here;
-## the tactical-battle hookup is M3). A faction wins by owning every province.
+## A campaign is a single war (#70): two or more factions contest a set of provinces,
+## with per-pair war/peace stances (#123). Each province has an owner and a stationed
+## army (an integer strength). On a faction's turn each of its armies may move once
+## into an adjacent province — reinforcing a friendly one or attacking an enemy one it
+## is at war with. A contested fight is auto-resolved here (move_or_attack) or decided
+## by the tactical battle and applied via resolve_attack (M3, #122). A faction wins by
+## owning every province.
 ##
 ## State is built from a map dictionary (see scripts/campaign/CampaignLoader.gd); only
 ## the dynamic fields (owner, army) and the adjacency/names are kept here — geometry
@@ -44,8 +46,10 @@ const ROLL_MAX := 1.25
 const CASUALTY_SEVERITY := 0.6
 
 
-## Build from a map dict: {faction_names:[...], provinces:[{id,name,owner,army,adj}, ...]}.
-## A fixed `rng_seed` (>= 0) makes auto-resolve deterministic for tests; -1 randomises.
+## Build from a map dict: {faction_names:[...], provinces:[{id,name,owner,army,adj}, ...],
+## peace:[[a,b], ...]}. `peace` is optional — listed pairs start at peace, everything
+## else at war (#123). A fixed `rng_seed` (>= 0) makes auto-resolve deterministic for
+## tests; -1 randomises.
 func _init(map: Dictionary, rng_seed: int = -1) -> void:
 	faction_names = []
 	for fname in map.get("faction_names", []):
@@ -62,6 +66,14 @@ func _init(map: Dictionary, rng_seed: int = -1) -> void:
 		for n in p.get("adj", []):
 			adj.append(int(n))
 		adjacency[id] = adj
+	# Optional initial diplomacy: a map may list faction pairs that start at peace
+	# (everything else defaults to war). This is how a neutral faction is seeded —
+	# at peace with all belligerents until someone declares war (#123). The shape
+	# check is a defensive guard, not the primary validator: CampaignLoader.parse_map
+	# already rejects malformed peace entries, so a well-formed map never trips it.
+	for pair in map.get("peace", []):
+		if typeof(pair) == TYPE_ARRAY and pair.size() >= 2:
+			make_peace(int(pair[0]), int(pair[1]))
 	if rng_seed >= 0:
 		_rng.seed = rng_seed
 	else:
@@ -94,14 +106,12 @@ func can_move(from_id: int, to_id: int) -> bool:
 		return false
 	if _acted.has(from_id):
 		return false
-	if not are_adjacent(from_id, to_id):
-		return false
-	# Entering another faction's province (occupy or attack) is an act of war, so it
-	# requires being at war with them. Reinforcing your own is always allowed.
+	# Must be adjacent, and — entering another faction's province (occupy or attack)
+	# being an act of war — the mover must be at war with them. Reinforcing your own
+	# province is always allowed.
 	var to_owner := owner_of(to_id)
-	if to_owner != current_faction and not at_war(current_faction, to_owner):
-		return false
-	return true
+	return are_adjacent(from_id, to_id) \
+			and (to_owner == current_faction or at_war(current_faction, to_owner))
 
 
 # --- diplomacy (#123) ------------------------------------------------------
@@ -134,7 +144,9 @@ func make_peace(a: int, b: int) -> void:
 
 ## Move/attack the army in `from_id` into `to_id`. Caller must check can_move first.
 ## Returns a result dict describing what happened:
-##   {ok, combat, attacker_won, from, to, attacker, defender, survivors}
+##   {ok, combat, attacker_won, from, to, attacker, defender, defender_owner, survivors}
+## `defender_owner` is the faction that held `to` before the move (useful for messaging
+## with 3+ factions, since `to`'s owner may change on capture).
 func move_or_attack(from_id: int, to_id: int) -> Dictionary:
 	if not can_move(from_id, to_id):
 		return {"ok": false}
@@ -144,7 +156,7 @@ func move_or_attack(from_id: int, to_id: int) -> Dictionary:
 	var result := {
 		"ok": true, "combat": false, "reinforced": false, "attacker_won": true,
 		"from": from_id, "to": to_id, "attacker": moving,
-		"defender": int(to["army"]), "survivors": moving,
+		"defender": int(to["army"]), "defender_owner": int(to["owner"]), "survivors": moving,
 	}
 
 	if to["owner"] == from["owner"]:
@@ -164,29 +176,58 @@ func move_or_attack(from_id: int, to_id: int) -> Dictionary:
 		_mark_acted(from_id, to_id)
 		return result
 
-	# Contested: auto-resolve.
+	# Contested: auto-resolve with dice, then apply the outcome through the shared
+	# settle path. The tactical-battle hookup (#122) decides the same outcome a
+	# different way (resolve_attack) and reuses _settle, so both converge.
 	result["combat"] = true
 	var atk_roll := moving * _rng.randf_range(ROLL_MIN, ROLL_MAX)
 	var def_roll := int(to["army"]) * DEFENDER_BONUS * _rng.randf_range(ROLL_MIN, ROLL_MAX)
 	if atk_roll > def_roll:
 		var closeness := def_roll / atk_roll   # 0 (rout) .. 1 (near thing)
 		var survivors: int = maxi(1, int(round(moving * (1.0 - CASUALTY_SEVERITY * closeness))))
-		to["owner"] = from["owner"]
-		to["army"] = survivors
-		from["army"] = 0
-		result["attacker_won"] = true
-		result["survivors"] = survivors
-		_mark_acted(from_id, to_id)
+		_settle(result, from_id, to_id, true, survivors)
 	else:
 		var closeness := atk_roll / def_roll
 		var survivors: int = maxi(1, int(round(int(to["army"]) * (1.0 - CASUALTY_SEVERITY * closeness))))
+		_settle(result, from_id, to_id, false, survivors)
+	return result
+
+
+## Apply a *decided* contested outcome to a from->to clash (the M3 tactical battle
+## replaces the dice, #122). `survivors` is the winning side's remaining strength.
+## Mirrors move_or_attack's contested branch so a fought-out battle and an
+## auto-resolve converge on the same state transition. The caller is responsible for
+## having validated the clash (e.g. via the can_move that launched the battle).
+func resolve_attack(from_id: int, to_id: int, attacker_won: bool, survivors: int) -> Dictionary:
+	var from: Dictionary = provinces[from_id]
+	var to: Dictionary = provinces[to_id]
+	var result := {
+		"ok": true, "combat": true, "reinforced": false, "attacker_won": attacker_won,
+		"from": from_id, "to": to_id, "attacker": int(from["army"]),
+		"defender": int(to["army"]), "defender_owner": int(to["owner"]), "survivors": survivors,
+	}
+	_settle(result, from_id, to_id, attacker_won, survivors)
+	return result
+
+
+## Shared state transition for a resolved contested fight. On a win the attacker
+## takes `to` with `survivors` and its origin empties (and is marked acted); on a
+## loss the attacking army is spent and `to`'s defender is left with `survivors`.
+func _settle(result: Dictionary, from_id: int, to_id: int, attacker_won: bool, survivors: int) -> void:
+	var from: Dictionary = provinces[from_id]
+	var to: Dictionary = provinces[to_id]
+	if attacker_won:
+		to["owner"] = from["owner"]
+		to["army"] = survivors
+		from["army"] = 0
+		_mark_acted(from_id, to_id)
+	else:
 		to["army"] = survivors
 		from["army"] = 0   # the attacking army is spent
-		result["attacker_won"] = false
-		result["survivors"] = survivors
 		# from_id was never in _acted (can_move guards against that); nothing to erase,
 		# and its army is gone, so it can't act again this turn regardless.
-	return result
+	result["attacker_won"] = attacker_won
+	result["survivors"] = survivors
 
 
 func _mark_acted(from_id: int, to_id: int) -> void:
@@ -227,3 +268,47 @@ func movable_provinces(faction: int) -> Array[int]:
 
 func has_acted(id: int) -> bool:
 	return _acted.has(id)
+
+
+# --- serialization (#122) --------------------------------------------------
+# The campaign->battle hand-off swaps scenes, which destroys this state object, so
+# the dynamic fields are snapshotted into a plain Dictionary (held in CampaignBattle)
+# and restored onto a freshly map-built state when control returns. Only the mutable
+# fields travel — the map (adjacency, names, geometry) is reloaded from data.
+
+## Capture the mutable state (province owners/armies, who has acted, diplomacy, whose
+## turn it is) as a plain Dictionary that restore() can re-apply.
+func snapshot() -> Dictionary:
+	var owners := {}
+	var armies := {}
+	for id in provinces:
+		owners[id] = owner_of(id)
+		armies[id] = army_of(id)
+	return {
+		"owners": owners,
+		"armies": armies,
+		"acted": _acted.keys(),
+		"peace": _peace.keys(),
+		"current_faction": current_faction,
+		"turn": turn,
+	}
+
+
+## Re-apply a snapshot() onto this state. Assumes the same map (province ids) it was
+## taken from; ids absent from the snapshot keep their map-built values.
+func restore(snap: Dictionary) -> void:
+	var owners: Dictionary = snap.get("owners", {})
+	var armies: Dictionary = snap.get("armies", {})
+	for id in provinces:
+		if owners.has(id):
+			provinces[id]["owner"] = int(owners[id])
+		if armies.has(id):
+			provinces[id]["army"] = int(armies[id])
+	_acted.clear()
+	for id in snap.get("acted", []):
+		_acted[int(id)] = true
+	_peace.clear()
+	for key in snap.get("peace", []):
+		_peace[key] = true
+	current_faction = int(snap.get("current_faction", current_faction))
+	turn = int(snap.get("turn", turn))
