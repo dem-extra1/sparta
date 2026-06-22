@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Pure loader validation: allows intentional one-way province edges via a 'one_way' flag and warns (instead of rejecting) on un-flagged asymmetric adjacency. No scene, HUD, or gameplay change — a recorded battle can't demonstrate a parse-time schema check."
+  "reason": "Parser-only validation: rejects duplicate entries and self-adjacency in a province's adj list. No scene, HUD, or gameplay change — a parse-time schema check can't be shown by a recorded battle."
 }
