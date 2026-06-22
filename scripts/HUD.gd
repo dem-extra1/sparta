@@ -1,7 +1,7 @@
 extends CanvasLayer
 ## On-screen UI, built in code (no .tscn needed):
 ##   - top hint bar
-##   - top-right Menu button: restart the battle plus global options (#53)
+##   - top-right Menu button: restart the battle plus global options
 ##   - selected-unit info panel (bottom-left)
 ##   - victory/defeat overlay with a restart button
 
@@ -29,7 +29,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS   # stays responsive when paused
 
 	# Controls hint. The order-mode keys are rendered from the live Settings bindings
-	# (#87) so the bar stays accurate after a rebind; _refresh_hint re-renders on change.
+	# so the bar stays accurate after a rebind; _refresh_hint re-renders on change.
 	_hint = Label.new()
 	_hint.position = Vector2(14, 10)
 	_hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
@@ -65,7 +65,7 @@ func _ready() -> void:
 	_paused_label.visible = false
 	add_child(_paused_label)
 
-	# Armed order-mode indicator (#35), top-center below the pause banner. Hidden
+	# Armed order-mode indicator, top-center below the pause banner. Hidden
 	# for the default stance; SelectionManager calls set_order_mode() to update it.
 	_order_mode_label = Label.new()
 	_order_mode_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -79,7 +79,7 @@ func _ready() -> void:
 
 	# Menu button (top-right) gathering the global options that used to be
 	# scattered across the HUD — restart, replay loading, and the edge-scroll
-	# toggle (#53). Its popup is PROCESS_MODE_ALWAYS so it stays usable while the
+	# toggle. Its popup is PROCESS_MODE_ALWAYS so it stays usable while the
 	# simulation is paused. Give the button an explicit width so its placement is
 	# derived from that, not a font-metric-tuned magic offset.
 	_menu_button = MenuButton.new()
@@ -133,7 +133,7 @@ func _ready() -> void:
 	_error_dialog.title = "Replay"
 	add_child(_error_dialog)
 
-	# Rebindable order-mode hotkeys (#87). Its own PROCESS_MODE_ALWAYS dialog so it's
+	# Rebindable order-mode hotkeys. Its own PROCESS_MODE_ALWAYS dialog so it's
 	# usable while paused, like the other menu dialogs.
 	_keybindings_dialog = preload("res://scripts/KeybindingsDialog.gd").new()
 	add_child(_keybindings_dialog)
@@ -185,7 +185,7 @@ func _ready() -> void:
 	_overlay_label.add_theme_font_size_override("font_size", 48)
 	box.add_child(_overlay_label)
 
-	# A campaign-launched battle (#122) returns its result to the map instead of
+	# A campaign-launched battle returns its result to the map instead of
 	# restarting; "Fight Again"/"Load Replay" (which replace this battle) would strand
 	# the campaign, so only offer Return + Watch Replay there. Safe to decide at _ready
 	# (rather than in show_end): `active` is set before the battle scene loads and stays
@@ -236,7 +236,7 @@ func _sync_setting_toggles() -> void:
 
 
 ## Rebuild the controls hint, rendering the order-mode keys from the live Settings
-## bindings (#87) so the bar reflects rebinds instead of the hardcoded defaults.
+## bindings so the bar reflects rebinds instead of the hardcoded defaults.
 func _refresh_hint() -> void:
 	if _hint == null:
 		return
@@ -317,7 +317,7 @@ func clear_unit() -> void:
 	_info.text = "No unit selected"
 
 
-## Show the armed order mode (#35). Empty text hides the indicator (default stance).
+## Show the armed order mode. Empty text hides the indicator (default stance).
 func set_order_mode(text: String) -> void:
 	if text == "":
 		_order_mode_label.visible = false
@@ -342,7 +342,7 @@ func _on_restart() -> void:
 
 
 func _on_return_to_campaign() -> void:
-	# Hand control back to the campaign map (#122); CampaignBattle still holds the
+	# Hand control back to the campaign map; CampaignBattle still holds the
 	# result, which CampaignMap applies on load. Drop the recording like a restart.
 	Replay.reset()
 	get_tree().paused = false

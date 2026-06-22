@@ -1,6 +1,6 @@
 class_name Fallen
 extends Node2D
-## Fallen soldiers (#32 Stage C): a small heap of dark body marks dropped where men fall in
+## Fallen soldiers (Stage C): a small heap of dark body marks dropped where men fall in
 ## melee, fading into the ground as the fight moves on. Spawned from Unit.take_casualties on
 ## the deterministic sim tick but animated on render time (_process), in no sim group, and
 ## frees itself — so it carries no sim/replay/determinism state. The scatter is index-based

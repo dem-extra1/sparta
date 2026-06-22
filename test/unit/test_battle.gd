@@ -1,5 +1,5 @@
 extends GutTest
-## Battle order dispatch (issue #34): the waypoint-append path of
+## Battle order dispatch: the waypoint-append path of
 ## _apply_order_cmd. A Battle is exercised directly via the script — not spawned
 ## into the scene — with units registered by uid, so the append/replace logic is
 ## covered without standing up a full battle. (_apply_order_cmd reads only the
@@ -76,12 +76,12 @@ func test_append_via_enqueue_is_not_double_applied() -> void:
 	assert_eq(u.waypoints[0], Vector2(400, 0), "and holds the appended point")
 
 
-# --- pending-append preview while paused (issue #62) -----------------------
+# --- pending-append preview while paused -----------------------
 
 func test_pending_append_is_previewed_without_being_applied() -> void:
 	# An append isn't applied until the next physics tick (so it isn't doubled).
 	# While paused that tick never runs, so the overlay previews it from
-	# _pending_orders instead — without mutating the unit's queue (#62).
+	# _pending_orders instead — without mutating the unit's queue.
 	var u := _unit(1, Vector2.ZERO)
 	u.has_move_target = false
 	var b := _battle([u])
@@ -120,7 +120,7 @@ func test_pending_plain_move_is_not_previewed_as_append() -> void:
 		"a plain move is not previewed as a pending append")
 
 
-# --- order-mode framework (#35 / #81) --------------------------------------
+# --- order-mode framework --------------------------------------
 
 func test_order_mode_is_stamped_on_a_fresh_order() -> void:
 	var u := _unit(1, Vector2.ZERO)
@@ -160,7 +160,7 @@ func test_append_preserves_the_existing_stance() -> void:
 		"a waypoint append leaves the unit's stance unchanged")
 
 
-# --- support / defend (#86) ------------------------------------------------
+# --- support / defend ------------------------------------------------
 
 func test_support_order_sets_the_ward_not_a_relief() -> void:
 	var supporter := _unit(1, Vector2.ZERO)

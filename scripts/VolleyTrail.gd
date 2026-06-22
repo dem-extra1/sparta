@@ -1,6 +1,6 @@
 class_name VolleyTrail
 extends Node2D
-## A short-lived arrow-volley trail (#65): a small cluster of streaks that fly from a
+## A short-lived arrow-volley trail: a small cluster of streaks that fly from a
 ## ranged unit toward its target when it looses a volley (Unit._shoot), fading as they
 ## land. Purely cosmetic — spawned on the deterministic sim tick but animated on render
 ## time (_process), so it carries no sim/replay/determinism state and frees itself when

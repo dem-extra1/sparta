@@ -1,13 +1,13 @@
 extends RefCounted
-## Campaign-map game state and rules (M2, #70) — pure logic, no scene/Node deps so
+## Campaign-map game state and rules (M2) — pure logic, no scene/Node deps so
 ## it runs headless and is unit-tested directly (test/unit/test_campaign_state.gd).
 ##
-## A campaign is a single war (#70): two or more factions contest a set of provinces,
-## with per-pair war/peace stances (#123). Each province has an owner and a stationed
+## A campaign is a single war: two or more factions contest a set of provinces,
+## with per-pair war/peace stances. Each province has an owner and a stationed
 ## army (an integer strength). On a faction's turn each of its armies may move once
 ## into an adjacent province — reinforcing a friendly one or attacking an enemy one it
 ## is at war with. A contested fight is auto-resolved here (move_or_attack) or decided
-## by the tactical battle and applied via resolve_attack (M3, #122). A faction wins by
+## by the tactical battle and applied via resolve_attack (M3). A faction wins by
 ## owning every province.
 ##
 ## State is built from a map dictionary (see scripts/campaign/CampaignLoader.gd); only
@@ -16,8 +16,8 @@ extends RefCounted
 
 const NO_WINNER := -1
 
-# Default truce length (in turns) applied when a faction sues for peace in normal play
-# (#138). Suing for peace is meant to carry a commitment, so the gameplay callers
+# Default truce length (in turns) applied when a faction sues for peace in normal play.
+# Suing for peace is meant to carry a commitment, so the gameplay callers
 # (player toggle, AI diplomacy) pass this; the low-level make_peace() still defaults to
 # no truce so map-seeded stances and tests can opt out.
 const DEFAULT_TRUCE_TURNS := 3
@@ -36,13 +36,13 @@ var turn: int = 1
 # owning faction's next turn). Reset whenever play returns to a faction.
 var _acted: Dictionary = {}
 
-# Diplomacy (#123): factions are at war by default (this is a war campaign); only
+# Diplomacy: factions are at war by default (this is a war campaign); only
 # explicitly-made peace is recorded here, as a set of normalized "a-b" pair keys.
 # A faction is never at war with itself. Maps/UI can later seed/change stances via
 # make_peace()/declare_war(); for now the rules layer just gates attacks on it.
 var _peace: Dictionary = {}
 
-# Truce timers (#138): pair_key -> turns remaining until war may be declared again.
+# Truce timers: pair_key -> turns remaining until war may be declared again.
 # Only present while a truce is active; absent means no truce, so war is declarable.
 # Ticked down once per full round in end_turn().
 var _truce: Dictionary = {}
@@ -59,7 +59,7 @@ const CASUALTY_SEVERITY := 0.6
 
 ## Build from a map dict: {faction_names:[...], provinces:[{id,name,owner,army,adj}, ...],
 ## peace:[[a,b], ...]}. `peace` is optional — listed pairs start at peace, everything
-## else at war (#123). A fixed `rng_seed` (>= 0) makes auto-resolve deterministic for
+## else at war. A fixed `rng_seed` (>= 0) makes auto-resolve deterministic for
 ## tests; -1 randomises.
 func _init(map: Dictionary, rng_seed: int = -1) -> void:
 	faction_names = []
@@ -79,12 +79,12 @@ func _init(map: Dictionary, rng_seed: int = -1) -> void:
 		adjacency[id] = adj
 	# Optional initial diplomacy: a map may list faction pairs that start at peace
 	# (everything else defaults to war). This is how a neutral faction is seeded —
-	# at peace with all belligerents until someone declares war (#123). The shape
+	# at peace with all belligerents until someone declares war. The shape
 	# check is a defensive guard, not the primary validator: CampaignLoader.parse_map
 	# already rejects malformed peace entries, so a well-formed map never trips it.
 	for pair in map.get("peace", []):
 		if typeof(pair) == TYPE_ARRAY and pair.size() >= 2:
-			# An optional third element seeds an initial truce length (#138).
+			# An optional third element seeds an initial truce length.
 			var truce_turns := int(pair[2]) if pair.size() >= 3 else 0
 			make_peace(int(pair[0]), int(pair[1]), truce_turns)
 	if rng_seed >= 0:
@@ -127,7 +127,7 @@ func can_move(from_id: int, to_id: int) -> bool:
 			and (to_owner == current_faction or at_war(current_faction, to_owner))
 
 
-# --- diplomacy (#123) ------------------------------------------------------
+# --- diplomacy ------------------------------------------------------
 
 func _pair_key(a: int, b: int) -> String:
 	return "%d-%d" % [mini(a, b), maxi(a, b)]
@@ -141,7 +141,7 @@ func at_war(a: int, b: int) -> bool:
 	return not _peace.has(_pair_key(a, b))
 
 
-## Put factions `a` and `b` at war (symmetric). Blocked while a truce is active (#138)
+## Put factions `a` and `b` at war (symmetric). Blocked while a truce is active
 ## and a no-op if a == b. Returns true if the two are now at war.
 func declare_war(a: int, b: int) -> bool:
 	if a == b:
@@ -153,7 +153,7 @@ func declare_war(a: int, b: int) -> bool:
 
 
 ## Put factions `a` and `b` at peace (symmetric). No-op if a == b. A positive
-## `truce_turns` records a truce: declaring war is blocked until it expires (#138).
+## `truce_turns` records a truce: declaring war is blocked until it expires.
 ## A larger value extends an existing truce; 0 leaves any current truce untouched.
 func make_peace(a: int, b: int, truce_turns: int = 0) -> void:
 	if a == b:
@@ -165,7 +165,7 @@ func make_peace(a: int, b: int, truce_turns: int = 0) -> void:
 
 
 ## Turns remaining on the truce between `a` and `b` (0 if none, or for a == b). While
-## this is positive, declare_war() is blocked (#138).
+## this is positive, declare_war() is blocked.
 func truce_remaining(a: int, b: int) -> int:
 	if a == b:
 		return 0
@@ -218,7 +218,7 @@ func move_or_attack(from_id: int, to_id: int) -> Dictionary:
 		return result
 
 	# Contested: auto-resolve with dice, then apply the outcome through the shared
-	# settle path. The tactical-battle hookup (#122) decides the same outcome a
+	# settle path. The tactical-battle hookup decides the same outcome a
 	# different way (resolve_attack) and reuses _settle, so both converge.
 	result["combat"] = true
 	var atk_roll := moving * _rng.randf_range(ROLL_MIN, ROLL_MAX)
@@ -235,7 +235,7 @@ func move_or_attack(from_id: int, to_id: int) -> Dictionary:
 
 
 ## Apply a *decided* contested outcome to a from->to clash (the M3 tactical battle
-## replaces the dice, #122). `survivors` is the winning side's remaining strength.
+## replaces the dice). `survivors` is the winning side's remaining strength.
 ## Mirrors move_or_attack's contested branch so a fought-out battle and an
 ## auto-resolve converge on the same state transition. The caller is responsible for
 ## having validated the clash (e.g. via the can_move that launched the battle).
@@ -312,7 +312,7 @@ func has_acted(id: int) -> bool:
 	return _acted.has(id)
 
 
-# --- AI-initiated diplomacy (#139) -----------------------------------------
+# --- AI-initiated diplomacy -----------------------------------------------
 # The AI gets agency over war/peace, not just attacks. Heuristics are deterministic
 # (no RNG) so replays and tests stay reproducible.
 
@@ -363,7 +363,7 @@ func factions_border(a: int, b: int) -> bool:
 	return false
 
 
-## Let `faction` reconsider its stances (AI-initiated diplomacy, #139). Deterministic:
+## Let `faction` reconsider its stances (AI-initiated diplomacy). Deterministic:
 ## it sues for peace with its strongest enemy when overextended and outmatched, then
 ## declares war on the weakest bordering neutral it clearly outweighs. Respects truces
 ## (declare_war is gated on them). Returns human-readable messages for the UI/log —
@@ -373,7 +373,7 @@ func run_ai_diplomacy(faction: int) -> Array[String]:
 	var peace_target := _ai_peace_target(faction)
 	if peace_target != -1:
 		# Sue for peace *with a truce* so the peace is a real commitment, not a one-turn
-		# flip the AI immediately undoes (#138).
+		# flip the AI immediately undoes.
 		make_peace(faction, peace_target, DEFAULT_TRUCE_TURNS)
 		messages.append("%s sues for peace with %s." % [_faction_label(faction), _faction_label(peace_target)])
 	var war_target := _ai_war_target(faction)
@@ -429,7 +429,7 @@ func _faction_label(faction: int) -> String:
 			else "Faction %d" % faction
 
 
-# --- serialization (#122) --------------------------------------------------
+# --- serialization --------------------------------------------------
 # The campaign->battle hand-off swaps scenes, which destroys this state object, so
 # the dynamic fields are snapshotted into a plain Dictionary (held in CampaignBattle)
 # and restored onto a freshly map-built state when control returns. Only the mutable

@@ -1,5 +1,5 @@
 extends GutTest
-## RoutShockwave (#72): the cosmetic morale-shock ripple spawned when a unit routs.
+## RoutShockwave: the cosmetic morale-shock ripple spawned when a unit routs.
 ## It's a render-time visual, but the spawn geometry and self-cleanup are plain logic
 ## worth pinning (the gradient/ring drawing is verified visually / in the demo clip).
 

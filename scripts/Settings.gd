@@ -30,7 +30,7 @@ var sfx_enabled: bool = false:
 			_save()
 			changed.emit()
 
-# Order-mode selector hotkeys (#87): stable slug -> physical keycode. Slugs (and the
+# Order-mode selector hotkeys: stable slug -> physical keycode. Slugs (and the
 # menu order) are owned by Battle.ORDER_MODE_HOTKEYS; these are the factory defaults.
 # Physical keycodes keep the bindings layout-independent (like the camera/pause keys).
 const DEFAULT_ORDER_BINDINGS := {

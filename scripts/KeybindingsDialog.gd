@@ -1,5 +1,5 @@
 extends AcceptDialog
-## Keybindings dialog (#87): view and rebind the order-mode selector hotkeys.
+## Keybindings dialog: view and rebind the order-mode selector hotkeys.
 ##
 ## Rows are built from Battle.ORDER_MODE_HOTKEYS (mode + stable cfg slug) and labelled
 ## via ORDER_MODE_NAMES; the current key for each comes from the Settings autoload
@@ -9,8 +9,8 @@ extends AcceptDialog
 ## "Reset to defaults" restores Settings.DEFAULT_ORDER_BINDINGS.
 ##
 ## Pure client-side input config — mode selection is local and only the resulting order
-## is recorded, so there's no sim/replay/determinism impact (#87). The dialog UI itself
-## is verified manually (#12); the binding logic lives in Settings and is unit-tested.
+## is recorded, so there's no sim/replay/determinism impact. The dialog UI itself
+## is verified manually; the binding logic lives in Settings and is unit-tested.
 
 const BattleRef = preload("res://scripts/Battle.gd")
 

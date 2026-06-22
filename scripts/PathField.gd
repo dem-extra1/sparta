@@ -1,6 +1,6 @@
 class_name PathField
 extends RefCounted
-## Deterministic grid A* pathfinding layer (issue #10). Units route around blocked
+## Deterministic grid A* pathfinding layer. Units route around blocked
 ## terrain instead of walking straight through it.
 ##
 ## Why not NavigationAgent2D? Its RVO avoidance is non-deterministic (threaded,

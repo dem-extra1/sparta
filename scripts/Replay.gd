@@ -27,7 +27,7 @@ enum Mode { IDLE, RECORD, PLAYBACK }
 
 const DIR := "user://replays"
 const FORMAT_VERSION := 1
-# The per-order "mode" field (#35 smart orders) is additive and back-compatible:
+# The per-order "mode" field (smart orders) is additive and back-compatible:
 # old replays omit it and load with mode 0 (OrderMode.NORMAL = current behaviour),
 # so no version bump is needed and existing v1 replays still play.
 const PHYSICS_TPS := 60

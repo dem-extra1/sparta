@@ -1,5 +1,5 @@
 extends GutTest
-## Fallen (#32 Stage C): the cosmetic "men fall" body markers dropped where melee casualties
+## Fallen (Stage C): the cosmetic "men fall" body markers dropped where melee casualties
 ## occur. It's a render-time visual, but the spawn geometry, the body-count cap, and the
 ## self-cleanup are plain logic worth pinning (the drawing/fade is verified visually / in the
 ## demo clip).

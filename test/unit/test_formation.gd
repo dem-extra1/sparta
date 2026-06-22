@@ -1,5 +1,5 @@
 extends GutTest
-## Formation cohesion (issue #7): a group move translates the regiment as a rigid
+## Formation cohesion: a group move translates the regiment as a rigid
 ## block from its centroid (move_target = dest + (pos - centroid)), so the shape
 ## is preserved. These test the math used in Battle._apply_order_cmd.
 

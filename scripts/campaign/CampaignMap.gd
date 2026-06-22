@@ -1,11 +1,11 @@
 extends Node2D
-## Campaign map view + controller (M2, #70). Renders the province polygons, turns
+## Campaign map view + controller (M2). Renders the province polygons, turns
 ## mouse clicks into move/attack orders against the headless CampaignState, runs a
 ## simple enemy turn, and reports turn/selection/victory to the HUD.
 ##
 ## Single-player: the human plays faction 0 (Rome); ending the turn runs the Gallic
 ## AI, then hands play back. A player attack on a defended enemy province is fought
-## out in the tactical battle (M3, #122) unless "auto-resolve" is on; AI attacks and
+## out in the tactical battle (M3) unless "auto-resolve" is on; AI attacks and
 ## undefended moves always resolve in CampaignState.
 
 const CampaignStateRef = preload("res://scripts/campaign/CampaignState.gd")
@@ -22,7 +22,7 @@ var _map: Dictionary
 var _state
 var _selected: int = -1   # province id the player has selected, or -1
 # When false (default), a player attack on a defended enemy province is fought out
-# in the tactical battle (#122); when true it's auto-resolved on the map ("quick
+# in the tactical battle; when true it's auto-resolved on the map ("quick
 # resolve"). AI attacks always auto-resolve regardless.
 var _auto_resolve: bool = false
 
@@ -38,7 +38,7 @@ func _ready() -> void:
 	# first HUD push: this node's _ready runs before its sibling HUD's, so the HUD's
 	# labels don't exist yet here.
 	_build_state()
-	# Returning from a tactical battle (#122): restore the pre-battle campaign state
+	# Returning from a tactical battle: restore the pre-battle campaign state
 	# (the scene swap destroyed it) so _draw shows the real board, then apply the
 	# battle's outcome once the HUD exists (it needs to flash/announce + maybe end).
 	var resumed := _resume_from_battle()
@@ -129,7 +129,7 @@ func _province_at(pos: Vector2) -> int:
 	return -1
 
 
-# --- tactical battle hand-off (M3, #122) ----------------------------------
+# --- tactical battle hand-off (M3) ----------------------------------
 
 ## True if moving from->to is a real fight: a defended province of a faction the
 ## mover is at war with — as opposed to reinforcing a friendly province, walking into
@@ -230,7 +230,7 @@ func _on_end_turn() -> void:
 	queue_redraw()
 
 
-## Before its military moves, the current AI faction reconsiders war/peace (#139) and
+## Before its military moves, the current AI faction reconsiders war/peace and
 ## the resulting declarations/peaces are flashed so the player sees the world shift.
 ## CampaignState.run_ai_diplomacy holds the (deterministic) decision logic.
 func _run_ai_diplomacy() -> void:
@@ -246,7 +246,7 @@ func _run_ai_diplomacy() -> void:
 ## Greedy AI: each ready army takes the weakest adjacent province belonging to a
 ## faction it is at war with that it can occupy (undefended) or expects to beat (army
 ## >= defender); otherwise it holds. Provinces of factions it's at peace with are left
-## alone, so a neutral faction is only ever attacked once war is declared (#123).
+## alone, so a neutral faction is only ever attacked once war is declared.
 func _run_enemy_ai() -> void:
 	var faction: int = _state.current_faction
 	for id in _state.movable_provinces(faction):
@@ -366,7 +366,7 @@ func _on_diplomacy_toggled(fid: int) -> void:
 	var fname: String = _faction_name(fid)
 	if _state.at_war(PLAYER_FACTION, fid):
 		# Suing for peace carries a commitment: a default truce blocks re-declaring war
-		# for a few turns (#138). Without it the truce UI/rules would be unreachable in
+		# for a few turns. Without it the truce UI/rules would be unreachable in
 		# normal play (only map-seeded peace would ever set one).
 		var truce: int = CampaignStateRef.DEFAULT_TRUCE_TURNS
 		_state.make_peace(PLAYER_FACTION, fid, truce)
@@ -376,7 +376,7 @@ func _on_diplomacy_toggled(fid: int) -> void:
 		if _hud != null:
 			_hud.flash("Declared war on %s!" % fname)
 	else:
-		# A truce blocks re-declaring war until it expires (#138).
+		# A truce blocks re-declaring war until it expires.
 		if _hud != null:
 			_hud.flash("Truce with %s — %d turn(s) left." % [fname, _state.truce_remaining(PLAYER_FACTION, fid)])
 	# A stance change can invalidate the current selection's targets; keep it simple.

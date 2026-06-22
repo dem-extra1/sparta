@@ -1,5 +1,5 @@
 extends GutTest
-## SpatialHash (issue #9): the per-frame grid query must return a SUPERSET of the
+## SpatialHash: the per-frame grid query must return a SUPERSET of the
 ## units within separation distance, so Unit._separate() resolves the same set of
 ## overlaps a brute-force all-pairs scan would, just faster.
 
