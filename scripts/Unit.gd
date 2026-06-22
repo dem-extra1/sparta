@@ -810,6 +810,7 @@ func absorb(other: Unit) -> void:
 	separation_radius = minf(maxf(separation_radius, other.separation_radius) + 2.0,
 		SEPARATION_RADIUS_MAX)
 	_base_separation_radius = separation_radius
+	set_formation(formation_mode)
 	other._merged_away()
 	queue_redraw()
 

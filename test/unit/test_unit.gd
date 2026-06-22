@@ -1411,3 +1411,15 @@ func test_formation_summary_returns_correct_names() -> void:
 	assert_eq(u.formation_summary(), "Tight")
 	u.set_formation(Unit.FORMATION_LOOSE)
 	assert_eq(u.formation_summary(), "Loose")
+
+
+func test_absorb_reapplies_formation_scale() -> void:
+	var a: Unit = _make_unit(Unit.Kind.INFANTRY)
+	var b: Unit = _make_unit(Unit.Kind.INFANTRY)
+	a.set_formation(Unit.FORMATION_TIGHT)
+	var before_base := a._base_separation_radius
+	a.absorb(b)
+	var expected := minf(a._base_separation_radius * Unit.TIGHT_SEPARATION_SCALE,
+		Unit.SEPARATION_RADIUS_MAX)
+	assert_eq(a.separation_radius, expected,
+		"absorb on a TIGHT unit keeps separation_radius at the scaled value")
