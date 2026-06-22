@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Fatigue display is only visible in the info panel when a unit is selected; a passive battle replay doesn't exercise it."
+  "reason": "Cohesion display only appears in the info panel after a merge; a passive battle replay won't exercise it."
 }
