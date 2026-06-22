@@ -241,7 +241,7 @@ func _patch_by_type(type: String) -> Dictionary:
 func test_hill_blocks_pathfinding() -> void:
 	var pf := _registered_pathfield()
 	var hill: Dictionary = _patch_by_type("hill")
-	var center := hill["rect"].position + hill["rect"].size * 0.5
+	var center: Vector2 = hill["rect"].position + hill["rect"].size * 0.5
 	assert_true(pf.is_blocked(center), "the hill terrain patch blocks movement at its centre")
 
 
@@ -262,13 +262,13 @@ func test_forest_is_not_blocked() -> void:
 	# Forest is a slow zone, not impassable: units can enter it.
 	var pf := _registered_pathfield()
 	var forest: Dictionary = _patch_by_type("forest")
-	var center := forest["rect"].position + forest["rect"].size * 0.5
+	var center: Vector2 = forest["rect"].position + forest["rect"].size * 0.5
 	assert_false(pf.is_blocked(center), "the forest patch is passable (slow, not blocked)")
 
 
 func test_forest_slows_movement() -> void:
 	var pf := _registered_pathfield()
 	var forest: Dictionary = _patch_by_type("forest")
-	var center := forest["rect"].position + forest["rect"].size * 0.5
+	var center: Vector2 = forest["rect"].position + forest["rect"].size * 0.5
 	assert_almost_eq(pf.speed_at(center), float(forest["speed"]), 0.001,
 			"the forest speed zone returns the configured speed scale")
