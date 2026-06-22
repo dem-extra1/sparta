@@ -54,6 +54,32 @@ media.
   static UI a recorded battle can't film, `skip` the clip (above) and rely on the
   image.
 
+## Website updates in user-facing PRs
+
+When a PR changes **how the game looks or plays** — mechanics, controls, UI,
+balance, or any player-visible behaviour — include corresponding updates to the
+`website/` docs site so the documentation stays in sync.
+
+**When the rule applies:** any PR that touches `scenes/`, `scripts/`, `assets/`,
+or `project.godot` in a way a player would notice. Pure refactors, internal
+architecture, and CI changes are exempt.
+
+**What to update:**
+
+- `website/how-to-play.qmd` — step-by-step guide for new players. Add a step,
+  update a control description, or note a new interaction.
+- `website/tactics.qmd` — tactical guidance. Add a section when a new mechanic
+  creates strategic decisions (terrain types, order delay, unit interactions, etc.).
+- Other pages (`website/index.qmd`, `website/roadmap.qmd`) when the change is
+  milestone-level.
+
+**Where to look for site layout:** `website/README.md` describes the page
+structure, build instructions, and how demo clips are recorded. Each `.qmd` page
+links back to its source of truth in the repo root.
+
+Keep website changes on the **same PR branch** as the code change — don't split
+them into a follow-up PR, since reviewers need to see both together.
+
 ## Code conventions
 
 ### Comments: no issue-number references
