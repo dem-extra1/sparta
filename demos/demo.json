@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Adds the campaign diplomacy framework (#123): per-faction war/peace stances in CampaignState, gating which provinces an army may enter. Rules-layer only (no UI/visible change yet; factions still start at war), so a recorded battle replay can't show it."
+  "reason": "Adds a neutral third faction (Germanic tribes) to the campaign map plus a diplomacy HUD panel to declare war / sue for peace, and gates AI/player attacks on stance (#123). These are campaign-map + UI changes; the demo recorder captures tactical-battle replays only, so a recorded battle can't show them."
 }

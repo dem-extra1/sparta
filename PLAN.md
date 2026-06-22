@@ -119,19 +119,26 @@ hand-authored GDScript that hasn't been engine-checked.
 - **M2 — dynastic campaign map:** clickable provinces, characters/realms, turn-based
   diplomacy & war. Battles **auto-resolved** at first (no tactical layer yet).
   - **Thin slice landed (#70):** a Gallic War map (`scenes/Campaign.tscn`) — Rome vs
-    the Gallic tribes over 7 clickable polygon provinces. Turn-based: move/attack an
-    army into an adjacent province, auto-resolved combat, a greedy enemy AI, and a
-    conquest victory. Reached from a new `scenes/MainMenu.tscn` (now the main scene)
-    that also launches the M1 battle. Logic lives in `scripts/campaign/` with the
-    rules (`CampaignState.gd`) unit-tested headlessly.
+    the Gallic tribes (plus the neutral Germanic tribes, see #123) over clickable
+    polygon provinces. Turn-based: move/attack an army into an adjacent province,
+    auto-resolved combat, a greedy enemy AI, and a conquest victory. Reached from a new
+    `scenes/MainMenu.tscn` (now the main scene) that also launches the M1 battle. Logic
+    lives in `scripts/campaign/` with the rules (`CampaignState.gd`) unit-tested
+    headlessly.
   - **Maps are data-driven (#125):** campaigns load from JSON under `data/campaigns/`
     via `CampaignLoader.gd`; the menu lists them from `Campaigns.gd`. Adding a
     campaign is a JSON file + one registry row.
-  - **Diplomacy framework (#123):** `CampaignState` tracks per-faction war/peace
-    stances and gates province entry on being at war (factions default to war, so the
-    Gallic War plays unchanged). UI to declare war / sue for peace and a neutral third
-    faction are follow-ups. Characters/dynasty (#124), the M3 battle hook-up (#122),
-    and the saga layer (#126) also remain follow-ups.
+  - **Diplomacy (#123):** `CampaignState` tracks per-faction war/peace stances and
+    gates province entry on being at war (you can only enter/attack a faction you're at
+    war with). The Gallic War now ships a **neutral third faction** (the Germanic
+    tribes, at peace with both belligerents — declared via the map's optional `peace`
+    list) that the player can court (stay at peace, avoid a second front) or conquer
+    (declare war). The HUD has a **diplomacy panel** to declare war / sue for peace per
+    faction and surfaces current stances; the AI only attacks factions it's at war with.
+    Total-conquest victory is unchanged, so finishing the war means eventually dealing
+    with the neutral too. Remaining for #123: truce timers, AI-initiated diplomacy, and
+    multi-sided wars beyond three factions. Characters/dynasty (#124), the M3 battle
+    hook-up (#122), and the saga layer (#126) also remain follow-ups.
 - **M3 — Integration:** an army battle on the campaign map launches into the M1 battle scene
   and returns a result (winner, casualties) to the campaign. This is where the two genres meet;
   the battle scene was kept self-contained specifically to make this hand-off clean.

@@ -1,12 +1,16 @@
 extends CanvasLayer
 ## Campaign-map UI, built in code (same convention as the battle HUD): a turn /
-## faction banner, a standings line, an End Turn button, a selection/help line, a
-## transient action message, and a victory/defeat overlay. Talks to CampaignMap via
-## signals (button presses) and plain update methods (state pushes).
+## faction banner, a standings line, an End Turn button, a diplomacy panel, a
+## selection/help line, a transient action message, and a victory/defeat overlay.
+## Talks to CampaignMap via signals (button presses) and plain update methods
+## (state pushes).
 
 signal end_turn_pressed
 signal restart_pressed
 signal menu_pressed
+## Emitted when the player toggles their stance toward a faction (#123); CampaignMap
+## decides whether that means declare war or sue for peace from the current stance.
+signal diplomacy_toggled(faction_id: int)
 
 var _turn_label: Label
 var _standings_label: Label
@@ -14,6 +18,7 @@ var _selection_label: Label
 var _flash_label: Label
 var _end_turn_button: Button
 var _menu_button: Button
+var _diplomacy_box: VBoxContainer
 var _overlay: ColorRect
 var _overlay_label: Label
 
@@ -51,6 +56,16 @@ func _ready() -> void:
 	_menu_button.custom_minimum_size = Vector2(112, 30)
 	_menu_button.pressed.connect(func(): menu_pressed.emit())
 	add_child(_menu_button)
+
+	# Diplomacy panel (top-right, under the buttons): one row per other faction with
+	# its current stance and a toggle (declare war / sue for peace). Rows are rebuilt
+	# by update_diplomacy() from the live state.
+	_diplomacy_box = VBoxContainer.new()
+	_diplomacy_box.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_diplomacy_box.position = Vector2(-208, 92)
+	_diplomacy_box.custom_minimum_size = Vector2(192, 0)
+	_diplomacy_box.add_theme_constant_override("separation", 4)
+	add_child(_diplomacy_box)
 
 	# Selection / help line (bottom-left).
 	_selection_label = Label.new()
@@ -115,6 +130,32 @@ func update_turn(turn: int, faction_name: String, color: Color) -> void:
 
 func update_standings(text: String) -> void:
 	_standings_label.text = text
+
+
+## Rebuild the diplomacy panel from `entries`, each {id, name, color, at_war}. One row
+## per other surviving faction: a stance label and a button that toggles war/peace
+## (emitting diplomacy_toggled with the faction id). An empty list clears the panel
+## (e.g. when only the player remains).
+func update_diplomacy(entries: Array) -> void:
+	for child in _diplomacy_box.get_children():
+		child.queue_free()
+	for e in entries:
+		var fid: int = int(e["id"])
+		var at_war: bool = bool(e["at_war"])
+		var color: Color = e.get("color", Color.WHITE)
+
+		var label := Label.new()
+		label.text = "%s %s %s" % [e["name"], "⚔" if at_war else "☮", "War" if at_war else "Peace"]
+		label.add_theme_font_size_override("font_size", 13)
+		label.add_theme_color_override("font_color", color)
+		_diplomacy_box.add_child(label)
+
+		var button := Button.new()
+		button.text = "Sue for Peace" if at_war else "Declare War"
+		button.add_theme_font_size_override("font_size", 13)
+		button.custom_minimum_size = Vector2(192, 26)
+		button.pressed.connect(func(): diplomacy_toggled.emit(fid))
+		_diplomacy_box.add_child(button)
 
 
 func update_selection(text: String) -> void:

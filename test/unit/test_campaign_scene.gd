@@ -43,7 +43,7 @@ func test_scene_comes_up() -> void:
 	var s = await _scene()
 	var map := s.get_node("CampaignMap")
 	assert_not_null(map._state, "campaign state is built on _ready")
-	assert_eq(map._state.provinces.size(), 7, "the Gallic War map has 7 provinces")
+	assert_eq(map._state.provinces.size(), 9, "the Gallic War map has 9 provinces")
 	assert_eq(map._state.current_faction, 0, "Rome (player) moves first")
 	assert_eq(map._selected, -1, "nothing selected initially")
 
@@ -73,7 +73,7 @@ func test_falls_back_to_default_when_selected_missing() -> void:
 	Campaigns.selected_path = "res://data/campaigns/__does_not_exist__.json"
 	var s = await _scene()
 	var map := s.get_node("CampaignMap")
-	assert_eq(map._state.provinces.size(), 7, "fell back to the default Gallic War map")
+	assert_eq(map._state.provinces.size(), 9, "fell back to the default Gallic War map")
 	Campaigns.selected_path = Campaigns.DEFAULT_PATH   # restore for other tests
 
 
@@ -88,6 +88,18 @@ func test_restart_re_enables_end_turn() -> void:
 	map._restart()
 	assert_false(hud._end_turn_button.disabled, "restarting re-enables End Turn")
 	assert_false(hud._overlay.visible, "and hides the end overlay")
+
+
+func test_diplomacy_toggle_declares_and_makes_peace() -> void:
+	# The Germanic tribes (faction 2) start neutral; the HUD toggle declares war and
+	# then sues for peace, and the change is reflected in the rules immediately (#123).
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	assert_false(map._state.at_war(0, 2), "Germanic tribes start at peace with Rome")
+	map._on_diplomacy_toggled(2)
+	assert_true(map._state.at_war(0, 2), "toggling at peace declares war")
+	map._on_diplomacy_toggled(2)
+	assert_false(map._state.at_war(0, 2), "toggling again sues for peace")
 
 
 func test_end_turn_runs_enemy_and_returns_to_player() -> void:

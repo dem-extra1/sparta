@@ -174,3 +174,18 @@ func test_move_or_attack_blocked_by_peace() -> void:
 	assert_false(r["ok"], "an at-peace move is rejected by move_or_attack's can_move guard")
 	assert_eq(s.owner_of(1), GAULS, "the target is untouched")
 	assert_eq(s.army_of(0), 5, "and the mover keeps its army")
+
+
+func test_initial_peace_from_map() -> void:
+	# A map may seed starting stances; everything not listed stays at war.
+	var m := _map()
+	m["peace"] = [[ROME, GAULS]]
+	var s := CampaignState.new(m, 1)
+	assert_false(s.at_war(ROME, GAULS), "a map-listed pair starts at peace")
+
+
+func test_result_reports_defender_owner() -> void:
+	var s := _state()
+	var r: Dictionary = s.move_or_attack(0, 1)
+	assert_true(r["ok"])
+	assert_eq(int(r["defender_owner"]), GAULS, "the result records who held the target before the move")

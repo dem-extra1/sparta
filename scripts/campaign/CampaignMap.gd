@@ -25,6 +25,7 @@ func _ready() -> void:
 		_hud.end_turn_pressed.connect(_on_end_turn)
 		_hud.restart_pressed.connect(_restart)
 		_hud.menu_pressed.connect(_to_menu)
+		_hud.diplomacy_toggled.connect(_on_diplomacy_toggled)
 	# Build the state synchronously so _draw always has a valid map, but defer the
 	# first HUD push: this node's _ready runs before its sibling HUD's, so the HUD's
 	# labels don't exist yet here.
@@ -116,17 +117,25 @@ func _on_end_turn() -> void:
 	if _state.current_faction != PLAYER_FACTION:
 		return
 	_selected = -1
-	_state.end_turn()        # -> enemy faction
-	_run_enemy_ai()
-	if _check_winner():
-		return
-	_state.end_turn()        # -> back to the player
+	_state.end_turn()        # -> first non-player faction
+	# Run every AI faction in turn until control returns to the player. With three+
+	# factions this may be several factions (e.g. Gauls then the Germanic tribes).
+	# end_turn() advances current_faction with `% n`, and PLAYER_FACTION is part of
+	# that rotation, so control is guaranteed back to the player within n-1 steps —
+	# the loop always terminates (no infinite-loop risk).
+	while _state.current_faction != PLAYER_FACTION:
+		_run_enemy_ai()
+		if _check_winner():
+			return
+		_state.end_turn()
 	_refresh_hud()
 	queue_redraw()
 
 
-## Greedy Gallic AI: each ready army takes the weakest adjacent enemy province it can
-## occupy (undefended) or expects to beat (army >= defender); otherwise it holds.
+## Greedy AI: each ready army takes the weakest adjacent province belonging to a
+## faction it is at war with that it can occupy (undefended) or expects to beat (army
+## >= defender); otherwise it holds. Provinces of factions it's at peace with are left
+## alone, so a neutral faction is only ever attacked once war is declared (#123).
 func _run_enemy_ai() -> void:
 	var faction: int = _state.current_faction
 	for id in _state.movable_provinces(faction):
@@ -134,6 +143,8 @@ func _run_enemy_ai() -> void:
 		var target_def := 1 << 30
 		for n in _state.adjacency[id]:
 			if _state.owner_of(n) == faction:
+				continue
+			if not _state.at_war(faction, _state.owner_of(n)):
 				continue
 			var d: int = _state.army_of(n)
 			if d < target_def:
@@ -173,6 +184,7 @@ func _refresh_hud() -> void:
 	var color: Color = colors[faction] if faction < colors.size() else Color.WHITE
 	_hud.update_turn(_state.turn, fname, color)
 	_hud.update_standings(_standings())
+	_hud.update_diplomacy(_diplomacy_entries())
 	if _selected != -1:
 		var p: Dictionary = _state.provinces[_selected]
 		_hud.update_selection("Selected: %s (%d) — pick an adjacent province to move or attack." \
@@ -203,17 +215,58 @@ func _announce(result: Dictionary) -> void:
 		text = "Reinforced %s." % to_name if result.get("reinforced", false) \
 				else "Occupied %s." % to_name
 	elif result["attacker_won"]:
-		text = "%s taken from %s (%d survive)." % [to_name, _enemy_name(), int(result["survivors"])]
+		text = "%s taken from %s (%d survive)." \
+				% [to_name, _faction_name(int(result["defender_owner"])), int(result["survivors"])]
 	else:
 		text = "Assault on %s repulsed; the attacking army is lost." % to_name
 	_hud.flash(text)
 
 
-## The non-player faction's display name (two-faction slice); falls back gracefully.
-func _enemy_name() -> String:
-	if _state.faction_names.size() > 1:
-		return _state.faction_names[1 - PLAYER_FACTION]
-	return "the enemy"
+## Diplomacy rows for the HUD: one per *other* faction that still owns a province,
+## with its colour and whether the player is at war with it. Eliminated factions drop
+## off (nothing left to negotiate over).
+func _diplomacy_entries() -> Array:
+	var owns := {}
+	for id in _state.provinces:
+		owns[_state.owner_of(id)] = true
+	var colors: Array = _map.get("faction_colors", [])
+	var entries: Array = []
+	for f in _state.faction_names.size():
+		if f == PLAYER_FACTION or not owns.has(f):
+			continue
+		entries.append({
+			"id": f,
+			"name": _state.faction_names[f],
+			"color": colors[f] if f < colors.size() else Color.WHITE,
+			"at_war": _state.at_war(PLAYER_FACTION, f),
+		})
+	return entries
+
+
+## Toggle the player's stance toward `fid`: sue for peace if at war, else declare war.
+## A free action on the player's turn while the war is undecided; re-evaluates legal
+## moves and redraws so newly-(il)legal targets update immediately.
+func _on_diplomacy_toggled(fid: int) -> void:
+	if _state == null or _state.winner() != CampaignStateRef.NO_WINNER:
+		return
+	if _state.current_faction != PLAYER_FACTION:
+		return
+	var fname: String = _faction_name(fid)
+	if _state.at_war(PLAYER_FACTION, fid):
+		_state.make_peace(PLAYER_FACTION, fid)
+		if _hud != null:
+			_hud.flash("Made peace with %s." % fname)
+	else:
+		_state.declare_war(PLAYER_FACTION, fid)
+		if _hud != null:
+			_hud.flash("Declared war on %s!" % fname)
+	# A stance change can invalidate the current selection's targets; keep it simple.
+	_refresh_hud()
+	queue_redraw()
+
+
+func _faction_name(idx: int) -> String:
+	return _state.faction_names[idx] if idx >= 0 and idx < _state.faction_names.size() else "the enemy"
 
 
 func _restart() -> void:
