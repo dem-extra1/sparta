@@ -293,7 +293,7 @@ func _refresh_hud() -> void:
 	var fname: String = _state.faction_names[faction] if faction < _state.faction_names.size() else "?"
 	var colors: Array = _map.get("faction_colors", [])
 	var color: Color = colors[faction] if faction < colors.size() else Color.WHITE
-	_hud.update_turn(_state.turn, fname, color)
+	_hud.update_turn(_state.turn, fname, color, _state.ruler_name(faction))
 	_hud.update_standings(_standings())
 	_hud.update_diplomacy(_diplomacy_entries())
 	if _selected != -1:

@@ -399,6 +399,99 @@ func test_resolve_attack_loss_spends_attacker() -> void:
 	assert_false(s.has_acted(0), "a spent origin isn't flagged acted (its army is gone anyway)")
 
 
+# --- rulers ----------------------------------------------------------
+
+func _map_with_rulers() -> Dictionary:
+	var m := _map()
+	m["rulers"] = [
+		{"name": "Caesar", "trait": "aggressive"},
+		{"name": "Vercingetorix", "trait": "defensive"},
+	]
+	return m
+
+
+func test_ruler_name_from_map() -> void:
+	var s: RefCounted = CampaignState.new(_map_with_rulers(), 1)
+	assert_eq(s.ruler_name(ROME), "Caesar", "name from map")
+	assert_eq(s.ruler_name(GAULS), "Vercingetorix", "name from map")
+
+
+func test_ruler_trait_from_map() -> void:
+	var s: RefCounted = CampaignState.new(_map_with_rulers(), 1)
+	assert_eq(s.ruler_trait(ROME), "aggressive")
+	assert_eq(s.ruler_trait(GAULS), "defensive")
+
+
+func test_ruler_defaults_when_no_rulers_key() -> void:
+	var s := _state()   # _map() has no "rulers" key
+	assert_eq(s.ruler_name(ROME), "", "absent rulers default to empty name")
+	assert_eq(s.ruler_trait(ROME), "normal", "absent rulers default to normal trait")
+
+
+func test_ruler_out_of_bounds_is_safe() -> void:
+	var s := _state()
+	assert_eq(s.ruler_name(99), "", "out-of-range faction returns empty name")
+	assert_eq(s.ruler_trait(99), "normal", "out-of-range faction returns normal trait")
+	assert_eq(s.ruler_trait(-1), "normal", "negative faction is safe")
+
+
+func test_ruler_trait_unknown_value_normalises() -> void:
+	var m := _map()
+	m["rulers"] = [{"name": "X", "trait": "chaotic"}]   # not a valid trait
+	var s: RefCounted = CampaignState.new(m, 1)
+	assert_eq(s.ruler_trait(ROME), "normal", "unknown trait string normalises to normal")
+
+
+# --- trait-based AI thresholds ---------------------------------------
+
+func _map_two_bordering(attacker_strength: int, defender_strength: int) -> Dictionary:
+	# Two factions with single provinces sharing a border.
+	return {
+		"faction_names": ["Attacker", "Defender"],
+		"provinces": [
+			{"id": 0, "name": "P0", "owner": 0, "army": attacker_strength, "adj": [1]},
+			{"id": 1, "name": "P1", "owner": 1, "army": defender_strength, "adj": [0]},
+		],
+	}
+
+
+func test_aggressive_ruler_attacks_at_lower_threshold() -> void:
+	# Aggressive threshold: 5:4 (1.25x). At 13:10, an aggressive faction attacks
+	# (13 * 4 = 52 >= 10 * 5 = 50), but a normal faction does not (13 * 2 = 26 < 10 * 3 = 30).
+	var m := _map_two_bordering(13, 10)
+	m["rulers"] = [{"name": "Hawk", "trait": "aggressive"}]
+	var s: RefCounted = CampaignState.new(m, 1)
+	s.make_peace(0, 1)   # start at peace so AI can consider declaring war
+	s.run_ai_diplomacy(0)
+	assert_true(s.at_war(0, 1), "an aggressive faction attacks at 13:10 (>= 1.25x)")
+
+	var m2 := _map_two_bordering(13, 10)
+	# No rulers key -> normal trait
+	var s2: RefCounted = CampaignState.new(m2, 1)
+	s2.make_peace(0, 1)
+	s2.run_ai_diplomacy(0)
+	assert_false(s2.at_war(0, 1), "a normal faction does not attack at 13:10 (< 1.5x)")
+
+
+func test_defensive_ruler_needs_larger_advantage_for_war() -> void:
+	# Defensive threshold: 2:1. At 15:10, a normal faction attacks
+	# (15 * 2 = 30 >= 10 * 3 = 30), but a defensive faction does not (15 * 1 = 15 < 10 * 2 = 20).
+	var m := _map_two_bordering(15, 10)
+	m["rulers"] = [{"name": "Dove", "trait": "defensive"}]
+	var s: RefCounted = CampaignState.new(m, 1)
+	s.make_peace(0, 1)
+	s.run_ai_diplomacy(0)
+	assert_false(s.at_war(0, 1), "a defensive faction does not attack at 15:10 (< 2x)")
+
+	var m2 := _map_two_bordering(15, 10)
+	var s2: RefCounted = CampaignState.new(m2, 1)
+	s2.make_peace(0, 1)
+	s2.run_ai_diplomacy(0)
+	assert_true(s2.at_war(0, 1), "a normal faction attacks at 15:10 (>= 1.5x)")
+
+
+# --- snapshot / restore ----------------------------------------------
+
 func test_snapshot_restore_round_trips_state() -> void:
 	# Mutate every dynamic field, snapshot, then restore onto a fresh map-built state
 	# and confirm it matches — this is the campaign->battle->campaign round-trip.

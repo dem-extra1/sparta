@@ -9,6 +9,11 @@ extends RefCounted
 ##     "name": "Gallic War",                 # display name (optional)
 ##     "blurb": "...",                        # one-line description (optional)
 ##     "factions": [{"name","color"}, ...],   # color is an HTML hex string
+##     "rulers": [{"name","trait"}, ...],     # optional; parallel to factions.
+##                                            # name: ruler's personal name (default "").
+##                                            # trait: "aggressive", "defensive", or "normal"
+##                                            #   (default "normal"). Controls AI war/peace
+##                                            #   thresholds for that faction.
 ##     "provinces": [
 ##       {"id","name","owner","army","adj":[ids], "polygon":[[x,y],...], "label":[x,y],
 ##        "one_way": <bool>}     # optional, default false; declares this province's
@@ -201,6 +206,7 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 		"faction_colors": faction_colors,
 		"provinces": provinces,
 		"peace": peace,
+		"rulers": raw.get("rulers", []),
 	}
 
 
