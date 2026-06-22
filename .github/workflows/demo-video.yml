@@ -1,4 +1,4 @@
-# Records a short gameplay clip for Claude-authored PRs that change the game and
+# Records a short gameplay clip for same-repo PRs that change the game and
 # posts it as an inline GIF in the PR conversation, plus a link to an MP4 with sound
 # (the GIF is silent — GIF can't carry audio).
 #
@@ -51,11 +51,10 @@ env:
 
 jobs:
   demo:
-    # Only same-repo, Claude-authored branches: a fork PR can't be pushed to (and
-    # the media branch lives in this repo), and demos are scoped to Claude's work.
-    if: >-
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      startsWith(github.head_ref, 'claude/')
+    # Same-repo only: a fork PR can't push to the demo-media branch, which lives
+    # in this repo. Branch name is not a criterion — any contributor's branch that
+    # touches user-visible files qualifies.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     # Backstop for the whole job; the record step has a tighter guard of its own.
     # Godot under headless OpenGL/Xvfb can deadlock and would otherwise hold a
