@@ -131,3 +131,21 @@ func test_wheel_zoom_anchors_on_cursor() -> void:
 		"wheel zoom anchors the world X coordinate under the cursor")
 	assert_almost_eq(world_after.y, world_before.y, 0.01,
 		"wheel zoom anchors the world Y coordinate under the cursor")
+
+
+func test_wheel_zoom_down_anchors_on_cursor() -> void:
+	var cam := _make_camera()
+	cam.zoom = Vector2(1.0, 1.0)
+	var cursor_pos := Vector2(300.0, 100.0)
+	var vp_center: Vector2 = cam.get_viewport().get_visible_rect().size * 0.5
+	var world_before: Vector2 = cam.position + (cursor_pos - vp_center) / cam.zoom.x
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	event.pressed = true
+	event.position = cursor_pos
+	cam._unhandled_input(event)
+	var world_after: Vector2 = cam.position + (cursor_pos - vp_center) / cam.zoom.x
+	assert_almost_eq(world_after.x, world_before.x, 0.01,
+		"wheel-down zoom anchors the world X coordinate under the cursor")
+	assert_almost_eq(world_after.y, world_before.y, 0.01,
+		"wheel-down zoom anchors the world Y coordinate under the cursor")
