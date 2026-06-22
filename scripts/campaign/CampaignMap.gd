@@ -4,20 +4,27 @@ extends Node2D
 ## simple enemy turn, and reports turn/selection/victory to the HUD.
 ##
 ## Single-player: the human plays faction 0 (Rome); ending the turn runs the Gallic
-## AI, then hands play back. Battles are auto-resolved in CampaignState (the tactical
-## hookup is M3).
+## AI, then hands play back. A player attack on a defended enemy province is fought
+## out in the tactical battle (M3, #122) unless "auto-resolve" is on; AI attacks and
+## undefended moves always resolve in CampaignState.
 
 const CampaignStateRef = preload("res://scripts/campaign/CampaignState.gd")
 const CampaignLoader = preload("res://scripts/campaign/CampaignLoader.gd")
 const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
+const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
 
 const PLAYER_FACTION := 0
+const BATTLE_SCENE := "res://scenes/Battle.tscn"
 
 @onready var _hud = $"../CampaignHUD"
 
 var _map: Dictionary
 var _state
 var _selected: int = -1   # province id the player has selected, or -1
+# When false (default), a player attack on a defended enemy province is fought out
+# in the tactical battle (#122); when true it's auto-resolved on the map ("quick
+# resolve"). AI attacks always auto-resolve regardless.
+var _auto_resolve: bool = false
 
 
 func _ready() -> void:
@@ -26,12 +33,20 @@ func _ready() -> void:
 		_hud.restart_pressed.connect(_restart)
 		_hud.menu_pressed.connect(_to_menu)
 		_hud.diplomacy_toggled.connect(_on_diplomacy_toggled)
+		_hud.auto_resolve_toggled.connect(_on_auto_resolve_toggled)
 	# Build the state synchronously so _draw always has a valid map, but defer the
 	# first HUD push: this node's _ready runs before its sibling HUD's, so the HUD's
 	# labels don't exist yet here.
 	_build_state()
+	# Returning from a tactical battle (#122): restore the pre-battle campaign state
+	# (the scene swap destroyed it) so _draw shows the real board, then apply the
+	# battle's outcome once the HUD exists (it needs to flash/announce + maybe end).
+	var resumed := _resume_from_battle()
 	queue_redraw()
-	_refresh_hud.call_deferred()
+	if resumed:
+		_finish_battle_resume.call_deferred()
+	else:
+		_refresh_hud.call_deferred()
 
 
 func _start_campaign() -> void:
@@ -87,6 +102,11 @@ func _on_click(pos: Vector2) -> void:
 	elif hit == _selected:
 		_selected = -1
 	elif _state.can_move(_selected, hit):
+		if not _auto_resolve and _is_contested(_selected, hit):
+			# A defended enemy province: fight it out in the tactical battle. This
+			# swaps scenes, so stop here — the rest resumes in _ready on return.
+			_launch_tactical_battle(_selected, hit)
+			return
 		var result: Dictionary = _state.move_or_attack(_selected, hit)
 		_announce(result)
 		_selected = -1
@@ -107,6 +127,83 @@ func _province_at(pos: Vector2) -> int:
 		if Geometry2D.is_point_in_polygon(pos, p["polygon"]):
 			return int(p["id"])
 	return -1
+
+
+# --- tactical battle hand-off (M3, #122) ----------------------------------
+
+## True if moving from->to is a real fight: a defended province of a faction the
+## mover is at war with — as opposed to reinforcing a friendly province, walking into
+## an undefended one, or a peace-faction province. Only a real fight launches the
+## tactical battle. Self-contained (doesn't assume the can_move guard at its call site).
+func _is_contested(from_id: int, to_id: int) -> bool:
+	var from_owner: int = _state.owner_of(from_id)
+	var to_owner: int = _state.owner_of(to_id)
+	return to_owner != from_owner and _state.army_of(to_id) > 0 \
+			and _state.at_war(from_owner, to_owner)
+
+
+## Stash the clash + a snapshot of the campaign in CampaignBattle and switch to the
+## tactical battle scene. Control returns via _ready -> _resume_from_battle().
+func _launch_tactical_battle(from_id: int, to_id: int) -> void:
+	_capture_clash(from_id, to_id)
+	get_tree().change_scene_to_file(BATTLE_SCENE)
+
+
+## Populate CampaignBattle with the clash context + a pre-battle snapshot. Split from
+## the scene swap so the capture is unit-testable without changing scenes.
+func _capture_clash(from_id: int, to_id: int) -> void:
+	var attacker: int = _state.owner_of(from_id)
+	var defender: int = _state.owner_of(to_id)
+	var colors: Array = _map.get("faction_colors", [])
+	CampaignBattle.active = true
+	CampaignBattle.result = {}
+	CampaignBattle.snapshot = _state.snapshot()
+	CampaignBattle.pending = {
+		"from": from_id,
+		"to": to_id,
+		"attacker_strength": _state.army_of(from_id),
+		"defender_strength": _state.army_of(to_id),
+		"attacker_name": _faction_name(attacker),
+		"defender_name": _faction_name(defender),
+		"attacker_color": colors[attacker] if attacker < colors.size() else Color.SKY_BLUE,
+		"defender_color": colors[defender] if defender < colors.size() else Color.RED,
+		"to_name": str(_state.provinces[to_id]["name"]),
+	}
+
+
+## On load, if we're coming back from a campaign-launched battle, restore the
+## pre-battle state onto the freshly map-built state. Returns true if it resumed.
+func _resume_from_battle() -> bool:
+	if not CampaignBattle.active or CampaignBattle.result.is_empty():
+		return false
+	_state.restore(CampaignBattle.snapshot)
+	_selected = -1
+	return true
+
+
+## Apply the battle's outcome and finish the player's interrupted order, once the HUD
+## is up (deferred from _ready). Mirrors the auto-resolve path's announce + win check.
+func _finish_battle_resume() -> void:
+	var clash: Dictionary = CampaignBattle.pending
+	var outcome: Dictionary = CampaignBattle.result
+	var from_id := int(clash["from"])
+	var to_id := int(clash["to"])
+	# resolve_attack trusts the clash was validated at launch; the restored snapshot
+	# reproduces that exact pre-battle state, so the move is legal again here. Assert it
+	# so a snapshot that doesn't round-trip fails loudly instead of corrupting state.
+	assert(_state.can_move(from_id, to_id),
+			"battle resume: restored state isn't a legal pre-battle move (snapshot drift)")
+	var result: Dictionary = _state.resolve_attack(
+			from_id, to_id, bool(outcome["attacker_won"]), int(outcome["survivors"]))
+	CampaignBattle.clear()
+	_announce(result)
+	if not _check_winner():
+		_refresh_hud()
+		queue_redraw()
+
+
+func _on_auto_resolve_toggled(on: bool) -> void:
+	_auto_resolve = on
 
 
 # --- turn flow ------------------------------------------------------------

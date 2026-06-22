@@ -7,6 +7,18 @@ extends GutTest
 const CampaignScene = preload("res://scenes/Campaign.tscn")
 const CampaignLoader = preload("res://scripts/campaign/CampaignLoader.gd")
 const Campaigns = preload("res://scripts/campaign/Campaigns.gd")
+const CampaignBattle = preload("res://scripts/campaign/CampaignBattle.gd")
+
+
+# CampaignBattle is a process-wide static holder; clear it around every test so a
+# campaign-launched battle (#122) set up in one test can't leak into another's scene
+# load (where _ready would try to resume from it).
+func before_each() -> void:
+	CampaignBattle.clear()
+
+
+func after_each() -> void:
+	CampaignBattle.clear()
 
 
 # A point guaranteed inside the polygon: the centroid of one triangle from its
@@ -52,6 +64,10 @@ func test_click_selects_then_orders() -> void:
 	var s = await _scene()
 	var map := s.get_node("CampaignMap")
 	var c := _centroids()
+
+	# Use quick-resolve so a contested attack resolves on the map instead of launching
+	# the tactical battle (#122) — this test exercises the move/attack order path.
+	map._auto_resolve = true
 
 	# Click a Roman, manned province (Narbonensis = id 0) -> it becomes selected.
 	map._on_click(c[0])
@@ -111,3 +127,46 @@ func test_end_turn_runs_enemy_and_returns_to_player() -> void:
 	if map._state.winner() == -1:
 		assert_eq(map._state.current_faction, 0, "play returns to the player")
 		assert_eq(map._state.turn, 2, "a full round advances the turn")
+
+
+func test_contested_attack_launches_battle_not_auto_resolve() -> void:
+	# With auto-resolve off (the default), attacking a defended enemy province captures
+	# the clash into CampaignBattle for the tactical battle instead of resolving it.
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	# Narbonensis (0, Rome, army 5) -> Helvetia (6, Gauls, army 4): a real contested fight.
+	assert_true(map._is_contested(0, 6), "precondition: Helvetia is a defended enemy province")
+	# _capture_clash is the testable half of _launch_tactical_battle (which also swaps
+	# scenes); it fills the holder the battle scene reads.
+	map._capture_clash(0, 6)
+	assert_true(CampaignBattle.active, "a battle is now in flight")
+	assert_eq(int(CampaignBattle.pending["from"]), 0)
+	assert_eq(int(CampaignBattle.pending["to"]), 6)
+	# Read expected strengths from the live state, not hardcoded map values, so a map
+	# rebalance doesn't fail this with a misleading "capture is wrong" message.
+	assert_eq(int(CampaignBattle.pending["attacker_strength"]), map._state.army_of(0),
+			"attacker strength captured")
+	assert_eq(int(CampaignBattle.pending["defender_strength"]), map._state.army_of(6),
+			"defender strength captured")
+	assert_false(CampaignBattle.snapshot.is_empty(), "the pre-battle state is snapshotted")
+
+
+func test_resume_applies_won_battle_result() -> void:
+	# Simulate returning from a battle the attacker won and confirm the map applies the
+	# outcome (province captured with the reported survivors) and clears the holder.
+	var s = await _scene()
+	var map := s.get_node("CampaignMap")
+	assert_true(map._state.can_move(0, 6), "precondition: a legal contested attack")
+	CampaignBattle.active = true
+	CampaignBattle.snapshot = map._state.snapshot()
+	CampaignBattle.pending = {
+		"from": 0, "to": 6,
+		"attacker_strength": map._state.army_of(0),
+		"defender_strength": map._state.army_of(6),
+	}
+	CampaignBattle.result = {"attacker_won": true, "survivors": 2}
+	map._finish_battle_resume()
+	assert_eq(map._state.owner_of(6), 0, "a won battle captures the province")
+	assert_eq(map._state.army_of(6), 2, "with the battle's surviving strength")
+	assert_eq(map._state.army_of(0), 0, "the attacking army left its origin")
+	assert_true(CampaignBattle.result.is_empty(), "the holder is cleared after applying")
