@@ -1517,3 +1517,89 @@ func test_rout_resets_combat_intermixing() -> void:
 	u._rout()
 	assert_eq(u._combat_intermixing, 0.0,
 		"_rout() clears intermixing so a rallied unit re-solidifies")
+
+
+# --- Ranged: friendly fire / _friendly_interceptor ---
+
+func test_friendly_fire_intercepts_unit_in_path() -> void:
+	var archer: Unit = _make_unit()
+	archer.is_ranged = true
+	archer.team = 0
+	archer.position = Vector2.ZERO
+
+	var blocker: Unit = _make_unit()
+	blocker.team = 0
+	blocker.position = Vector2(80, 0)   # directly between archer and enemy
+
+	var enemy: Unit = _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(160, 0)
+
+	var enemy_before: int = enemy.soldiers
+	var blocker_before: int = blocker.soldiers
+
+	archer._shoot(enemy)
+
+	assert_eq(enemy.soldiers, enemy_before,
+		"enemy is unhurt when a friendly intercepts the shot")
+	assert_lt(blocker.soldiers, blocker_before,
+		"friendly in the flight path takes the damage")
+
+
+func test_no_friendly_fire_when_path_clear() -> void:
+	var archer: Unit = _make_unit()
+	archer.is_ranged = true
+	archer.team = 0
+	archer.position = Vector2.ZERO
+
+	var bystander: Unit = _make_unit()
+	bystander.team = 0
+	# At (80, 30): proj = 0.5 (in range), but lateral distance = 30 px >
+	# separation_radius (18 px) — filtered by the radial distance check.
+	bystander.position = Vector2(80, 30)
+
+	var enemy: Unit = _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(160, 0)
+
+	var enemy_before: int = enemy.soldiers
+	var bystander_before: int = bystander.soldiers
+
+	archer._shoot(enemy)
+
+	assert_lt(enemy.soldiers, enemy_before,
+		"enemy takes damage when the path is clear")
+	assert_eq(bystander.soldiers, bystander_before,
+		"friendly outside the intercept radius is not hit")
+
+
+func test_interceptor_returns_null_when_only_enemy_in_path() -> void:
+	var archer: Unit = _make_unit()
+	archer.is_ranged = true
+	archer.team = 0
+	archer.position = Vector2.ZERO
+
+	var enemy: Unit = _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(160, 0)
+
+	assert_null(archer._friendly_interceptor(enemy),
+		"no interceptor when only the enemy is in the path")
+
+
+func test_interceptor_skips_unit_past_target() -> void:
+	var archer: Unit = _make_unit()
+	archer.is_ranged = true
+	archer.team = 0
+	archer.position = Vector2.ZERO
+
+	var overshoot: Unit = _make_unit()
+	overshoot.team = 0
+	overshoot.position = Vector2(200, 0)   # past the enemy (proj > 0.95)
+
+	var enemy: Unit = _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(160, 0)
+
+	assert_null(archer._friendly_interceptor(enemy),
+		"friendly unit past the target is not counted as an interceptor")
