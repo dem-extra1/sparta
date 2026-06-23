@@ -490,6 +490,56 @@ func test_defensive_ruler_needs_larger_advantage_for_war() -> void:
 	assert_true(s2.at_war(0, 1), "a normal faction attacks at 15:10 (>= 1.5x)")
 
 
+func _map_two_enemies_for_peace(my_strength: int, strong_enemy: int, weak_enemy: int) -> Dictionary:
+	# F0 borders two enemies, so it's overextended (fighting on AI_OVEREXTENDED_FRONTS
+	# fronts). Neighbours start at war by default. F1 is the stronger enemy, so it's the
+	# peace target the threshold is measured against. F1 and F2 don't touch each other.
+	return {
+		"faction_names": ["Me", "Strong", "Weak"],
+		"provinces": [
+			{"id": 0, "name": "P0", "owner": 0, "army": my_strength, "adj": [1, 2]},
+			{"id": 1, "name": "P1", "owner": 1, "army": strong_enemy, "adj": [0]},
+			{"id": 2, "name": "P2", "owner": 2, "army": weak_enemy, "adj": [0]},
+		],
+	}
+
+
+func test_aggressive_ruler_fights_on_where_others_sue_for_peace() -> void:
+	# Peace thresholds: aggressive sues below 0.33x, normal below 0.6x. At my:strongest =
+	# 5:10 (0.5x) an aggressive faction fights on (5 * 3 = 15 >= 10 * 1 = 10), while a
+	# normal one sues for peace (5 * 5 = 25 < 10 * 3 = 30).
+	var m := _map_two_enemies_for_peace(5, 10, 3)
+	m["rulers"] = [{"name": "Hawk", "trait": "aggressive"}]
+	var s: RefCounted = CampaignState.new(m, 1)
+	s.run_ai_diplomacy(0)
+	assert_true(s.at_war(0, 1) and s.at_war(0, 2),
+			"an aggressive faction at 0.5x does not sue for peace (needs < 0.33x)")
+
+	var m2 := _map_two_enemies_for_peace(5, 10, 3)   # no rulers -> normal
+	var s2: RefCounted = CampaignState.new(m2, 1)
+	s2.run_ai_diplomacy(0)
+	assert_false(s2.at_war(0, 1),
+			"a normal faction at 0.5x sues for peace with its strongest enemy (< 0.6x)")
+
+
+func test_defensive_ruler_sues_for_peace_sooner() -> void:
+	# Peace thresholds: defensive sues below 0.8x, normal below 0.6x. At my:strongest =
+	# 7:10 (0.7x) a defensive faction sues for peace (7 * 5 = 35 < 10 * 4 = 40), while a
+	# normal one fights on (7 * 5 = 35 >= 10 * 3 = 30).
+	var m := _map_two_enemies_for_peace(7, 10, 3)
+	m["rulers"] = [{"name": "Dove", "trait": "defensive"}]
+	var s: RefCounted = CampaignState.new(m, 1)
+	s.run_ai_diplomacy(0)
+	assert_false(s.at_war(0, 1),
+			"a defensive faction at 0.7x sues for peace with its strongest enemy (< 0.8x)")
+
+	var m2 := _map_two_enemies_for_peace(7, 10, 3)   # no rulers -> normal
+	var s2: RefCounted = CampaignState.new(m2, 1)
+	s2.run_ai_diplomacy(0)
+	assert_true(s2.at_war(0, 1) and s2.at_war(0, 2),
+			"a normal faction at 0.7x does not sue for peace (needs < 0.6x)")
+
+
 # --- snapshot / restore ----------------------------------------------
 
 func test_snapshot_restore_round_trips_state() -> void:

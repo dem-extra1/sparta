@@ -199,6 +199,23 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 				entry.append(truce_turns)
 		peace.append(entry)
 
+	# Optional rulers: one {name, trait} per faction, surfaced in the turn banner and
+	# used to flavour AI diplomacy. CampaignState._init() normalises bad data defensively
+	# (truncates/pads to the faction count, unknown traits fall back to "normal"), so this
+	# is a soft lint that surfaces likely typos at load time rather than a hard rejection.
+	var raw_rulers: Variant = raw.get("rulers", [])
+	if typeof(raw_rulers) != TYPE_ARRAY:
+		push_warning("Campaign map: 'rulers' should be an array of {name, trait} objects")
+	else:
+		for r in raw_rulers:
+			if typeof(r) != TYPE_DICTIONARY:
+				push_warning("Campaign map: each 'rulers' entry should be a {name, trait} object")
+				continue
+			var t := str(r.get("trait", "normal"))
+			if t != "normal" and t != "aggressive" and t != "defensive":
+				push_warning(("Campaign map: ruler trait '%s' is not one of "
+						+ "normal/aggressive/defensive; it will default to normal") % t)
+
 	return {
 		"name": str(raw.get("name", "Campaign")),
 		"blurb": str(raw.get("blurb", "")),
@@ -206,7 +223,7 @@ static func parse_map(raw: Dictionary) -> Dictionary:
 		"faction_colors": faction_colors,
 		"provinces": provinces,
 		"peace": peace,
-		"rulers": raw.get("rulers", []),
+		"rulers": raw_rulers,
 	}
 
 

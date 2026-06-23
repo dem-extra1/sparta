@@ -28,6 +28,10 @@ var provinces: Dictionary = {}
 var adjacency: Dictionary = {}
 # faction id -> display name
 var faction_names: Array[String] = []
+# faction id -> {name, trait} ruler dictionary. Left untyped because GDScript 4 has no
+# Array[Dictionary] (typed arrays only allow built-in element types). _init() guarantees
+# every element is a {name, trait} dict, and the ruler_name()/ruler_trait() accessors
+# read defensively, so the loss of a static element type is contained.
 var faction_rulers: Array = []
 
 var current_faction: int = 0

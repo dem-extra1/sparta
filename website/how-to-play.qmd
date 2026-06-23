@@ -69,8 +69,8 @@ Select a scenario from the **Main Menu** to open the campaign map.
 re-declaring war for a few turns.
 
 **Rulers and AI personality:** each faction is led by a named ruler whose *trait* shapes
-its diplomacy. You can see the current faction's ruler in the turn banner at top-left
-(e.g. "Turn 3 - Rome (Julius Caesar)").
+its diplomacy. The turn banner at top-left names the current faction's ruler in
+parentheses (for example, Rome's banner reads "Rome (Julius Caesar)").
 
 | Trait | War threshold | Peace threshold |
 | --- | --- | --- |
