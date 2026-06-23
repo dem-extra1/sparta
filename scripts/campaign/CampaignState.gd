@@ -28,6 +28,11 @@ var provinces: Dictionary = {}
 var adjacency: Dictionary = {}
 # faction id -> display name
 var faction_names: Array[String] = []
+# faction id -> {name, trait} ruler dictionary. Left untyped because GDScript 4 has no
+# Array[Dictionary] (typed arrays only allow built-in element types). _init() guarantees
+# every element is a {name, trait} dict, and the ruler_name()/ruler_trait() accessors
+# read defensively, so the loss of a static element type is contained.
+var faction_rulers: Array = []
 
 var current_faction: int = 0
 var turn: int = 1
@@ -65,6 +70,16 @@ func _init(map: Dictionary, rng_seed: int = -1) -> void:
 	faction_names = []
 	for fname in map.get("faction_names", []):
 		faction_names.append(str(fname))
+	faction_rulers = []
+	for r in map.get("rulers", []):
+		if faction_rulers.size() >= faction_names.size():
+			break
+		if typeof(r) == TYPE_DICTIONARY:
+			faction_rulers.append({"name": str(r.get("name", "")), "trait": str(r.get("trait", "normal"))})
+		else:
+			faction_rulers.append({"name": "", "trait": "normal"})
+	while faction_rulers.size() < faction_names.size():
+		faction_rulers.append({"name": "", "trait": "normal"})
 	for p in map.get("provinces", []):
 		var id := int(p["id"])
 		provinces[id] = {
@@ -316,14 +331,38 @@ func has_acted(id: int) -> bool:
 # The AI gets agency over war/peace, not just attacks. Heuristics are deterministic
 # (no RNG) so replays and tests stay reproducible.
 
-# Declare war only on a bordering faction you outweigh by at least 3:2 (1.5x). Kept as
-# an exact integer ratio (cross-multiplied at the comparison) so there's no float
-# rounding ambiguity at the threshold.
+## Ruler name for `faction`, or "" if none was set in the campaign data.
+func ruler_name(faction: int) -> String:
+	if faction < 0 or faction >= faction_rulers.size():
+		return ""
+	return str(faction_rulers[faction].get("name", ""))
+
+
+## Ruler trait for `faction`: "aggressive", "defensive", or "normal".
+func ruler_trait(faction: int) -> String:
+	if faction < 0 or faction >= faction_rulers.size():
+		return "normal"
+	var t := str(faction_rulers[faction].get("trait", "normal"))
+	if t == "aggressive" or t == "defensive":
+		return t
+	return "normal"
+
+
+# AI war/peace thresholds: normal faction declares war at 3:2 (1.5x) strength advantage;
+# aggressive at 5:4 (1.25x); defensive at 2:1. Peace threshold: normal at 3:5 (0.6x);
+# aggressive at 1:3 (0.33x - fights longer); defensive at 4:5 (0.8x - backs off sooner).
 const AI_WAR_RATIO_NUM := 3
 const AI_WAR_RATIO_DEN := 2
-# Sue for peace when your strength is below 3:5 (0.6x) of your strongest enemy's...
+const AI_WAR_RATIO_NUM_AGGRESSIVE := 5
+const AI_WAR_RATIO_DEN_AGGRESSIVE := 4
+const AI_WAR_RATIO_NUM_DEFENSIVE := 2
+const AI_WAR_RATIO_DEN_DEFENSIVE := 1
 const AI_PEACE_RATIO_NUM := 3
 const AI_PEACE_RATIO_DEN := 5
+const AI_PEACE_RATIO_NUM_AGGRESSIVE := 1
+const AI_PEACE_RATIO_DEN_AGGRESSIVE := 3
+const AI_PEACE_RATIO_NUM_DEFENSIVE := 4
+const AI_PEACE_RATIO_DEN_DEFENSIVE := 5
 # ...and only once you're fighting on at least this many bordering fronts.
 const AI_OVEREXTENDED_FRONTS := 2
 
@@ -384,7 +423,7 @@ func run_ai_diplomacy(faction: int) -> Array[String]:
 
 ## The strongest bordering enemy `faction` should sue for peace with, or -1. Fires only
 ## when overextended (fighting >= AI_OVEREXTENDED_FRONTS bordering enemies) and below the
-## AI peace ratio (0.6x) of that strongest enemy's strength.
+## peace ratio for this faction's trait.
 func _ai_peace_target(faction: int) -> int:
 	var enemies: Array[int] = []
 	for o in surviving_factions():
@@ -399,14 +438,22 @@ func _ai_peace_target(faction: int) -> int:
 		if s > strongest_strength:
 			strongest_strength = s
 			strongest = o
-	# Exact integer compare for "my strength < 0.6 x strongest": my * 5 < strongest * 3.
-	if strongest != -1 and faction_strength(faction) * AI_PEACE_RATIO_DEN < strongest_strength * AI_PEACE_RATIO_NUM:
-		return strongest
+	if strongest == -1:
+		return -1
+	if ruler_trait(faction) == "aggressive":
+		if faction_strength(faction) * AI_PEACE_RATIO_DEN_AGGRESSIVE < strongest_strength * AI_PEACE_RATIO_NUM_AGGRESSIVE:
+			return strongest
+	elif ruler_trait(faction) == "defensive":
+		if faction_strength(faction) * AI_PEACE_RATIO_DEN_DEFENSIVE < strongest_strength * AI_PEACE_RATIO_NUM_DEFENSIVE:
+			return strongest
+	else:
+		if faction_strength(faction) * AI_PEACE_RATIO_DEN < strongest_strength * AI_PEACE_RATIO_NUM:
+			return strongest
 	return -1
 
 
 ## The weakest bordering faction `faction` is at peace with (no active truce) and
-## clearly outweighs (by at least the AI war ratio), or -1 if none qualify.
+## outweighs by at least the war ratio for this faction's trait, or -1 if none qualify.
 func _ai_war_target(faction: int) -> int:
 	var my_strength := faction_strength(faction)
 	var target := -1
@@ -417,10 +464,20 @@ func _ai_war_target(faction: int) -> int:
 		if truce_remaining(faction, o) > 0 or not factions_border(faction, o):
 			continue
 		var s := faction_strength(o)
-		# Exact integer compare for "my strength >= 1.5 x s": my * 2 >= s * 3.
-		if my_strength * AI_WAR_RATIO_DEN >= s * AI_WAR_RATIO_NUM and s < target_strength:
-			target_strength = s
-			target = o
+		if s >= target_strength:
+			continue
+		if ruler_trait(faction) == "aggressive":
+			if my_strength * AI_WAR_RATIO_DEN_AGGRESSIVE >= s * AI_WAR_RATIO_NUM_AGGRESSIVE:
+				target_strength = s
+				target = o
+		elif ruler_trait(faction) == "defensive":
+			if my_strength * AI_WAR_RATIO_DEN_DEFENSIVE >= s * AI_WAR_RATIO_NUM_DEFENSIVE:
+				target_strength = s
+				target = o
+		else:
+			if my_strength * AI_WAR_RATIO_DEN >= s * AI_WAR_RATIO_NUM:
+				target_strength = s
+				target = o
 	return target
 
 

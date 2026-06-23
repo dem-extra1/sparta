@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Test-only fix: explicit type annotations in GUT helpers. No game behaviour changes; a recorded battle would show nothing new."
+  "reason": "Ruler traits affect campaign AI and the turn-banner label — not visible in a recorded tactical battle."
 }

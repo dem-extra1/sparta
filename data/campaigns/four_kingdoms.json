@@ -7,6 +7,12 @@
     { "name": "Verdant Realm", "color": "#5fa869" },
     { "name": "Golden Realm", "color": "#d6b14a" }
   ],
+  "rulers": [
+    { "name": "King Azure", "trait": "defensive" },
+    { "name": "Lord Crimson", "trait": "aggressive" },
+    { "name": "Duke Verdant", "trait": "normal" },
+    { "name": "Baron Golden", "trait": "aggressive" }
+  ],
   "provinces": [
     { "id": 0, "name": "Azure North", "owner": 0, "army": 5, "adj": [1, 4],
       "label": [200, 200],

@@ -53,6 +53,34 @@ under pressure.
 6. **Win** --- eliminate or rout the entire enemy army and a **Victory** overlay
    appears, with **Fight Again** to restart.
 
+## Campaign Map
+
+Sparta includes a turn-based campaign layer on top of its tactical battles.
+Select a scenario from the **Main Menu** to open the campaign map.
+
+**On your turn:**
+
+1. Click one of your provinces (highlighted when you have an army there).
+2. Click an adjacent province to move, or attack an enemy one if you are at war.
+3. Press **End Turn** when you are done. Each AI faction takes its turn automatically.
+
+**Diplomacy:** the right-hand panel lists every surviving rival. Click **Declare War** or
+**Sue for Peace** to change your stance. Suing for peace sets a truce that prevents
+re-declaring war for a few turns.
+
+**Rulers and AI personality:** each faction is led by a named ruler whose *trait* shapes
+its diplomacy. The turn banner at top-left names the current faction's ruler in
+parentheses (for example, Rome's banner reads "Rome (Julius Caesar)").
+
+| Trait | War threshold | Peace threshold |
+| --- | --- | --- |
+| Normal | Attacks at 1.5× strength advantage | Sues for peace below 0.6× |
+| Aggressive | Attacks at 1.25× advantage | Fights longer (sues below 0.33×) |
+| Defensive | Needs a 2× advantage to attack | Sues for peace sooner (below 0.8×) |
+
+**Province counts** appear in the standings line below the banner. Own every province
+to win the campaign.
+
 ## Recording & replays
 
 Every battle is recorded automatically --- a `● REC` indicator shows top-center. When

@@ -6,6 +6,11 @@
     { "name": "Gallic Tribes", "color": "#d15c52" },
     { "name": "Germanic Tribes", "color": "#5fa869" }
   ],
+  "rulers": [
+    { "name": "Julius Caesar", "trait": "aggressive" },
+    { "name": "Vercingetorix", "trait": "defensive" },
+    { "name": "Ariovistus", "trait": "normal" }
+  ],
   "peace": [[0, 2], [1, 2]],
   "provinces": [
     { "id": 0, "name": "Narbonensis", "owner": 0, "army": 5, "adj": [1, 2, 5, 6],
