@@ -135,8 +135,11 @@ func _process(delta: float) -> void:
 			_flash_label.text = ""
 
 
-func update_turn(turn: int, faction_name: String, color: Color) -> void:
-	_turn_label.text = "Turn %d — %s" % [turn, faction_name]
+func update_turn(turn: int, faction_name: String, color: Color, ruler: String = "") -> void:
+	var label_text := "Turn %d — %s" % [turn, faction_name]
+	if ruler != "":
+		label_text += " (%s)" % ruler
+	_turn_label.text = label_text
 	_turn_label.add_theme_color_override("font_color", color)
 
 
