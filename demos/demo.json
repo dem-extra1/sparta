@@ -1,4 +1,5 @@
 {
-  "skip": true,
-  "reason": "Hard per-soldier separation is a sub-pixel cosmetic correction inside the flock renderer; the effect (marks never overlap) is not distinguishable from the existing spring-separation in a recorded GIF at normal zoom."
+  "replay": "demos/clash.json",
+  "caption": "Two armies auto-battle. The hard per-soldier separation pass keeps individual marks from overlapping as formations press into melee and marks trail off their slots — watch the front ranks of each regiment as they engage.",
+  "max_frames": 480
 }
