@@ -1511,6 +1511,13 @@ func _update_flock(delta: float) -> void:
 	else:
 		_flock_settled = false
 
+	# Hard position-correction pass: push any two marks that still overlap apart by
+	# half the penetration each, after the spring integration. The slot-spring can hold
+	# marks closer than their diameter (especially with jitter), so this pass enforces
+	# a hard floor. One pass is sufficient for typical in-play overlap; the spring then
+	# reels the corrected marks back to their slots on the next frame.
+	_hard_separate_marks(CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS)
+
 	_refresh_flock_render()
 
 
@@ -1618,6 +1625,42 @@ func _resize_soldiers(n: int) -> void:
 		var a: float = float(k) * 2.39996323   # golden angle (rad): even, non-repeating
 		_soldier_pos[i] = Vector2.from_angle(a) * (0.4 * sqrt(float(k) + 0.5))
 		_soldier_vel[i] = Vector2.ZERO
+
+
+## Hard position-correction pass for individual soldier marks: resolve any pairwise overlap
+## by pushing the two marks apart by half the penetration each. Uses the same grid lookup
+## as the spring integration so it is O(k·n) rather than O(n²). Cosmetic only — never read
+## by the sim. `mark_r` is the per-type mark radius (foot or cavalry).
+func _hard_separate_marks(mark_r: float) -> void:
+	var n: int = _soldier_pos.size()
+	if n <= 1:
+		return
+	var min_dist: float = mark_r * 2.0
+	var cell: float = min_dist
+	var grid := _build_soldier_grid(cell)
+	for i in range(n):
+		var p: Vector2 = _soldier_pos[i]
+		var cx: int = int(floor(p.x / cell))
+		var cy: int = int(floor(p.y / cell))
+		for ox in range(-1, 2):
+			for oy in range(-1, 2):
+				var k := Vector2i(cx + ox, cy + oy)
+				if not grid.has(k):
+					continue
+				for j in (grid[k] as PackedInt32Array):
+					if j <= i:
+						continue
+					var offset: Vector2 = _soldier_pos[i] - _soldier_pos[j]
+					var d: float = offset.length()
+					if d >= min_dist:
+						continue
+					var push: Vector2
+					if d > 0.0001:
+						push = (offset / d) * ((min_dist - d) * 0.5)
+					else:
+						push = Vector2(min_dist * 0.5, 0.0)
+					_soldier_pos[i] += push
+					_soldier_pos[j] -= push
 
 
 ## Push the current mark positions/colours into the two MultiMeshes (1 instance per mark).

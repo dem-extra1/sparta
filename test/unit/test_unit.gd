@@ -1835,3 +1835,49 @@ func test_ranged_unit_does_not_recover_morale_while_fighting() -> void:
 	u.tick_morale(1.0)
 	assert_eq(u.morale, before,
 			"ranged units don't cycle ranks; no morale recovery while fighting")
+
+
+# --- _hard_separate_marks --------------------------------------------------
+
+func test_hard_separate_resolves_two_coincident_marks() -> void:
+	var u := _make_unit(2)
+	# Stack both marks on the same point.
+	u._soldier_pos[0] = Vector2.ZERO
+	u._soldier_pos[1] = Vector2.ZERO
+	u._hard_separate_marks(Unit.MARK_RADIUS)
+	var dist: float = u._soldier_pos[0].distance_to(u._soldier_pos[1])
+	assert_almost_eq(dist, Unit.MARK_RADIUS * 2.0, 0.001,
+			"two coincident marks must be pushed apart to diameter")
+
+
+func test_hard_separate_leaves_non_overlapping_marks_unchanged() -> void:
+	var u := _make_unit(2)
+	var a := Vector2(0.0, 0.0)
+	var b := Vector2(Unit.MARK_RADIUS * 3.0, 0.0)   # well clear of min-dist
+	u._soldier_pos[0] = a
+	u._soldier_pos[1] = b
+	u._hard_separate_marks(Unit.MARK_RADIUS)
+	assert_eq(u._soldier_pos[0], a, "non-overlapping mark 0 should not move")
+	assert_eq(u._soldier_pos[1], b, "non-overlapping mark 1 should not move")
+
+
+func test_hard_separate_partially_resolves_overlap() -> void:
+	# Two marks overlapping but not coincident.
+	var u := _make_unit(2)
+	u._soldier_pos[0] = Vector2(-0.5, 0.0)
+	u._soldier_pos[1] = Vector2( 0.5, 0.0)   # 1 px apart, need 2*MARK_RADIUS apart
+	u._hard_separate_marks(Unit.MARK_RADIUS)
+	var dist: float = u._soldier_pos[0].distance_to(u._soldier_pos[1])
+	assert_almost_eq(dist, Unit.MARK_RADIUS * 2.0, 0.001,
+			"overlapping marks must be pushed to exactly min-dist")
+
+
+func test_hard_separate_cavalry_uses_larger_radius() -> void:
+	var u := _make_unit(2)
+	u.is_cavalry = true
+	u._soldier_pos[0] = Vector2.ZERO
+	u._soldier_pos[1] = Vector2.ZERO
+	u._hard_separate_marks(Unit.CAV_MARK_RADIUS)
+	var dist: float = u._soldier_pos[0].distance_to(u._soldier_pos[1])
+	assert_almost_eq(dist, Unit.CAV_MARK_RADIUS * 2.0, 0.001,
+			"cavalry marks use the larger mark radius for separation")
