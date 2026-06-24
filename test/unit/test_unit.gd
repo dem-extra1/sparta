@@ -1299,6 +1299,42 @@ func test_combat_lunge_surges_and_recoils_over_time() -> void:
 	assert_lt(surge.y, rest.y, "the front-rank press deepens toward the enemy as it surges")
 
 
+# --- relief corridor (Stage E) -------------------------------------------
+# _relief_spread_offset() is the pure function that computes a lateral spread
+# offset for one mark, opening a corridor during a line-relief swap.
+
+func test_relief_spread_offset_pushes_mark_away_from_axis() -> void:
+	# A mark to the right of the approach axis is pushed further right.
+	var perp := Vector2(1.0, 0.0)
+	var off := Unit._relief_spread_offset(Vector2(5.0, 0.0), perp, 0.5)
+	assert_gt(off.x, 0.0, "mark right of the corridor axis is pushed further right")
+	assert_eq(off.y, 0.0, "no displacement perpendicular to the spread direction")
+
+
+func test_relief_spread_offset_symmetric_about_axis() -> void:
+	# A mark to the left is pushed left by the same magnitude as a mark on the right.
+	var perp := Vector2(1.0, 0.0)
+	var left := Unit._relief_spread_offset(Vector2(-5.0, 0.0), perp, 0.5)
+	var right := Unit._relief_spread_offset(Vector2(5.0, 0.0), perp, 0.5)
+	assert_eq(left.x, -right.x, "spread is symmetric about the corridor axis")
+
+
+func test_relief_spread_offset_zero_on_axis() -> void:
+	# A mark sitting on the approach axis has no perpendicular component and stays put.
+	var perp := Vector2(1.0, 0.0)
+	var off := Unit._relief_spread_offset(Vector2(0.0, 3.0), perp, 0.5)
+	assert_eq(off, Vector2.ZERO, "mark on the approach axis gets no spread offset")
+
+
+func test_relief_spread_offset_scales_with_spread_factor() -> void:
+	# Doubling the spread factor doubles the offset.
+	var perp := Vector2(1.0, 0.0)
+	var mark := Vector2(4.0, 0.0)
+	var half := Unit._relief_spread_offset(mark, perp, 0.25)
+	var full := Unit._relief_spread_offset(mark, perp, 0.50)
+	assert_almost_eq(full.x, half.x * 2.0, 0.0001, "spread scales linearly with the factor")
+
+
 func test_fighting_block_keeps_animating_instead_of_settling() -> void:
 	# A standing, fighting unit must not sleep: the churn fast-path is skipped so the front
 	# rank keeps moving each frame. Start from a genuinely settled, unmoved block (seeded on
