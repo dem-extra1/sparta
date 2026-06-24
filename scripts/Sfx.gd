@@ -20,6 +20,7 @@ const MIX_RATE := 22050
 # Every event Sfx knows how to play.
 const NAMES: Array[StringName] = [
 	&"hit", &"shoot", &"rout", &"death", &"select", &"order", &"victory", &"defeat",
+	&"whistle",
 ]
 
 # Per-event minimum gap (seconds) between plays, so rapid repeats (e.g. a melee
@@ -33,6 +34,7 @@ const THROTTLE := {
 	&"order": 0.0,
 	&"victory": 0.0,
 	&"defeat": 0.0,
+	&"whistle": 0.4,
 }
 
 var _streams: Dictionary = {}        # StringName -> AudioStream
@@ -124,6 +126,9 @@ func _synth(name: StringName) -> AudioStreamWAV:
 			buf = _blip(buf, 0.00, 0.20, 392.0, 392.0, "saw", 0.4)
 			buf = _blip(buf, 0.18, 0.20, 311.0, 311.0, "saw", 0.4)
 			buf = _blip(buf, 0.36, 0.40, 233.0, 233.0, "saw", 0.4)
+		&"whistle":   # sharp military signal: rising piercing tone with a brief sustain
+			buf = _blip(buf, 0.00, 0.14, 2400.0, 2900.0, "sine", 0.50)
+			buf = _blip(buf, 0.10, 0.08, 2900.0, 2700.0, "sine", 0.30)
 		_:
 			# Unknown event: return null so play()'s null guard skips it at runtime
 			# (a zero-byte WAV would pass that guard and play silence). Works for
