@@ -25,6 +25,10 @@ var uid: int = -1
 # lag between a signal and the regiment actually stepping off. Default 0.5 s;
 # faster units (cavalry) can be given a lower value at spawn time.
 @export var order_response_delay: float = 0.5
+# Discipline and experience level (0.0 raw recruits → 1.0 veteran legionaries).
+# Well-trained melee units cycle their ranks in combat: fresh files rotate to the
+# front, which reduces fatigue buildup and sustains morale through prolonged fights.
+@export var training: float = 0.0
 
 # --- Runtime state ---
 var soldiers: int
@@ -127,6 +131,15 @@ const RANGED_DAMAGE_FACTOR: float = 0.7
 const FATIGUE_PER_SEC: float = 8.0
 const FATIGUE_RECOVER_PER_SEC: float = 5.0
 const FATIGUE_MAX_ATTACK_PENALTY: float = 0.4
+# Rank cycling: well-trained melee units rotate fresh files to the front, reducing
+# effective fatigue buildup. At training=1.0, buildup is halved. Ranged units don't
+# cycle ranks (they fire from static lines), so the reduction only applies to melee.
+const RANK_CYCLE_FATIGUE_REDUCTION: float = 0.5
+# A well-trained unit also sustains its morale while fighting — the visible discipline
+# of rotation keeps the formation steady. Threshold is the minimum training for any
+# morale recovery to kick in; at threshold it's minimal, scaling up to full at 1.0.
+const RANK_CYCLE_MORALE_THRESHOLD: float = 0.5
+const RANK_CYCLE_MORALE_PER_SEC: float = 1.2
 
 # Morale recovers slowly when a unit is not engaged in combat, rewarding
 # players who pull battered regiments back from the line to rest.
@@ -862,10 +875,12 @@ func _flank_multiplier(attacker: Unit) -> float:
 
 # --- Fatigue & line relief --------------------------------------------
 
-## Fatigue builds while fighting and recovers while resting. Called each tick.
+## Fatigue builds while fighting and recovers while resting. Well-trained melee
+## units cycle their ranks, reducing effective buildup by up to RANK_CYCLE_FATIGUE_REDUCTION.
 func tick_fatigue(delta: float) -> void:
 	if state == State.FIGHTING:
-		fatigue = minf(100.0, fatigue + FATIGUE_PER_SEC * delta)
+		var cycle_reduction := 0.0 if is_ranged else training * RANK_CYCLE_FATIGUE_REDUCTION
+		fatigue = minf(100.0, fatigue + FATIGUE_PER_SEC * (1.0 - cycle_reduction) * delta)
 	else:
 		fatigue = maxf(0.0, fatigue - FATIGUE_RECOVER_PER_SEC * delta)
 
@@ -881,10 +896,17 @@ func tick_cohesion(delta: float) -> void:
 		cohesion = minf(1.0, cohesion + COHESION_RECOVER_PER_SEC * delta)
 
 
-## Morale recovers when the unit is not engaged in combat (any state other than FIGHTING).
+## Morale recovers when resting; well-trained melee units also sustain it while
+## fighting via visible rank rotation keeping the formation steady.
 func tick_morale(delta: float) -> void:
 	if state != State.FIGHTING and morale < 100.0:
 		morale = minf(100.0, morale + MORALE_RECOVER_PER_SEC * delta)
+	elif state == State.FIGHTING and not is_ranged \
+			and training >= RANK_CYCLE_MORALE_THRESHOLD and morale < 100.0:
+		var recovery := RANK_CYCLE_MORALE_PER_SEC \
+				* ((training - RANK_CYCLE_MORALE_THRESHOLD) / (1.0 - RANK_CYCLE_MORALE_THRESHOLD)) \
+				* delta
+		morale = minf(100.0, morale + recovery)
 
 
 ## Start the order-response countdown. Called by Battle after stamping new

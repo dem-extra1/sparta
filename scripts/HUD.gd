@@ -310,9 +310,11 @@ func show_unit(u, group_count: int) -> void:
 		kind = "Infantry"
 	var cohesion_text: String = "" if u.cohesion >= 1.0 \
 			else "  Cohesion: %d%%" % mini(roundi(u.cohesion * 100.0), 99)
-	_info.text = "%s%s\nType: %s\nSoldiers: %d / %d\nMorale: %d  Fatigue: %d%%%s\nFormation: %s  Order: %s" % [
+	var training_text: String = "" if u.training <= 0.0 \
+			else "  Training: %d%%" % roundi(u.training * 100.0)
+	_info.text = "%s%s\nType: %s\nSoldiers: %d / %d\nMorale: %d  Fatigue: %d%%%s%s\nFormation: %s  Order: %s" % [
 		u.unit_name, extra, kind, u.soldiers, u.max_soldiers, int(u.morale), int(u.fatigue),
-		cohesion_text, u.formation_summary(), u.order_summary()
+		cohesion_text, training_text, u.formation_summary(), u.order_summary()
 	]
 
 
