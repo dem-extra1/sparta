@@ -6,6 +6,22 @@ fusing dynastic grand strategy with real-time tactical battles. See
 `README.md` for layout and `PLAN.md` for project vision, roadmap, architecture,
 and verification steps — read `PLAN.md` first.
 
+## Cross-repo AI configuration (`d-morrison/ai-config`)
+
+This repo pulls in [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
+for portable skills and memories via the **Plugin Marketplace**.
+
+`.claude/settings.json` registers the `d-morrison` marketplace and enables the
+`ai-config` plugin, so Claude Code installs it at session start — skills are
+available as `/ai-config:<name>` (e.g. `/ai-config:ardi`, `/ai-config:remember`).
+
+**Local / after cloning:** to get the files on disk, add it as a submodule:
+```bash
+git submodule add https://github.com/d-morrison/ai-config.git .ai-config
+```
+Memories live in `.ai-config/memories/` (e.g. `@.ai-config/memories/preferences.md`).
+Skills live in `.ai-config/skills/`.
+
 ## Project at a glance
 - Godot **4.6.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.
 - Main scene: `scenes/Battle.tscn`. Core scripts live in `scripts/`.
