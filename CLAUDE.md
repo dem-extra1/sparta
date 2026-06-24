@@ -8,26 +8,19 @@ and verification steps — read `PLAN.md` first.
 
 ## Cross-repo AI configuration (`d-morrison/ai-config`)
 
-This repo embeds [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
-for portable skills and memories.
+This repo pulls in [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
+for portable skills and memories via the **Plugin Marketplace**.
 
-**Cloud/web sessions (Plugin Marketplace):** `.claude/settings.json` already
-registers the `d-morrison` marketplace and enables the `ai-config` plugin, so
-Claude Code installs it at session start — skills are available as
-`/ai-config:<name>` (e.g. `/ai-config:ardi`).
+`.claude/settings.json` registers the `d-morrison` marketplace and enables the
+`ai-config` plugin, so Claude Code installs it at session start — skills are
+available as `/ai-config:<name>` (e.g. `/ai-config:ardi`, `/ai-config:remember`).
 
-**Local / after cloning:** populate the submodule to get the files on disk:
+**Local / after cloning:** to get the files on disk, add it as a submodule:
 ```bash
-git submodule update --init .ai-config
+git submodule add https://github.com/d-morrison/ai-config.git .ai-config
 ```
-Memories live in `.ai-config/memories/` (read them with `@.ai-config/memories/preferences.md`
-etc.). Skills live in `.ai-config/skills/`.
-
-**Keeping it current:** the submodule is pinned to a commit. Advance the pin with:
-```bash
-git -C .ai-config fetch && git -C .ai-config checkout origin/main
-git add .ai-config && git commit -m "chore: bump ai-config"
-```
+Memories live in `.ai-config/memories/` (e.g. `@.ai-config/memories/preferences.md`).
+Skills live in `.ai-config/skills/`.
 
 ## Project at a glance
 - Godot **4.6.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.
