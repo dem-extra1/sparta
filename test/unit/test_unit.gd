@@ -1715,3 +1715,73 @@ func test_zero_delay_gives_instant_response() -> void:
 	var before := u.position
 	u._think(0.1)
 	assert_ne(u.position, before, "zero delay: unit moves on the very first think tick")
+
+
+# --- rank cycling (training stat) ----------------------------------------
+
+func test_untrained_unit_builds_fatigue_at_full_rate() -> void:
+	var u := _make_unit()
+	u.training = 0.0
+	u.state = Unit.State.FIGHTING
+	var before := u.fatigue
+	u.tick_fatigue(1.0)
+	var expected := before + Unit.FATIGUE_PER_SEC
+	assert_almost_eq(u.fatigue, expected, 0.001,
+			"untrained unit fatigues at full FATIGUE_PER_SEC")
+
+
+func test_fully_trained_unit_builds_fatigue_at_half_rate() -> void:
+	var u := _make_unit()
+	u.training = 1.0
+	u.state = Unit.State.FIGHTING
+	var before := u.fatigue
+	u.tick_fatigue(1.0)
+	var expected := before + Unit.FATIGUE_PER_SEC * (1.0 - Unit.RANK_CYCLE_FATIGUE_REDUCTION)
+	assert_almost_eq(u.fatigue, expected, 0.001,
+			"fully trained unit fatigues at half rate due to rank cycling")
+
+
+func test_ranged_unit_gets_no_rank_cycle_fatigue_reduction() -> void:
+	var u := _make_unit()
+	u.training = 1.0
+	u.is_ranged = true
+	u.state = Unit.State.FIGHTING
+	var before := u.fatigue
+	u.tick_fatigue(1.0)
+	var expected := before + Unit.FATIGUE_PER_SEC
+	assert_almost_eq(u.fatigue, expected, 0.001,
+			"ranged units don't cycle ranks; full fatigue rate applies")
+
+
+func test_well_trained_melee_unit_recovers_morale_while_fighting() -> void:
+	var u := _make_unit()
+	u.training = 1.0
+	u.state = Unit.State.FIGHTING
+	u.morale = 50.0
+	var before := u.morale
+	u.tick_morale(1.0)
+	assert_gt(u.morale, before,
+			"well-trained melee unit recovers morale while fighting via rank cycling")
+
+
+func test_poorly_trained_unit_does_not_recover_morale_while_fighting() -> void:
+	var u := _make_unit()
+	u.training = Unit.RANK_CYCLE_MORALE_THRESHOLD - 0.1
+	u.state = Unit.State.FIGHTING
+	u.morale = 50.0
+	var before := u.morale
+	u.tick_morale(1.0)
+	assert_eq(u.morale, before,
+			"unit below training threshold gains no morale while fighting")
+
+
+func test_ranged_unit_does_not_recover_morale_while_fighting() -> void:
+	var u := _make_unit()
+	u.training = 1.0
+	u.is_ranged = true
+	u.state = Unit.State.FIGHTING
+	u.morale = 50.0
+	var before := u.morale
+	u.tick_morale(1.0)
+	assert_eq(u.morale, before,
+			"ranged units don't cycle ranks; no morale recovery while fighting")
