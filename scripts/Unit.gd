@@ -28,7 +28,11 @@ var uid: int = -1
 # Discipline and experience level (0.0 raw recruits → 1.0 veteran legionaries).
 # Well-trained melee units cycle their ranks in combat: fresh files rotate to the
 # front, which reduces fatigue buildup and sustains morale through prolonged fights.
-@export var training: float = 0.0
+@export var training: float = 0.0:
+	set(v):
+		training = clampf(v, 0.0, 1.0)
+		_rank_cycle_timer = RANK_CYCLE_INTERVAL if training <= 0.0 \
+				else RANK_CYCLE_INTERVAL / training
 
 # --- Runtime state ---
 var soldiers: int
@@ -241,9 +245,6 @@ static var _mesh_cache: Dictionary = {}
 func _ready() -> void:
 	soldiers = max_soldiers
 	team_color = Color("4a7fd6") if team == 0 else Color("d65a4a")
-	training = clampf(training, 0.0, 1.0)
-	# First rank cycle fires after a full interval, not immediately on contact.
-	_rank_cycle_timer = RANK_CYCLE_INTERVAL if training <= 0.0 else RANK_CYCLE_INTERVAL / training
 	separation_radius = _type_separation_radius()
 	_base_separation_radius = separation_radius
 	add_to_group("units")
@@ -1453,7 +1454,7 @@ func _update_flock(delta: float) -> void:
 				var spread_phase: float = sin(_rank_cycle_anim * PI)
 				var norm_depth: float = minf(depth / (FORMATION_SPACING * 2.0), 1.0)
 				var lateral_sign: float = signf(slots[slot_i].x) if abs(slots[slot_i].x) > 0.5 \
-						else (1.0 if i % 2 == 0 else -1.0)
+						else (1.0 if slot_i % 2 == 0 else -1.0)
 				var widen: float = lateral_sign * RANK_CYCLE_WIDEN * spread_phase * norm_depth
 				target += Vector2(widen, 0.0).rotated(ang)
 		var neighbors := _neighbors_of(grid, i, sep_dist)
