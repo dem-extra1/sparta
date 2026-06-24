@@ -241,6 +241,9 @@ static var _mesh_cache: Dictionary = {}
 func _ready() -> void:
 	soldiers = max_soldiers
 	team_color = Color("4a7fd6") if team == 0 else Color("d65a4a")
+	training = clampf(training, 0.0, 1.0)
+	# First rank cycle fires after a full interval, not immediately on contact.
+	_rank_cycle_timer = RANK_CYCLE_INTERVAL if training <= 0.0 else RANK_CYCLE_INTERVAL / training
 	separation_radius = _type_separation_radius()
 	_base_separation_radius = separation_radius
 	add_to_group("units")
