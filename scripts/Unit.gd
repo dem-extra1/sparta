@@ -25,6 +25,14 @@ var uid: int = -1
 # lag between a signal and the regiment actually stepping off. Default 0.5 s;
 # faster units (cavalry) can be given a lower value at spawn time.
 @export var order_response_delay: float = 0.5
+# Discipline and experience level (0.0 raw recruits → 1.0 veteran legionaries).
+# Well-trained melee units cycle their ranks in combat: fresh files rotate to the
+# front, which reduces fatigue buildup and sustains morale through prolonged fights.
+@export var training: float = 0.0:
+	set(v):
+		training = clampf(v, 0.0, 1.0)
+		_rank_cycle_timer = RANK_CYCLE_INTERVAL if training <= 0.0 \
+				else RANK_CYCLE_INTERVAL / training
 
 # --- Runtime state ---
 var soldiers: int
@@ -127,6 +135,15 @@ const RANGED_DAMAGE_FACTOR: float = 0.7
 const FATIGUE_PER_SEC: float = 8.0
 const FATIGUE_RECOVER_PER_SEC: float = 5.0
 const FATIGUE_MAX_ATTACK_PENALTY: float = 0.4
+# Rank cycling: well-trained melee units rotate fresh files to the front, reducing
+# effective fatigue buildup. At training=1.0, buildup is halved. Ranged units don't
+# cycle ranks (they fire from static lines), so the reduction only applies to melee.
+const RANK_CYCLE_FATIGUE_REDUCTION: float = 0.5
+# A well-trained unit also sustains its morale while fighting — the visible discipline
+# of rotation keeps the formation steady. Threshold is the minimum training for any
+# morale recovery to kick in; at threshold it's minimal, scaling up to full at 1.0.
+const RANK_CYCLE_MORALE_THRESHOLD: float = 0.5
+const RANK_CYCLE_MORALE_PER_SEC: float = 1.2
 
 # Morale recovers slowly when a unit is not engaged in combat, rewarding
 # players who pull battered regiments back from the line to rest.
@@ -208,6 +225,9 @@ var _soldier_pos: PackedVector2Array = PackedVector2Array()
 var _soldier_vel: PackedVector2Array = PackedVector2Array()
 var _flock_settled: bool = false        # true once every mark is on its slot and at rest
 var _combat_clock: float = 0.0          # render-time clock driving the melee churn (Stage C)
+var _rank_cycle_timer: float = 0.0      # counts down to the next rank-cycle signal (Stage D)
+var _rank_cycle_slot_offset: int = 0    # accumulated slot rotation; mark i targets slot (i+offset)%n
+var _rank_cycle_anim: float = 1.0       # 0.0 = signal just fired, rises to 1.0 as animation settles
 var _flock_last_pos: Vector2 = Vector2.ZERO     # unit position last flock frame (for trail shove)
 var _flock_last_facing: Vector2 = Vector2.DOWN  # unit facing last flock frame (for wheel detection)
 var _flock_color: Color = Color(0, 0, 0, 0)     # last body modulate applied to the marks
@@ -862,10 +882,12 @@ func _flank_multiplier(attacker: Unit) -> float:
 
 # --- Fatigue & line relief --------------------------------------------
 
-## Fatigue builds while fighting and recovers while resting. Called each tick.
+## Fatigue builds while fighting and recovers while resting. Well-trained melee
+## units cycle their ranks, reducing effective buildup by up to RANK_CYCLE_FATIGUE_REDUCTION.
 func tick_fatigue(delta: float) -> void:
 	if state == State.FIGHTING:
-		fatigue = minf(100.0, fatigue + FATIGUE_PER_SEC * delta)
+		var cycle_reduction := 0.0 if is_ranged else training * RANK_CYCLE_FATIGUE_REDUCTION
+		fatigue = minf(100.0, fatigue + FATIGUE_PER_SEC * (1.0 - cycle_reduction) * delta)
 	else:
 		fatigue = maxf(0.0, fatigue - FATIGUE_RECOVER_PER_SEC * delta)
 
@@ -881,10 +903,17 @@ func tick_cohesion(delta: float) -> void:
 		cohesion = minf(1.0, cohesion + COHESION_RECOVER_PER_SEC * delta)
 
 
-## Morale recovers when the unit is not engaged in combat (any state other than FIGHTING).
+## Morale recovers when resting; well-trained melee units also sustain it while
+## fighting via visible rank rotation keeping the formation steady.
 func tick_morale(delta: float) -> void:
 	if state != State.FIGHTING and morale < 100.0:
 		morale = minf(100.0, morale + MORALE_RECOVER_PER_SEC * delta)
+	elif state == State.FIGHTING and not is_ranged \
+			and training >= RANK_CYCLE_MORALE_THRESHOLD and morale < 100.0:
+		var recovery := RANK_CYCLE_MORALE_PER_SEC \
+				* ((training - RANK_CYCLE_MORALE_THRESHOLD) / (1.0 - RANK_CYCLE_MORALE_THRESHOLD)) \
+				* delta
+		morale = minf(100.0, morale + recovery)
 
 
 ## Start the order-response countdown. Called by Battle after stamping new
@@ -1127,6 +1156,15 @@ const COMBAT_LATERAL: float = 1.5       # sideways churn amplitude (px)
 const COMBAT_REACH: float = 8.0         # depth behind front rank over which churn fades to 0 (px)
 const COMBAT_FREQ: float = 9.0          # churn oscillation rate (rad/s)
 
+# Rank cycling (Stage D). A periodic signal (whistle) causes well-trained
+# melee units to rotate their ranks: front-rank marks slide backward while
+# rear-rank marks advance to the front. At the signal, the back ranks briefly
+# widen laterally to open a corridor for the retiring front rank to pass through,
+# then close back up. Purely cosmetic -- never read by the sim -- render-only.
+const RANK_CYCLE_INTERVAL: float = 12.0   # seconds between signals at training=1.0
+const RANK_CYCLE_ANIM_DURATION: float = 0.7  # seconds for the widen-and-close animation
+const RANK_CYCLE_WIDEN: float = 3.5       # max lateral spread for rear marks (px)
+
 
 ## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep
 ## grid (front rank toward -Y, the rotated "forward"). Pure and deterministic — a
@@ -1299,12 +1337,15 @@ func _seed_soldiers() -> void:
 	_flock_settled = true
 
 
-## Local-frame target for mark i: its formation slot plus stable per-mark jitter (so a
-## settled block reads as a crowd, not a rigid grid), rotated into the unit's facing.
-func _slot_target(slots: PackedVector2Array, i: int, ang: float) -> Vector2:
-	var jx: float = (_hash01(i * 2) - 0.5) * MARK_JITTER
-	var jy: float = (_hash01(i * 2 + 1) - 0.5) * MARK_JITTER
-	return (slots[i] + Vector2(jx, jy)).rotated(ang)
+## Local-frame target for mark at slot_i: the formation slot plus stable per-mark
+## jitter (so a settled block reads as a crowd, not a rigid grid), rotated into the
+## unit's facing. jitter_i seeds the wobble independently from the slot so a mark
+## moving to a new slot during rank cycling keeps its own stable personality.
+func _slot_target(slots: PackedVector2Array, slot_i: int, ang: float, jitter_i: int = -1) -> Vector2:
+	var ji: int = jitter_i if jitter_i >= 0 else slot_i
+	var jx: float = (_hash01(ji * 2) - 0.5) * MARK_JITTER
+	var jy: float = (_hash01(ji * 2 + 1) - 0.5) * MARK_JITTER
+	return (slots[slot_i] + Vector2(jx, jy)).rotated(ang)
 
 
 ## Block half-size: the farthest slot plus a mark radius, floored at the collision RADIUS.
@@ -1375,14 +1416,47 @@ func _update_flock(delta: float) -> void:
 	var front_y: float = slots[0].y if n > 0 else 0.0
 	if fighting:
 		_combat_clock += dt
+
+	# Rank cycling (Stage D): a periodic signal rotates slot assignments so front-rank
+	# marks slide toward the rear and rear-rank marks advance to the front. Active only
+	# for trained melee units (ranged units fire from static lines). Render-only.
+	var cycling: bool = fighting and not is_ranged and training > 0.0 and n > 1
+	# Drain the widen animation unconditionally so it always finishes even when
+	# the unit breaks contact mid-animation (cycling would be false, but the anim
+	# should not freeze or re-fire incorrectly on re-engagement).
+	if _rank_cycle_anim < 1.0:
+		_rank_cycle_anim = minf(1.0, _rank_cycle_anim + dt / RANK_CYCLE_ANIM_DURATION)
+	if cycling:
+		_rank_cycle_timer -= dt
+		if _rank_cycle_timer <= 0.0:
+			var files: int = maxi(1, int(ceil(sqrt(float(n) * FORMATION_ASPECT))))
+			_rank_cycle_slot_offset = (_rank_cycle_slot_offset + files) % n
+			_rank_cycle_timer = RANK_CYCLE_INTERVAL / training
+			_rank_cycle_anim = 0.0
+			if is_inside_tree():
+				Sfx.play(&"whistle")
+
 	var still: bool = true
 	for i in range(n):
-		var target: Vector2 = _slot_target(slots, i, ang)
+		var slot_i: int = (i + _rank_cycle_slot_offset) % n if cycling else i
+		var target: Vector2 = _slot_target(slots, slot_i, ang, i)
 		if fighting:
 			# Front-rank marks press into and recoil from the contact line; rotate the
 			# (forward = -Y) lunge onto the unit's facing alongside the slot it modifies.
-			var lunge := _combat_lunge_offset(slots[i].y - front_y, float(i) * 1.3, _combat_clock)
+			var lunge := _combat_lunge_offset(slots[slot_i].y - front_y, float(i) * 1.3, _combat_clock)
 			target += lunge.rotated(ang)
+		# Rear-rank widen (Stage D): during the rank-cycle animation, rear ranks spread
+		# laterally to open a corridor for the front rank to fall back through. The spread
+		# peaks at the midpoint (sin peaks at PI/2) then closes as the animation settles.
+		if cycling and _rank_cycle_anim < 1.0:
+			var depth: float = slots[slot_i].y - front_y   # 0 = front rank, + = deeper rear
+			if depth > FORMATION_SPACING * 0.5:
+				var spread_phase: float = sin(_rank_cycle_anim * PI)
+				var norm_depth: float = minf(depth / (FORMATION_SPACING * 2.0), 1.0)
+				var lateral_sign: float = signf(slots[slot_i].x) if abs(slots[slot_i].x) > 0.5 \
+						else (1.0 if slot_i % 2 == 0 else -1.0)
+				var widen: float = lateral_sign * RANK_CYCLE_WIDEN * spread_phase * norm_depth
+				target += Vector2(widen, 0.0).rotated(ang)
 		var neighbors := _neighbors_of(grid, i, sep_dist)
 		var res := _flock_step(_soldier_pos[i], _soldier_vel[i], target, neighbors, sep_dist, dt)
 		_soldier_pos[i] = res[0]
@@ -1393,8 +1467,12 @@ func _update_flock(delta: float) -> void:
 	# A fighting block keeps churning, so it never sleeps even if a frame reads as "still".
 	if still and not fighting:
 		# Snap exactly onto formation and sleep until the unit next moves or loses men.
+		# Use the same slot-rotation condition as the main loop (minus fighting, which
+		# is already false here) so the settled mark positions stay consistent.
+		var settled_cycling: bool = not is_ranged and training > 0.0 and n > 1
 		for i in range(n):
-			_soldier_pos[i] = _slot_target(slots, i, ang)
+			var slot_i: int = (i + _rank_cycle_slot_offset) % n if settled_cycling else i
+			_soldier_pos[i] = _slot_target(slots, slot_i, ang, i)
 			_soldier_vel[i] = Vector2.ZERO
 		_flock_settled = true
 	else:

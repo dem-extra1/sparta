@@ -156,11 +156,11 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# `count` units deploy, cycling this composition so a larger army (a bigger
 	# campaign stack) fields more of the same mix.
 	var loadout := [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "spd": 80},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "spd": 90},
-		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "spd": 95},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "spd": 80, "training": 0.75},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "spd": 90, "training": 0.5},
+		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "spd": 95, "training": 0.3},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160, "training": 0.6},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160, "training": 0.6},
 	]
 	# Tighten spacing as the line grows so even a max stack stays on the field.
 	var spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
@@ -181,6 +181,7 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 		u.attack = d["atk"]
 		u.defense = d["def"]
 		u.move_speed = d["spd"] * SPEED_SCALE
+		u.training = d.get("training", 0.0)
 		# Cavalry respond faster — more mobile and battle-conditioned.
 		if d["cav"]:
 			u.order_response_delay = 0.3

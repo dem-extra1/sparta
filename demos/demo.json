@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Ruler traits affect campaign AI and the turn-banner label — not visible in a recorded tactical battle."
+  "reason": "Rank cycling is a fatigue/morale rate change -- the effect is visible in the HUD stat panel (Training % line, slower fatigue bar fill for disciplined units) but not distinguishable in a generic battle clip without a side-by-side comparison."
 }
