@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "seed": "12345",
+  "physics_tps": 60,
+  "created": 0,
+  "result": "",
+  "duration_ticks": 0,
+  "orders": [
+    {"tick": 0,   "units": [0], "x": 500, "y": 700, "target": -1},
+    {"tick": 60,  "units": [3], "x": 500, "y": 400, "target": -1},
+    {"tick": 420, "units": [3], "x": 500, "y": 480, "target": 0}
+  ]
+}
