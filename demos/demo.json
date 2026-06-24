@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Rank cycling is a fatigue/morale rate change -- the effect is visible in the HUD stat panel (Training % line, slower fatigue bar fill for disciplined units) but not distinguishable in a generic battle clip without a side-by-side comparison."
+  "reason": "The relief corridor effect (Stage E) is only visible during a line-relief interaction. The bundled showcase replay does not include one, so a generic battle clip would not show this change."
 }
