@@ -35,7 +35,6 @@ jobs:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
       # a review on Claude's commits; empty (and ignored) for pull_request runs.
       pr-number: ${{ inputs.pr_number }}
-    with:
       prompt-addendum: |
         **Post line-specific findings as inline review comments** anchored to the
         relevant line(s) — use the inline-comment tool, not a prose list in the
