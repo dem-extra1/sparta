@@ -1165,6 +1165,11 @@ const RANK_CYCLE_INTERVAL: float = 12.0   # seconds between signals at training=
 const RANK_CYCLE_ANIM_DURATION: float = 0.7  # seconds for the widen-and-close animation
 const RANK_CYCLE_WIDEN: float = 3.5       # max lateral spread for rear marks (px)
 
+# Relief corridor (Stage E). When a unit has a relief partner swapping through it,
+# marks spread laterally away from the approach axis by this factor (applied to each
+# mark's perpendicular distance from that axis) when the partner is fully overlapping.
+const RELIEF_SPREAD_MAX: float = 0.45
+
 
 ## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep
 ## grid (front rank toward -Y, the rotated "forward"). Pure and deterministic — a
@@ -1383,11 +1388,31 @@ func _update_flock(delta: float) -> void:
 	# under an identity parent) but tracking `position` stays correct if that ever changes.
 	var displacement: Vector2 = position - _flock_last_pos
 	var turned: bool = not facing.is_equal_approx(_flock_last_facing)
+	# Relief corridor (Stage E): compute lateral-spread parameters once for all marks so
+	# each mark's individual offset is a cheap dot-product, and so the effect can also
+	# gate the early-exit check below (a settling block must not sleep while a partner
+	# is still swapping through it).
+	var relief_perp: Vector2 = Vector2.ZERO
+	var relief_spread: float = 0.0
+	if _relief_partner != null and is_instance_valid(_relief_partner):
+		var approach_raw: Vector2 = _relief_partner.position - position
+		# Guard against exact co-location: normalized() returns zero on a zero-length
+		# vector. Fall back to a stable axis so the spread is maximum (as intended)
+		# rather than absent precisely when overlap is highest.
+		var approach: Vector2 = approach_raw.normalized() if approach_raw.length() > 0.5 \
+				else Vector2.RIGHT
+		relief_perp = approach.rotated(PI * 0.5)
+		var dist: float = position.distance_to(_relief_partner.position)
+		var max_dist: float = separation_radius + _relief_partner.separation_radius + 30.0
+		relief_spread = RELIEF_SPREAD_MAX * clampf(1.0 - dist / max_dist, 0.0, 1.0)
+
 	# A FIGHTING block never rests: its front rank churns against the contact line each
 	# frame (Stage C), so it skips the at-rest fast-path even when the unit is standing
-	# still and not turning.
+	# still and not turning.  A unit in a relief swap likewise stays active until the
+	# partner moves clear (Stage E).
 	var fighting: bool = state == State.FIGHTING
-	if _flock_settled and displacement.is_zero_approx() and not turned and not fighting:
+	if _flock_settled and displacement.is_zero_approx() and not turned and not fighting \
+			and relief_spread <= 0.0:
 		return   # at rest — nothing to do
 
 	_flock_last_pos = position
@@ -1457,6 +1482,11 @@ func _update_flock(delta: float) -> void:
 						else (1.0 if slot_i % 2 == 0 else -1.0)
 				var widen: float = lateral_sign * RANK_CYCLE_WIDEN * spread_phase * norm_depth
 				target += Vector2(widen, 0.0).rotated(ang)
+		# Relief corridor (Stage E): spread marks laterally to open a lane for the incoming
+		# partner. Each mark is pushed away from the approach axis in proportion to how far
+		# it already sits from that axis, so the center clears and the flanks fan out.
+		if relief_spread > 0.0:
+			target += _relief_spread_offset(_soldier_pos[i], relief_perp, relief_spread)
 		var neighbors := _neighbors_of(grid, i, sep_dist)
 		var res := _flock_step(_soldier_pos[i], _soldier_vel[i], target, neighbors, sep_dist, dt)
 		_soldier_pos[i] = res[0]
@@ -1465,7 +1495,10 @@ func _update_flock(delta: float) -> void:
 			still = false
 
 	# A fighting block keeps churning, so it never sleeps even if a frame reads as "still".
-	if still and not fighting:
+	# A block in a relief spread likewise stays active: settling onto plain slot positions
+	# would immediately snap marks back out (the spread-modified targets fire again next
+	# frame), producing a repeating snap-then-spring flicker.
+	if still and not fighting and relief_spread <= 0.0:
 		# Snap exactly onto formation and sleep until the unit next moves or loses men.
 		# Use the same slot-rotation condition as the main loop (minus fighting, which
 		# is already false here) so the settled mark positions stay consistent.
@@ -1531,6 +1564,15 @@ static func _combat_lunge_offset(depth: float, phase: float, t: float) -> Vector
 	var press: float = COMBAT_LUNGE * falloff * (0.55 + 0.45 * sin(t * COMBAT_FREQ + phase))
 	var churn: float = COMBAT_LATERAL * falloff * sin(t * COMBAT_FREQ * 1.7 + phase * 2.0)
 	return Vector2(churn, -press)
+
+
+## Relief corridor offset for one mark (Stage E). Returns a lateral offset pushing the
+## mark away from the approach axis, opening a lane for the incoming relief partner.
+## `mark_pos` is the mark's current local position; `relief_perp` is the unit vector
+## perpendicular to the approach direction; `spread` is the fractional scale (0–1).
+## Pure and deterministic so it is unit-testable. Render-only; never read by the sim.
+static func _relief_spread_offset(mark_pos: Vector2, relief_perp: Vector2, spread: float) -> Vector2:
+	return relief_perp * mark_pos.dot(relief_perp) * spread
 
 
 ## Bucket marks into a uniform grid (cell = sep_dist) so separation is a local 3x3 lookup

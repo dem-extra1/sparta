@@ -1,4 +1,5 @@
 {
-  "skip": true,
-  "reason": "Rank cycling is a fatigue/morale rate change -- the effect is visible in the HUD stat panel (Training % line, slower fatigue bar fill for disciplined units) but not distinguishable in a generic battle clip without a side-by-side comparison."
+  "replay": "demos/scenarios/line-relief.json",
+  "caption": "Stage E relief corridor: spearmen (left) advance into combat, then cavalry sweeps in from the right at 7 s — watch the spearmen's marks fan outward as the cavalry passes through and takes over the fight.",
+  "max_frames": 600
 }
