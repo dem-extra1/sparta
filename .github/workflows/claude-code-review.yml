@@ -26,6 +26,12 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
+      # Lets the reviewer install its github_ci MCP server so it can read the
+      # PR's CI/check-run status. Reusable-workflow permissions are capped by
+      # the caller, so the grant has to be set here too — without it the action
+      # logs "The github_ci MCP server requires 'actions: read' permission.
+      # Skipping CI server installation." and the review runs blind to CI state.
+      actions: read
     # Pinned to the @v1 moving major tag — the upstream-recommended consumer pin
     # (v1 now includes the Claude caller workflows).
     uses: d-morrison/gha/.github/workflows/claude-code-review.yml@v1
