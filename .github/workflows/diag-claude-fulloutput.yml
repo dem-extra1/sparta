@@ -1,11 +1,10 @@
 name: diag-claude-fulloutput
 
 # Temporary diagnostic: reproduce the claude-review failure with full SDK output
-# visible, to read the exact API/auth/usage error the normal review hides. Runs
-# on push to this throwaway branch only; delete the branch when done.
+# visible, to read the exact API/auth/usage error the normal review hides.
+# Triggered manually (workflow_dispatch); delete this branch when done.
 on:
-  push:
-    branches: [diag/claude-fulloutput]
+  workflow_dispatch:
 
 jobs:
   diag:
