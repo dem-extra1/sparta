@@ -53,10 +53,10 @@ copy the saved replay from `user://replays/` into `demos/`, and add a row to the
 Pushing to `main` (touching `website/**` or game code) triggers `publish-site.yml`.
 Its `demos` job records the clips and uploads them as an artifact; its `publish`
 job calls the shared reusable workflow
-[`d-morrison/gha/.github/workflows/quarto-publish.yml@v1`](https://github.com/d-morrison/gha),
+[`d-morrison/gha/.github/workflows/quarto-publish.yml@v2`](https://github.com/d-morrison/gha),
 which pulls that artifact into `website/media`, renders the Quarto project, and
-deploys to Pages. The render/deploy logic lives in `gha` (reused across SERG Quarto
-repos), not hand-rolled here.
+deploys to the `gh-pages` branch. The render/deploy logic lives in `gha` (reused
+across SERG Quarto repos), not hand-rolled here.
 
 **One-time repo setup:** Settings → Pages → *Build and deployment* → Source =
-**GitHub Actions**.
+**Deploy from a branch**, branch `gh-pages` / `(root)`.
