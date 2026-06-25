@@ -15,9 +15,10 @@ for portable skills and memories via the **Plugin Marketplace**.
 `ai-config` plugin, so Claude Code installs it at session start — skills are
 available as `/ai-config:<name>` (e.g. `/ai-config:ardi`, `/ai-config:remember`).
 
-**Local / after cloning:** to get the files on disk, add it as a submodule:
+**Local / after cloning:** the submodule is already registered in `.gitmodules`;
+initialize it with:
 ```bash
-git submodule add https://github.com/d-morrison/ai-config.git .ai-config
+git submodule update --init
 ```
 Memories live in `.ai-config/memories/` (e.g. `@.ai-config/memories/preferences.md`).
 Skills live in `.ai-config/skills/`.
