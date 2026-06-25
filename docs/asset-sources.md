@@ -83,7 +83,10 @@ reference-only.
 
 The game ships **no** art yet — units draw as placeholder tokens in `Unit.gd`.
 See [`ASSETS.md`](../ASSETS.md) for the standing CC0 art shortlist and the
-**do-not-use commercial-game mod assets** warning. Summary here for one-stop browsing:
+**do-not-use commercial-game mod assets** warning. For art (and design ideas) we
+could borrow from *other open-source games*, see
+[`related-games.md`](related-games.md) — notably 0 A.D.'s large CC-BY-SA
+ancient-warfare set. Summary here for one-stop browsing:
 
 | Source | Licence | Bundle? | Best for |
 | --- | --- | :---: | --- |
@@ -91,6 +94,7 @@ See [`ASSETS.md`](../ASSETS.md) for the standing CC0 art shortlist and the
 | [Kenney](https://kenney.nl/assets) | CC0 | ✅ | UI panels/buttons, tiles, fonts, icons |
 | [OpenGameArt (CC0 filter)](https://opengameart.org/art-search-advanced?keys=&field_art_licenses_tid%5B%5D=4) | CC0 (verify each) | ✅ | terrain, tiles, props, sprites |
 | [game-icons.net](https://game-icons.net/) | CC-BY 3.0 | 🅰 | ability / unit / status icons (4000+) — keep attribution |
+| [0 A.D.](https://play0ad.com/) art | CC-BY-SA 3.0 | 🅰 | ancient-warfare units, terrain, props — keep attribution; `-SA` derivatives stay `-SA`. **Gated by PLAN.md's CC0-only stance** — see [`related-games.md`](related-games.md) |
 | Liberated Pixel Cup (LPC) sets on OGA | CC-BY-SA 3.0 **or** GPL 3.0 | 🅰 | characters, terrain. **Use under CC-BY-SA** (attribution + share-alike on adapted art); **avoid the GPL option** — GPL could force the *entire game* (code included) to be GPL-licensed. Prefer CC-BY-SA-only LPC forks. |
 | itch.io "free" packs | per-pack (**varies**) | 🅰 / ⛔ | read each pack's licence — many are "free to use, no redistribution" (⛔) |
 | Pixabay / Freepik / stock | custom (not CC0) | ⛔ | reference / mood only |

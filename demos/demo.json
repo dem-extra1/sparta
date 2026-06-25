@@ -1,5 +1,4 @@
 {
-  "replay": "demos/scenarios/line-relief.json",
-  "caption": "Stage E relief corridor: spearmen (left) advance into combat, then cavalry sweeps in from the right at 7 s — watch the spearmen's marks fan outward as the cavalry passes through and takes over the fight.",
-  "max_frames": 600
+  "skip": true,
+  "reason": "Docs-only change: adds docs/related-games.md (a review of related open-source games and their licences) and a cross-link from docs/asset-sources.md. Nothing in a recorded battle changes."
 }
