@@ -280,6 +280,7 @@ func _physics_process(delta: float) -> void:
 	tick_fatigue(delta)
 	tick_cohesion(delta)
 	tick_morale(delta)
+	tick_engaged(delta)
 	_update_relief()
 
 	# A stationary, non-fighting unit carries no momentum: drop any leftover approach
@@ -289,11 +290,13 @@ func _physics_process(delta: float) -> void:
 	if not _moved_last_frame and state != State.FIGHTING:
 		_approach_velocity = Vector2.ZERO
 
-	# Phase 1 (flag-gated, off by default): keep the parallel soldier-body layer
-	# seeded from the regiment's settled position this tick. No gameplay effect —
-	# nothing reads _sim_soldier_pos yet. See docs/individual-collision-design.md.
+	# Flag-gated (off by default): keep the parallel soldier-body layer seeded
+	# from the regiment's settled position, then run the engaged tier's
+	# soldier-level separation. No gameplay effect — nothing reads
+	# _sim_soldier_pos yet. See docs/individual-collision-design.md.
 	if INDIVIDUAL_COLLISION:
 		seed_sim_soldiers()
+		separate_engaged_soldiers()
 
 	queue_redraw()
 
@@ -698,6 +701,111 @@ func soldier_block_extent() -> float:
 ## the simulation.
 func seed_sim_soldiers() -> void:
 	_sim_soldier_pos = soldier_world_slots(soldiers)
+
+
+# --- Individual-soldier simulation, phase 2: engaged tier + separation -----
+# The expensive per-soldier pass runs only for *engaged* soldiers — the front
+# ranks of a regiment in (or just out of) melee — while the unengaged bulk keeps
+# following its formation slot cheaply. This is the level-of-detail split from
+# docs/individual-collision-design.md: it bounds the full pass to ~the contact
+# faces rather than every soldier on the field. Still flag-gated behind
+# INDIVIDUAL_COLLISION; nothing here runs or is read while the flag is off.
+
+# A regiment is "engaged" while FIGHTING and for ENGAGED_LINGER seconds after, so
+# the tier boundary has hysteresis and soldiers don't flap between full-sim and
+# formation-follow at the threshold. ENGAGED_RANKS front ranks run the full pass.
+const ENGAGED_LINGER: float = 0.5
+const ENGAGED_RANKS: int = 3
+
+# > 0 while engaged; FIGHTING refreshes it, otherwise it decays on the fixed tick.
+var _engaged_linger: float = 0.0
+
+
+## Advance the engaged-tier latch. Deterministic — driven by combat state and the
+## fixed-step delta, never wall-clock — so it reproduces on replay.
+func tick_engaged(delta: float) -> void:
+	if state == State.FIGHTING:
+		_engaged_linger = ENGAGED_LINGER
+	else:
+		_engaged_linger = maxf(0.0, _engaged_linger - delta)
+
+
+## True while this regiment is in the engaged tier (its front ranks run the full
+## per-soldier pass). A function of the latch only.
+func is_engaged() -> bool:
+	return _engaged_linger > 0.0
+
+
+## Indices of the engaged soldiers: the front ENGAGED_RANKS ranks of an engaged
+## regiment, or none when it isn't engaged. `_formation_slots` is rank-major
+## (rank = index / files, rank 0 = front), so the front ranks are exactly the
+## first files*ENGAGED_RANKS indices. Pure and deterministic.
+func engaged_soldier_indices(count: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	if not is_engaged() or count <= 0:
+		return out
+	var cutoff: int = mini(count, _formation_files(count) * ENGAGED_RANKS)
+	for i in range(cutoff):
+		out.push_back(i)
+	return out
+
+
+## Center-to-center separation floor between two soldier bodies of this regiment's
+## type — twice the drawn mark radius, so cavalry (horses) keep more room.
+func soldier_separation_min_dist() -> float:
+	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+	return 2.0 * mark_r
+
+
+## Resolve overlap among a set of soldier bodies, returning corrected positions.
+## Each overlapping pair is pushed apart by half the penetration (the pair splits
+## it 50/50), mirroring the regiment-level `_separate()`. Deterministic and
+## replay-safe: a co-located pair fans apart along an angle keyed off the lower
+## soldier id, with the push sign from the ids — the same uid-style tie-break
+## `_separate()` uses, so no RNG or instance-id ordering leaks in. Pure: it copies
+## the input and mutates nothing. `ids[k]` is the stable id of `positions[k]`.
+static func separate_soldier_bodies(positions: PackedVector2Array, ids: PackedInt32Array, min_dist: float) -> PackedVector2Array:
+	var out: PackedVector2Array = positions.duplicate()
+	var n: int = out.size()
+	for a in range(n):
+		for b in range(a + 1, n):
+			var offset: Vector2 = out[a] - out[b]
+			var d: float = offset.length()
+			if d >= min_dist:
+				continue
+			var push: Vector2
+			if d > 0.01:
+				push = offset / d * ((min_dist - d) * 0.5)
+			else:
+				# Co-located: fan apart along an id-keyed angle in opposite
+				# directions, so the pair reliably separates instead of drifting
+				# together. Keys off the stable soldier id, like _separate().
+				var lo: int = mini(ids[a], ids[b])
+				var angle: float = float(posmod(lo, 100)) / 100.0 * TAU
+				var dir: float = 1.0 if ids[a] > ids[b] else -1.0
+				push = Vector2.RIGHT.rotated(angle) * dir * (min_dist * 0.5)
+			out[a] += push
+			out[b] -= push
+	return out
+
+
+## Run the engaged tier's soldier-level separation in place on `_sim_soldier_pos`,
+## confined to this regiment's engaged soldiers. Phase 2 keeps the pass
+## within-regiment; cross-regiment separation (enemy lines pressing) needs the
+## shared engaged-soldier spatial hash and is the next step. No-op when the
+## regiment isn't engaged.
+func separate_engaged_soldiers() -> void:
+	var engaged: PackedInt32Array = engaged_soldier_indices(_sim_soldier_pos.size())
+	if engaged.size() < 2:
+		return
+	var pts := PackedVector2Array()
+	var ids := PackedInt32Array()
+	for i in engaged:
+		pts.push_back(_sim_soldier_pos[i])
+		ids.push_back(soldier_id(i))
+	var resolved: PackedVector2Array = separate_soldier_bodies(pts, ids, soldier_separation_min_dist())
+	for k in range(engaged.size()):
+		_sim_soldier_pos[engaged[k]] = resolved[k]
 
 
 # --- Order summary (for the HUD / selection overlay) -----------------------
@@ -1243,11 +1351,19 @@ const RELIEF_SPREAD_MAX: float = 0.45
 ## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep
 ## grid (front rank toward -Y, the rotated "forward"). Pure and deterministic — a
 ## function of n only — so it's unit-testable; _slot_target() adds stable jitter.
+## Number of files (columns) in the formation block for `n` soldiers: a
+## wider-than-deep grid (FORMATION_ASPECT files per rank). Pure of n; shared by
+## the slot layout, the render's rank cycling, and the engaged-rank cutoff so all
+## three agree on the block shape.
+func _formation_files(n: int) -> int:
+	return maxi(1, int(ceil(sqrt(float(n) * FORMATION_ASPECT))))
+
+
 func _formation_slots(n: int) -> PackedVector2Array:
 	var slots := PackedVector2Array()
 	if n <= 0:
 		return slots
-	var files: int = maxi(1, int(ceil(sqrt(float(n) * FORMATION_ASPECT))))
+	var files: int = _formation_files(n)
 	var ranks: int = int(ceil(float(n) / float(files)))
 	var y0: float = -(ranks - 1) * 0.5 * FORMATION_SPACING
 	for i in range(n):
@@ -1523,7 +1639,7 @@ func _update_flock(delta: float) -> void:
 	if cycling:
 		_rank_cycle_timer -= dt
 		if _rank_cycle_timer <= 0.0:
-			var files: int = maxi(1, int(ceil(sqrt(float(n) * FORMATION_ASPECT))))
+			var files: int = _formation_files(n)
 			_rank_cycle_slot_offset = (_rank_cycle_slot_offset + files) % n
 			_rank_cycle_timer = RANK_CYCLE_INTERVAL / training
 			_rank_cycle_anim = 0.0

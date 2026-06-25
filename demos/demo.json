@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Individual-collision phase 1: a flag-gated, parallel soldier-body scaffold (Unit.gd) plus its determinism/containment tests. The feature flag is off, so nothing in the simulation reads the new layer and no gameplay or visual changes — a recorded battle would look identical."
+  "reason": "Individual-collision phase 2: the engaged-tier classification (with hysteresis) and the deterministic soldier-level separation primitive, still behind the off-by-default INDIVIDUAL_COLLISION flag. Nothing in the simulation reads the layer yet, so no gameplay or visual change — a recorded battle would look identical."
 }
