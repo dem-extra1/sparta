@@ -69,10 +69,24 @@ Replay files are small JSON:
 }
 ```
 
-An order with `target: -1` is a move (to `x,y`); otherwise it's an attack on the
-enemy unit with that `uid`. The seed is stored as a **string** on purpose: JSON
+Each order's `target` overloads one int to encode the order kind, so the JSON
+schema stays fixed as order types are added (`Battle._apply_order_cmd` dispatches
+on it):
+
+- `-1` — plain **move** to `x,y`.
+- `-2` — **append** `x,y` to the units' waypoint queue instead of replacing the route.
+- `-3` — **formation change only**: no movement, the `formation` field carries the mode.
+- a `uid` on the **enemy** team — **attack** that unit (`x,y` ignored).
+- a `uid` on the **same** team — **relief**, **merge**, or **support**, depending on
+  whether the target is one of the ordered `units` and on the order `mode`.
+
+The seed is stored as a **string** on purpose: JSON
 numbers are float64 and would silently lose precision on a full 64-bit seed,
 desyncing the replay.
+
+Hand-authored **scenarios** (under `demos/scenarios/`) are just replay files
+written by hand; see [`demos/README.md`](demos/README.md) for the spawn layout,
+unit speeds, and timing you need to stage one.
 
 ## Where it lives
 
