@@ -3,8 +3,8 @@
 # tracking issue when links break; on PRs add the `links checked by hand` label to
 # skip.
 #
-# Pinned to the @v1 moving major tag (not @main) — the upstream-recommended
-# consumer pin: it tracks reviewed v1 releases rather than every main commit.
+# Pinned to the @v2 moving major tag (not @main) — the upstream-recommended
+# consumer pin: it tracks reviewed v2 releases rather than every main commit.
 name: Check Links
 
 on:
@@ -23,7 +23,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read    # read the skip-label on PRs
-    uses: d-morrison/gha/.github/workflows/check-links.yml@v1
+    uses: d-morrison/gha/.github/workflows/check-links.yml@v2
 
   # main / scheduled / manual runs may file the broken-links tracking issue, so
   # they get issues: write.
@@ -32,7 +32,7 @@ jobs:
     permissions:
       contents: read
       issues: write          # file/update the broken-links issue
-    uses: d-morrison/gha/.github/workflows/check-links.yml@v1
+    uses: d-morrison/gha/.github/workflows/check-links.yml@v2
     # with:
     #   lychee-args: '--verbose "**/*.md"'   # override the default glob set
     #   create-issue-on-main: false          # don't auto-open an issue
