@@ -57,7 +57,8 @@ The hard constraints any design must keep:
    **thousands** of bodies, not dozens — the separation pass goes from ~10²
    to ~10⁴ entities. The `SpatialHash` is the right tool but needs a soldier-sized
    cell and a per-soldier rebuild, and the per-frame cost has to be budgeted
-   against the fixed 60 Hz tick.
+   against the fixed 60 Hz tick. The engaged/unengaged level-of-detail below is
+   what keeps the expensive pass bounded (~1,500 bodies, not ~5,000).
 3. **Soft vs. hard semantics carry down.** The `_push_share` screen logic and the
    melee-intermixing softening are regiment-level today; the individual model has
    to reproduce "a spear line stops a charge" and "melee lines interpenetrate a
@@ -74,10 +75,12 @@ verified before the next phase builds on it.
    circle authoritative; run the soldier layer in parallel and assert it stays
    inside the regiment footprint. No gameplay change yet — this is the migration
    scaffold and its test harness.
-2. **Soldier-level separation.** Port `_separate()`'s penetration/`_push_share`
-   math to soldier-vs-soldier within and across regiments, on a soldier-sized
-   `SpatialHash`. Determinism tests: same seed + orders ⇒ identical soldier
-   positions on replay.
+2. **Soldier-level separation, engaged tier only.** Port `_separate()`'s
+   penetration/`_push_share` math to soldier-vs-soldier within and across
+   regiments, on a soldier-sized `SpatialHash`, run only for *engaged* soldiers
+   (the level-of-detail split above), with hysteresis on the engaged/unengaged
+   boundary. Determinism tests: same seed + orders ⇒ identical soldier positions on
+   replay, and identical engaged/unengaged flags.
 3. **Formation as soldier slots.** The regiment assigns slots (block/line, tight
    vs. loose); soldiers arrive at slots while separating. Cohesion becomes an
    emergent result of slot assignment + separation rather than a single circle.
@@ -88,24 +91,51 @@ verified before the next phase builds on it.
    `_separate()` becomes derived/diagnostic. `#201`'s physics (mass, momentum,
    knock-back) then layers on the soldier bodies.
 
-## Open decisions (need the maintainer's call)
+## Decisions (resolved)
 
-These are genuine design/perf trade-offs, not implementation details — and they
-gate the gameplay feel and the frame budget, so they're yours to set:
+The four design/perf trade-offs are settled:
 
-1. **Bodies: plain data or Godot nodes?** Thousands of `CharacterBody2D` nodes
-   with `move_and_slide` (PLAN.md roadmap item 5 floats this) buys engine
-   collision and pathing but is heavy at this count; plain position/velocity
-   arrays in `Unit` (today's mark approach, extended) are lighter and keep
-   determinism fully in our hands. Recommendation: **stay data-driven**, reuse the
-   `SpatialHash`, and keep `move_and_slide` out of the deterministic path.
-2. **How many soldiers actually simulate?** Full `max_soldiers` (120/unit) vs. a
-   smaller simulated count up-scaled visually. This sets the whole perf budget.
-3. **Target scale.** Max simultaneous soldiers we design the grid/budget around
-   (relates to the smartphone target in
-   [#131](https://github.com/Lacaedemon/sparta/issues/131): ≥30 fps on a Pixel 6).
-4. **Cross-platform replay.** Soldier-level float order amplifies the existing
-   "same build/platform only" caveat. Confirm that stays acceptable, or we need a
-   fixed-point/integer position path.
+1. **Bodies: plain data, not Godot nodes.** Soldiers are position/velocity arrays
+   on the `Unit` (today's mark approach, extended) — not thousands of
+   `CharacterBody2D` nodes. This keeps determinism fully in our hands and reuses
+   the existing `SpatialHash`; `move_and_slide` stays out of the deterministic
+   simulation path.
+2. **All 120 soldiers exist; only the engaged ones run the expensive sim.** Every
+   soldier in `max_soldiers` is a real body, but the simulation runs at two levels
+   of detail (see below) — engaged soldiers get full per-soldier collision and
+   combat, while the unengaged bulk just follows its formation slot cheaply.
+3. **Target scale: budget for ~5,000 soldiers on the field, ~1,500 engaged at
+   once.** A default 5v5 battle is ~1,020 soldiers (one side = Spearmen 140 +
+   Infantry 120 + Archers 90 + Cavalry 80 + Cavalry 80 = 510); a large campaign
+   stack (~20v20, the composition cycling) reaches ~4,000+. So the grid and
+   per-frame budget are sized for **~5,000 total** bodies doing the cheap
+   formation update, of which a realistic peak of **~1,000–1,500** are engaged and
+   run the full collision/combat pass. This is the number to keep the 60 Hz tick
+   under, and it's the figure to validate against #131's Pixel-6 ≥30 fps goal.
+4. **Cross-platform replay: accept the same-build/platform-only caveat.** Soldier-
+   level float ordering amplifies it, but bit-exact cross-platform replay stays out
+   of scope — no fixed-point position path. Determinism within a build/platform
+   (the property replays and tests rely on) is still required.
 
-Once these are decided, phase 1 can start as a flagged, test-backed PR.
+## Simulation level-of-detail (engaged vs. unengaged)
+
+The key consequence of decisions 2 and 3: the per-frame cost is dominated by how
+many soldiers are *engaged*, not by the total on the field. So soldiers run at two
+tiers, re-evaluated each tick:
+
+- **Engaged** — a soldier at a regiment's contact face: in or near melee, being
+  shot at, or pressed against an enemy/obstacle. Runs the full pass —
+  soldier-vs-soldier separation on the soldier-sized `SpatialHash`, plus
+  individual combat resolution. This is where flanking, screening, and chokepoints
+  emerge from geometry.
+- **Unengaged** — the bulk of a regiment not in contact. Follows its formation slot
+  as a cheap rigid offset from the regiment center (essentially today's behaviour),
+  with no per-soldier neighbour scan. Promoted to *engaged* the moment an enemy or
+  obstacle comes within range.
+
+The engaged/unengaged flag must itself be deterministic (derived from positions and
+states already in the sim, not wall-clock or frame-rate), so replays stay exact.
+Getting the promotion/demotion boundary right — hysteresis so soldiers don't
+flap between tiers at the threshold — is part of phase 2.
+
+Once implemented, phase 1 can start as a flagged, test-backed PR.
