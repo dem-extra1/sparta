@@ -288,6 +288,13 @@ func _physics_process(delta: float) -> void:
 	# on the next — and _strike spends it, so grinding strikes after the first don't.
 	if not _moved_last_frame and state != State.FIGHTING:
 		_approach_velocity = Vector2.ZERO
+
+	# Phase 1 (flag-gated, off by default): keep the parallel soldier-body layer
+	# seeded from the regiment's settled position this tick. No gameplay effect —
+	# nothing reads _sim_soldier_pos yet. See docs/individual-collision-design.md.
+	if INDIVIDUAL_COLLISION:
+		seed_sim_soldiers()
+
 	queue_redraw()
 
 
@@ -629,6 +636,68 @@ func _is_melee_intermixing_with(other: Unit) -> bool:
 			and other.state == State.FIGHTING \
 			and order_mode != ORDER_HOLD \
 			and other.order_mode != ORDER_HOLD
+
+
+# --- Individual-soldier simulation (phase 1: flag-gated scaffold) ----------
+# Promotes soldiers from the cosmetic flock (render-only, local-space
+# `_soldier_pos`) toward deterministic, world-space SIMULATED bodies, seeded
+# from the regiment's formation slots. Phase 1 builds the layer and its stable
+# ids in PARALLEL with the authoritative regiment circle and changes no
+# gameplay: nothing in combat, movement, morale, or `_separate()` reads
+# `_sim_soldier_pos`, and the per-tick seeding only runs when the feature flag
+# is on (off by default), so the simulation is unchanged. The full migration
+# plan is in docs/individual-collision-design.md.
+
+# Off until the soldier layer becomes authoritative in a later phase. While off,
+# the parallel seeding in _physics_process is skipped and the sim is unchanged.
+const INDIVIDUAL_COLLISION: bool = false
+
+# A soldier's global id is `uid * SOLDIER_ID_STRIDE + index`: a unique,
+# replay-stable key per soldier for ordering and tie-breaks, stable even as a
+# regiment loses soldiers. The stride exceeds any plausible max_soldiers
+# (default 120), so two regiments' id ranges never overlap.
+const SOLDIER_ID_STRIDE: int = 1024
+
+# World-space positions of this regiment's simulated soldiers, index-aligned
+# with their ids. Distinct from the cosmetic, local-space `_soldier_pos`.
+var _sim_soldier_pos: PackedVector2Array = PackedVector2Array()
+
+
+## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
+## function of the regiment uid and the index — so it survives across ticks and
+## reproduces exactly on replay. Keys off `uid`, not `get_instance_id()`, for the
+## same reason `_separate()` does: instance ids differ between a run and its replay.
+func soldier_id(index: int) -> int:
+	return uid * SOLDIER_ID_STRIDE + index
+
+
+## World-space formation slots for `count` soldiers: the local formation grid
+## (front rank toward the unit's facing) rotated by the facing and offset to the
+## regiment position. Pure of RNG and frame timing — a deterministic function of
+## (count, position, facing) — so it reproduces exactly on replay and is
+## unit-testable. Reuses the render's slot grid and facing convention, minus the
+## cosmetic jitter, so the sim layer stays exactly reproducible.
+func soldier_world_slots(count: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var slots := _formation_slots(count)
+	var ang: float = facing.angle() + PI * 0.5
+	for i in range(slots.size()):
+		out.push_back(position + slots[i].rotated(ang))
+	return out
+
+
+## Half-extent of the seeded soldier block around the regiment center: the
+## containment radius the parallel layer must stay within while the regiment
+## circle is authoritative. Reuses the render's block-extent math.
+func soldier_block_extent() -> float:
+	return _compute_extent(_formation_slots(soldiers))
+
+
+## Seed the parallel soldier-body layer from the current formation. Deterministic
+## and side-effect-free beyond `_sim_soldier_pos`. Phase 1 only — not yet read by
+## the simulation.
+func seed_sim_soldiers() -> void:
+	_sim_soldier_pos = soldier_world_slots(soldiers)
 
 
 # --- Order summary (for the HUD / selection overlay) -----------------------

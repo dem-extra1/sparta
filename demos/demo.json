@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Docs-only change: records the resolved design decisions (data-driven bodies, engaged/unengaged LOD, ~5k/~1.5k scale, same-build replay) in docs/individual-collision-design.md. Nothing in a recorded battle changes."
+  "reason": "Individual-collision phase 1: a flag-gated, parallel soldier-body scaffold (Unit.gd) plus its determinism/containment tests. The feature flag is off, so nothing in the simulation reads the new layer and no gameplay or visual changes — a recorded battle would look identical."
 }
