@@ -61,6 +61,55 @@ Replays are the project's deterministic seed-plus-orders logs (see
 A replay only reproduces on the **same build**, which is exactly the point here —
 CI replays it against *your PR's* build, so the clip reflects your change.
 
+## Hand-authoring a scenario
+
+You can also write a replay JSON by hand — a **scenario** — to stage a specific
+clash deterministically, rather than recording one by playing. The files under
+`demos/scenarios/` (and `charge_demo.json`, `support_demo.json`, `clash.json`)
+are built this way. A scenario is an ordinary replay file (see
+[`../REPLAY.md`](../REPLAY.md) for the schema): a `seed` plus a list of `orders`,
+each stamped with the physics `tick` it fires on.
+
+To get the timing right you need the default battle's layout. A standard 5v5
+(seed `"12345"`, no campaign) spawns these units, by `uid`:
+
+| Unit | Team 0 (player, top, `y=300`) | Team 1 (enemy, bottom, `y=700`) |
+| --- | --- | --- |
+| Spearmen | 0 | 5 |
+| Infantry | 1 | 6 |
+| Archers | 2 | 7 |
+| Cavalry | 3 | 8 |
+| Cavalry | 4 | 9 |
+
+Both lines center on `start_x = 500` with `spacing = 150` px on the `1600 × 1000`
+field, so they start **400 px** apart vertically. Effective move speed is the
+loadout's base `spd` times `SPEED_SCALE` (`0.6`):
+
+| Unit | base `spd` | effective px/s |
+| --- | --- | --- |
+| Spearmen | 80 | 48 |
+| Infantry | 90 | 54 |
+| Archers | 95 | 57 |
+| Cavalry | 160 | 96 |
+
+**Only team 1 advances on its own.** The enemy AI (`Battle.gd` →
+`_run_enemy_ai()`) walks each idle enemy toward the nearest player unit. Team 0
+units stay put until you order them, so a scenario that needs the player line to
+engage **must** issue a move (or attack) order early — for example the tick-12
+order in `demos/scenarios/line-relief.json` and `charge_demo.json`. Forget it and
+the clip records the player line standing still while only the enemy closes.
+
+With both sides closing over the 400 px gap, a head-on meet takes roughly
+`400 / (sum of the two effective speeds)` seconds: about 4.2 s for
+spearmen-vs-spearmen (`48 + 48`), about 2.1 s for cavalry-vs-cavalry (`96 + 96`).
+These are approximations — the enemy AI re-targets only every `AI_PERIOD` (1 s),
+and cavalry carry a 0.3 s order-response delay — so work the timing out on paper
+**before** spending a CI run on it; a mistimed scenario silently records the
+wrong moment.
+
+Note that `max_frames` counts **output video frames at `fixed_fps`**, not physics
+ticks: at the default 30 fps, 480 frames ≈ 16 s and 600 ≈ 20 s.
+
 ## When it runs
 
 - On any same-repo PR that touches `scenes/`, `scripts/`, `assets/`, or
