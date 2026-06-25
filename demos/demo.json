@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Docs-only change: adds docs/related-games.md (a review of related open-source games and their licences) and a cross-link from docs/asset-sources.md. Nothing in a recorded battle changes."
+  "reason": "Docs-only change: adds docs/individual-collision-design.md, a design note for individual-level collision (#164/#192/#201). Nothing in a recorded battle changes."
 }
