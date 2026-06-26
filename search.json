@@ -184,7 +184,7 @@
     "href": "how-to-play.html#controls",
     "title": "How to Play",
     "section": "Controls",
-    "text": "Controls\n\n\n\n\n\n\n\nAction\nControl\n\n\n\n\nSelect a unit\nLeft-click\n\n\nSelect multiple\nLeft-click and drag a box\n\n\nMove\nRight-click the ground\n\n\nAttack\nRight-click an enemy unit\n\n\nPan camera\nWASD / arrow keys / screen edges\n\n\nZoom\nMouse wheel\n\n\nActive pause\nSpace\n\n\n\nA right-click on empty ground is a move order; a right-click on an enemy is an attack order. Selection and camera stay live even while paused, so you can plan under pressure.",
+    "text": "Controls\n\n\n\n\n\n\n\nAction\nControl\n\n\n\n\nSelect a unit\nLeft-click\n\n\nSelect multiple\nLeft-click and drag a box\n\n\nMove\nRight-click the ground\n\n\nAttack\nRight-click an enemy unit\n\n\nPan camera\nWASD / arrow keys / screen edges\n\n\nZoom\nMouse wheel\n\n\nActive pause\nSpace\n\n\n\nA right-click on empty ground is a move order; a right-click on an enemy is an attack order. Selection and camera stay live even while paused, so you can plan under pressure.\nZoom in to see the soldiers. From the usual overview each regiment is a block of small marks. Zoom in far enough and those marks become individual figures — a standing soldier for foot, a mounted rider for cavalry — so you can watch the ranks as people, not dots. Zoom back out and they collapse to the legible marks again.",
     "crumbs": [
       "Home",
       "Play",
