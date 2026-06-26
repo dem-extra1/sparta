@@ -1881,3 +1881,49 @@ func test_hard_separate_cavalry_uses_larger_radius() -> void:
 	var dist: float = u._soldier_pos[0].distance_to(u._soldier_pos[1])
 	assert_almost_eq(dist, Unit.CAV_MARK_RADIUS * 2.0, 0.001,
 			"cavalry marks use the larger mark radius for separation")
+
+
+# --- zoom level-of-detail (figure silhouettes) ------------------
+
+func test_lod_hysteresis_latches_on_above_zoom_in() -> void:
+	# Zoomed in past LOD_ZOOM_IN, the detailed figures latch on regardless of prior state.
+	assert_true(Unit._lod_should_detail(false, Unit.LOD_ZOOM_IN),
+			"at the zoom-in threshold the figures turn on")
+	assert_true(Unit._lod_should_detail(false, Unit.LOD_ZOOM_IN + 0.5),
+			"well past the threshold the figures stay on")
+
+
+func test_lod_hysteresis_latches_off_below_zoom_out() -> void:
+	assert_false(Unit._lod_should_detail(true, Unit.LOD_ZOOM_OUT),
+			"at the zoom-out threshold the figures turn off")
+	assert_false(Unit._lod_should_detail(true, Unit.LOD_ZOOM_OUT - 0.2),
+			"well below the threshold the figures stay off")
+
+
+func test_lod_hysteresis_holds_current_level_in_band() -> void:
+	# Between the two thresholds the level is sticky — this is what stops the swap from
+	# flickering when the camera hovers near the boundary.
+	var mid: float = (Unit.LOD_ZOOM_IN + Unit.LOD_ZOOM_OUT) * 0.5
+	assert_true(Unit._lod_should_detail(true, mid), "detailed level holds in the band")
+	assert_false(Unit._lod_should_detail(false, mid), "flat level holds in the band")
+
+
+func test_setup_builds_both_lod_mesh_variants() -> void:
+	# Both LOD pairs are built up front and are distinct, so the swap is just a reassignment.
+	var u := _make_unit(4)
+	assert_not_null(u._mark_body_mesh, "flat mark body mesh is built")
+	assert_not_null(u._figure_body_mesh, "detailed figure body mesh is built")
+	assert_true(u._mark_body_mesh != u._figure_body_mesh, "the two LOD body meshes differ")
+	assert_true(u._figure_outline_mesh != u._figure_body_mesh,
+			"the figure outline is a separate (larger) mesh from the body")
+	# Units start zoomed-out: the MultiMesh draws the flat mark until _update_lod swaps it.
+	assert_false(u._detailed_lod, "a unit starts at the flat-mark LOD")
+	assert_eq(u._mm_body.mesh, u._mark_body_mesh, "the body MultiMesh starts on the mark mesh")
+
+
+func test_cavalry_and_foot_get_distinct_figure_meshes() -> void:
+	# Foot soldiers and cavalry build different silhouettes (standing soldier vs mounted rider).
+	var foot := _make_unit(4)
+	var horse := _cavalry()
+	assert_true(foot._figure_body_mesh != horse._figure_body_mesh,
+			"foot and cavalry figures are distinct meshes")

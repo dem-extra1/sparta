@@ -35,6 +35,11 @@ A right-click on empty ground is a **move** order; a right-click on an enemy is 
 **attack** order. Selection and camera stay live even while paused, so you can plan
 under pressure.
 
+**Zoom in to see the soldiers.** From the usual overview each regiment is a block of
+small marks. Zoom in far enough and those marks become individual figures --- a
+standing soldier for foot, a mounted rider for cavalry --- so you can watch the
+ranks as people, not dots. Zoom back out and they collapse to the legible marks again.
+
 ## The battle loop
 
 1. **Select** --- left-click a unit, or drag a box to grab several at once. The info

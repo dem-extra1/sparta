@@ -1,5 +1,4 @@
 {
-  "replay": "demos/clash.json",
-  "caption": "Two armies auto-battle. The hard per-soldier separation pass keeps individual marks from overlapping as formations press into melee and marks trail off their slots — watch the front ranks of each regiment as they engage.",
-  "max_frames": 480
+  "skip": true,
+  "reason": "Zoom level-of-detail: soldier marks become detailed figure silhouettes only when the camera zooms in past the threshold. A recorded battle plays at the default zoom and can't show the swap, so the change is shown by zoomed-in screenshots in the PR description instead (demos/shots/zoom-figures.png and zoom-figures-closeup.png)."
 }

@@ -3,6 +3,9 @@ class_name Unit
 ## A regiment: one selectable token with a soldier count and morale.
 ## Renders itself via _draw() with per-type sprite shapes: infantry kite
 ## shield, spearmen hoplon + spear, cavalry horse + rider.
+## Its soldier marks are flat geometric shapes when zoomed out and swap to
+## detailed figure silhouettes (a standing soldier, a mounted rider) when the
+## camera zooms in past LOD_ZOOM_IN — see _update_lod / _figure_mesh.
 
 enum State { IDLE, MOVING, FIGHTING, ROUTING, DEAD }
 
@@ -237,6 +240,13 @@ var _mm_outline: MultiMesh = null
 var _mmi_body: MultiMeshInstance2D = null
 var _mmi_outline: MultiMeshInstance2D = null
 var _shadow: Polygon2D = null
+# Both level-of-detail variants of the body/outline meshes, built once in
+# _setup_flock_renderer and swapped on the MultiMeshes as the camera zooms.
+var _mark_body_mesh: ArrayMesh = null       # flat geometric mark (zoomed out)
+var _mark_outline_mesh: ArrayMesh = null
+var _figure_body_mesh: ArrayMesh = null     # detailed figure silhouette (zoomed in)
+var _figure_outline_mesh: ArrayMesh = null
+var _detailed_lod: bool = false             # true while the figure meshes are active
 # Meshes are shared across all units (foot/cav marks come in two sizes each —
 # a body mesh and a slightly larger outline mesh), built once on demand.
 static var _mesh_cache: Dictionary = {}
@@ -1296,6 +1306,18 @@ const FORMATION_ASPECT: float = 1.7     # files-to-ranks ratio (> 1 = wider than
 const MARK_RADIUS: float = 1.7          # foot soldier mark
 const CAV_MARK_RADIUS: float = 2.6      # cavalry marks are larger (horses)
 const MARK_JITTER: float = 1.3          # stable per-mark wobble so it's not a rigid grid
+
+# Zoom level-of-detail. Zoomed out, each soldier is a flat geometric mark (a
+# disc / rect / diamond) — cheap and legible at a glance. Zoomed in past
+# LOD_ZOOM_IN the marks become detailed figure silhouettes (a standing soldier,
+# a mounted rider), so the regiment reads as a crowd of individuals rather than a
+# field of dots. The swap reverts below LOD_ZOOM_OUT; the gap between the two is
+# hysteresis so the figures don't flicker on and off at the threshold.
+const LOD_ZOOM_IN: float = 1.55
+const LOD_ZOOM_OUT: float = 1.30
+# Outline silhouette = the figure scaled up about its centre, giving a dark rim
+# behind the body (the figure counterpart of the marks' larger outline mesh).
+const FIGURE_OUTLINE_SCALE: float = 1.22
 const EMBLEM_SCALE: float = 0.5         # the per-type sprite, shrunk to a centre emblem
 const FLAG_POLE_HEIGHT: float = 18.0    # pole from above-bar to flag attachment point
 const FLAG_WIDTH: float = 12.0          # horizontal extent of the flag rectangle
@@ -1453,6 +1475,109 @@ static func _diamond_mesh(radius: float) -> ArrayMesh:
 	return mesh
 
 
+## A detailed figure silhouette (zoomed-in LOD), shared/cached across units. `is_cav`
+## picks a mounted rider over a standing soldier; `outline` returns the scaled-up rim
+## copy. Built by fan-triangulating the figure's convex polygon parts into one surface.
+static func _figure_mesh(is_cav: bool, mark_r: float, outline: bool) -> ArrayMesh:
+	var key: String = "fig_%s_%s_%.2f" % ["cav" if is_cav else "foot", "o" if outline else "b", mark_r]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var polys: Array = _horse_figure_polys(mark_r) if is_cav else _foot_figure_polys(mark_r)
+	if outline:
+		polys = _scale_polys(polys, FIGURE_OUTLINE_SCALE)
+	var mesh := _mesh_from_polys(polys)
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+## Combine a list of convex polygons (each a PackedVector2Array) into one ArrayMesh
+## surface, fan-triangulating each from its first vertex.
+static func _mesh_from_polys(polys: Array) -> ArrayMesh:
+	var verts := PackedVector2Array()
+	var idx := PackedInt32Array()
+	for poly in polys:
+		var base: int = verts.size()
+		for v in poly:
+			verts.push_back(v)
+		for i in range(1, poly.size() - 1):
+			idx.push_back(base)
+			idx.push_back(base + i)
+			idx.push_back(base + i + 1)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+## Scale every vertex of every polygon about the origin (the figure's centre) to
+## produce the slightly larger outline silhouette.
+static func _scale_polys(polys: Array, s: float) -> Array:
+	var out: Array = []
+	for poly in polys:
+		var scaled := PackedVector2Array()
+		for v in poly:
+			scaled.push_back(v * s)
+		out.push_back(scaled)
+	return out
+
+
+## A convex polygon approximating a circle of `radius` centred at `c`, for figure
+## heads (a coarse disc — these are a few px across on screen).
+static func _disc_poly(c: Vector2, radius: float, segments: int = 8) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in range(segments):
+		var a: float = TAU * float(i) / float(segments)
+		pts.push_back(c + Vector2(cos(a), sin(a)) * radius)
+	return pts
+
+
+## Convex-polygon parts of a standing foot soldier, centred on the origin
+## (screen-up = -y): a head, a tapering torso and two legs. Sizes scale with the
+## mark radius so the figure tracks the mark it replaces.
+static func _foot_figure_polys(r: float) -> Array:
+	var head := _disc_poly(Vector2(0.0, -1.35 * r), 0.5 * r)
+	var torso := PackedVector2Array([
+		Vector2(-0.85 * r, -0.85 * r), Vector2(0.85 * r, -0.85 * r),
+		Vector2(0.5 * r, 0.45 * r), Vector2(-0.5 * r, 0.45 * r),
+	])
+	var leg_l := PackedVector2Array([
+		Vector2(-0.5 * r, 0.45 * r), Vector2(-0.1 * r, 0.45 * r),
+		Vector2(-0.1 * r, 1.75 * r), Vector2(-0.5 * r, 1.75 * r),
+	])
+	var leg_r := PackedVector2Array([
+		Vector2(0.1 * r, 0.45 * r), Vector2(0.5 * r, 0.45 * r),
+		Vector2(0.5 * r, 1.75 * r), Vector2(0.1 * r, 1.75 * r),
+	])
+	return [torso, leg_l, leg_r, head]
+
+
+## Convex-polygon parts of a mounted rider, centred on the origin: a long mount
+## body on four legs with an upright rider above. Left-right symmetric, so it reads
+## the same whichever way the regiment faces (the marks render unrotated).
+static func _horse_figure_polys(r: float) -> Array:
+	var body := PackedVector2Array([
+		Vector2(-1.3 * r, 0.2 * r), Vector2(-0.85 * r, -0.15 * r),
+		Vector2(0.85 * r, -0.15 * r), Vector2(1.3 * r, 0.2 * r),
+		Vector2(0.85 * r, 0.6 * r), Vector2(-0.85 * r, 0.6 * r),
+	])
+	var parts: Array = [body]
+	for cx in [-0.95 * r, -0.4 * r, 0.4 * r, 0.95 * r]:
+		parts.push_back(PackedVector2Array([
+			Vector2(cx - 0.11 * r, 0.6 * r), Vector2(cx + 0.11 * r, 0.6 * r),
+			Vector2(cx + 0.11 * r, 1.55 * r), Vector2(cx - 0.11 * r, 1.55 * r),
+		]))
+	var rider_torso := PackedVector2Array([
+		Vector2(-0.6 * r, -0.85 * r), Vector2(0.6 * r, -0.85 * r),
+		Vector2(0.4 * r, -0.15 * r), Vector2(-0.4 * r, -0.15 * r),
+	])
+	parts.push_back(rider_torso)
+	parts.push_back(_disc_poly(Vector2(0.0, -1.25 * r), 0.42 * r))
+	return parts
+
+
 ## Build the cosmetic render layer: a ground shadow (Polygon2D) and two MultiMeshes
 ## (outline behind, body in front) for the soldier marks. z_index is RELATIVE to this
 ## node (z=3), so the children sit at: shadow eff 1, outline/body eff 2 — under this
@@ -1460,19 +1585,11 @@ static func _diamond_mesh(radius: float) -> ArrayMesh:
 ## outline so it draws in front of it at the same effective z. One-time setup in _ready().
 func _setup_flock_renderer() -> void:
 	var mark_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
-	# Per-type mesh shapes so soldiers read differently at a glance:
-	# spearmen = tall thin rectangle (shaft), archers = diamond (arrow), cavalry/infantry = disc.
-	var body_mesh: ArrayMesh
-	var outline_mesh: ArrayMesh
-	if anti_cavalry:
-		body_mesh    = _rect_mesh(mark_r * 0.65, mark_r * 1.7)
-		outline_mesh = _rect_mesh(mark_r * 0.65 + 1.2, mark_r * 1.7 + 1.2)
-	elif is_ranged:
-		body_mesh    = _diamond_mesh(mark_r * 1.15)
-		outline_mesh = _diamond_mesh(mark_r * 1.15 + 0.6)
-	else:
-		body_mesh    = _disc_mesh(mark_r)
-		outline_mesh = _disc_mesh(mark_r + 0.6)
+	# Two LOD variants per unit: the flat geometric mark (zoomed out) and the
+	# detailed figure silhouette (zoomed in). Both are built up front; _update_lod
+	# swaps which pair the MultiMeshes draw as the camera zooms.
+	_build_mark_meshes(mark_r)
+	_build_figure_meshes(mark_r)
 
 	_shadow = Polygon2D.new()
 	_shadow.polygon = _ellipse_polygon()
@@ -1482,7 +1599,7 @@ func _setup_flock_renderer() -> void:
 
 	_mm_outline = MultiMesh.new()
 	_mm_outline.transform_format = MultiMesh.TRANSFORM_2D
-	_mm_outline.mesh = outline_mesh
+	_mm_outline.mesh = _mark_outline_mesh
 	_mmi_outline = MultiMeshInstance2D.new()
 	_mmi_outline.multimesh = _mm_outline
 	_mmi_outline.z_index = -1   # eff 2
@@ -1490,7 +1607,7 @@ func _setup_flock_renderer() -> void:
 
 	_mm_body = MultiMesh.new()
 	_mm_body.transform_format = MultiMesh.TRANSFORM_2D
-	_mm_body.mesh = body_mesh
+	_mm_body.mesh = _mark_body_mesh
 	_mmi_body = MultiMeshInstance2D.new()
 	_mmi_body.multimesh = _mm_body
 	_mmi_body.z_index = -1   # eff 2, added after the outline -> drawn in front of it
@@ -1499,6 +1616,28 @@ func _setup_flock_renderer() -> void:
 	_flock_last_pos = position   # local-to-parent frame; see _update_flock
 	_flock_last_facing = facing
 	_seed_soldiers()
+
+
+## Flat geometric mark meshes (zoomed-out LOD). Per-type shapes so soldiers read
+## differently at a glance: spearmen = tall thin rectangle (shaft), archers =
+## diamond (arrow), cavalry/infantry = disc. The outline is a slightly larger copy.
+func _build_mark_meshes(mark_r: float) -> void:
+	if anti_cavalry:
+		_mark_body_mesh    = _rect_mesh(mark_r * 0.65, mark_r * 1.7)
+		_mark_outline_mesh = _rect_mesh(mark_r * 0.65 + 1.2, mark_r * 1.7 + 1.2)
+	elif is_ranged:
+		_mark_body_mesh    = _diamond_mesh(mark_r * 1.15)
+		_mark_outline_mesh = _diamond_mesh(mark_r * 1.15 + 0.6)
+	else:
+		_mark_body_mesh    = _disc_mesh(mark_r)
+		_mark_outline_mesh = _disc_mesh(mark_r + 0.6)
+
+
+## Detailed figure-silhouette meshes (zoomed-in LOD): a standing soldier for foot,
+## a mounted rider for cavalry. Both are shared/cached like the mark meshes.
+func _build_figure_meshes(mark_r: float) -> void:
+	_figure_body_mesh = _figure_mesh(is_cavalry, mark_r, false)
+	_figure_outline_mesh = _figure_mesh(is_cavalry, mark_r, true)
 
 
 ## Unit-radius ellipse outline (pre-squished) for the ground shadow; scaled in _update_shadow().
@@ -1549,7 +1688,36 @@ func _compute_extent(slots: PackedVector2Array) -> float:
 
 
 func _process(delta: float) -> void:
+	_update_lod()
 	_update_flock(delta)
+
+
+## Swap the soldier meshes between the flat marks and the detailed figures based on
+## the camera zoom, with hysteresis so the two don't flicker at the threshold. Cheap:
+## a viewport lookup, a float compare, and a MultiMesh.mesh reassignment only on the
+## frame the level actually flips. Runs at render time, like the rest of the flock.
+func _update_lod() -> void:
+	if _mm_body == null:
+		return
+	var cam := get_viewport().get_camera_2d()
+	if cam == null:
+		return
+	var want: bool = _lod_should_detail(_detailed_lod, cam.zoom.x)
+	if want == _detailed_lod:
+		return
+	_detailed_lod = want
+	_mm_body.mesh = _figure_body_mesh if _detailed_lod else _mark_body_mesh
+	_mm_outline.mesh = _figure_outline_mesh if _detailed_lod else _mark_outline_mesh
+
+
+## Pure hysteresis rule for the zoom LOD: latch the detailed figures on at/above
+## LOD_ZOOM_IN, off at/below LOD_ZOOM_OUT, and hold the current level in between.
+static func _lod_should_detail(currently_detailed: bool, zoom: float) -> bool:
+	if zoom >= LOD_ZOOM_IN:
+		return true
+	if zoom <= LOD_ZOOM_OUT:
+		return false
+	return currently_detailed
 
 
 ## Advance the cosmetic mark layer one render frame. Cheap fast-path when the block is
