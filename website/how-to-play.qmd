@@ -27,9 +27,13 @@ left fighting --- every remaining unit is dead or routing.
 | Select multiple | **Left-click and drag** a box |
 | Move | **Right-click** the ground |
 | Attack | **Right-click** an enemy unit |
+| Add waypoint | **Shift + Right-click** (chain several move points) |
+| Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear |
+| Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose) |
 | Pan camera | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges |
 | Zoom | **Mouse wheel** |
-| Active pause | <kbd>Space</kbd> |
+| Show all orders | hold <kbd>Space</kbd> |
+| Active pause | <kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>) |
 
 A right-click on empty ground is a **move** order; a right-click on an enemy is an
 **attack** order. Selection and camera stay live even while paused, so you can plan
@@ -40,6 +44,21 @@ small marks. Zoom in far enough and those marks become individual figures --- a
 standing soldier for foot, a mounted rider for cavalry --- so you can watch the
 ranks as people, not dots. Zoom back out and they collapse to the legible marks again.
 
+**Order stances.** Beyond plain move/attack you can arm a *stance* with a hotkey
+before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> clears it.
+
+- **Hold** (<kbd>H</kbd>) --- stand ground; don't chase a detected enemy.
+- **Attack flank** (<kbd>F</kbd>) / **Attack rear** (<kbd>R</kbd>) --- maneuver to
+  strike the enemy's side or back, where hits land far harder
+  (see [Tactics](tactics.qmd#order-stances)).
+- **Skirmish** (<kbd>K</kbd>) --- a ranged unit keeps its distance, backing off when
+  a threat closes instead of standing to fire.
+- **Support** (<kbd>G</kbd>) --- right-click a friendly to guard it: the unit shadows
+  that ally and engages anything that threatens it.
+
+Press <kbd>T</kbd> to cycle a selected unit's **formation** --- *Tight* closes ranks
+for better missile and charge defence, *Loose* spreads out, *Normal* is the default.
+
 ## The battle loop
 
 1. **Select** --- left-click a unit, or drag a box to grab several at once. The info
@@ -47,8 +66,9 @@ ranks as people, not dots. Zoom back out and they collapse to the legible marks 
 2. **Order** --- right-click to send them. Move them onto an enemy's flank, or
    right-click the enemy directly to attack. There is a brief **reaction delay**
    (~0.5 s, faster for cavalry) before units execute --- orders aren't instant.
-3. **Watch the bars** --- each unit shows a strength bar that drops as it takes
-   casualties. Morale matters as much as numbers (see [Tactics](tactics.qmd)).
+3. **Watch the bars** --- each unit flies a small **regimental flag** in its team
+   colour and shows a strength bar that drops as it takes casualties. Morale matters
+   as much as numbers (see [Tactics](tactics.qmd)).
 4. **Navigate terrain** --- the field has two terrain patches: a **dark-green forest**
    (slows movement to 60%) on the left flank, and a **tan hill** (impassable) on the
    right. Units route around the hill automatically. See [Tactics → Terrain](tactics.qmd#terrain).
