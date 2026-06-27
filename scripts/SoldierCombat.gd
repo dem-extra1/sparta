@@ -1,0 +1,84 @@
+class_name SoldierCombat
+## The probabilistic per-soldier combat MATH from docs/combat-model.md, as pure,
+## deterministic, unit-testable functions. Extracted from Unit.gd so the model lives
+## in one focused place: the per-type profile, the charge term, the facing gate, the
+## opposed land contest, and the wound. Every function maps to an equation in the
+## design note, so the two can be checked against each other. No state, no RNG, no
+## node — callers (Unit's melee path) draw the random number and apply the result.
+##
+## Condition factors q(h), g(sigma) (health x stamina) enter through the cond_a /
+## cond_d parameters; callers pass 1 where a factor isn't modelled yet.
+
+# Land contest (opposed roll): p_land = clip(L(beta*(A - D)), p_min, p_max), where
+#   A = s_A * cond_A + mu * c                  (attacker offence + charge-to-hit)
+#   D = phi_D * (s_D + lambda * b_D) * cond_D   (defender active defence, facing-gated)
+# and L is the logistic. See docs/combat-model.md "The land contest".
+const HIT_SHARPNESS: float = 3.0          # beta: how sharply the skill gap swings the odds
+const CHARGE_HIT_WEIGHT: float = 0.5      # mu: closing speed's weight in the attack
+const SHIELD_DEFENSE_WEIGHT: float = 0.6  # lambda: shield's weight in active defence
+const LAND_MIN: float = 0.05              # p_min: a blow is never impossible
+const LAND_MAX: float = 0.95              # p_max: a blow is never automatic
+
+# Wound: delta_h = D0 * lethality_A * (1 + c) * (1 - armour_D) * cond_A. D0 is the
+# base damage scale — the wound a baseline weapon (lethality = 1) deals to an
+# unarmoured, standing target. See docs/combat-model.md "Wound".
+const DAMAGE_SCALE: float = 34.0
+
+# Reference gallop speed (world units/sec) the charge term normalises against, so
+# c ~ 1 at a full charge. Mirrors Unit.CHARGE_REFERENCE_SPEED (the regiment-level
+# charge), kept here too so the per-soldier model is self-contained.
+const CHARGE_REFERENCE_SPEED: float = 170.0
+
+
+## Per-type combat profile (docs/combat-model.md "Soldier attributes"): skill is the
+## unit's training; armour, shield, lethality, and the health/stamina pools are per
+## type. Pure and static so it is testable without a live node.
+static func profile_for(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: bool, p_training: float) -> Dictionary:
+	var skill: float = clampf(p_training, 0.0, 1.0)
+	if p_is_cavalry:
+		return {"skill": skill, "armour": 0.40, "shield": 0.25, "lethality": 1.10, "max_health": 140.0, "max_stamina": 120.0}
+	if p_anti_cavalry:
+		return {"skill": skill, "armour": 0.35, "shield": 0.65, "lethality": 0.85, "max_health": 100.0, "max_stamina": 100.0}
+	if p_is_ranged:
+		return {"skill": skill, "armour": 0.10, "shield": 0.05, "lethality": 0.50, "max_health": 80.0, "max_stamina": 90.0}
+	return {"skill": skill, "armour": 0.45, "shield": 0.60, "lethality": 1.00, "max_health": 110.0, "max_stamina": 100.0}
+
+
+## The charge factor c from a closing speed (world units/sec) along the strike axis:
+## the relative velocity aimed at the target, clamped non-negative and normalised by
+## the reference gallop. Symmetric in the pair by construction (both combatants see
+## the same closing speed). See docs/combat-model.md "Closing velocity".
+static func charge_factor(closing_speed: float) -> float:
+	return maxf(0.0, closing_speed) / CHARGE_REFERENCE_SPEED
+
+
+## The facing gate phi_D in [0,1]: how well the defender can bring active defence
+## (parry, shield, deflect) to bear. `defender_facing` is the direction the defender
+## faces; `attack_from_dir` points from the defender toward the attacker. Front blow
+## -> ~1, flank -> small, back -> 0 (armour only). A degenerate (zero-length) facing
+## or direction returns 1 — an undefined facing is fully met, never a free back-strike.
+static func facing_gate(defender_facing: Vector2, attack_from_dir: Vector2) -> float:
+	if defender_facing.length_squared() < 1e-6 or attack_from_dir.length_squared() < 1e-6:
+		return 1.0
+	return maxf(0.0, defender_facing.normalized().dot(attack_from_dir.normalized()))
+
+
+## The land-contest probability that an attacker's strike lands: the opposed roll of
+## offence (skill + charge) against facing-gated active defence (skill + shield),
+## squashed through the logistic and clipped to [p_min, p_max]. `cond_a`/`cond_d` are
+## the attacker's/defender's condition factors q*g. See docs/combat-model.md.
+static func land_chance(skill_a: float, skill_d: float, shield_d: float, phi_d: float, c: float, cond_a: float = 1.0, cond_d: float = 1.0) -> float:
+	var offence: float = skill_a * cond_a + CHARGE_HIT_WEIGHT * maxf(0.0, c)
+	var defence: float = phi_d * (skill_d + SHIELD_DEFENSE_WEIGHT * shield_d) * cond_d
+	var x: float = HIT_SHARPNESS * (offence - defence)
+	var p: float = 1.0 / (1.0 + exp(-x))
+	return clampf(p, LAND_MIN, LAND_MAX)
+
+
+## The wound (health removed) from a landed blow: lethality, amplified by closing
+## momentum (1 + c), blunted by the defender's armour, scaled by the attacker's
+## condition. Always >= 0. See docs/combat-model.md "Wound".
+static func wound(lethality_a: float, c: float, armour_d: float, cond_a: float = 1.0) -> float:
+	var armour: float = clampf(armour_d, 0.0, 1.0)
+	var cond: float = clampf(cond_a, 0.0, 1.0)
+	return DAMAGE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) * (1.0 - armour) * cond
