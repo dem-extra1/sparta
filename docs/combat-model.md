@@ -205,24 +205,39 @@ its feet.
 
 ## Bracing and the knockback chain (domino)
 
-A knocked-back soldier collides with whoever is behind it. Bracing is a **finite**
-resistance, not an infinite wall: a braced man soaks up to a capacity
-$J_{\mathrm{cap}}\,\mathrm{br}_i$, and only the *surplus* passes on, attenuated.
-Writing $J_i$ for the impulse reaching the $i$-th soldier in the chain:
+A knocked-back soldier collides with whoever is behind it. Two things resist the
+impulse: the struck man's own bracing **and the braced comrades behind him**. In a
+tight formation a set man buttresses the one in front — he physically backs him up —
+so the front rank's *effective* capacity is its own plus an attenuated sum down the
+file behind it:
 
-$$J_{i+1} = \tau\,\big(J_i - J_{\mathrm{cap}}\,\mathrm{br}_i\big)_+,
+$$C_i = J_{\mathrm{cap}}\Big(\mathrm{br}_i + \sum_{k\ge1}\zeta^{\,k}\,\mathrm{br}_{i+k}\,T_{i,k}\Big),
+\qquad 0 < \zeta \le 1,$$
+
+where $T_{i,k}=1$ only while ranks $i \dots i+k$ form an **unbroken, tight, braced,
+front-facing** file — support transmits through set men in contact, and a gap, a
+loose or unbraced man, or one not facing the blow sets $T=0$ from there back — and
+$\zeta$ is the per-rank transmission efficiency. A lone braced man has $C_i =
+J_{\mathrm{cap}}\,\mathrm{br}_i$; a **deep** braced phalanx sums down the column, so
+the front rank resists far more than any one man could. That is the historical depth
+effect (rear ranks bracing into the front), emergent from support — not a "depth
+bonus."
+
+Bracing stays **finite**: only the surplus over $C_i$ passes on. Writing $J_i$ for
+the impulse reaching the $i$-th soldier in the chain:
+
+$$J_{i+1} = \tau\,\big(J_i - C_i\big)_+,
 \qquad 0 < \tau < 1,$$
 
-where $(\cdot)_+$ is the positive part. A blow **below** a braced man's capacity
-dies at him — the chain snaps. But a blow that **exceeds** his bracing capacity
-overwhelms it: he is shoved anyway (and rolls $p_{\mathrm{prone}}$ on his own
-footing — a hard enough $J$ beats even the braced threshold, so he can be toppled
-despite bracing), and the surplus dominoes rearward to the next man. So a strong
-enough charge punches *through* a braced line, just paying $J_{\mathrm{cap}}\,
-\mathrm{br}$ of impulse at each rank until it is finally spent; a weak hit dies at
-the first set man. Each soldier the impulse reaches rolls $p_{\mathrm{prone}}$
-against its own footing, so a hard enough hit topples a whole row like dominoes. The
-bracing term is itself emergent:
+where $(\cdot)_+$ is the positive part. A blow **below** the front column's capacity
+$C_i$ dies there — the charge breaks on the braced depth. A blow that **exceeds** it
+overwhelms the front man (he is shoved, and rolls $p_{\mathrm{prone}}$ on his own
+footing — a hard enough $J$ topples him despite bracing), the supporting file has
+spent its backing, and the surplus dominoes rearward, re-resisted by whatever set
+men remain. So a strong enough charge still punches *through* — but now it must beat
+the **whole braced column**, not one man. Each soldier the impulse reaches rolls
+$p_{\mathrm{prone}}$ on its own footing, toppling a row of unsupported men like
+dominoes. The per-soldier bracing term is itself emergent:
 
 $$\mathrm{br} = \operatorname{clip}\!\big(\mathrm{br}_0
   + b_{\mathrm{post}}
@@ -246,9 +261,11 @@ and (iii) a heavier shove ($1+c$ in $J$) that is more likely to knock men prone.
 Against an **unbraced** line ($\mathrm{br}\to 0$) the impulse ripples several ranks
 deep and lays them out — the line is bowled over and butchered on the ground.
 Against a **braced** line — one ordered into the *braced* posture **in time**, a set
-spear hedge with shields locked, facing the charge ($\mathrm{br}\to 1$, high
-effective $m$) — the impulse is absorbed at the front rank, few men fall, and little
-passes back: the line holds. The timing is the crux: because a posture change costs
+spear hedge with shields locked, facing the charge ($\mathrm{br}\to 1$), and **deep
+enough** that the rear ranks buttress the front (a large column capacity $C$) — the
+impulse is absorbed at the front rank, few men fall, and little passes back: the line
+holds. A shallow braced line can still be punched through; depth is what makes the
+hedge unbreakable. The timing is the crux: because a posture change costs
 $T_{\mathrm{post}}$, a line still *at ease* or shuffling into place when the horse
 arrives cannot plant in time and is ridden down, while the same line set a moment
 earlier holds. And because the spear's reach $r$ exceeds the horseman's, the
@@ -271,6 +288,11 @@ opposed rolls, the prone threshold, and the bracing chain acting together.
 - **Screening (spears).** A spearman's reach holds shorter-weapon foes beyond their
   own reach, so they are struck without striking back, and the knockback keeps
   shoving them out. A spear line screens whatever stands behind it.
+- **Form deep, form tight.** Braced men in a tight file back up the rank in front,
+  so the front line's resisting capacity $C$ is the *column's*, not one man's — a
+  deep, set phalanx breaks a charge a shallow one can't. The cost is that depth and
+  tightness trade against frontage and mobility, and the support evaporates the
+  moment the file loosens, opens a gap, or is hit from a side it isn't facing.
 - **Shields and armour** turn would-be wounds into blocked shoves (shield, from the
   front) or glancing hits (armour, from any angle), so a heavy, shielded line
   grinds slowly and survives; light troops caught in the press evaporate.
@@ -291,6 +313,6 @@ same build. The constants
 ($v_{\mathrm{ref}}, \mu, \lambda, \beta, p_{\min}, p_{\max}, \underline{q}, \underline{g},
 D_0, J_0, \eta_{\mathrm{def}}, J_{\mathrm{fall}}, J_{\mathrm{scale}}, p_{\mathrm{prone}}^{\max},
 T_{\mathrm{up}}, T_{\mathrm{post}}, \kappa_a, \kappa_d, \kappa_p, \tau, J_{\mathrm{cap}},
-\mathrm{br}_0, w_f, w_d$), together with the per-posture tables
+\zeta, \mathrm{br}_0, w_f, w_d$), together with the per-posture tables
 $b_{\mathrm{post}}(\cdot)$ and $\rho_\sigma(\cdot)$, are balance knobs tuned against
 playtests; this note fixes the *form* of the model, not the final values.
