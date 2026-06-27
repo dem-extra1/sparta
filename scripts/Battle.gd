@@ -290,16 +290,18 @@ func _physics_process(_delta: float) -> void:
 
 ## Per-tick orchestration of the parallel individual-soldier layer (connected to
 ## physics_frame in _ready, so it runs after every unit has settled this frame):
-## re-seed every regiment from its formation, then run one global engaged-soldier
-## separation across all regiments (SoldierSpatialHash keyed by the physics frame).
-## Skipped while ended or paused — physics_frame keeps emitting while paused even
-## though node callbacks don't run, so without the guard the pass would re-run on
-## frozen state. Non-authoritative: nothing in the sim reads _sim_soldier_pos.
+## step every regiment's persistent soldier bodies one fixed tick (phase 4 — the
+## bodies ease toward formation and hold any displacement, rather than re-seeding
+## onto their slots each tick), then run one global engaged-soldier separation
+## across all regiments (SoldierSpatialHash keyed by the physics frame). Skipped
+## while ended or paused — physics_frame keeps emitting while paused even though
+## node callbacks don't run, so without the guard the pass would re-run on frozen
+## state. Non-authoritative: nothing in the sim reads _sim_soldier_pos.
 func _on_soldier_tick() -> void:
 	if _ended or get_tree().paused:
 		return
 	var units: Array = get_tree().get_nodes_in_group("units")
-	UnitRef.seed_all_sim_soldiers(units)
+	UnitRef.step_all_sim_soldiers(units, get_physics_process_delta_time())
 	UnitRef.separate_engaged_global(units, Engine.get_physics_frames())
 
 
