@@ -1,0 +1,23 @@
+# lychee config for the Check Links workflow (overrides d-morrison/gha's bundled
+# default; passed via `lychee-config: lychee.toml`). Mirrors that default and
+# adds repo-specific exclusions.
+
+max_retries = 3
+max_concurrency = 10
+user_agent = "Mozilla/5.0 (compatible; Lychee/0.15; +https://github.com/lycheeverse/lychee)"
+accept = [200, 201, 202, 203, 204, 206, 301, 302, 303, 307, 308, 429]
+timeout = 20
+
+exclude = [
+  # Bundled-default placeholders / local-only URLs.
+  "https://github.com/YOUR-USERNAME/.*",
+  "https://YOUR-USERNAME.github.io/.*",
+  "https://your-username.github.io/.*",
+  "http://localhost.*",
+  "https://localhost.*",
+  "http://127.0.0.1.*",
+  "https://127.0.0.1.*",
+  # pixabay blocks automated requests with HTTP 403 (the page works in a
+  # browser) — a false positive for the link checker, so skip it.
+  "^https://pixabay\\.com",
+]

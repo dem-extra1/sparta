@@ -26,6 +26,8 @@ jobs:
       issues: write          # file/update the broken-links issue (main only)
       pull-requests: read    # read the skip-label on PRs
     uses: d-morrison/gha/.github/workflows/check-links.yml@v2
+    with:
+      lychee-config: lychee.toml
     # with:
     #   lychee-args: '--verbose "**/*.md"'   # override the default glob set
     #   create-issue-on-main: false          # don't auto-open an issue
