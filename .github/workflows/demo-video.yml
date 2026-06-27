@@ -1,6 +1,8 @@
-# Records a short gameplay clip for same-repo PRs that change the game and
-# posts it as an inline GIF in the PR conversation, plus a link to an MP4 with sound
-# (the GIF is silent — GIF can't carry audio).
+# Records a short gameplay clip for same-repo PRs that change the game and posts it
+# in the PR conversation as a static poster frame that links to an MP4 with sound.
+# The inline media is a still (no autoplay, no loop); clicking it opens GitHub's
+# pausable/scrubbable video player. If the MP4 can't be encoded, it falls back to an
+# inline (autoplaying, silent) GIF so motion is never lost.
 #
 # What it records: if the PR commits a demos/demo.json it records the replay that
 # names (chosen by the author to show the PR's change); otherwise it falls back to
@@ -8,20 +10,22 @@
 # demo" caption. Either way a demo appears — unless demos/demo.json sets
 # "skip": true (a change a recorded battle can't show, e.g. a paused-overlay
 # interaction): then no clip is recorded and a short note explaining the absence is
-# posted instead of an unrelated generic GIF. See demos/README.md for the author
+# posted instead of an unrelated generic poster. See demos/README.md for the author
 # contract.
 #
 # Why a separate workflow (not claude.yml): claude.yml only *calls* an external
 # reusable workflow (d-morrison/gha), so recording steps can't be added there.
 #
-# How the GIF gets inline without GitHub's browser-only attachment CDN: the GIF is
-# pushed to a long-lived media branch ($MEDIA_BRANCH) and embedded by raw URL. That
-# never touches the PR's own head commit (so it can't disturb required checks) and
-# survives the PR branch being deleted on merge. The filename carries the commit
-# SHA so the raw URL changes each push and GitHub's image cache never serves a
-# stale frame. The MP4 rides along on the same branch and is linked (not embedded):
-# GitHub renders an inline video player only for files uploaded via that browser-only
-# attachment CDN, so a raw-URL clip can only be a click-to-play link, not autoplay.
+# How the media gets inline without GitHub's browser-only attachment CDN: the poster,
+# MP4, and (fallback) GIF are pushed to a long-lived media branch ($MEDIA_BRANCH).
+# That never touches the PR's own head commit (so it can't disturb required checks)
+# and survives the PR branch being deleted on merge. The filename carries the commit
+# SHA so the raw URL changes each push and GitHub's image cache never serves a stale
+# frame. The poster is embedded by raw URL and wrapped in a link to the MP4's *blob*
+# URL — GitHub's file view renders a pausable/scrubbable player for a committed .mp4,
+# so a click on the still opens that player (with sound). An inline <video> player
+# only renders for files uploaded via the browser-only attachment CDN, which CI
+# can't reach; the poster-links-to-blob trick is the click-to-play equivalent.
 name: Demo video
 
 on:
@@ -41,7 +45,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write        # push the GIF to the media branch
+  contents: write        # push the demo media to the media branch
   pull-requests: write   # post / update the demo comment
 
 env:
@@ -76,7 +80,7 @@ jobs:
             # A change the recorded-battle pipeline can't capture (a paused-overlay
             # interaction, an editor-only tool, a non-visual refactor) can set
             # "skip": true to suppress an unrelated generic clip. CI then posts a
-            # short note explaining the absence instead of a misleading GIF (#75).
+            # short note explaining the absence instead of a misleading clip (#75).
             if [ "$(jq -r '.skip // false' "$M")" = "true" ]; then
               REASON=$(jq -r '.reason // .caption // "This change cannot be shown by a recorded battle clip."' "$M")
               echo "demos/demo.json sets skip=true — posting a note instead of a clip."
@@ -146,7 +150,7 @@ jobs:
 
       - name: Install Xvfb + ffmpeg
         # Movie Maker renders frames (software GL via Xvfb is fine — no GPU needed);
-        # ffmpeg turns the AVI into a compact GIF.
+        # ffmpeg turns the AVI into the MP4 + poster (or a fallback GIF).
         if: steps.demo.outputs.record == 'true'
         run: |
           sudo apt-get update
@@ -185,35 +189,45 @@ jobs:
             --quit-after "$MAX_FRAMES" res://tools/demo/DemoRunner.tscn
           [ -s /tmp/demo.avi ] || { echo "::error::Movie Maker produced no output"; exit 1; }
 
-          # Two-pass palette gives a sharp, small GIF (the inline, autoplaying preview).
-          ffmpeg -y -i /tmp/demo.avi \
-            -vf "fps=$GIF_FPS,scale=$WIDTH:-1:flags=lanczos,palettegen" /tmp/pal.png
-          ffmpeg -y -i /tmp/demo.avi -i /tmp/pal.png \
-            -lavfi "fps=$GIF_FPS,scale=$WIDTH:-1:flags=lanczos[x];[x][1:v]paletteuse" /tmp/demo.gif
-          [ -s /tmp/demo.gif ] || { echo "::error::GIF conversion failed"; exit 1; }
-          ls -la /tmp/demo.gif
-
-          # Also encode an MP4 *with sound*. Movie Maker writes the game's audio into
-          # the AVI; the GIF above drops it (GIF can't carry audio), so this is the
-          # only artifact that keeps the soundtrack. H.264 + AAC in yuv420p with
+          # Primary artifact: an MP4 *with sound* — the click-to-play target. Movie
+          # Maker writes the game's audio into the AVI. H.264 + AAC in yuv420p with
           # +faststart is the most widely browser-playable combination (Safari too);
           # scale uses -2 so the height stays even (a libx264 requirement). The demo
-          # runner force-enables SFX (tools/demo/DemoRunner.gd), so the AVI carries any
-          # battle sound that fires rather than the silent default (still silent if a
-          # replay triggers no sound events). Best-effort: any encode failure is caught
-          # by the else branch and never blocks the GIF, which is the primary demo.
+          # runner force-enables SFX (tools/demo/DemoRunner.gd), so the MP4 carries any
+          # battle sound that fires (still silent if a replay triggers none).
           if ffmpeg -y -i /tmp/demo.avi \
               -vf "scale=$WIDTH:-2:flags=lanczos" \
               -c:v libx264 -pix_fmt yuv420p -profile:v high -movflags +faststart \
               -c:a aac -b:a 128k \
               /tmp/demo.mp4 && [ -s /tmp/demo.mp4 ]; then
             ls -la /tmp/demo.mp4
+            # Poster: the first frame, scaled to match the MP4. It becomes the inline
+            # still (no autoplay, no loop) that links to the MP4's blob-view player.
+            if ffmpeg -y -i /tmp/demo.avi -frames:v 1 \
+                -vf "scale=$WIDTH:-2:flags=lanczos" /tmp/demo-poster.png \
+                && [ -s /tmp/demo-poster.png ]; then
+              ls -la /tmp/demo-poster.png
+            else
+              echo "::warning::poster-frame extract failed; falling back to an inline GIF."
+              rm -f /tmp/demo.mp4 /tmp/demo-poster.png
+            fi
           else
-            echo "::warning::MP4 (with sound) encode failed; posting the GIF only."
+            echo "::warning::MP4 (with sound) encode failed; falling back to an inline GIF."
             rm -f /tmp/demo.mp4
           fi
 
-      - name: Publish GIF and comment
+          # Fallback only: if no MP4+poster pair was produced, build the silent,
+          # autoplaying GIF (two-pass palette → sharp, small) so motion is never lost.
+          if [ ! -s /tmp/demo.mp4 ]; then
+            ffmpeg -y -i /tmp/demo.avi \
+              -vf "fps=$GIF_FPS,scale=$WIDTH:-1:flags=lanczos,palettegen" /tmp/pal.png
+            ffmpeg -y -i /tmp/demo.avi -i /tmp/pal.png \
+              -lavfi "fps=$GIF_FPS,scale=$WIDTH:-1:flags=lanczos[x];[x][1:v]paletteuse" /tmp/demo.gif
+            [ -s /tmp/demo.gif ] || { echo "::error::no demo media produced (MP4 and GIF both failed)"; exit 1; }
+            ls -la /tmp/demo.gif
+          fi
+
+      - name: Publish demo media and comment
         if: steps.demo.outputs.record == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -226,15 +240,16 @@ jobs:
           # PR head commit (not the merge ref actions/checkout lands on) — meaningful
           # to a reader and unique per push, so the raw URL changes and dodges cache.
           SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
-          DEST="pr-${PR}-${SHA}.gif"
-          DEST_MP4="pr-${PR}-${SHA}.mp4"   # the sound version, when one was encoded
+          DEST_MP4="pr-${PR}-${SHA}.mp4"      # primary: click-to-play, with sound
+          DEST_POSTER="pr-${PR}-${SHA}.png"   # inline still that links to the MP4
+          DEST_GIF="pr-${PR}-${SHA}.gif"      # fallback inline preview, when no MP4
 
           # Publish onto the long-lived media branch. An isolated clone keeps the PR
           # checkout untouched. Different PRs share this branch, so a concurrent push
           # can reject ours as non-fast-forward — retry the whole clone→commit→push so
           # each attempt rebuilds on the latest tip. This covers both first-time
           # branch creation and the cross-PR move race with no data loss; a blind
-          # --force would instead drop another PR's just-pushed GIF.
+          # --force would instead drop another PR's just-pushed media.
           REPO_URL="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           publish_once() {
             rm -rf /tmp/media
@@ -243,21 +258,24 @@ jobs:
               git clone -q --depth 1 "$REPO_URL" /tmp/media
               git -C /tmp/media checkout -q --orphan "$MEDIA_BRANCH"
               git -C /tmp/media rm -rf . >/dev/null 2>&1 || true
-              printf '# Demo media\n\nAuto-generated gameplay GIFs (silent, inline) and MP4s (with sound) posted to PRs by `.github/workflows/demo-video.yml`.\n' \
+              printf '# Demo media\n\nAuto-generated demo media posted to PRs by `.github/workflows/demo-video.yml`: poster stills (inline) and MP4s (with sound, click-to-play), plus fallback GIFs (silent) when an MP4 cannot be encoded.\n' \
                 > /tmp/media/README.md
             fi
             git -C /tmp/media config user.name "github-actions[bot]"
             git -C /tmp/media config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            # Keep only the latest GIF + MP4 per PR; the comment is always repointed to
-            # the newest URLs. Subshell + nullglob so the glob expands inside the
-            # checkout and an empty match is a no-op, not a literal pattern.
-            ( cd /tmp/media && shopt -s nullglob && for f in pr-${PR}-*.gif pr-${PR}-*.mp4; do git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"; done )
-            cp /tmp/demo.gif "/tmp/media/$DEST"
-            git -C /tmp/media add "$DEST"
-            # Add the sound MP4 too, when the encode produced one (best-effort).
-            if [ -s /tmp/demo.mp4 ]; then
+            # Keep only the latest media per PR; the comment is always repointed to the
+            # newest URLs. Subshell + nullglob so the glob expands inside the checkout
+            # and an empty match is a no-op, not a literal pattern.
+            ( cd /tmp/media && shopt -s nullglob && for f in pr-${PR}-*.gif pr-${PR}-*.mp4 pr-${PR}-*.png; do git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"; done )
+            # Publish the MP4 + poster pair when both exist (the primary, click-to-play
+            # form); otherwise the fallback GIF. Exactly one branch runs.
+            if [ -s /tmp/demo.mp4 ] && [ -s /tmp/demo-poster.png ]; then
               cp /tmp/demo.mp4 "/tmp/media/$DEST_MP4"
-              git -C /tmp/media add "$DEST_MP4"
+              cp /tmp/demo-poster.png "/tmp/media/$DEST_POSTER"
+              git -C /tmp/media add "$DEST_MP4" "$DEST_POSTER"
+            else
+              cp /tmp/demo.gif "/tmp/media/$DEST_GIF"
+              git -C /tmp/media add "$DEST_GIF"
             fi
             # README exists on every clone after first creation; tolerate it missing.
             git -C /tmp/media add README.md 2>/dev/null || true
@@ -273,23 +291,27 @@ jobs:
           done
           [ -n "$published" ] || { echo "::error::could not publish demo to $MEDIA_BRANCH after 5 attempts"; exit 1; }
 
-          RAW_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST}"
           MARKER="<!-- sparta-demo -->"
-          # The inline GIF is silent (GIF can't carry audio). When an MP4 was
-          # published, link it so reviewers can play the clip *with sound*. GitHub
-          # only renders an inline video player for files uploaded via its
-          # browser-only user-attachments CDN — a raw-URL <video> tag or bare link
-          # shows a dead player / download — so a click-to-play link is the honest
-          # best CI can do.
-          # Assembled in pieces (each $() drops trailing newlines, so the next piece
-          # leads with the blank line it wants). The sound link is inserted only when an
-          # MP4 was published; otherwise the body collapses to the original GIF-only
-          # spacing.
-          BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n%s\n\n![demo](%s)' \
-            "$MARKER" "$CAPTION" "$RAW_URL")
-          if [ -s /tmp/demo.mp4 ]; then
-            RAW_MP4_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST_MP4}"
-            BODY="$BODY"$(printf '\n\n🔊 The GIF above is silent — [watch with sound (MP4)](%s).' "$RAW_MP4_URL")
+          # Primary form: a static poster (inline still — no autoplay, no loop)
+          # wrapped in a link to the MP4's *blob* URL. GitHub's file view renders a
+          # pausable/scrubbable player for a committed .mp4, so clicking the still
+          # plays the clip with sound. An inline <video> player only renders for files
+          # on GitHub's browser-only attachment CDN, which CI can't reach — so the
+          # poster-links-to-blob trick is the click-to-play equivalent. Pieces are
+          # assembled with printf (each $() drops trailing newlines, so the next piece
+          # leads with the blank line it wants).
+          if [ -s /tmp/demo.mp4 ] && [ -s /tmp/demo-poster.png ]; then
+            POSTER_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST_POSTER}"
+            MP4_BLOB_URL="https://github.com/${{ github.repository }}/blob/${MEDIA_BRANCH}/${DEST_MP4}"
+            BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n%s\n\n[![demo poster](%s)](%s)' \
+              "$MARKER" "$CAPTION" "$POSTER_URL" "$MP4_BLOB_URL")
+            BODY="$BODY"$(printf '\n\n▶️ Click the still to play — pausable, scrubbable, with sound.')
+          else
+            # Fallback: the silent, autoplaying GIF (no MP4/poster could be produced).
+            GIF_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST_GIF}"
+            BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n%s\n\n![demo](%s)' \
+              "$MARKER" "$CAPTION" "$GIF_URL")
+            BODY="$BODY"$(printf '\n\n<sub>Autoplaying silent GIF — the MP4 encode was unavailable this run.</sub>')
           fi
           BODY="$BODY"$(printf '\n\n<sub>Recorded from `%s` at `%s`. Updated automatically on each push.</sub>' \
             "$REPLAY" "$SHA")
@@ -303,7 +325,7 @@ jobs:
         # The author marked this change as not demonstrable by a recorded battle
         # ("skip": true in demos/demo.json). Rather than post an unrelated generic
         # clip — the #75 anti-pattern — upsert the same demo comment slot with a
-        # short note explaining why there's no GIF, so reviewers get an honest,
+        # short note explaining why there's no clip, so reviewers get an honest,
         # relevant signal instead of a misleading one.
         if: steps.demo.outputs.skip == 'true'
         env:

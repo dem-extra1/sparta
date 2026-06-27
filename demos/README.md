@@ -4,9 +4,12 @@ When a PR makes a **user-visible change** (anything affecting how the game looks
 or plays), a short clip is posted so reviewers can *see* the change, not just read
 the diff.
 [`.github/workflows/demo-video.yml`](../.github/workflows/demo-video.yml) plays a
-replay back headlessly (Godot Movie Maker → ffmpeg) and posts it as an inline,
-autoplaying GIF in the PR conversation — plus a link to an **MP4 with sound**
-(the GIF is silent; see [Sound](#sound) below).
+replay back headlessly (Godot Movie Maker → ffmpeg) and posts it in the PR
+conversation as a static **poster still that links to an MP4 with sound**: the
+inline image doesn't autoplay or loop, and clicking it opens GitHub's pausable,
+scrubbable player (see [Poster, click-to-play, and sound](#poster-click-to-play-and-sound)
+below). If the MP4 can't be encoded, it
+falls back to an inline, autoplaying (silent) GIF so motion is never lost.
 
 CI can't infer what a diff changed, so to make the clip *demonstrate your change*
 you **declare what to show**: commit a small **manifest** (`demos/demo.json`)
@@ -32,11 +35,11 @@ Add a `demos/demo.json` on your PR branch:
 | Field | Required | Meaning |
 | --- | --- | --- |
 | `replay` | yes | Repo-relative path to a replay JSON to play back — **no `res://` prefix** (the workflow adds it). See below. |
-| `caption` | recommended | Explains the change; shown above the GIF. |
+| `caption` | recommended | Explains the change; shown above the clip. |
 | `fixed_fps` | no (30) | Sim/record framerate Movie Maker runs at. |
 | `max_frames` | no (300) | Recording length in frames (`300 / fixed_fps` ≈ seconds). |
-| `fps` | no (12) | Output GIF framerate. |
-| `width` | no (640) | Output GIF width in px (height auto). |
+| `fps` | no (12) | Fallback-GIF output framerate (used only when the MP4 encode fails). |
+| `width` | no (640) | Output width in px (poster, MP4, and fallback GIF; height auto). |
 | `skip` | no (false) | Set `true` when the change **can't** be shown by a recorded battle (a paused-overlay interaction, an editor-only tool, a non-visual refactor). CI then records nothing and posts a short note instead of an unrelated clip. See [No clip applies](#no-clip-applies). |
 | `reason` | no | Used only with `skip` — the explanation shown in the note (falls back to `caption`). |
 
@@ -222,33 +225,36 @@ and you add them yourself. For a static UI a battle can't film, combine them —
 the clip out with `"skip": true` (see [No clip applies](#no-clip-applies)) and post a
 still in the description instead.
 
-## Where the GIF lives
+## Where the media lives
 
-The GIF (and the MP4 — see [Sound](#sound)) is pushed to a long-lived
-**`demo-media`** branch and embedded/linked by raw URL. This deliberately avoids
-committing to your PR's own branch: it never disturbs the PR's required status
-checks, and the clip keeps working after the PR branch is deleted on merge. The
-comment is updated in place on each push (no spam), and the filename carries the
-commit SHA so GitHub never shows a stale cached frame.
+The poster, MP4, and (fallback) GIF are pushed to a long-lived **`demo-media`**
+branch and embedded/linked by raw URL. This deliberately avoids committing to your
+PR's own branch: it never disturbs the PR's required status checks, and the clip
+keeps working after the PR branch is deleted on merge. The comment is updated in
+place on each push (no spam), and the filename carries the commit SHA so GitHub
+never shows a stale cached frame.
 
-## Sound
+## Poster, click-to-play, and sound
 
-The inline preview is a GIF, and **GIF can't carry audio** — so the clip you see
-autoplaying in the comment is silent. The workflow also encodes an **MP4 with
-sound** (Godot's Movie Maker captures the game's audio into the recording; the GIF
-step just drops it) and links it under the GIF as *"watch with sound"*. Click it to
-play the clip with audio. SFX are off by default in-game, so the recorder turns
-them on for the recording (see [`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd))
-— that's how the MP4 ends up with the battle's sound.
+The inline media is a static **poster** (the first recorded frame): a still that
+doesn't autoplay or loop, wrapped in a link to the MP4. Clicking it opens the MP4
+on its GitHub *blob* page, which renders a **pausable, scrubbable** `<video>`
+player — **with sound**. Godot's Movie Maker captures the game's audio into the
+recording, so the MP4 carries the battle's sound. SFX are off by default in-game,
+so the recorder turns them on for the recording (see
+[`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd)); the MP4 is silent
+only if no sound events happen to fire during the recorded battle.
 
-Why a link and not an inline player: GitHub renders an inline, playable `<video>`
-**only** for files uploaded through its browser-only attachment CDN
-(`user-attachments` / `user-images.githubusercontent.com`), which needs a logged-in
-session and is unreachable from CI. A `<video>` tag or bare link pointing at our
-`demo-media` raw URL renders as a dead/greyed player or a download, not an
-autoplaying clip — so a click-to-play link is the honest best CI can post. The
-recorder force-enables SFX, so the MP4 is silent only if no sound events happen to
-fire during the recorded battle.
+Why a poster-that-links and not an inline player: GitHub renders an inline,
+autoplaying `<video>` **only** for files uploaded through its browser-only
+attachment CDN (`user-attachments` / `user-images.githubusercontent.com`), which
+needs a logged-in session and is unreachable from CI. A raw `<video>` tag or bare
+link pointing at our `demo-media` raw URL renders as a dead/greyed player or a
+download. Linking the poster to the MP4's blob page is the CI-reachable equivalent
+of a click-to-play player.
+
+If the MP4 can't be encoded (a rare ffmpeg failure), the workflow falls back to an
+inline, autoplaying **silent GIF** so the comment still shows motion.
 
 ## Trying the launcher locally
 
@@ -258,11 +264,13 @@ SPARTA_DEMO_REPLAY="res://demos/showcase.json" \
   xvfb-run -a godot --rendering-driver opengl3 \
   --write-movie /tmp/demo.avi --fixed-fps 30 --quit-after 300 \
   res://tools/demo/DemoRunner.tscn
-# Silent GIF (inline preview):
-ffmpeg -i /tmp/demo.avi -vf "fps=12,scale=640:-1:flags=lanczos" /tmp/demo.gif
-# MP4 with sound (the AVI already holds the audio track):
+# MP4 with sound (the AVI already holds the audio track) — the primary clip:
 ffmpeg -i /tmp/demo.avi -vf "scale=640:-2:flags=lanczos" \
   -c:v libx264 -pix_fmt yuv420p -profile:v high -movflags +faststart -c:a aac -b:a 128k /tmp/demo.mp4
+# Poster still (first frame) — the inline image that links to the MP4:
+ffmpeg -i /tmp/demo.avi -frames:v 1 -vf "scale=640:-2:flags=lanczos" /tmp/demo-poster.png
+# Fallback silent GIF (only used when the MP4 encode fails):
+ffmpeg -i /tmp/demo.avi -vf "fps=12,scale=640:-1:flags=lanczos" /tmp/demo.gif
 ```
 
 [`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd) is the headless entry
