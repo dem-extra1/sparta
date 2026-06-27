@@ -113,6 +113,21 @@ contest, the damage, **and** the knockback below — closing fast makes you hard
 evade, hit harder, and shove further, all at once (and, per the posture table,
 leaves the sprinter's own defence and bracing near zero while it does).
 
+**Closing speed belongs to the *pair*, not the attacker — it is symmetric and
+cumulative.** The geometry flips both the axis and the velocity difference, so the
+defender sees the *same* $c$ when it strikes back:
+
+$$\big((\vec{v}_D - \vec{v}_A)\cdot \hat{u}_{D\to A}\big)_+
+= \big((\vec{v}_A - \vec{v}_D)\cdot \hat{u}_{A\to D}\big)_+ = v_c.$$
+
+So **every blow traded during the closing carries $c$, in either direction**, and
+head-on approach speeds **add**. A charge recipient who also strikes — or merely
+holds a spear into the rush — lands its own blow with the full closing $c$: the
+charger impales itself on the presented point (its own momentum turned against it).
+And two bodies closing head-on sum their speeds into one large shared $c$, so a
+**mutual charge — cavalry into cavalry — is the deadliest exchange in the game**:
+both sides strike, wound, and knock back at maximal force on the same tick.
+
 ### 1. The land contest (opposed roll, facing-gated)
 
 The blow does not roll against a fixed number — it is an **opposed roll** of the
@@ -293,6 +308,12 @@ opposed rolls, the prone threshold, and the bracing chain acting together.
   deep, set phalanx breaks a charge a shallow one can't. The cost is that depth and
   tightness trade against frontage and mobility, and the support evaporates the
   moment the file loosens, opens a gap, or is hit from a side it isn't facing.
+- **Closing speed cuts both ways.** The charge bonus belongs to the pair, so
+  meeting a charge with a presented spear (or a counter-charge) turns the enemy's
+  own momentum against it — the charger runs onto the point at full $c$. A **mutual
+  cavalry charge** is therefore mutually annihilating (both sides hit at combined
+  speed); prefer to receive a charge on **set spears**, which strike first at the
+  same shared $c$, over meeting it horse-to-horse.
 - **Shields and armour** turn would-be wounds into blocked shoves (shield, from the
   front) or glancing hits (armour, from any angle), so a heavy, shielded line
   grinds slowly and survives; light troops caught in the press evaporate.

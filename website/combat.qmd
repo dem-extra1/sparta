@@ -43,6 +43,11 @@ speed, a contest, a wound, a stamina cost, and a shove.
 **0. How fast are they closing?** The attacker's speed *toward* the target --- call
 it the **charge** $c$ --- is zero standing still and large for a galloping horse. It
 makes the blow harder to dodge, harder-hitting, and harder-shoving, all at once.
+Closing speed belongs to **both** fighters: it counts for *whoever strikes during
+the rush*, in either direction, and head-on speeds **add**. So a spearman who holds
+his point into a charge spits the rider on its own momentum, and two horsemen
+charging each other trade blows at *combined* speed --- cavalry into cavalry is the
+deadliest clash there is.
 
 **1. Does it land? (attack vs. defence)** The blow is an *opposed* roll: the
 attacker's offence against the defender's **active defence** --- footwork, parry,
