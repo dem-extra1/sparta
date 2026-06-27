@@ -88,13 +88,13 @@ opening strikes of a clash while a shorter-weapon enemy is still closing the gap
   in the press.
 
 So a spear line meeting a sword line head-on gets free hits during the approach ---
-another reason to lead with spearmen and let the shorter weapons pin and flank. And
-now that combat resolves **per soldier**, the edge holds in the press, not just on
-the approach: a spearman strikes any enemy within its longer reach, while a swordsman
-beyond its own (shorter) reach **cannot strike back**. A spear line that keeps its
-spacing holds swordsmen at bay and bleeds them for free --- the sustained spear-vs-
-sword standoff. Close that gap (flank in, or pin the spears) and the swords get to
-do their work.
+another reason to lead with spearmen and let the shorter weapons pin and flank. Combat
+now resolves **per soldier** by weapon reach: a spearman strikes any enemy within its
+longer reach, while a swordsman beyond its own (shorter) reach cannot strike back. The
+*sustained* standoff --- a spear line physically holding swordsmen out at weapon length
+--- emerges once a hit knocks the enemy back out of range (the knockback step of the
+combat model); until then, once lines lock together both reach. So the spear's edge is
+real on the approach today, and grows into a standing wall as the model fills in.
 
 ## Movement speed
 
