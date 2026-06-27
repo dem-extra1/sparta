@@ -464,7 +464,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#install-godot-4.6-standard-build" id="toc-install-godot-4.6-standard-build" class="nav-link active" data-scroll-target="#install-godot-4.6-standard-build">1. Install Godot 4.6 (Standard build)</a></li>
+  <li><a href="#just-want-to-play-download-a-build" id="toc-just-want-to-play-download-a-build" class="nav-link active" data-scroll-target="#just-want-to-play-download-a-build">Just want to play? Download a build</a></li>
+  <li><a href="#install-godot-4.6-standard-build" id="toc-install-godot-4.6-standard-build" class="nav-link" data-scroll-target="#install-godot-4.6-standard-build">1. Install Godot 4.6 (Standard build)</a></li>
   <li><a href="#import-the-project" id="toc-import-the-project" class="nav-link" data-scroll-target="#import-the-project">2. Import the project</a></li>
   <li><a href="#play" id="toc-play" class="nav-link" data-scroll-target="#play">3. Play</a></li>
   <li><a href="#running-headlessly-optional" id="toc-running-headlessly-optional" class="nav-link" data-scroll-target="#running-headlessly-optional">Running headlessly (optional)</a>
@@ -510,6 +511,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Sparta is a <strong>Godot 4.6</strong> project. It needs no environment variables, no build step, and — crucially — <strong>no downloaded art</strong>: units draw themselves as colored placeholder tokens, so the battle is playable the moment you press play.</p>
+<section id="just-want-to-play-download-a-build" class="level2">
+<h2 class="anchored" data-anchor-id="just-want-to-play-download-a-build">Just want to play? Download a build</h2>
+<p>Pre-built binaries for <strong>Windows, macOS, and Linux</strong> are attached to each <a href="https://github.com/Lacaedemon/sparta/releases">GitHub Release</a>. Grab the zip for your platform, unzip it, and run — no Godot install needed.</p>
+<p>The builds are <strong>unsigned</strong>, so the first launch needs one extra step:</p>
+<ul>
+<li><strong>macOS</strong> (universal — Apple Silicon and Intel): right-click <code>Sparta.app</code> → <strong>Open</strong>, then confirm. (Or clear the quarantine flag: <code>xattr -dr com.apple.quarantine Sparta.app</code>.)</li>
+<li><strong>Windows</strong>: if SmartScreen warns, choose <strong>More info → Run anyway</strong>.</li>
+<li><strong>Linux</strong>: mark it executable if needed (<code>chmod +x sparta.x86_64</code>) and run it.</li>
+</ul>
+<p>To build from source or work on the game instead, follow the developer setup below.</p>
+</section>
 <section id="install-godot-4.6-standard-build" class="level2">
 <h2 class="anchored" data-anchor-id="install-godot-4.6-standard-build">1. Install Godot 4.6 (Standard build)</h2>
 <p>Download <strong>Godot 4.6.x — Standard build</strong> (GDScript, <em>not</em> the .NET/C# build) from the <a href="https://godotengine.org/download/">official downloads page</a>.</p>

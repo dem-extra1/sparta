@@ -426,6 +426,18 @@
     ]
   },
   {
+    "objectID": "getting-started.html#just-want-to-play-download-a-build",
+    "href": "getting-started.html#just-want-to-play-download-a-build",
+    "title": "Getting Started",
+    "section": "Just want to play? Download a build",
+    "text": "Just want to play? Download a build\nPre-built binaries for Windows, macOS, and Linux are attached to each GitHub Release. Grab the zip for your platform, unzip it, and run — no Godot install needed.\nThe builds are unsigned, so the first launch needs one extra step:\n\nmacOS (universal — Apple Silicon and Intel): right-click Sparta.app → Open, then confirm. (Or clear the quarantine flag: xattr -dr com.apple.quarantine Sparta.app.)\nWindows: if SmartScreen warns, choose More info → Run anyway.\nLinux: mark it executable if needed (chmod +x sparta.x86_64) and run it.\n\nTo build from source or work on the game instead, follow the developer setup below.",
+    "crumbs": [
+      "Home",
+      "Play",
+      "Getting Started"
+    ]
+  },
+  {
     "objectID": "getting-started.html#install-godot-4.6-standard-build",
     "href": "getting-started.html#install-godot-4.6-standard-build",
     "title": "Getting Started",
