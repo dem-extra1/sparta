@@ -1972,9 +1972,9 @@ func _archer_unit() -> Unit:
 
 func test_foot_kind_matches_unit_type() -> void:
 	# Each foot type maps to the figure variant whose held item matches its mark shape.
-	assert_eq(_make_unit(4)._foot_kind(), Unit.FOOT_INFANTRY, "plain unit -> infantry (shield)")
-	assert_eq(_spearman_unit()._foot_kind(), Unit.FOOT_SPEAR, "anti-cavalry unit -> spear")
-	assert_eq(_archer_unit()._foot_kind(), Unit.FOOT_ARCHER, "ranged unit -> archer (bow)")
+	assert_eq(_make_unit(4)._foot_kind(), UnitMeshes.FOOT_INFANTRY, "plain unit -> infantry (shield)")
+	assert_eq(_spearman_unit()._foot_kind(), UnitMeshes.FOOT_SPEAR, "anti-cavalry unit -> spear")
+	assert_eq(_archer_unit()._foot_kind(), UnitMeshes.FOOT_ARCHER, "ranged unit -> archer (bow)")
 
 
 func test_foot_types_build_distinct_figure_meshes() -> void:
