@@ -78,20 +78,18 @@ the played-back camera and counting velocity sign-changes and per-tick jerk, not
 eyeballing one frame. The committed `demos/camera-showcase.json` is baked keyframes
 (no centroid logic); author the recorder as a throwaway off-screen scene.
 
-## Demo media in PRs — poster still linked to the MP4 *blob* URL
+## Demo media in PRs — inline play-once GIF + link to the MP4
 
-The demo workflow posts the PR clip as a **static poster frame linked to the MP4**,
-not an autoplaying GIF (#236 / #237). The link target matters: GitHub serves a
-committed `.mp4` differently by URL form —
+The demo workflow posts the PR clip as an **inline GIF that plays once** (ffmpeg
+`-loop -1`, freezes on the final frame) plus a **link to the MP4 with sound**
+(#236). The MP4 rides the `demo-media` branch and is linked, not embedded.
 
-- **`/blob/<branch>/x.mp4`** renders GitHub's React media viewer — a pausable,
-  scrubbable `<video>` player (with sound). This is the click target.
-- **`/raw/<branch>/x.mp4`** serves `Content-Type: application/octet-stream` with
-  `nosniff`, so the browser **downloads** it instead of playing — a dead click
-  target. (The raw form is still right for *embedding the poster image*, which is a
-  PNG.)
-
-An inline `<video>` player only renders for files on GitHub's browser-only
-attachment CDN, which CI can't reach — so poster-image-links-to-blob is the
-CI-automatable click-to-play. A silent autoplaying GIF remains the fallback when the
-MP4 encode fails. Full contract lives in `demos/README.md`.
+**Why a GIF and not a poster→MP4 player (the road not taken):** a committed `.mp4`
+does render a pausable/scrubbable player at its `/blob/<branch>/x.mp4` page (the
+`/raw/` form serves `application/octet-stream` and just downloads), so a
+poster-image-linked-to-blob *looks* like a CI-automatable click-to-play. It shipped
+briefly (#237) but **GitHub's blob-view video player doesn't work on the mobile site
+or app**, so the poster led nowhere on mobile. Reverted to the inline GIF, which
+renders everywhere including mobile. An inline `<video>` player only renders for
+files on GitHub's browser-only attachment CDN, which CI can't reach. Full contract
+lives in `demos/README.md`. See also [[reference-github-media-embedding]].
