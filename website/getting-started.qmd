@@ -7,6 +7,22 @@ Sparta is a **Godot 4.6** project. It needs no environment variables, no build
 step, and --- crucially --- **no downloaded art**: units draw themselves as colored
 placeholder tokens, so the battle is playable the moment you press play.
 
+## Just want to play? Download a build
+
+Pre-built binaries for **Windows, macOS, and Linux** are attached to each
+[GitHub Release](https://github.com/Lacaedemon/sparta/releases). Grab the zip for
+your platform, unzip it, and run --- no Godot install needed.
+
+The builds are **unsigned**, so the first launch needs one extra step:
+
+- **macOS** (universal --- Apple Silicon and Intel): right-click `Sparta.app` →
+  **Open**, then confirm. (Or clear the quarantine flag:
+  `xattr -dr com.apple.quarantine Sparta.app`.)
+- **Windows**: if SmartScreen warns, choose **More info → Run anyway**.
+- **Linux**: mark it executable if needed (`chmod +x sparta.x86_64`) and run it.
+
+To build from source or work on the game instead, follow the developer setup below.
+
 ## 1. Install Godot 4.6 (Standard build)
 
 Download **Godot 4.6.x --- Standard build** (GDScript, *not* the .NET/C# build) from

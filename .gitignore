@@ -2,8 +2,10 @@
 .godot/
 .import/
 export.cfg
-export_presets.cfg
 *.translation
+
+# Release build artifacts (produced by the export workflow / local exports)
+/build/
 
 # Mono / .NET (unused now, here for later)
 .mono/
