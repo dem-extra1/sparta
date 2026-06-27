@@ -1,8 +1,4 @@
 {
-  "replay": "demos/scenarios/soldier-collision.json",
-  "caption": "Individual-soldier collision, phase 3 (render-as-reality). The soldiers you see are now driven by the simulated bodies: each mark follows its `_sim_soldier_pos`, so the front-rank soldiers reflect the per-soldier, cross-regiment separation as two infantry lines clash head-on — they hold soldier-spacing across the contact instead of mushing through each other. All the flock polish (formation, combat lunge, rank-cycling, relief corridor, colour) is preserved on top. It stays non-authoritative — combat and movement still use the regiment circle, so outcomes are unchanged; only the rendered positions reflect the collision. (The effect is subtle at this stage; per-soldier combat in phase 4 is where it changes how battles play.)",
-  "fixed_fps": 60,
-  "max_frames": 700,
-  "fps": 30,
-  "width": 720
+  "skip": true,
+  "reason": "Phase 4a adds the per-soldier combat math (per-type profile, charge term, facing gate, opposed land contest, and wound) as pure, unit-tested functions, but does NOT wire them into the live melee yet -- the regiment circle still resolves casualties, so there is no on-screen change to film. The gameplay change comes in phase 4b. Covered by test/unit/test_soldier_combat.gd (28 tests)."
 }
