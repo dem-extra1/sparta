@@ -20,4 +20,9 @@ exclude = [
   # pixabay blocks automated requests with HTTP 403 (the page works in a
   # browser) — a false positive for the link checker, so skip it.
   "^https://pixabay\\.com",
+  # divideetimperamod.com (linked from docs/related-games.md) is intermittently
+  # very slow and times out, reddening the check on PRs that don't touch that file
+  # (even after re-runs). The site is reachable in a browser, so skip it rather
+  # than re-cost a CI re-run each time.
+  "^https://divideetimperamod\\.com",
 ]
