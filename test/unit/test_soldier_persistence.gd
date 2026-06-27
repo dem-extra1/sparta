@@ -1,11 +1,13 @@
 extends GutTest
 ## Phase 4 (see docs/individual-collision-design.md): persistent soldier-body
-## dynamics. The engaged front-rank bodies no longer re-seed onto their formation
-## slots every tick — they spring toward the slot and integrate their own velocity,
-## so a body shoved by the separation pass HOLDS the displacement and eases back.
-## The unengaged bulk still snaps to its slots. These pin: first-step seeding,
-## the engaged spring (holds then recovers), the unengaged snap, casualty trimming,
-## and determinism. Still non-authoritative — combat/movement/morale are unchanged.
+## dynamics. No body teleports — every body springs toward its formation slot and
+## integrates its own velocity, so a body shoved by the separation pass HOLDS the
+## displacement and eases back. The unengaged bulk additionally feeds the unit's
+## march velocity forward, so it tracks its moving slots with no lag instead of
+## snapping. These pin: first-step seeding, the engaged spring (holds then recovers),
+## the unengaged no-teleport easing, the marching feed-forward tracking, casualty
+## trimming, and determinism. Still non-authoritative — combat/movement/morale are
+## unchanged.
 
 const DT: float = 1.0 / 60.0
 
@@ -73,17 +75,56 @@ func test_engaged_body_eases_onto_its_slot_over_time() -> void:
 		"the near-critically-damped spring settles the body onto its slot")
 
 
-# --- the unengaged bulk still snaps -------------------------------------------
+# --- the unengaged bulk eases, never teleports --------------------------------
 
-func test_unengaged_body_snaps_to_its_slot() -> void:
+func test_unengaged_body_eases_to_slot_without_teleporting() -> void:
+	# An idle (unengaged) regiment carries no march velocity, so its bodies spring onto
+	# their slots exactly like the engaged front rank: a shoved body recovers gradually
+	# rather than snapping back in one step.
 	var u := _idle_unit(4, 24)
 	u.step_sim_soldiers(DT)
 	var slot0: Vector2 = u.soldier_world_slots(u.soldiers)[0]
 	u._sim_soldier_pos[0] = slot0 + Vector2(15.0, 0.0)
+	var d_start: float = u._sim_soldier_pos[0].distance_to(slot0)
+
 	u.step_sim_soldiers(DT)
-	assert_almost_eq(u._sim_soldier_pos[0].distance_to(slot0), 0.0, 1e-3,
-		"an unengaged body re-seeds onto its slot (no persistence)")
-	assert_almost_eq(u._sim_body_vel[0].length(), 0.0, 1e-3, "and at rest")
+	var d_after: float = u._sim_soldier_pos[0].distance_to(slot0)
+	assert_lt(d_after, d_start, "the body moves back toward its slot")
+	assert_gt(d_after, 0.0, "but holds the displacement — it does not teleport to the slot")
+	assert_gt(u._sim_body_vel[0].length(), 0.0, "the shove leaves it with a recovery velocity")
+
+
+func test_unengaged_body_settles_onto_its_slot_over_time() -> void:
+	var u := _idle_unit(11, 24)
+	u.step_sim_soldiers(DT)
+	var slot0: Vector2 = u.soldier_world_slots(u.soldiers)[0]
+	u._sim_soldier_pos[0] = slot0 + Vector2(15.0, 0.0)
+	for _i in range(180):            # ~3 seconds of the fixed tick
+		u.step_sim_soldiers(DT)
+	assert_almost_eq(u._sim_soldier_pos[0].distance_to(slot0), 0.0, 0.5,
+		"a still bulk body settles onto its slot")
+
+
+# --- the marching bulk tracks its moving slots via feed-forward ---------------
+
+func test_marching_bulk_tracks_its_moving_slot() -> void:
+	# A marching (unengaged) regiment translates its formation slots at its march
+	# velocity each tick. Feeding that velocity forward keeps a body locked onto its
+	# moving slot — a plain spring with no feed-forward would lag a fixed distance
+	# behind. The body starts on its slot; after the regiment marches for a while it is
+	# still within a mark's width of its slot, and it never jumped there.
+	var u := _idle_unit(12, 24)
+	u.step_sim_soldiers(DT)            # seed bodies on their slots
+	var march: Vector2 = Vector2(0.0, 90.0)   # move_speed downfield
+	for _i in range(120):             # ~2 seconds of marching
+		u.position += march * DT
+		u._approach_velocity = march  # what _move_to sets while the unit advances
+		u.step_sim_soldiers(DT)
+	var slot0: Vector2 = u.soldier_world_slots(u.soldiers)[0]
+	assert_lt(u._sim_soldier_pos[0].distance_to(slot0), 2.0,
+		"the feed-forward holds the marching body on its moving slot (no lag)")
+	assert_almost_eq(u._sim_body_vel[0].y, march.y, 1.0,
+		"and its velocity has converged onto the march velocity")
 
 
 # --- casualties trim the body arrays ------------------------------------------
