@@ -696,17 +696,12 @@ const SOLDIER_ID_STRIDE: int = 1024
 var _sim_soldier_pos: PackedVector2Array = PackedVector2Array()
 
 # Persistent per-body velocity (world space), index-aligned with _sim_soldier_pos.
-# Phase 4 gives the bodies persistent dynamics: instead of re-seeding their
-# positions from the formation every tick (phase 3), each body springs toward its
-# slot and integrates this velocity, so a soldier displaced by separation HOLDS the
-# displacement and eases back rather than snapping to formation. Cohesion is then
-# emergent and bodies can be shoved and recover. Still non-authoritative.
+# Phase 4 gives the bodies persistent dynamics: instead of re-seeding their positions
+# from the formation every tick (phase 3), each engaged body springs toward its slot
+# and integrates this velocity, so a soldier displaced by separation HOLDS the
+# displacement and eases back rather than snapping to formation. The spring itself
+# lives in SoldierBodies; this is the state it advances. Still non-authoritative.
 var _sim_body_vel: PackedVector2Array = PackedVector2Array()
-
-# Arrival spring for the persistent bodies. SIM_SPRING_DAMPING is ~2*sqrt(STIFFNESS),
-# i.e. near-critical, so a body eases onto its slot without overshoot/oscillation.
-const SIM_SPRING_STIFFNESS: float = 120.0
-const SIM_SPRING_DAMPING: float = 22.0
 
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
@@ -744,51 +739,14 @@ func soldier_block_extent() -> float:
 ## pass and the flock render (phase 3), but NOT by gameplay (the regiment circle
 ## stays authoritative), so it changes no combat/movement/morale outcome.
 func seed_sim_soldiers() -> void:
-	_sim_soldier_pos = soldier_world_slots(soldiers)
-	_sim_body_vel = PackedVector2Array()
-	_sim_body_vel.resize(_sim_soldier_pos.size())   # all-zero rest velocities
+	SoldierBodies.seed(self)
 
 
-## Advance this regiment's persistent soldier bodies one fixed step. Only the
-## ENGAGED front-rank bodies persist — they spring toward their slots and integrate
-## velocity, so a body shoved by the separation pass HOLDS the displacement and
-## eases back rather than snapping to formation. The unengaged bulk snaps to its
-## slots at rest (the phase-3 behaviour): it is never separated, and a persistent
-## spring would only make the marching bulk lag its slots. Engaged regiments are
-## ~stationary in melee, so the spring has negligible marching lag where it runs.
-##
-## Resizes to the live soldier count first — a casualty trims the rear bodies; the
-## first call (empty arrays) seeds every body on its slot at rest. Deterministic and
-## order-free across soldiers (each springs independently; the separation pass does
-## the coupling), driven by the fixed physics delta, so it reproduces on replay.
-## Writes _sim_soldier_pos / _sim_body_vel; reads neither combat nor RNG.
+## Advance this regiment's persistent soldier bodies one fixed step. The dynamics
+## live in SoldierBodies.step (the engaged front ranks spring toward their slots and
+## hold displacement; the unengaged bulk snaps to formation).
 func step_sim_soldiers(delta: float) -> void:
-	var slots: PackedVector2Array = soldier_world_slots(soldiers)
-	var n: int = slots.size()
-	var old_n: int = _sim_soldier_pos.size()
-	if old_n != n:
-		# resize trims/extends at the tail (rear bodies); seed any newly-added body
-		# on its slot at rest, so it never springs in from the array default (0, 0).
-		_sim_soldier_pos.resize(n)
-		_sim_body_vel.resize(n)
-		for j in range(old_n, n):
-			_sim_soldier_pos[j] = slots[j]
-			_sim_body_vel[j] = Vector2.ZERO
-	var engaged := {}
-	for idx in engaged_soldier_indices(n):
-		engaged[idx] = true
-	for i in range(n):
-		if not engaged.has(i):
-			# Unengaged bulk: snap to the slot at rest (re-seed, phase-3 behaviour).
-			_sim_soldier_pos[i] = slots[i]
-			_sim_body_vel[i] = Vector2.ZERO
-			continue
-		# Engaged front rank: near-critically-damped arrival spring (semi-implicit
-		# Euler, fixed delta), so a separated body holds its push and eases back.
-		var to_slot: Vector2 = slots[i] - _sim_soldier_pos[i]
-		var accel: Vector2 = to_slot * SIM_SPRING_STIFFNESS - _sim_body_vel[i] * SIM_SPRING_DAMPING
-		_sim_body_vel[i] += accel * delta
-		_sim_soldier_pos[i] += _sim_body_vel[i] * delta
+	SoldierBodies.step(self, delta)
 
 
 # --- Individual-soldier simulation, phase 2: engaged tier + separation -----
@@ -979,95 +937,15 @@ static func separate_engaged_global(units: Array, frame: int) -> void:
 		owner._sim_soldier_pos[sslots[k]] = spos[k] + disp[k]
 
 
-# --- Individual-soldier combat, phase 4a: the probabilistic per-soldier model ---
-# The math from docs/combat-model.md, as pure, deterministic, unit-testable
-# functions. Phase 4a adds the per-type combat profile and the core per-strike
-# rolls (the closing term, the opposed land contest, and the wound); it is NOT yet
-# wired into the live melee loop — the regiment circle still resolves casualties —
-# exactly as phase 1 added the soldier-body state before later phases made it
-# authoritative. Every function here maps to an equation in the design note, so
-# the two can be checked against each other. The condition factors q(h), g(sigma)
-# fold in once the per-soldier health/stamina pools land (phase 4b); here they
-# default to 1.
-
-# Land contest (opposed roll): p_land = clip(L(beta*(A - D)), p_min, p_max), where
-#   A = s_A * cond_A + mu * c                  (attacker offence + charge-to-hit)
-#   D = phi_D * (s_D + lambda * b_D) * cond_D   (defender active defence, facing-gated)
-# and L is the logistic. See docs/combat-model.md "The land contest".
-const COMBAT_HIT_SHARPNESS: float = 3.0          # beta: how sharply the skill gap swings the odds
-const COMBAT_CHARGE_HIT_WEIGHT: float = 0.5      # mu: closing speed's weight in the attack
-const COMBAT_SHIELD_DEFENSE_WEIGHT: float = 0.6  # lambda: shield's weight in active defence
-const COMBAT_LAND_MIN: float = 0.05              # p_min: a blow is never impossible
-const COMBAT_LAND_MAX: float = 0.95              # p_max: a blow is never automatic
-
-# Wound: delta_h = D0 * lethality_A * (1 + c) * (1 - armour_D) * cond_A. D0 is the
-# base damage scale — the wound a baseline weapon (lethality = 1) deals to an
-# unarmoured, standing target. See docs/combat-model.md "Wound".
-const COMBAT_DAMAGE_SCALE: float = 34.0
-
-
-## Per-type combat profile (docs/combat-model.md "Soldier attributes"): skill is
-## the unit's training; armour, shield, lethality, and the health/stamina pools are
-## per type. Pure and static so it is testable without a live node — the instance
-## wrapper `combat_profile()` reads this unit's own type flags and training.
-static func combat_profile_for(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: bool, p_training: float) -> Dictionary:
-	var skill: float = clampf(p_training, 0.0, 1.0)
-	if p_is_cavalry:
-		return {"skill": skill, "armour": 0.40, "shield": 0.25, "lethality": 1.10, "max_health": 140.0, "max_stamina": 120.0}
-	if p_anti_cavalry:
-		return {"skill": skill, "armour": 0.35, "shield": 0.65, "lethality": 0.85, "max_health": 100.0, "max_stamina": 100.0}
-	if p_is_ranged:
-		return {"skill": skill, "armour": 0.10, "shield": 0.05, "lethality": 0.50, "max_health": 80.0, "max_stamina": 90.0}
-	return {"skill": skill, "armour": 0.45, "shield": 0.60, "lethality": 1.00, "max_health": 110.0, "max_stamina": 100.0}
-
+# --- Individual-soldier combat profile -------------------------------------
+# The per-soldier combat MATH lives in SoldierCombat.gd (the opposed land contest,
+# the wound, the charge term, the facing gate, the per-type profile). Unit just
+# exposes its own profile, reading its type flags and training.
 
 ## This regiment's per-soldier combat profile, from its own type flags and training.
+## See SoldierCombat.profile_for / docs/combat-model.md "Soldier attributes".
 func combat_profile() -> Dictionary:
-	return combat_profile_for(is_cavalry, anti_cavalry, is_ranged, training)
-
-
-## The charge factor c from a closing speed (world units/sec) along the strike axis:
-## the relative velocity aimed at the target, clamped non-negative and normalised by
-## the reference gallop. The caller passes the signed closing speed; c is symmetric
-## in the pair by construction (both combatants see the same closing speed). See
-## docs/combat-model.md "Closing velocity (the charge term)".
-static func combat_charge_factor(closing_speed: float) -> float:
-	return maxf(0.0, closing_speed) / CHARGE_REFERENCE_SPEED
-
-
-## The facing gate phi_D in [0,1]: how well the defender can bring active defence
-## (parry, shield, deflect) to bear against a blow. `defender_facing` is the
-## direction the defender faces; `attack_from_dir` points from the defender toward
-## the attacker. A frontal blow gives phi ~ 1, a flank blow a small phi, a blow to
-## the back phi = 0 (only armour answers it). A degenerate (zero-length) facing or
-## direction returns 1 — an undefined facing is treated as fully met, never a free
-## back-strike. See docs/combat-model.md "The land contest".
-static func combat_facing_gate(defender_facing: Vector2, attack_from_dir: Vector2) -> float:
-	if defender_facing.length_squared() < 1e-6 or attack_from_dir.length_squared() < 1e-6:
-		return 1.0
-	return maxf(0.0, defender_facing.normalized().dot(attack_from_dir.normalized()))
-
-
-## The land-contest probability that an attacker's strike lands on a defender: the
-## opposed roll of offence (skill + charge) against facing-gated active defence
-## (skill + shield), squashed through the logistic and clipped to [p_min, p_max].
-## `cond_a`/`cond_d` are the attacker's/defender's condition factors q*g (health x
-## stamina), defaulting to 1 until phase 4b. See docs/combat-model.md "The land contest".
-static func combat_land_chance(skill_a: float, skill_d: float, shield_d: float, phi_d: float, c: float, cond_a: float = 1.0, cond_d: float = 1.0) -> float:
-	var offence: float = skill_a * cond_a + COMBAT_CHARGE_HIT_WEIGHT * maxf(0.0, c)
-	var defence: float = phi_d * (skill_d + COMBAT_SHIELD_DEFENSE_WEIGHT * shield_d) * cond_d
-	var x: float = COMBAT_HIT_SHARPNESS * (offence - defence)
-	var p: float = 1.0 / (1.0 + exp(-x))
-	return clampf(p, COMBAT_LAND_MIN, COMBAT_LAND_MAX)
-
-
-## The wound (health removed) from a landed blow: the weapon's lethality, amplified
-## by closing momentum (1 + c), blunted by the defender's armour, and scaled by the
-## attacker's condition. Always >= 0. See docs/combat-model.md "Wound".
-static func combat_wound(lethality_a: float, c: float, armour_d: float, cond_a: float = 1.0) -> float:
-	var armour: float = clampf(armour_d, 0.0, 1.0)
-	var cond: float = clampf(cond_a, 0.0, 1.0)
-	return COMBAT_DAMAGE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) * (1.0 - armour) * cond
+	return SoldierCombat.profile_for(is_cavalry, anti_cavalry, is_ranged, training)
 
 
 # --- Order summary (for the HUD / selection overlay) -----------------------
