@@ -1,0 +1,111 @@
+# Builds distributable game binaries for Windows, Linux, and macOS and attaches
+# them to a GitHub Release. Triggered by pushing a version tag (e.g. v0.1.0);
+# a manual run (workflow_dispatch) builds the same artifacts and uploads them as
+# workflow artifacts for testing, without touching a release.
+#
+# Godot cross-exports every platform from the Linux runner using the matching
+# export templates (downloaded below). Builds are UNSIGNED — on macOS the app is
+# a universal (x86_64 + arm64) .app, so first-launch needs a right-click → Open
+# (or `xattr -dr com.apple.quarantine`) to get past Gatekeeper; on Windows
+# SmartScreen may warn. Code-signing / notarization and an installer are tracked
+# as follow-ups (they need signing certificates, which live outside CI).
+name: Release builds
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# Needs write access to publish release assets.
+permissions:
+  contents: write
+
+env:
+  # Keep in sync with godot-ci.yml / config/features in project.godot. The export
+  # templates downloaded below must match this exact version.
+  GODOT_VERSION: 4.6.0
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }}
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false   # Standard build, not the .NET/C# build
+
+      - name: Install export templates
+        # setup-godot installs the editor but not the export templates; fetch the
+        # matching .tpz and drop the platform templates where Godot looks for them.
+        run: |
+          set -euo pipefail
+          TPZ="Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          curl -fsSL -o "$TPZ" \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/${TPZ}"
+          DEST="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$DEST"
+          unzip -q "$TPZ" -d tpl
+          mv tpl/templates/* "$DEST/"
+          rm -rf tpl "$TPZ"
+
+      - name: Import project
+        # Loads autoloads, class_name globals and resources so the export below
+        # resolves everything. A script/resource error here would ship a broken
+        # build, so fail loudly (same guard as godot-ci.yml).
+        run: |
+          set -o pipefail
+          godot --headless --import --verbose 2>&1 | tee import.log
+          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
+            echo "::error::Godot reported script/resource errors during import"
+            exit 1
+          fi
+
+      - name: Export per platform
+        run: |
+          set -euo pipefail
+          mkdir -p build/windows build/linux build/macos
+          godot --headless --export-release "Windows Desktop" build/windows/sparta.exe
+          godot --headless --export-release "Linux"           build/linux/sparta.x86_64
+          godot --headless --export-release "macOS"           build/macos/sparta.zip
+          # Every export must have produced a non-empty binary.
+          for f in build/windows/sparta.exe build/linux/sparta.x86_64 build/macos/sparta.zip; do
+            [ -s "$f" ] || { echo "::error::export produced no output: $f"; exit 1; }
+          done
+          ls -la build/windows build/linux build/macos
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          V="${GITHUB_REF_NAME}"
+          cd build
+          chmod +x linux/sparta.x86_64
+          zip -j "sparta-${V}-windows-x86_64.zip" windows/sparta.exe
+          zip -j "sparta-${V}-linux-x86_64.zip"   linux/sparta.x86_64
+          # macOS export is already a zipped .app bundle — just give it the release name.
+          cp macos/sparta.zip "sparta-${V}-macos-universal.zip"
+          ls -la sparta-*.zip
+
+      - name: Upload workflow artifacts
+        # Always available (incl. manual runs) so a build can be downloaded and
+        # tested without cutting a release.
+        uses: actions/upload-artifact@v4
+        with:
+          name: sparta-builds
+          path: build/sparta-*.zip
+
+      - name: Publish to the GitHub Release
+        # Only on a version tag: create the release (with auto-generated notes) and
+        # attach the builds, or upload to an existing release of that tag.
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          V="${GITHUB_REF_NAME}"
+          gh release create "$V" --title "Sparta $V" --generate-notes build/sparta-*.zip \
+            || gh release upload "$V" build/sparta-*.zip --clobber
