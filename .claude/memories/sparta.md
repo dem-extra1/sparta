@@ -93,3 +93,35 @@ or app**, so the poster led nowhere on mobile. Reverted to the inline GIF, which
 renders everywhere including mobile. An inline `<video>` player only renders for
 files on GitHub's browser-only attachment CDN, which CI can't reach. Full contract
 lives in `demos/README.md`. See also [[reference-github-media-embedding]].
+
+## Authoring & verifying demo scenarios (hard-won gotchas)
+
+When hand-authoring a `demos/scenarios/*.json` replay (a `seed` + `orders` +
+optional `camera` track) and verifying it locally:
+
+- **The replay loader requires `version: 1` and `physics_tps: 60`.** Without both,
+  `Replay.start_playback` returns false *silently* and `DemoRunner` falls back to a
+  fresh random battle — so the clip records the wrong thing (units at spawn, no
+  orders, default camera) with no error. Always include them (see `showcase.json`).
+- **A HOLD order does NOT keep an enemy unit stationary.** The enemy AI
+  (`Battle._run_enemy_ai`) sets `target_enemy` directly every `AI_PERIOD`, and
+  `Unit._think`'s chase branch (`elif target_enemy != null`) fires regardless of
+  `order_mode == HOLD` (HOLD only suppresses chasing a *detected* foe, not an
+  explicitly-set target). So you can't stage a "held line" the player charges into;
+  units meet in the middle. Design demos around the natural clash instead.
+- **Camera playback steps between keyframes, then EMA-smooths** (`Battle.CAMERA_SMOOTHING`).
+  For a smooth pan/zoom, emit *dense* eased keyframes (e.g. every ~3 ticks with a
+  smoothstep), not sparse ones.
+- **Record locally on macOS** with `GODOT_BIN` (`/Applications/Godot.app/Contents/MacOS/Godot`):
+  `SPARTA_DEMO_REPLAY="res://demos/scenarios/X.json" $GODOT_BIN --rendering-driver opengl3
+  --write-movie /tmp/d.avi --fixed-fps 60 --quit-after N res://tools/demo/DemoRunner.tscn`.
+  Movie Maker works headless (no Xvfb needed on macOS).
+- **Extract frames without ffmpeg:** the AVI is MJPEG in `00db` chunks. Walk the
+  `movi` LIST sequentially (tag `00db` = JPEG frame, `01wb` = audio), reading each
+  chunk's little-endian size; decode the JPEGs with PIL. A naive `FFD8..FFD9` scan
+  over-counts (internal markers), so parse the chunks. Frame index == physics tick
+  at `--fixed-fps 60`. This lets you verify a demo frame-by-frame before pushing.
+
+Verify timing on paper first (unit speeds in `demos/README.md`), then confirm by
+recording + extracting a few frames — don't trust a CI run to catch a mistimed
+scenario.
