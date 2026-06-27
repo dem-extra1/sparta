@@ -5,9 +5,10 @@ extends GutTest
 ## deterministic (replay-safe) seeding, containment within the regiment block,
 ## and correct facing — before later phases make the layer authoritative.
 ##
-## The layer is gated off (Unit.INDIVIDUAL_COLLISION == false), so it changes no
-## gameplay yet; these call the seeding functions directly, as the separation
-## tests call _separate() directly.
+## The layer is active (Unit.INDIVIDUAL_COLLISION == true) but non-authoritative:
+## it's seeded, separated, and debug-rendered in parallel, yet combat, movement,
+## and morale still read the regiment circle, so gameplay is unchanged. These call
+## the seeding functions directly, as the separation tests call _separate() directly.
 
 
 func _make_unit(uid: int, max_soldiers: int = 120) -> Unit:
@@ -20,9 +21,11 @@ func _make_unit(uid: int, max_soldiers: int = 120) -> Unit:
 	return u
 
 
-func test_phase1_is_gated_off_by_default() -> void:
-	assert_false(Unit.INDIVIDUAL_COLLISION,
-		"the soldier layer ships disabled — phase 1 changes no gameplay")
+func test_soldier_layer_is_active_but_non_authoritative() -> void:
+	assert_true(Unit.INDIVIDUAL_COLLISION,
+		"the soldier layer is on — seeded, separated, and debug-rendered in parallel")
+	# Non-authoritative is the contract the rest of the suite enforces: the combat,
+	# movement, and morale tests assert unchanged outcomes with the flag on.
 
 
 func test_soldier_ids_are_unique_within_a_regiment() -> void:

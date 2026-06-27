@@ -154,6 +154,14 @@ func _ready() -> void:
 	# Enemy army (team 1) deploys along the bottom, facing up.
 	_spawn_line(1, Vector2.UP, 700, dfn_count)
 
+	# Drive the parallel individual-soldier layer once per tick. physics_frame
+	# fires AFTER every unit's _physics_process, so the seed reads settled
+	# positions and the global separation runs on this tick's geometry. Connected
+	# only when the layer is enabled; it's non-authoritative (nothing in the sim
+	# reads _sim_soldier_pos). See docs/individual-collision-design.md.
+	if UnitRef.INDIVIDUAL_COLLISION:
+		get_tree().physics_frame.connect(_on_soldier_tick)
+
 
 func _exit_tree() -> void:
 	# Don't let this battle's pathfinding grid outlive it (e.g. across a scene
@@ -278,6 +286,21 @@ func _physics_process(_delta: float) -> void:
 
 	_check_victory()
 	_tick += 1
+
+
+## Per-tick orchestration of the parallel individual-soldier layer (connected to
+## physics_frame in _ready, so it runs after every unit has settled this frame):
+## re-seed every regiment from its formation, then run one global engaged-soldier
+## separation across all regiments (SoldierSpatialHash keyed by the physics frame).
+## Skipped while ended or paused — physics_frame keeps emitting while paused even
+## though node callbacks don't run, so without the guard the pass would re-run on
+## frozen state. Non-authoritative: nothing in the sim reads _sim_soldier_pos.
+func _on_soldier_tick() -> void:
+	if _ended or get_tree().paused:
+		return
+	var units: Array = get_tree().get_nodes_in_group("units")
+	UnitRef.seed_all_sim_soldiers(units)
+	UnitRef.separate_engaged_global(units, Engine.get_physics_frames())
 
 
 ## Called by SelectionManager when the player issues a right-click order. The
