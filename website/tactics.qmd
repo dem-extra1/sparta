@@ -32,6 +32,17 @@ battle.
 - This makes morale a *weapon*: you can win by breaking the enemy's will before
   you've killed even half their soldiers.
 
+## Rank cycling (trained units)
+
+A **well-trained** melee unit periodically rotates its ranks --- the tired front
+line steps back and a fresh rank takes its place, signalled by a whistle. Cycling
+**slows fatigue buildup** (by up to half at full training) and lets the unit
+**recover morale even while still fighting**. The better trained the unit, the more
+often it cycles. Ranged units don't cycle.
+
+Training therefore pays off in a long grind: a drilled regiment wears down a green
+one of equal numbers, because the green unit tires and wavers first.
+
 ## The unit triangle (rock-paper-scissors)
 
 Three roles, each strong against one and weak to another:
@@ -61,6 +72,24 @@ to **screen** your line against enemy horse.
 **The loop:** cavalry beats exposed flanks → spearmen beat cavalry → infantry pin so
 your cavalry can get *around* to those flanks. Read the enemy's screen before you
 commit your horse.
+
+## Order stances
+
+Each order can carry a *stance*, armed with a hotkey before you click (a coloured
+cursor shows which is active; <kbd>Esc</kbd> clears it). Stances turn the same units
+into different tools:
+
+- **Hold** (<kbd>H</kbd>) --- the unit stands its ground instead of chasing bait.
+  Anchor a line, or keep a screen in place while your cavalry swings wide.
+- **Attack flank** (<kbd>F</kbd>) / **Attack rear** (<kbd>R</kbd>) --- the unit
+  maneuvers for the side or back rather than the front, cashing in the ×1.5 / ×2
+  multipliers above. Pair it with a frontal pin.
+- **Skirmish** (<kbd>K</kbd>) --- a ranged unit kites: it backs off when a threat
+  closes inside its firing range, trading ground to keep shooting rather than being
+  caught in melee.
+- **Support** (<kbd>G</kbd>) --- the unit guards a chosen ally, shadowing it and
+  intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable
+  horse, or a guard onto your archers.
 
 ## Terrain
 
