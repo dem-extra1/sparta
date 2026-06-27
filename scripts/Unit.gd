@@ -680,9 +680,9 @@ func _is_melee_intermixing_with(other: Unit) -> bool:
 # phase 4 (combat per-soldier), phase 5 (retire the circle). Full migration plan in
 # docs/individual-collision-design.md.
 
-# Master switch for the soldier layer. ON: the parallel seed + global separation run
-# each tick and the soldier render follows them. Non-authoritative for gameplay until
-# a later phase retires the regiment circle.
+# Master switch for the soldier layer. ON: the persistent soldier bodies advance one
+# step + the global separation pass run each tick, and the soldier render follows
+# them. Non-authoritative for gameplay until a later phase retires the regiment circle.
 const INDIVIDUAL_COLLISION: bool = true
 
 # A soldier's global id is `uid * SOLDIER_ID_STRIDE + index`: a unique,
@@ -694,6 +694,19 @@ const SOLDIER_ID_STRIDE: int = 1024
 # World-space positions of this regiment's simulated soldiers, index-aligned
 # with their ids. Distinct from the cosmetic, local-space `_soldier_pos`.
 var _sim_soldier_pos: PackedVector2Array = PackedVector2Array()
+
+# Persistent per-body velocity (world space), index-aligned with _sim_soldier_pos.
+# Phase 4 gives the bodies persistent dynamics: instead of re-seeding their
+# positions from the formation every tick (phase 3), each body springs toward its
+# slot and integrates this velocity, so a soldier displaced by separation HOLDS the
+# displacement and eases back rather than snapping to formation. Cohesion is then
+# emergent and bodies can be shoved and recover. Still non-authoritative.
+var _sim_body_vel: PackedVector2Array = PackedVector2Array()
+
+# Arrival spring for the persistent bodies. SIM_SPRING_DAMPING is ~2*sqrt(STIFFNESS),
+# i.e. near-critical, so a body eases onto its slot without overshoot/oscillation.
+const SIM_SPRING_STIFFNESS: float = 120.0
+const SIM_SPRING_DAMPING: float = 22.0
 
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
@@ -732,6 +745,50 @@ func soldier_block_extent() -> float:
 ## stays authoritative), so it changes no combat/movement/morale outcome.
 func seed_sim_soldiers() -> void:
 	_sim_soldier_pos = soldier_world_slots(soldiers)
+	_sim_body_vel = PackedVector2Array()
+	_sim_body_vel.resize(_sim_soldier_pos.size())   # all-zero rest velocities
+
+
+## Advance this regiment's persistent soldier bodies one fixed step. Only the
+## ENGAGED front-rank bodies persist — they spring toward their slots and integrate
+## velocity, so a body shoved by the separation pass HOLDS the displacement and
+## eases back rather than snapping to formation. The unengaged bulk snaps to its
+## slots at rest (the phase-3 behaviour): it is never separated, and a persistent
+## spring would only make the marching bulk lag its slots. Engaged regiments are
+## ~stationary in melee, so the spring has negligible marching lag where it runs.
+##
+## Resizes to the live soldier count first — a casualty trims the rear bodies; the
+## first call (empty arrays) seeds every body on its slot at rest. Deterministic and
+## order-free across soldiers (each springs independently; the separation pass does
+## the coupling), driven by the fixed physics delta, so it reproduces on replay.
+## Writes _sim_soldier_pos / _sim_body_vel; reads neither combat nor RNG.
+func step_sim_soldiers(delta: float) -> void:
+	var slots: PackedVector2Array = soldier_world_slots(soldiers)
+	var n: int = slots.size()
+	var old_n: int = _sim_soldier_pos.size()
+	if old_n != n:
+		# resize trims/extends at the tail (rear bodies); seed any newly-added body
+		# on its slot at rest, so it never springs in from the array default (0, 0).
+		_sim_soldier_pos.resize(n)
+		_sim_body_vel.resize(n)
+		for j in range(old_n, n):
+			_sim_soldier_pos[j] = slots[j]
+			_sim_body_vel[j] = Vector2.ZERO
+	var engaged := {}
+	for idx in engaged_soldier_indices(n):
+		engaged[idx] = true
+	for i in range(n):
+		if not engaged.has(i):
+			# Unengaged bulk: snap to the slot at rest (re-seed, phase-3 behaviour).
+			_sim_soldier_pos[i] = slots[i]
+			_sim_body_vel[i] = Vector2.ZERO
+			continue
+		# Engaged front rank: near-critically-damped arrival spring (semi-implicit
+		# Euler, fixed delta), so a separated body holds its push and eases back.
+		var to_slot: Vector2 = slots[i] - _sim_soldier_pos[i]
+		var accel: Vector2 = to_slot * SIM_SPRING_STIFFNESS - _sim_body_vel[i] * SIM_SPRING_DAMPING
+		_sim_body_vel[i] += accel * delta
+		_sim_soldier_pos[i] += _sim_body_vel[i] * delta
 
 
 # --- Individual-soldier simulation, phase 2: engaged tier + separation -----
@@ -845,6 +902,17 @@ static func seed_all_sim_soldiers(units: Array) -> void:
 		var u: Unit = o as Unit
 		if u != null and u.state != State.DEAD:
 			u.seed_sim_soldiers()
+
+
+## Step every regiment's persistent soldier bodies one fixed tick (the phase-4
+## replacement for seed_all_sim_soldiers): bodies persist and ease toward formation
+## instead of being re-seeded onto it each tick. Called by Battle before the global
+## separation pass. Order-free across regiments, so it stays replay-safe.
+static func step_all_sim_soldiers(units: Array, delta: float) -> void:
+	for o in units:
+		var u: Unit = o as Unit
+		if u != null and u.state != State.DEAD:
+			u.step_sim_soldiers(delta)
 
 
 ## The global engaged-soldier separation pass, across ALL regiments, so enemy
@@ -2161,13 +2229,15 @@ func _update_flock(delta: float) -> void:
 			if is_inside_tree():
 				Sfx.play(&"whistle")
 
-	# Render-as-reality (phase 3): when the soldier layer is live, shift each mark by
-	# its simulated body's collision push so the on-screen soldier reflects the
-	# per-soldier, cross-regiment separation. The sim is seeded from these same slots,
-	# so the delta is ~0 for the unengaged bulk and the real push for engaged front
-	# ranks; the cosmetic offsets below (lunge, rank-cycle widen, relief) still layer
-	# on top. Guarded on a size match so a 1-frame casualty/merge gap falls back to
-	# the plain formation slot. to_local == p - position (the node never rotates).
+	# Render-as-reality (phase 3+): when the soldier layer is live, shift each mark by
+	# its simulated body's offset from formation so the on-screen soldier reflects the
+	# per-soldier, cross-regiment separation. The unengaged bulk snaps to its slots, so
+	# the delta is ~0 there; the engaged front ranks now hold a PERSISTENT displacement
+	# (phase 4 — they spring back toward their slots rather than re-seeding onto them),
+	# so a shoved soldier visibly holds the push and eases in. The cosmetic offsets
+	# below (lunge, rank-cycle widen, relief) still layer on top. Guarded on a size
+	# match so a 1-frame casualty/merge gap falls back to the plain formation slot.
+	# to_local == p - position (the node never rotates).
 	var use_sim: bool = INDIVIDUAL_COLLISION and _sim_soldier_pos.size() == n
 	var still: bool = true
 	for i in range(n):

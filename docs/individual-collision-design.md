@@ -112,14 +112,19 @@ verified before the next phase builds on it.
    where the rock-paper-scissors design meets per-soldier collision. The per-soldier
    combat resolution for this phase — the opposed attack/defence rolls, health and
    stamina, knockback, prone, and the bracing chain — is specified in
-   [`combat-model.md`](combat-model.md). This phase ships in slices: **phase 4a
-   [DONE]** adds the combat math (per-type profile, charge term, facing gate,
-   opposed land contest, and wound) as pure, unit-tested functions on `Unit`,
-   non-authoritative — the regiment circle still resolves casualties, exactly as
-   phase 1 added the soldier-body state before later phases read it. **Phase 4b**
-   wires the contest and wound into the live melee against a per-soldier health
-   pool (the first gameplay change; unblocks #240); later slices add stamina,
-   posture, and the knockback/prone/domino chain.
+   [`combat-model.md`](combat-model.md). This phase ships in slices. **Phase 4a
+   [DONE]** lands two non-authoritative foundations: (i) the combat math (per-type
+   profile, charge term, facing gate, opposed land contest, and wound) as pure,
+   unit-tested functions on `Unit`, and (ii) **persistent soldier-body dynamics** —
+   the engaged front-rank bodies spring toward their slots and integrate their own
+   velocity (`step_sim_soldiers`), so a body shoved by the separation pass holds the
+   displacement and eases back instead of re-seeding onto formation each tick (the
+   unengaged bulk still snaps to its slots). The regiment circle still resolves
+   casualties, exactly as phase 1 added the soldier-body state before later phases
+   read it. **Phase 4b** wires the contest and wound into the live melee against a
+   per-soldier health pool that accumulates on these persistent bodies (the first
+   gameplay change; unblocks #240); later slices add stamina, posture, and the
+   knockback/prone/domino chain.
 5. **Retire the regiment circle.** Once soldiers are authoritative, `RADIUS`-based
    `_separate()` becomes derived/diagnostic. `#201`'s physics (mass, momentum,
    knock-back) then layers on the soldier bodies.

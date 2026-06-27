@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Phase 4a adds the per-soldier combat math (per-type profile, charge term, facing gate, opposed land contest, and wound) as pure, unit-tested functions, but does NOT wire them into the live melee yet -- the regiment circle still resolves casualties, so there is no on-screen change to film. The gameplay change comes in phase 4b. Covered by test/unit/test_soldier_combat.gd (28 tests)."
+  "replay": "demos/scenarios/soldier-collision.json",
+  "caption": "Individual-soldier collision, phase 4 foundations: the engaged front-rank bodies are now PERSISTENT. Instead of re-seeding onto their formation slots every tick (phase 3), each engaged soldier springs toward its slot and integrates its own velocity -- so a soldier shoved by the cross-regiment separation pass HOLDS the displacement and eases back, rather than snapping to formation. Watch the contact line as two infantry blocks clash: the front ranks jostle, give, and recover instead of staying glued to a rigid grid, while the unengaged bulk behind still tracks formation. It stays non-authoritative -- combat and movement use the regiment circle, so outcomes are unchanged; this is the body dynamics the per-soldier combat (next slice) will resolve against. The combat math (opposed rolls, wound) also lands this PR as pure, tested functions, not yet wired in.",
+  "fixed_fps": 60,
+  "max_frames": 700,
+  "fps": 30,
+  "width": 720
 }
