@@ -29,6 +29,10 @@ func _ready() -> void:
 			# Reproduce the recorded camera framing (pan/zoom) in the clip; a replay with
 			# no presentation track still plays with the default static camera.
 			Replay.drive_camera = true
+			# Show the order overlay (move/attack/waypoint markers) so the clip reveals
+			# what was commanded, not just the resulting moves. In-app Watch Replay leaves
+			# this off (orders stay on the Space-held survey).
+			Replay.show_demo_orders = true
 			print("[demo] Playing back replay: %s" % replay_path)
 		else:
 			push_warning("[demo] Could not load replay '%s'; recording a fresh battle instead."

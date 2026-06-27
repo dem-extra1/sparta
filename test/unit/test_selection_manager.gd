@@ -95,3 +95,24 @@ func test_escape_clears_stance_regardless_of_bindings() -> void:
 	var sm := _sm()
 	assert_eq(sm._order_mode_for_keycode(KEY_ESCAPE), BattleScript.OrderMode.NORMAL,
 		"Esc always clears the stance — it's fixed, not rebindable")
+
+
+# --- demo order overlay gating ---------------------------------------
+
+func test_demo_orders_active_only_during_playback_with_the_flag() -> void:
+	# The order overlay shows without a held key only when the demo recorder is
+	# replaying with show_demo_orders set; in-app Watch Replay (flag off) and live
+	# play keep it on the Space-held survey.
+	var sm := _sm()
+	var prev_mode = Replay.mode
+	var prev_flag := Replay.show_demo_orders
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.show_demo_orders = true
+	assert_true(sm._demo_orders_active(), "active during demo playback with the flag set")
+	Replay.show_demo_orders = false
+	assert_false(sm._demo_orders_active(), "off in Watch Replay (playback, flag clear)")
+	Replay.mode = Replay.Mode.RECORD
+	Replay.show_demo_orders = true
+	assert_false(sm._demo_orders_active(), "off when not in playback")
+	Replay.mode = prev_mode
+	Replay.show_demo_orders = prev_flag

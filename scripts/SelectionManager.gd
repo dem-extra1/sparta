@@ -271,10 +271,11 @@ func _refresh_hud() -> void:
 func _process(_delta: float) -> void:
 	# Keep the panel current as the shown unit takes casualties.
 	_refresh_hud()
-	# Order overlays only render while Space is held (see _draw_orders), so redraw
-	# while it's held to track marching units, plus one extra frame after release
-	# to wipe the last frame's lines. Selection alone draws nothing here.
-	var showing_orders := Input.is_key_pressed(KEY_SPACE)
+	# Order overlays render while Space is held (see _draw_orders) or, in a demo
+	# recording, continuously — so redraw to track marching units, plus one extra
+	# frame after it turns off to wipe the last frame's lines. Selection alone
+	# draws nothing here.
+	var showing_orders := Input.is_key_pressed(KEY_SPACE) or _demo_orders_active()
 	if showing_orders or _was_showing_orders:
 		queue_redraw()
 	_was_showing_orders = showing_orders
@@ -419,10 +420,22 @@ func _draw() -> void:
 ## while Space is held (works paused too, since this node is PROCESS_MODE_ALWAYS;
 ## P or Shift+Space toggles pause). Enemy (team 1) orders are revealed only during
 ## replay playback — in live play the enemy's intentions stay hidden.
+## True while a demo recording is replaying with the order overlay enabled — the
+## DemoRunner sets Replay.show_demo_orders, so markers show without a held key.
+## In-app Watch Replay leaves the flag off, keeping the Space-held survey behaviour.
+func _demo_orders_active() -> bool:
+	return Replay.mode == Replay.Mode.PLAYBACK and Replay.show_demo_orders
+
+
 func _draw_orders() -> void:
-	if not Input.is_key_pressed(KEY_SPACE):
+	# Normally a hold-Space survey; during a demo recording the order overlay is
+	# always on (Replay.show_demo_orders), so the clip reveals what was commanded.
+	if not (Input.is_key_pressed(KEY_SPACE) or _demo_orders_active()):
 		return
-	var show_enemy: bool = Replay.mode == Replay.Mode.PLAYBACK
+	# The hold-Space survey reveals enemy orders during playback (inspection); the
+	# demo overlay shows only the player's own orders — #223 is about surfacing what
+	# *you* commanded, and drawing every AI unit's target just clutters the clip.
+	var show_enemy: bool = Replay.mode == Replay.Mode.PLAYBACK and not _demo_orders_active()
 	for node in get_tree().get_nodes_in_group("units"):
 		var u = node as UnitRef
 		# A unit that dies mid-march stays valid (and keeps has_move_target) for a

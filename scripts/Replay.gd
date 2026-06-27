@@ -65,6 +65,11 @@ var _camera_index: int = 0
 # so in-app "Watch Replay" keeps free pan/zoom for inspection; the demo recorder
 # (DemoRunner) turns it on so CI clips reproduce the recorded framing.
 var drive_camera: bool = false
+# Whether playback should render the order overlay (move/attack/waypoint markers) over
+# the units, so a demo clip shows *what was commanded*, not just the resulting moves.
+# Off by default — in-app Watch Replay keeps the orders on the Space-held survey only;
+# the demo recorder (DemoRunner) turns it on. Cosmetic, never touches the sim.
+var show_demo_orders: bool = false
 # Bumped per save so two battles finishing in the same wall-clock second don't
 # overwrite each other (the timestamp only has second precision).
 var _save_counter: int = 0
@@ -87,6 +92,7 @@ func start_recording() -> void:
 	_camera_track.clear()
 	_camera_index = 0
 	drive_camera = false
+	show_demo_orders = false
 	_play_index = 0
 	loaded_path = ""
 	# Drop the previous battle's save path so a failed save() this battle can't
@@ -154,6 +160,7 @@ func start_playback(path: String) -> bool:
 func reset() -> void:
 	mode = Mode.IDLE
 	drive_camera = false
+	show_demo_orders = false
 
 
 ## The folder replays are saved to (created if needed). For a file picker.

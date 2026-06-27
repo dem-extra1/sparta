@@ -1,8 +1,8 @@
 {
-  "replay": "demos/showcase.json",
-  "caption": "Combat now moves at realistic speeds (metres/second). Watch the cavalry charge at a real gallop (~8.5 m/s) — they cross the field and reach the clash well ahead of the foot, which advance at a brisk walking pace (~2.2–3.0 m/s). The faster a charge connects, the harder it lands.",
+  "replay": "demos/scenarios/order-overlay.json",
+  "caption": "Demo clips now show the player's orders, not just their effects. As the battle plays back, each commanded unit draws its order over the field: a green dashed path with a destination ring (and dots for shift-waypoints) for a move, and a red line with a crosshair for an attack. Here the spearmen march a two-leg route to the left flank, the infantry are sent to attack, and the archers reposition right.",
   "fixed_fps": 60,
-  "max_frames": 480,
-  "fps": 24,
+  "max_frames": 420,
+  "fps": 30,
   "width": 720
 }

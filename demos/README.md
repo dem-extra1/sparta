@@ -89,6 +89,17 @@ demo bump the manifest — e.g. `"fixed_fps": 60, "max_frames": 600, "fps": 30` 
 to record at the full physics-tick rate and output a smooth 30 fps GIF (at the
 cost of a larger file). `demos/demo.json` here uses those values.
 
+### Order markers (what was commanded)
+
+During a demo recording the clip also draws the **player's orders** over the
+field, so a viewer sees *what was commanded*, not only the resulting moves: a
+green dashed path with a destination ring (plus dots for shift-waypoints) for a
+move, and a red line with a crosshair for an attack. It's driven from the orders
+already in the replay, so any scenario with player orders shows them
+automatically — no manifest field to set. The overlay is recording-only: in-app
+**Watch Replay** keeps orders on the hold-Space survey, unchanged. (Capturing the
+live cursor and selection box is a tracked follow-up.)
+
 ## Hand-authoring a scenario
 
 You can also write a replay JSON by hand — a **scenario** — to stage a specific
