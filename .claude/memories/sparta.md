@@ -51,3 +51,47 @@ The reference tables a scenario author needs — spawn positions and UIDs, effec
 speeds, and the order `target`-field semantics — live with the code in sparta's
 `demos/README.md` and `REPLAY.md`, not here. A memory copy of constants like
 `SPEED_SCALE` and the spawn layout would rot silently when the game changes them.
+
+## Demo camera path — record it like a human operator
+
+When recording the camera presentation track for a demo (the track played back by
+`tools/demo/DemoRunner.gd`), move the camera the way a person would, not a robot.
+Repeated reviewer feedback on PR #232:
+
+- **Don't chase the unit centroid recomputed every frame** — it drifts both ways as
+  units shuffle and die, so the pan constantly *reverses direction* and reads as
+  jerky even when smoothed. Sample a fixed focus point **once**, or don't anchor to
+  the centroid at all.
+- **Hold, then move once in one direction, then hold** — script holds plus single
+  eased (smoothstep) moves; aim for ~1 direction-reversal per axis over the whole
+  clip.
+- **End on a multi-second stable hold** — finish all camera motion well before the
+  recording ends (set `max_frames` to cover the motion *plus* the hold) so the clip
+  doesn't cut off mid-move.
+- **Raise the framerate for a moving camera** — `fixed_fps` 30 / GIF `fps` 12 suit a
+  static-camera battle, but a panning/zooming camera looks choppy at 12 fps. Use
+  `"fixed_fps": 60, "fps": 30` and bump `max_frames` to keep the duration.
+
+Playback also low-passes the track (`Battle.CAMERA_SMOOTHING`), but that smooths
+magnitude, not direction — fix the *path*, not just the filter. Verify by logging
+the played-back camera and counting velocity sign-changes and per-tick jerk, not by
+eyeballing one frame. The committed `demos/camera-showcase.json` is baked keyframes
+(no centroid logic); author the recorder as a throwaway off-screen scene.
+
+## Demo media in PRs — poster still linked to the MP4 *blob* URL
+
+The demo workflow posts the PR clip as a **static poster frame linked to the MP4**,
+not an autoplaying GIF (#236 / #237). The link target matters: GitHub serves a
+committed `.mp4` differently by URL form —
+
+- **`/blob/<branch>/x.mp4`** renders GitHub's React media viewer — a pausable,
+  scrubbable `<video>` player (with sound). This is the click target.
+- **`/raw/<branch>/x.mp4`** serves `Content-Type: application/octet-stream` with
+  `nosniff`, so the browser **downloads** it instead of playing — a dead click
+  target. (The raw form is still right for *embedding the poster image*, which is a
+  PNG.)
+
+An inline `<video>` player only renders for files on GitHub's browser-only
+attachment CDN, which CI can't reach — so poster-image-links-to-blob is the
+CI-automatable click-to-play. A silent autoplaying GIF remains the fallback when the
+MP4 encode fails. Full contract lives in `demos/README.md`.
