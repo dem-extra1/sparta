@@ -109,7 +109,10 @@ verified before the next phase builds on it.
    be displaced and hold the displacement. Then melee and missiles resolve against
    soldiers, so flanking and screening fall out of geometry. This is the first
    gameplay change (it **unblocks #240**, the sustained spear-vs-sword standoff) and
-   where the rock-paper-scissors design meets per-soldier collision.
+   where the rock-paper-scissors design meets per-soldier collision. The per-soldier
+   combat resolution for this phase — the opposed attack/defence rolls, health and
+   stamina, knockback, prone, and the bracing chain — is specified in
+   [`combat-model.md`](combat-model.md).
 5. **Retire the regiment circle.** Once soldiers are authoritative, `RADIUS`-based
    `_separate()` becomes derived/diagnostic. `#201`'s physics (mass, momentum,
    knock-back) then layers on the soldier bodies.
