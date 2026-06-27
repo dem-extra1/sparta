@@ -96,6 +96,38 @@ func test_skirmish_ranged_unit_retreats_from_a_close_enemy() -> void:
 	assert_lt(u.position.x, 0.0, "a skirmisher backs away from an enemy inside the kite distance")
 
 
+# --- weapon reach ----------------------------------------------------
+
+func test_longer_reach_unit_reaches_melee_contact_sooner() -> void:
+	# A spear (reach 48) and a sword (reach 26) each face an enemy at the same gap
+	# of 70: inside the spear's contact (48 + 18 + 18 = 84) but outside the sword's
+	# (26 + 18 + 18 = 62). HOLD isolates reach — a held unit fights only when actually
+	# in contact (it never chases) — so only the longer weapon engages at this gap.
+	var gap := 70.0
+
+	var spear := _make_unit()
+	spear.team = 0
+	spear.order_mode = Unit.ORDER_HOLD
+	spear.attack_range = 48.0
+	var e1 := _make_unit()
+	e1.team = 1
+	e1.position = Vector2(gap, 0)
+	spear._think(0.1)
+	assert_eq(spear.state, Unit.State.FIGHTING,
+		"the longer-reach spear reaches melee contact and fights at gap 70")
+
+	var sword := _make_unit()
+	sword.team = 0
+	sword.order_mode = Unit.ORDER_HOLD
+	sword.attack_range = 26.0
+	var e2 := _make_unit()
+	e2.team = 1
+	e2.position = Vector2(gap, 0)
+	sword._think(0.1)
+	assert_ne(sword.state, Unit.State.FIGHTING,
+		"the shorter-reach sword is still out of contact at the same gap")
+
+
 func test_skirmish_ranged_unit_fires_at_standoff_range() -> void:
 	var u := _make_unit()
 	u.team = 0

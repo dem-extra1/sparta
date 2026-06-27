@@ -62,6 +62,16 @@ const ORDER_MODE_HOTKEYS := [
 # Global movement scale: lower = units move slower (relative speeds preserved).
 const SPEED_SCALE := 0.6
 
+# World scale: how many sim/world units make up one metre. Used to express
+# real-world lengths (weapon reach, and later movement speed) in metres and
+# convert them to the world units the sim runs in. These are WORLD units, not
+# screen pixels: Godot renders the fixed FIELD onto any window via the viewport
+# stretch (canvas_items / expand) and the Camera2D zoom, so the display
+# resolution is independent of this scale. At 20 u/m the 1600x1000 field is an
+# 80 m x 50 m engagement frontage. It's a single named knob, so the world's
+# unit scale can be rebased here without hunting down hard-coded distances.
+const WORLD_UNITS_PER_METER := 20.0
+
 # Enemy AI re-evaluates on a fixed tick cadence (not a wall-clock timer) so the
 # simulation is deterministic and replayable. 60 ticks == 1 second at 60 Hz.
 const AI_PERIOD := 60
@@ -167,12 +177,19 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# skirmish from range — softer in melee, but they soften the line before contact.
 	# `count` units deploy, cycling this composition so a larger army (a bigger
 	# campaign stack) fields more of the same mix.
+	#
+	# `reach_m` is the weapon's effective melee reach in metres, converted to the
+	# unit's attack_range below. Longer-reach weapons strike while a shorter-weapon
+	# enemy is still closing the gap, so a spearman lands the first blows of a clash.
+	# Infantry's sword sits at the 1.3 m baseline (= the old flat 26-unit reach);
+	# the spear out-reaches it, the cavalry sword a touch longer than the foot sword,
+	# and the archers' sidearm is short (they fight at range, not in the press).
 	var loadout := [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "spd": 80, "training": 0.75},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "spd": 90, "training": 0.5},
-		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "spd": 95, "training": 0.3},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160, "training": 0.6},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160, "training": 0.6},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "spd": 80, "reach_m": 2.4, "training": 0.75},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "spd": 90, "reach_m": 1.3, "training": 0.5},
+		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "spd": 95, "reach_m": 0.6, "training": 0.3},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160, "reach_m": 1.5, "training": 0.6},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160, "reach_m": 1.5, "training": 0.6},
 	]
 	# Tighten spacing as the line grows so even a max stack stays on the field.
 	var spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
@@ -193,6 +210,10 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 		u.attack = d["atk"]
 		u.defense = d["def"]
 		u.move_speed = d["spd"] * SPEED_SCALE
+		# Weapon reach (metres) -> world units. Falls back to the unit default if a
+		# loadout entry omits it.
+		if d.has("reach_m"):
+			u.attack_range = d["reach_m"] * WORLD_UNITS_PER_METER
 		u.training = d.get("training", 0.0)
 		# Cavalry respond faster — more mobile and battle-conditioned.
 		if d["cav"]:

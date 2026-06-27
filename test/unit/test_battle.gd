@@ -272,3 +272,15 @@ func test_forest_slows_movement() -> void:
 	var center: Vector2 = forest["rect"].position + forest["rect"].size * 0.5
 	assert_almost_eq(pf.speed_at(center), float(forest["speed"]), 0.001,
 			"the forest speed zone returns the configured speed scale")
+
+
+# --- world scale / weapon reach --------------------------------------
+
+func test_world_scale_keeps_the_sword_baseline_at_the_old_reach() -> void:
+	# The infantry sword's 1.3 m reach maps to exactly the prior flat 26-unit
+	# attack_range, so the melee baseline is unchanged; only longer/shorter weapons
+	# diverge from it. Pins WORLD_UNITS_PER_METER against silent drift.
+	assert_almost_eq(1.3 * BattleScript.WORLD_UNITS_PER_METER, 26.0, 0.001,
+			"the 1.3 m sword reach equals the 26-unit melee baseline")
+	assert_gt(2.4 * BattleScript.WORLD_UNITS_PER_METER, 1.3 * BattleScript.WORLD_UNITS_PER_METER,
+			"the spear out-reaches the sword")

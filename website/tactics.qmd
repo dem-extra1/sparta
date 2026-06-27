@@ -64,7 +64,8 @@ when it charges into braced spears.
 ::: {.g-col-12 .g-col-md-4}
 ### 🛡️ Spearmen
 Anti-cavalry (marked with a spear). They **blunt the cavalry charge**, so use them
-to **screen** your line against enemy horse.
+to **screen** your line against enemy horse. Their long spears also **out-reach**
+shorter weapons, landing the first blows as lines close (see below).
 :::
 
 :::
@@ -72,6 +73,24 @@ to **screen** your line against enemy horse.
 **The loop:** cavalry beats exposed flanks → spearmen beat cavalry → infantry pin so
 your cavalry can get *around* to those flanks. Read the enemy's screen before you
 commit your horse.
+
+## Weapon reach
+
+Each weapon has an **effective reach** --- how close two units must get before they
+trade blows. A longer weapon reaches that contact distance first, so it lands the
+opening strikes of a clash while a shorter-weapon enemy is still closing the gap:
+
+- **Spears** reach furthest (~2.4 m) --- spearmen strike first as the lines meet, on
+  top of blunting cavalry charges.
+- **Swords** (infantry, cavalry) are the mid-length baseline (~1.3--1.5 m).
+- **Archers** carry only a short sidearm (~0.6 m); they're meant to shoot, not duel
+  in the press.
+
+So a spear line meeting a sword line head-on gets free hits during the approach ---
+another reason to lead with spearmen and let the shorter weapons pin and flank. (The
+opening-strike edge is on the *approach*; once both sides are locked together they
+both reach. Sustained spacing --- a spear actively holding a swordsman at bay --- is
+a planned follow-up.)
 
 ## Order stances
 

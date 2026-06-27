@@ -1,8 +1,8 @@
 {
-  "replay": "demos/camera-showcase.json",
-  "caption": "Demos now record the camera: this clip plays back a recorded session that zooms into the clash, follows the fighting, and pulls back out — driven by the replay's new presentation track, not the old static camera. (A demo can also start already zoomed in or panned — the clip opens on the track's first keyframe.)",
+  "replay": "demos/scenarios/weapon-reach.json",
+  "caption": "Per-weapon reach in action. The clip zooms into two simultaneous duels: a spear-vs-spear clash on the left and a sword-vs-sword clash on the right. The spearmen (left) fight across a noticeably wider gap — their longer reach lets them strike the enemy first and hold them at spear's length, so the spear line also bleeds slower. The swordsmen (right) have to pack in close to land a blow.",
   "fixed_fps": 60,
-  "max_frames": 720,
+  "max_frames": 560,
   "fps": 30,
-  "width": 640
+  "width": 720
 }

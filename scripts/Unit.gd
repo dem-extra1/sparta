@@ -20,6 +20,11 @@ var uid: int = -1
 @export var attack: int = 12
 @export var defense: int = 6
 @export var move_speed: float = 90.0
+# Effective melee reach, in world units (Battle sets it per weapon from reach_m;
+# the 26 default is the infantry/sword baseline). A unit counts as in melee
+# contact when the gap to its target closes within attack_range + both RADII, so a
+# longer-reach weapon (a spear) reaches contact — and strikes — sooner than a
+# shorter one (a sword) as the lines close.
 @export var attack_range: float = 26.0
 @export var is_cavalry: bool = false
 @export var anti_cavalry: bool = false   # spearmen: blunt cavalry charges
@@ -159,15 +164,19 @@ const COHESION_RECOVER_PER_SEC: float = 0.1
 
 # Per-type collision footprint: the center-to-center separation floor used in
 # _separate(). RADIUS stays the visual/contact size; this is purely the body
-# width for crowding, assigned per type in _ready(). Each stays below attack
-# reach (attack_range + RADIUS) so units still press into melee contact instead
-# of bouncing apart. Cavalry are bulkier; spearmen a touch wider than infantry.
+# width for crowding, assigned per type in _ready(). Each stays below that type's
+# melee contact (its attack_range + both RADII) so units still press into contact
+# instead of bouncing apart. Cavalry are bulkier; spearmen a touch wider than
+# infantry. (Spears reach far past their footprint; the foot-sword baseline,
+# floor 36 < contact 62, is the tightest melee case.)
 const SEPARATION_RADIUS_INFANTRY: float = 18.0
 const SEPARATION_RADIUS_SPEARMEN: float = 20.0
 const SEPARATION_RADIUS_CAVALRY: float = 24.0
-# Hard ceiling on a footprint (merging widens it). Two maxed units have a
-# floor of 2*28 = 56, still under melee reach (attack_range 26 + RADIUS 18 +
-# RADIUS 18 = 62), so even merged mega-units keep pressing into contact.
+# Hard ceiling on a footprint (merging widens it). Two maxed units floor at
+# 2*28 = 56, still under the melee reaches of the foot/horse types (sword
+# contact 62, spear far more), so even merged mega-units keep pressing into
+# contact. (Archers carry a short sidearm by design and fight at range, so the
+# pathological case of two maxed archer blobs is not a melee concern.)
 const SEPARATION_RADIUS_MAX: float = 28.0
 
 # Cavalry charge: a physics-based bonus, not a one-shot token. The damage
