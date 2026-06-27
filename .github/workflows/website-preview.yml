@@ -1,0 +1,39 @@
+# Build half of the PR-preview family for the Sparta documentation site (the
+# Quarto project under website/). Renders the site read-only in the PR context
+# and uploads it + PR metadata as an artifact; website-preview-deploy.yml then
+# publishes it to gh-pages and comments the preview URL on the PR. The split
+# (read-only build vs. privileged deploy) is the trust boundary -- never merge
+# the two into one job.
+#
+# Three-part family (mirrors d-morrison/gha's own setup):
+#   website-preview.yml          <- this file (build; runs on pull_request)
+#   website-preview-deploy.yml   <- deploy (workflow_run, base-repo context)
+#   website-preview-cleanup.yml  <- weekly teardown of merged/closed previews
+#
+# IMPORTANT: keep this workflow's `name:` in sync with the `workflows:` list in
+# website-preview-deploy.yml -- that is how the deploy half finds this run.
+#
+# The site is plain markdown (no R package), so the R/renv machinery the preview
+# family defaults on for rme-style consumers is switched off. Previews render
+# WITHOUT the gameplay demo clips (those are recorded only at full publish in
+# publish-site.yml), so the <video> embeds fall back; the design/combat pages
+# this is mainly for are text + math and render in full.
+name: Website Preview Build
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, closed]
+    paths:
+      - 'website/**'
+      - '.github/workflows/website-preview.yml'
+
+jobs:
+  build:
+    uses: d-morrison/gha/.github/workflows/preview.yml@v2
+    with:
+      path: website
+      use-renv: false
+      install-package: false
+      setup-chrome: false
+      submodules: 'false'
+      apt-packages: ''
