@@ -29,6 +29,10 @@ const DAMAGE_SCALE: float = 34.0
 # charge), kept here too so the per-soldier model is self-contained.
 const CHARGE_REFERENCE_SPEED: float = 170.0
 
+# Floor of the health condition factor q(h): a near-dead soldier still fights, at this
+# fraction of full effectiveness. q scales both offence and active defence.
+const COND_HEALTH_FLOOR: float = 0.5
+
 
 ## Per-type combat profile (docs/combat-model.md "Soldier attributes"): skill is the
 ## unit's training; armour, shield, lethality, and the health/stamina pools are per
@@ -82,3 +86,12 @@ static func wound(lethality_a: float, c: float, armour_d: float, cond_a: float =
 	var armour: float = clampf(armour_d, 0.0, 1.0)
 	var cond: float = clampf(cond_a, 0.0, 1.0)
 	return DAMAGE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) * (1.0 - armour) * cond
+
+
+## The health condition factor q(h) in [COND_HEALTH_FLOOR, 1] for a soldier at `hp`
+## out of `maxhp`: a wounded soldier fights worse — q scales both its offence and its
+## active defence in the land contest — so wounds compound. See docs/combat-model.md.
+static func condition(hp: float, maxhp: float) -> float:
+	if maxhp <= 0.0:
+		return 1.0
+	return COND_HEALTH_FLOOR + (1.0 - COND_HEALTH_FLOOR) * clampf(hp / maxhp, 0.0, 1.0)

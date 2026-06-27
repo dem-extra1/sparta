@@ -703,6 +703,11 @@ var _sim_soldier_pos: PackedVector2Array = PackedVector2Array()
 # lives in SoldierBodies; this is the state it advances. Still non-authoritative.
 var _sim_body_vel: PackedVector2Array = PackedVector2Array()
 
+# Per-soldier health pool (phase 4b), index-aligned with _sim_soldier_pos: each body
+# accumulates wounds across ticks and dies (removed, re-packing the formation) when it
+# reaches 0. Seeded to the per-type max health (see SoldierBodies.seed). A near-dead
+# soldier also fights worse, via SoldierCombat.condition, so wounds compound.
+var _sim_soldier_hp: PackedFloat32Array = PackedFloat32Array()
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -804,6 +809,14 @@ func engaged_soldier_indices(count: int) -> PackedInt32Array:
 ## `separation_radius + other.separation_radius`.
 func soldier_body_radius() -> float:
 	return CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+
+
+## This regiment's per-soldier strike reach, in world units: the weapon reach
+## (attack_range, set per type from #233 — e.g. spear 48 vs sword 26). A soldier can
+## strike an enemy body within this center-to-center distance; a longer reach lets a
+## soldier strike foes who cannot strike back — the spear-vs-sword standoff (#240).
+func soldier_reach() -> float:
+	return attack_range
 
 
 ## Center-to-center separation floor between two soldier bodies of this regiment's
@@ -1071,6 +1084,18 @@ func charge_multiplier(enemy: Unit) -> float:
 
 
 func _strike(enemy: Unit) -> void:
+	# Phase 4b: when both regiments have an engaged soldier layer, resolve melee per
+	# soldier (the model's opposed roll + wound against per-soldier health) instead of
+	# the regiment damage formula. This is where flanking, reach (spear vs. sword,
+	# #240), and charge fall out of geometry. Ranged volleys and any non-engaged edge
+	# case fall through to the formula below.
+	if INDIVIDUAL_COLLISION and not is_ranged and is_engaged() and enemy.is_engaged() \
+			and not _sim_soldier_pos.is_empty() and not enemy._sim_soldier_pos.is_empty():
+		resolve_soldier_melee(enemy)
+		_approach_velocity = Vector2.ZERO   # spend the charge on this contact strike
+		Sfx.play(&"hit")
+		return
+
 	# Tired troops hit softer; a freshly-merged unit hits softer still until it
 	# gels. Both scale effective attack before defence.
 	var eff_attack: float = float(attack) * fatigue_attack_factor() * cohesion
@@ -1088,6 +1113,13 @@ func _strike(enemy: Unit) -> void:
 
 	Sfx.play(&"hit")   # presentation only; throttled in Sfx so a line doesn't roar
 	enemy.take_casualties(int(round(dmg)), self)
+
+
+## Resolve a melee cadence per soldier against `enemy`. The resolution lives in
+## SoldierMelee.resolve (the opposed contest, the wound to per-soldier health, and
+## the death/re-pack); this thin wrapper keeps the call from _strike and the tests.
+func resolve_soldier_melee(enemy: Unit) -> void:
+	SoldierMelee.resolve(self, enemy)
 
 
 ## A ranged volley: like a melee strike without the cavalry charge, scaled
@@ -1149,9 +1181,19 @@ func take_casualties(amount: int, attacker: Unit) -> void:
 	var flank: float = _flank_multiplier(attacker)
 	var total: int = max(1, int(round(amount * flank)))
 	soldiers -= total
+	# The flank multiplier scales the morale hit too (a rout from being taken in the
+	# rear). The per-soldier melee path passes flank 1.0 — it models facing in the
+	# strike contest instead, so the directional penalty isn't applied twice.
+	_register_casualties(total, attacker, flank)
 
-	# Morale erodes from losses, worse when hit in the flank/rear.
-	morale -= float(total) * 0.12 * flank
+
+## Apply the consequences of `total` casualties ALREADY subtracted from `soldiers`:
+## morale erosion (scaled by `morale_flank`), the thin-regiment crumble, death/rout
+## thresholds, and the cosmetic fallen markers. Shared by the regiment-formula path
+## (take_casualties) and the per-soldier melee path (which compacts the dead bodies
+## and decrements `soldiers` itself, then calls this with morale_flank 1.0).
+func _register_casualties(total: int, attacker: Unit, morale_flank: float) -> void:
+	morale -= float(total) * 0.12 * morale_flank
 	var ratio: float = float(soldiers) / float(max_soldiers)
 	if ratio < 0.4:
 		morale -= (0.4 - ratio) * 6.0   # crumble as a regiment thins out

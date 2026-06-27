@@ -13,11 +13,15 @@ const SPRING_STIFFNESS: float = 120.0
 const SPRING_DAMPING: float = 22.0
 
 
-## Seed a unit's bodies onto its current formation slots, at rest (zero velocity).
+## Seed a unit's bodies onto its current formation slots, at rest (zero velocity) and
+## at full per-type health.
 static func seed(unit: Unit) -> void:
 	unit._sim_soldier_pos = unit.soldier_world_slots(unit.soldiers)
 	unit._sim_body_vel = PackedVector2Array()
 	unit._sim_body_vel.resize(unit._sim_soldier_pos.size())
+	unit._sim_soldier_hp = PackedFloat32Array()
+	unit._sim_soldier_hp.resize(unit._sim_soldier_pos.size())
+	unit._sim_soldier_hp.fill(unit.combat_profile()["max_health"])   # everyone starts at full health
 
 
 ## Advance a unit's persistent bodies one fixed step. Only ENGAGED front-rank bodies
@@ -39,6 +43,13 @@ static func step(unit: Unit, delta: float) -> void:
 		for j in range(old_n, n):
 			unit._sim_soldier_pos[j] = slots[j]
 			unit._sim_body_vel[j] = Vector2.ZERO
+	if unit._sim_soldier_hp.size() != n:
+		# Keep the health pool index-aligned; any newly-added body arrives at full health.
+		var hp_old: int = unit._sim_soldier_hp.size()
+		var maxhp: float = unit.combat_profile()["max_health"]
+		unit._sim_soldier_hp.resize(n)
+		for j in range(hp_old, n):
+			unit._sim_soldier_hp[j] = maxhp
 	var engaged := {}
 	for idx in unit.engaged_soldier_indices(n):
 		engaged[idx] = true
