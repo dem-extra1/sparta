@@ -6,7 +6,7 @@ page-layout: full
 ---
 
 ::: {.hero}
-# ΣPARTA
+# SPARTA
 
 ::: {.tagline}
 A prototype that fuses **dynastic grand strategy** with **real-time
