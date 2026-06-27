@@ -27,6 +27,12 @@ then grow outward.
      out of any overlapping unit (live or routing) by half the overlap (neighbor corrects the rest).
      Spacing is the center-to-center floor `RADIUS + other.RADIUS`. It is intentionally *soft* so
      regiments still press into melee contact (attack reach > separation floor) instead of bouncing apart.
+   - **Individual-soldier layer (foundation landed, #164):** alongside the regiment circle, soldiers
+     now exist as simulated bodies (`_sim_soldier_pos`), seeded from formation slots and separated
+     per-soldier across regiments (engaged front ranks, on a `SoldierSpatialHash`) — behind
+     `Unit.INDIVIDUAL_COLLISION` (on), debug-rendered and **non-authoritative** for now. Later phases
+     make the soldiers the rendered reality, then authoritative, retiring the circle. See
+     `docs/individual-collision-design.md`.
    - **Roadmap (in priority order):**
      1. ✅ No-stack soft separation between live units.
      2. Per-type footprint (cavalry wider than infantry) so charges and screens read correctly.

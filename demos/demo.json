@@ -1,8 +1,8 @@
 {
-  "replay": "demos/scenarios/order-overlay.json",
-  "caption": "Demo clips now show the player's orders, not just their effects. As the battle plays back, each commanded unit draws its order over the field: a green dashed path with a destination ring (and dots for shift-waypoints) for a move, and a red line with a crosshair for an attack. Here the spearmen march a two-leg route to the left flank, the infantry are sent to attack, and the archers reposition right.",
+  "replay": "demos/scenarios/weapon-reach.json",
+  "caption": "Individual-soldier collision (foundation). Each regiment now runs a parallel layer of simulated soldier BODIES, overlaid here as debug dots: the engaged front ranks that run the full per-soldier pass are magenta, the formation-following bulk is cyan. As the lines clash, the magenta front-rank soldiers of the two enemy regiments press into each other and separate per-soldier across the contact face — the new cross-regiment soldier collision. The layer is non-authoritative for now (movement and combat still use the regiment circle), so nothing about how the battle plays has changed yet.",
   "fixed_fps": 60,
-  "max_frames": 420,
+  "max_frames": 500,
   "fps": 30,
   "width": 720
 }

@@ -1,7 +1,13 @@
 # Design note: individual-level collision
 
-Status: **design draft — not yet implemented.** Open decisions for the maintainer
-are collected at the end; implementation waits on those.
+Status: **phases 1-2 implemented and active** (behind `Unit.INDIVIDUAL_COLLISION`,
+now ON). Soldiers are seeded as world-space bodies from their formation slots, the
+engaged front ranks are separated per-soldier **across regiments** on a soldier-sized
+`SoldierSpatialHash`, and the result is drawn as a debug overlay. The layer is still
+**non-authoritative** — combat, movement, and morale read the regiment circle, not
+`_sim_soldier_pos` — so gameplay is unchanged. Next: phase 3 (make the soldiers the
+rendered reality), phase 4 (combat per-soldier), phase 5 (retire the regiment circle).
+The design decisions are settled (see "Decisions" below).
 
 Tracks [#164](https://github.com/Lacaedemon/sparta/issues/164) (collision at the
 individual level, not the unit level) and
@@ -70,17 +76,22 @@ Each phase is independently shippable and testable (the GUT suite exercises the
 sim logic headless — no rendering needed), so collision correctness can be
 verified before the next phase builds on it.
 
-1. **Promote marks to bodies, behind a flag.** Give each soldier a stable id and a
-   simulated position seeded from the current formation slot. Keep the regiment
-   circle authoritative; run the soldier layer in parallel and assert it stays
-   inside the regiment footprint. No gameplay change yet — this is the migration
-   scaffold and its test harness.
-2. **Soldier-level separation, engaged tier only.** Port `_separate()`'s
-   penetration/`_push_share` math to soldier-vs-soldier within and across
-   regiments, on a soldier-sized `SpatialHash`, run only for *engaged* soldiers
-   (the level-of-detail split above), with hysteresis on the engaged/unengaged
-   boundary. Determinism tests: same seed + orders ⇒ identical soldier positions on
-   replay, and identical engaged/unengaged flags.
+1. **[DONE] Promote marks to bodies, behind a flag.** Each soldier has a stable id
+   (`soldier_id` = `uid * SOLDIER_ID_STRIDE + index`) and a world-space simulated
+   position (`_sim_soldier_pos`) seeded from its formation slot (`seed_sim_soldiers`).
+   The regiment circle stays authoritative; the soldier layer runs in parallel and
+   the containment invariant is pinned in `test_soldier_bodies.gd`.
+2. **[DONE] Soldier-level separation, engaged tier, within AND across regiments.**
+   `_separate()`'s penetration/`_push_share` math is carried down to soldiers via the
+   shared `_soldier_pair_push` helper (so the spear-vs-cavalry hard block falls out
+   for free) and run for *engaged* soldiers only (front `ENGAGED_RANKS`, with linger
+   hysteresis). One global, deterministic pass (`Unit.separate_engaged_global`,
+   orchestrated by `Battle` on `physics_frame`) gathers engaged soldiers across all
+   regiments in soldier-id order, buckets them in the soldier-sized
+   `SoldierSpatialHash`, and applies a Jacobi accumulate-then-apply step — so enemy
+   front ranks press into each other. Determinism + order-independence + hard-block +
+   a perf smoke test are in `test_soldier_separation.gd`. A debug overlay
+   (`Unit._draw`, engaged = magenta, bulk = cyan) makes the layer visible.
 3. **Formation as soldier slots.** The regiment assigns slots (block/line, tight
    vs. loose); soldiers arrive at slots while separating. Cohesion becomes an
    emergent result of slot assignment + separation rather than a single circle.
@@ -135,7 +146,9 @@ tiers, re-evaluated each tick:
 
 The engaged/unengaged flag must itself be deterministic (derived from positions and
 states already in the sim, not wall-clock or frame-rate), so replays stay exact.
-Getting the promotion/demotion boundary right — hysteresis so soldiers don't
-flap between tiers at the threshold — is part of phase 2.
+The promotion/demotion boundary uses linger hysteresis (`ENGAGED_LINGER`) so soldiers
+don't flap between tiers at the threshold — shipped in phase 2.
 
-Once implemented, phase 1 can start as a flagged, test-backed PR.
+Phases 1-2 are live (flagged on, non-authoritative). The next PR is phase 3: drive
+the on-screen soldiers from `_sim_soldier_pos` so the simulated bodies become the
+rendered reality, retiring the debug overlay and the cosmetic flock.

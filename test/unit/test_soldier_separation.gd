@@ -1,8 +1,14 @@
 extends GutTest
 ## Phase 2 of individual-level collision (docs/individual-collision-design.md):
-## the engaged-tier classification (with hysteresis) and the deterministic
-## soldier-level separation primitive. Still gated behind
-## Unit.INDIVIDUAL_COLLISION, so these exercise the functions directly.
+## the engaged-tier classification (with hysteresis), the deterministic
+## same-set separation primitive, and the GLOBAL cross-regiment engaged-soldier
+## pass. The layer is active (Unit.INDIVIDUAL_COLLISION on) but non-authoritative,
+## so these exercise the functions directly with no Battle running.
+
+
+func before_each() -> void:
+	# The soldier hash is static global state; isolate each test.
+	SoldierSpatialHash.reset()
 
 
 func _make_unit(uid: int, max_soldiers: int = 120) -> Unit:
@@ -12,6 +18,18 @@ func _make_unit(uid: int, max_soldiers: int = 120) -> Unit:
 	u.uid = uid
 	u.facing = Vector2.DOWN
 	u.position = Vector2.ZERO
+	return u
+
+
+## An engaged regiment (FIGHTING, latched, seeded) for the global-pass tests.
+func _engaged(uid: int, team: int, n: int = 1, cav: bool = false, anti_cav: bool = false) -> Unit:
+	var u := _make_unit(uid, n)
+	u.team = team
+	u.is_cavalry = cav
+	u.anti_cavalry = anti_cav
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.1)
+	u.seed_sim_soldiers()
 	return u
 
 
@@ -83,27 +101,120 @@ func test_engaged_tier_lingers_then_clears_after_fighting_stops() -> void:
 	assert_false(u.is_engaged(), "clears once the linger elapses")
 
 
-# --- wired pass (still flag-gated) ---------------------------------------
+# --- global engaged-soldier pass (cross-regiment) ------------------------
 
-func test_separate_engaged_soldiers_resolves_an_injected_overlap() -> void:
-	var u := _make_unit(0)
-	u.state = Unit.State.FIGHTING
-	u.tick_engaged(0.1)
-	u.seed_sim_soldiers()
-	# Force two engaged front-rank soldiers to coincide, then resolve.
-	u._sim_soldier_pos[0] = Vector2(100, 100)
-	u._sim_soldier_pos[1] = Vector2(100, 100)
-	u.separate_engaged_soldiers()
+func test_cross_regiment_overlap_resolves_to_the_floor() -> void:
+	var a := _engaged(0, 0)
+	var b := _engaged(1, 1)
+	a._sim_soldier_pos[0] = Vector2(100, 100)
+	b._sim_soldier_pos[0] = Vector2(100, 100)   # coincident enemy front-rank soldiers
+	Unit.separate_engaged_global([a, b], 1)
+	assert_almost_eq(a._sim_soldier_pos[0].distance_to(b._sim_soldier_pos[0]),
+		a.soldier_body_radius() + b.soldier_body_radius(), 0.001,
+		"enemy soldiers from different regiments separate to the sum of their radii")
+
+
+func test_spear_soldier_hard_blocks_a_cavalry_soldier() -> void:
+	# Enemy spear vs cavalry: the spear holds firm (share 0), the horse is shoved
+	# fully clear (share 1) — the regiment hard-block carried down per soldier.
+	var spear := _engaged(0, 0, 1, false, true)
+	var cav := _engaged(1, 1, 1, true, false)
+	var held := Vector2(50, 50)
+	spear._sim_soldier_pos[0] = held
+	cav._sim_soldier_pos[0] = Vector2(50.5, 50)   # overlapping the spear
+	Unit.separate_engaged_global([spear, cav], 2)
+	assert_eq(spear._sim_soldier_pos[0], held, "the spear soldier does not yield")
+	assert_almost_eq(spear._sim_soldier_pos[0].distance_to(cav._sim_soldier_pos[0]),
+		spear.soldier_body_radius() + cav.soldier_body_radius(), 0.001,
+		"and the cavalry soldier is shoved out to the floor on its own")
+
+
+func test_mismatched_types_use_the_summed_radii_floor() -> void:
+	var cav := _engaged(0, 0, 1, true, false)
+	var inf := _engaged(1, 1, 1, false, false)
+	cav._sim_soldier_pos[0] = Vector2.ZERO
+	inf._sim_soldier_pos[0] = Vector2.ZERO
+	Unit.separate_engaged_global([cav, inf], 3)
+	assert_almost_eq(cav._sim_soldier_pos[0].distance_to(inf._sim_soldier_pos[0]),
+		Unit.CAV_MARK_RADIUS + Unit.MARK_RADIUS, 0.001,
+		"a cavalry + infantry pair separates to 2.6 + 1.7 = 4.3")
+
+
+func test_allied_cross_regiment_pair_splits_evenly() -> void:
+	var a := _engaged(0, 0)
+	var b := _engaged(1, 0)   # same team
+	a._sim_soldier_pos[0] = Vector2(0, 0)
+	b._sim_soldier_pos[0] = Vector2(1, 0)
+	Unit.separate_engaged_global([a, b], 4)
+	assert_almost_eq(a._sim_soldier_pos[0].x + b._sim_soldier_pos[0].x, 1.0, 0.001,
+		"allied soldiers split the push 50/50 — symmetric about their midpoint")
+	assert_almost_eq(a._sim_soldier_pos[0].distance_to(b._sim_soldier_pos[0]),
+		a.soldier_body_radius() + b.soldier_body_radius(), 0.001, "and reach the floor")
+
+
+func test_intra_regiment_overlap_resolves_through_the_global_pass() -> void:
+	var u := _engaged(0, 0, 4)   # several engaged front-rank soldiers
+	u._sim_soldier_pos[0] = Vector2(10, 10)
+	u._sim_soldier_pos[1] = Vector2(10, 10)
+	Unit.separate_engaged_global([u], 5)
 	assert_almost_eq(u._sim_soldier_pos[0].distance_to(u._sim_soldier_pos[1]),
 		u.soldier_separation_min_dist(), 0.001,
-		"the engaged pass pushes overlapping front-rank soldiers to the floor")
+		"same-regiment soldiers separate through the unified global pass too")
 
 
-func test_separate_engaged_soldiers_is_a_noop_when_not_engaged() -> void:
-	var u := _make_unit(0)   # IDLE — not engaged
+func test_unengaged_regiments_contribute_nothing() -> void:
+	var u := _make_unit(0, 2)   # IDLE — not engaged
 	u.seed_sim_soldiers()
 	u._sim_soldier_pos[0] = Vector2(100, 100)
 	u._sim_soldier_pos[1] = Vector2(100, 100)
-	u.separate_engaged_soldiers()
+	Unit.separate_engaged_global([u], 6)
 	assert_eq(u._sim_soldier_pos[0], u._sim_soldier_pos[1],
-		"an unengaged regiment runs no per-soldier separation")
+		"an unengaged regiment contributes no soldiers to the global pass")
+
+
+func test_global_pass_is_deterministic_and_order_independent() -> void:
+	# Two identical configs; run the pass with the units in OPPOSITE array order.
+	# The id-sorted gather + Jacobi accumulate-then-apply must give identical
+	# results regardless of units[] order (the replay-determinism property).
+	var a1 := _engaged(0, 0, 3); var b1 := _engaged(1, 1, 3)
+	var a2 := _engaged(0, 0, 3); var b2 := _engaged(1, 1, 3)
+	a1._sim_soldier_pos[0] = Vector2(5, 5); b1._sim_soldier_pos[0] = Vector2(5, 5)
+	a2._sim_soldier_pos[0] = Vector2(5, 5); b2._sim_soldier_pos[0] = Vector2(5, 5)
+	Unit.separate_engaged_global([a1, b1], 7)
+	Unit.separate_engaged_global([b2, a2], 8)   # shuffled order, different frame
+	assert_eq(a1._sim_soldier_pos, a2._sim_soldier_pos,
+		"identical configs give identical results regardless of units[] order")
+	assert_eq(b1._sim_soldier_pos, b2._sim_soldier_pos,
+		"(the id-sorted gather removes any group-iteration-order dependence)")
+
+
+func test_global_pass_perf_smoke_at_scale() -> void:
+	# Stress: two opposing lines of regiments meeting at a contact face, spread
+	# across a realistic frontage (not stacked) so cell density mirrors a real
+	# clash. Asserts the per-tick cost fits the 60 Hz budget, and logs the mean so
+	# the number is visible in review. Validates decisions 2-3 of the design doc
+	# (the ~1-1.5k-engaged budget).
+	var units: Array = []
+	for r in range(12):
+		var top := _engaged(r * 2, 0, 120)
+		top.facing = Vector2.DOWN
+		top.position = Vector2(150 + r * 110.0, 492)
+		top.seed_sim_soldiers()   # re-seed at the line position/facing
+		var bot := _engaged(r * 2 + 1, 1, 120)
+		bot.facing = Vector2.UP
+		bot.position = Vector2(150 + r * 110.0, 508)   # front ranks meet the top line
+		bot.seed_sim_soldiers()
+		units.append(top)
+		units.append(bot)
+	var engaged_total := 0
+	for o in units:
+		engaged_total += (o as Unit).engaged_soldier_indices((o as Unit)._sim_soldier_pos.size()).size()
+	var iters := 20
+	var t0 := Time.get_ticks_usec()
+	for it in range(iters):
+		SoldierSpatialHash.reset()
+		Unit.separate_engaged_global(units, 1000 + it)
+	var per_tick_ms := float(Time.get_ticks_usec() - t0) / 1000.0 / float(iters)
+	gut.p("[perf] global soldier pass: %d engaged bodies, %.3f ms/tick" % [engaged_total, per_tick_ms])
+	assert_lt(per_tick_ms, 16.0,
+		"the global engaged-soldier pass stays within the 60 Hz tick budget at scale")
