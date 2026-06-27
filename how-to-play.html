@@ -458,7 +458,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-06-26</p>
+      <p class="date">Last updated: 2026-06-27</p>
     </div>
   </div>
   
@@ -510,28 +510,52 @@ ul.task-list li input[type="checkbox"] {
 <td><strong>Right-click</strong> an enemy unit</td>
 </tr>
 <tr class="odd">
+<td>Add waypoint</td>
+<td><strong>Shift + Right-click</strong> (chain several move points)</td>
+</tr>
+<tr class="even">
+<td>Order stance</td>
+<td><kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear</td>
+</tr>
+<tr class="odd">
+<td>Formation</td>
+<td><kbd>T</kbd> (cycles Normal / Tight / Loose)</td>
+</tr>
+<tr class="even">
 <td>Pan camera</td>
 <td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Zoom</td>
 <td><strong>Mouse wheel</strong></td>
 </tr>
+<tr class="even">
+<td>Show all orders</td>
+<td>hold <kbd>Space</kbd></td>
+</tr>
 <tr class="odd">
 <td>Active pause</td>
-<td><kbd>Space</kbd></td>
+<td><kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>)</td>
 </tr>
 </tbody>
 </table>
 <p>A right-click on empty ground is a <strong>move</strong> order; a right-click on an enemy is an <strong>attack</strong> order. Selection and camera stay live even while paused, so you can plan under pressure.</p>
 <p><strong>Zoom in to see the soldiers.</strong> From the usual overview each regiment is a block of small marks. Zoom in far enough and those marks become individual figures — a standing soldier for foot, a mounted rider for cavalry — so you can watch the ranks as people, not dots. Zoom back out and they collapse to the legible marks again.</p>
+<p><strong>Order stances.</strong> Beyond plain move/attack you can arm a <em>stance</em> with a hotkey before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> clears it.</p>
+<ul>
+<li><strong>Hold</strong> (<kbd>H</kbd>) — stand ground; don’t chase a detected enemy.</li>
+<li><strong>Attack flank</strong> (<kbd>F</kbd>) / <strong>Attack rear</strong> (<kbd>R</kbd>) — maneuver to strike the enemy’s side or back, where hits land far harder (see <a href="./tactics.html#order-stances">Tactics</a>).</li>
+<li><strong>Skirmish</strong> (<kbd>K</kbd>) — a ranged unit keeps its distance, backing off when a threat closes instead of standing to fire.</li>
+<li><strong>Support</strong> (<kbd>G</kbd>) — right-click a friendly to guard it: the unit shadows that ally and engages anything that threatens it.</li>
+</ul>
+<p>Press <kbd>T</kbd> to cycle a selected unit’s <strong>formation</strong> — <em>Tight</em> closes ranks for better missile and charge defence, <em>Loose</em> spreads out, <em>Normal</em> is the default.</p>
 </section>
 <section id="the-battle-loop" class="level2">
 <h2 class="anchored" data-anchor-id="the-battle-loop">The battle loop</h2>
 <ol type="1">
 <li><strong>Select</strong> — left-click a unit, or drag a box to grab several at once. The info panel fills with the selected unit’s stats.</li>
 <li><strong>Order</strong> — right-click to send them. Move them onto an enemy’s flank, or right-click the enemy directly to attack. There is a brief <strong>reaction delay</strong> (~0.5 s, faster for cavalry) before units execute — orders aren’t instant.</li>
-<li><strong>Watch the bars</strong> — each unit shows a strength bar that drops as it takes casualties. Morale matters as much as numbers (see <a href="./tactics.html">Tactics</a>).</li>
+<li><strong>Watch the bars</strong> — each unit flies a small <strong>regimental flag</strong> in its team colour and shows a strength bar that drops as it takes casualties. Morale matters as much as numbers (see <a href="./tactics.html">Tactics</a>).</li>
 <li><strong>Navigate terrain</strong> — the field has two terrain patches: a <strong>dark-green forest</strong> (slows movement to 60%) on the left flank, and a <strong>tan hill</strong> (impassable) on the right. Units route around the hill automatically. See <a href="./tactics.html#terrain">Tactics → Terrain</a>.</li>
 <li><strong>Exploit the break</strong> — when a unit <strong>routs</strong>, it flees (shown faded) and stops counting toward the battle. Routs spread to nearby allies, so a single break can cascade.</li>
 <li><strong>Win</strong> — eliminate or rout the entire enemy army and a <strong>Victory</strong> overlay appears, with <strong>Fight Again</strong> to restart.</li>

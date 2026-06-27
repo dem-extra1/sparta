@@ -36,11 +36,35 @@
     ]
   },
   {
+    "objectID": "tactics.html#rank-cycling-trained-units",
+    "href": "tactics.html#rank-cycling-trained-units",
+    "title": "Tactics That Matter",
+    "section": "Rank cycling (trained units)",
+    "text": "Rank cycling (trained units)\nA well-trained melee unit periodically rotates its ranks — the tired front line steps back and a fresh rank takes its place, signalled by a whistle. Cycling slows fatigue buildup (by up to half at full training) and lets the unit recover morale even while still fighting. The better trained the unit, the more often it cycles. Ranged units don’t cycle.\nTraining therefore pays off in a long grind: a drilled regiment wears down a green one of equal numbers, because the green unit tires and wavers first.",
+    "crumbs": [
+      "Home",
+      "Play",
+      "Tactics That Matter"
+    ]
+  },
+  {
     "objectID": "tactics.html#the-unit-triangle-rock-paper-scissors",
     "href": "tactics.html#the-unit-triangle-rock-paper-scissors",
     "title": "Tactics That Matter",
     "section": "The unit triangle (rock-paper-scissors)",
     "text": "The unit triangle (rock-paper-scissors)\nThree roles, each strong against one and weak to another:\n\n\n🗡️ Infantry\nThe reliable line. No special bonus — your anvil to pin the enemy in place while something else does the killing.\n\n\n🐎 Cavalry\nFast, with a charge bonus. Devastating into a flank or rear — but blunted when it charges into braced spears.\n\n\n🛡️ Spearmen\nAnti-cavalry (marked with a spear). They blunt the cavalry charge, so use them to screen your line against enemy horse.\n\n\nThe loop: cavalry beats exposed flanks → spearmen beat cavalry → infantry pin so your cavalry can get around to those flanks. Read the enemy’s screen before you commit your horse.",
+    "crumbs": [
+      "Home",
+      "Play",
+      "Tactics That Matter"
+    ]
+  },
+  {
+    "objectID": "tactics.html#order-stances",
+    "href": "tactics.html#order-stances",
+    "title": "Tactics That Matter",
+    "section": "Order stances",
+    "text": "Order stances\nEach order can carry a stance, armed with a hotkey before you click (a coloured cursor shows which is active; Esc clears it). Stances turn the same units into different tools:\n\nHold (H) — the unit stands its ground instead of chasing bait. Anchor a line, or keep a screen in place while your cavalry swings wide.\nAttack flank (F) / Attack rear (R) — the unit maneuvers for the side or back rather than the front, cashing in the ×1.5 / ×2 multipliers above. Pair it with a frontal pin.\nSkirmish (K) — a ranged unit kites: it backs off when a threat closes inside its firing range, trading ground to keep shooting rather than being caught in melee.\nSupport (G) — the unit guards a chosen ally, shadowing it and intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable horse, or a guard onto your archers.",
     "crumbs": [
       "Home",
       "Play",
@@ -184,7 +208,7 @@
     "href": "how-to-play.html#controls",
     "title": "How to Play",
     "section": "Controls",
-    "text": "Controls\n\n\n\n\n\n\n\nAction\nControl\n\n\n\n\nSelect a unit\nLeft-click\n\n\nSelect multiple\nLeft-click and drag a box\n\n\nMove\nRight-click the ground\n\n\nAttack\nRight-click an enemy unit\n\n\nPan camera\nWASD / arrow keys / screen edges\n\n\nZoom\nMouse wheel\n\n\nActive pause\nSpace\n\n\n\nA right-click on empty ground is a move order; a right-click on an enemy is an attack order. Selection and camera stay live even while paused, so you can plan under pressure.\nZoom in to see the soldiers. From the usual overview each regiment is a block of small marks. Zoom in far enough and those marks become individual figures — a standing soldier for foot, a mounted rider for cavalry — so you can watch the ranks as people, not dots. Zoom back out and they collapse to the legible marks again.",
+    "text": "Controls\n\n\n\n\n\n\n\nAction\nControl\n\n\n\n\nSelect a unit\nLeft-click\n\n\nSelect multiple\nLeft-click and drag a box\n\n\nMove\nRight-click the ground\n\n\nAttack\nRight-click an enemy unit\n\n\nAdd waypoint\nShift + Right-click (chain several move points)\n\n\nOrder stance\nH hold · F flank · R rear · K skirmish · G support · Esc clear\n\n\nFormation\nT (cycles Normal / Tight / Loose)\n\n\nPan camera\nWASD / arrow keys / screen edges\n\n\nZoom\nMouse wheel\n\n\nShow all orders\nhold Space\n\n\nActive pause\nP (or Shift + Space)\n\n\n\nA right-click on empty ground is a move order; a right-click on an enemy is an attack order. Selection and camera stay live even while paused, so you can plan under pressure.\nZoom in to see the soldiers. From the usual overview each regiment is a block of small marks. Zoom in far enough and those marks become individual figures — a standing soldier for foot, a mounted rider for cavalry — so you can watch the ranks as people, not dots. Zoom back out and they collapse to the legible marks again.\nOrder stances. Beyond plain move/attack you can arm a stance with a hotkey before you click; a coloured cursor shows which is active, and Esc clears it.\n\nHold (H) — stand ground; don’t chase a detected enemy.\nAttack flank (F) / Attack rear (R) — maneuver to strike the enemy’s side or back, where hits land far harder (see Tactics).\nSkirmish (K) — a ranged unit keeps its distance, backing off when a threat closes instead of standing to fire.\nSupport (G) — right-click a friendly to guard it: the unit shadows that ally and engages anything that threatens it.\n\nPress T to cycle a selected unit’s formation — Tight closes ranks for better missile and charge defence, Loose spreads out, Normal is the default.",
     "crumbs": [
       "Home",
       "Play",
@@ -196,7 +220,7 @@
     "href": "how-to-play.html#the-battle-loop",
     "title": "How to Play",
     "section": "The battle loop",
-    "text": "The battle loop\n\nSelect — left-click a unit, or drag a box to grab several at once. The info panel fills with the selected unit’s stats.\nOrder — right-click to send them. Move them onto an enemy’s flank, or right-click the enemy directly to attack. There is a brief reaction delay (~0.5 s, faster for cavalry) before units execute — orders aren’t instant.\nWatch the bars — each unit shows a strength bar that drops as it takes casualties. Morale matters as much as numbers (see Tactics).\nNavigate terrain — the field has two terrain patches: a dark-green forest (slows movement to 60%) on the left flank, and a tan hill (impassable) on the right. Units route around the hill automatically. See Tactics → Terrain.\nExploit the break — when a unit routs, it flees (shown faded) and stops counting toward the battle. Routs spread to nearby allies, so a single break can cascade.\nWin — eliminate or rout the entire enemy army and a Victory overlay appears, with Fight Again to restart.",
+    "text": "The battle loop\n\nSelect — left-click a unit, or drag a box to grab several at once. The info panel fills with the selected unit’s stats.\nOrder — right-click to send them. Move them onto an enemy’s flank, or right-click the enemy directly to attack. There is a brief reaction delay (~0.5 s, faster for cavalry) before units execute — orders aren’t instant.\nWatch the bars — each unit flies a small regimental flag in its team colour and shows a strength bar that drops as it takes casualties. Morale matters as much as numbers (see Tactics).\nNavigate terrain — the field has two terrain patches: a dark-green forest (slows movement to 60%) on the left flank, and a tan hill (impassable) on the right. Units route around the hill automatically. See Tactics → Terrain.\nExploit the break — when a unit routs, it flees (shown faded) and stops counting toward the battle. Routs spread to nearby allies, so a single break can cascade.\nWin — eliminate or rout the entire enemy army and a Victory overlay appears, with Fight Again to restart.",
     "crumbs": [
       "Home",
       "Play",
