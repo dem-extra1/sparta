@@ -1,0 +1,130 @@
+---
+title: "How Combat Works"
+description: "The probabilistic, per-soldier model behind every clash --- hits, wounds, stamina, footing, and the spear wall."
+---
+
+Battles in Sparta are not resolved by two numbers trading blows. Every soldier
+fights the individual in front of them, carries their own health, stamina, and
+footing, and each blow is rolled on its own. The tactics you know --- flanking
+kills faster, never turn your back, spears screen, a braced line stops a charge,
+a surrounded man tires and falls --- are not bonuses bolted on. They **emerge**
+from where bodies are and the dice each strike rolls. This page lays out those dice.
+
+## What each soldier carries
+
+Every soldier has live state that combat reads and changes moment to moment:
+
+- **Health** --- wounds add up here; at zero, the soldier falls.
+- **Stamina** --- spent by every action; when it runs low, everything gets worse.
+- **Facing** --- the direction they are turned. You can only defend what you face.
+- **Footing** --- standing or knocked **prone**; a downed soldier is nearly helpless.
+
+and fixed traits from their regiment:
+
+- **Skill** $s$ --- training. Lands blows, parries, beats shields, tires slower.
+- **Armour** $a$ --- soaks part of a landed blow, from *any* angle.
+- **Shield** $b$ --- blocks blows, but only ones you face.
+- **Lethality** $\ell$ --- how deadly the weapon is.
+- **Reach** $r$ --- how far the weapon strikes (a spear out-reaches a sword).
+- **Mass** $m$ --- how hard they are to shove or knock down (a horse is heavy).
+
+Two things scale *everything* a soldier does: being **wounded** and being
+**winded**. A hurt or exhausted soldier hits softer, defends weaker, and is easier
+to put down --- so wounds and fatigue snowball.
+
+## One blow, step by step
+
+When a soldier swings at the enemy in front of them, the game resolves a closing
+speed, a contest, a wound, a stamina cost, and a shove.
+
+**0. How fast are they closing?** The attacker's speed *toward* the target --- call
+it the **charge** $c$ --- is zero standing still and large for a galloping horse. It
+makes the blow harder to dodge, harder-hitting, and harder-shoving, all at once.
+
+**1. Does it land? (attack vs. defence)** The blow is an *opposed* roll: the
+attacker's offence against the defender's **active defence** --- footwork, parry,
+shield. Crucially, you can only actively defend what you can **see**:
+
+$$p_{\mathrm{land}} = L\big(\beta\,(\mathcal{A} - \mathcal{D})\big),
+\qquad
+\mathcal{D} = \phi\,(s_D + \lambda\,b_D)\cdots$$
+
+where $\phi$ is your **facing** against the incoming blow: full to the front, little
+to the flank, **zero to the back**. A blow to a soldier's back meets no parry and no
+shield --- only armour. Skill, shields, and footwork all live on the front. Wound
+the attacker or wind the defender and these scores shift; nothing is ever a
+guaranteed hit or miss.
+
+**2. Does it wound?** A blow that lands subtracts from the defender's **health** ---
+we don't flip a kill-or-not coin, we track damage. Its size is the weapon's
+lethality, boosted by the charge and blunted by armour:
+
+$$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\cdots$$
+
+There is no separate "injured" flag: health just drops, and a soldier near death
+fights weaker, so the next wound comes easier than the last. At zero health they
+fall. Armour is the only thing that protects a man hit from behind.
+
+**3. Everyone tires.** Stamina is spent by **attacking**, by **defending** (every
+blow you meet costs you --- a charge costs more), and by **getting up** after being
+knocked down. It refills only while resting. So a soldier under sustained pressure,
+or surrounded, burns through stamina, their defence collapses, and then blows land
+freely. Fatigue, not a hidden timer, is what breaks a line.
+
+**4. The shove.** Every blow that connects --- even a blocked one --- shoves the
+target back, harder from a charge and less against a heavy soldier:
+
+$$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\cdots$$
+
+A blocked blow draws no blood but still pushes --- which is how a spear wall drives
+a stalled enemy backward.
+
+## Knocked down --- and the domino
+
+A hard enough shove **knocks a soldier prone**. Bracing and mass make you harder to
+topple; once down, you defend nothing, can't strike, and must spend time *and*
+stamina scrambling up --- which is exactly when the next blow kills you.
+
+A shoved soldier also collides with whoever is behind them. A **braced** man soaks
+it and the shove stops; otherwise it passes back, fading, toppling a row of unbraced
+men like dominoes:
+
+$$J_{i+1} = \tau\,(1 - \mathrm{brace}_i)\,J_i, \qquad 0 < \tau < 1.$$
+
+You are more braced when **holding position**, in **tight formation**, and **facing
+into** the blow --- the same facing that lets you defend. A loose, flanked file
+dominoes and goes down; a set, front-facing shield wall holds at the first man.
+
+## Why your tactics work
+
+Everything tactical comes out of the rolls above:
+
+- **Flank and surround.** A soldier hemmed in is in reach of more enemies (more
+  blows rolled at them), burns stamina meeting all of them (their defence
+  collapses), and takes hits they **can't face** (armour only). Three effects, one
+  cause --- not a "rear bonus" number. Get around the flank and the line melts.
+- **Never show your back.** Facing gates both your defence and your footing. A
+  soldier fighting to their front is hard to hit and hard to topple; the moment they
+  turn --- routing, or caught from behind --- defence and footing vanish and they're
+  run down. That's why a breaking line dies so fast.
+- **Spears screen.** A spear's reach holds shorter weapons out past their own reach:
+  the spearmen jab and shove while the swordsmen can't answer. Put a spear line in
+  front of what you want to protect.
+- **Brace for the charge.** A charge lights up everything at once --- harder to
+  dodge, deadlier, and a shove that bowls men over and lays them out. Into a loose
+  line it's a massacre. But a **braced** spear line, set and facing, soaks it at the
+  front rank, stays on its feet, and out-reaches the horse: the charge breaks on the
+  hedge. Never take a charge loose or in the flank; never send horse into set spears.
+- **Armour and shields buy time.** Heavy, shielded troops turn wounds into blocked
+  shoves and glancing hits --- they grind slowly and endure. Light troops caught in
+  the press evaporate.
+- **Fight fresh, fight skilled.** Skill and stamina help at *both* ends --- landing
+  more, defending more, tiring slower. Rested veterans beat winded levies by more
+  than the headcount suggests, so pace your commitment.
+
+::: {.callout-note}
+The exact constants ($\beta$, $D_0$, $\tau$, the stamina costs, the knockdown
+threshold, and the rest) are balance dials we tune against playtests; the **shape**
+of the model above is what's fixed. For the full specification, see the
+`docs/combat-model.md` design note in the project repository.
+:::

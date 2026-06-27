@@ -52,6 +52,8 @@ website:
             href: how-to-play.qmd
           - text: "Tactics That Matter"
             href: tactics.qmd
+          - text: "How Combat Works"
+            href: combat.qmd
       - text: "Under the Hood"
         menu:
           - text: "Replays"
@@ -77,6 +79,7 @@ website:
           - getting-started.qmd
           - how-to-play.qmd
           - tactics.qmd
+          - combat.qmd
       - section: "Under the Hood"
         contents:
           - replays.qmd
