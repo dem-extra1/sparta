@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Zoom level-of-detail: soldier marks become detailed figure silhouettes only when the camera zooms in past the threshold, and this change (per-type foot gear, a facing cavalry mount, no centre emblem up close) is only visible at that zoom. A recorded battle plays at the default zoom and can't show it, so the change is shown by zoomed-in screenshots in the PR description instead (demos/shots/zoom-figures-per-type.png and zoom-figures-cavalry.png)."
+  "replay": "demos/camera-showcase.json",
+  "caption": "Demos now record the camera: this clip plays back a recorded session that zooms into the clash, follows the fighting, and pulls back out — driven by the replay's new presentation track, not the old static camera. (A demo can also start already zoomed in or panned — the clip opens on the track's first keyframe.)",
+  "fixed_fps": 60,
+  "max_frames": 720,
+  "fps": 30,
+  "width": 640
 }

@@ -30,10 +30,11 @@ The simulation is deterministic by construction:
 - **Fixed timestep.** The sim advances on the 60 Hz physics tick, never on a
   variable-framerate / wall-clock timer. The enemy AI re-evaluates on a fixed
   tick cadence (`Battle.AI_PERIOD`) for the same reason.
-- **Orders, not selections.** Only right-click orders change the outcome;
-  selection, camera and zoom are pure presentation and aren't recorded. Each
-  order references units by a stable per-battle `uid` so it survives a scene
-  reload.
+- **Orders drive the sim; presentation rides alongside.** Only right-click orders
+  change the outcome, and each references units by a stable per-battle `uid` so it
+  survives a scene reload. Camera pan and zoom are also recorded, but as a separate
+  **presentation track** that's purely cosmetic — it reproduces how the battle was
+  framed without ever feeding the sim. Selection isn't recorded.
 - Orders are queued and applied on the **next** physics tick, so live play and
   playback take the exact same code path (`Battle._apply_order_cmd`).
 
@@ -46,7 +47,9 @@ The simulation is deterministic by construction:
   top-center). When the battle ends it's saved to `user://replays/`.
 - On the end screen, **Watch Replay** re-runs the battle you just played (the
   indicator changes to `▶ REPLAY`). During playback you can still pan the camera
-  and click units to inspect them, but you can't issue orders.
+  and click units to inspect them, but you can't issue orders. (The recorded
+  camera track only drives the view when the **demo recorder** replays it for a CI
+  clip; in-app you keep free pan/zoom.)
 - **Load Replay** (a persistent top-right button, also on the end screen) opens
   a file picker on the replays folder so you can watch *any* saved battle, not
   just the most recent one.
@@ -65,9 +68,20 @@ Replay files are small JSON:
   "orders": [
     { "tick": 84, "units": [0, 1], "x": 740.0, "y": 560.0, "target": -1 },
     { "tick": 132, "units": [3], "x": 0.0, "y": 0.0, "target": 7 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 800.0, "y": 500.0, "zoom": 0.62 },
+    { "tick": 90, "x": 812.0, "y": 470.0, "zoom": 1.70 }
   ]
 }
 ```
+
+The optional `camera` array is the **presentation track**: camera keyframes (`x`,
+`y`, `zoom`) stamped with the physics tick they were captured on. Consecutive
+identical samples are dropped, so a still camera costs one keyframe. On playback the
+camera holds the latest keyframe at or before the current tick. The field is additive
+— replays without it (every pre-camera recording) play with the default static
+camera — so no `version` bump is needed.
 
 Each order's `target` overloads one int to encode the order kind, so the JSON
 schema stays fixed as order types are added (`Battle._apply_order_cmd` dispatches

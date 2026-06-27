@@ -61,6 +61,31 @@ Replays are the project's deterministic seed-plus-orders logs (see
 A replay only reproduces on the **same build**, which is exactly the point here —
 CI replays it against *your PR's* build, so the clip reflects your change.
 
+### Camera moves (presentation track)
+
+A replay also records the **camera** — pan and zoom over time — as a presentation
+track alongside the orders (see [`../REPLAY.md`](../REPLAY.md)). When CI records the
+clip it drives the camera from that track, so a recorded session **pans and zooms
+exactly as it was played**. This is how to show a change that only appears at a
+non-default camera — e.g. the zoomed-in soldier figures: record a battle while you
+zoom into the clash, and the clip zooms in too. `demos/camera-showcase.json` is a
+ready-made example (an auto-battle that zooms into the melee and back out).
+
+A demo can also **open already zoomed in or panned** — the clip starts on the
+track's first keyframe (the recorder snaps to it before the first frame), so you
+don't have to begin every demo on the wide default view.
+
+The track is cosmetic and additive: a replay with no camera track (every older
+recording, and hand-authored scenarios) plays with the default static camera, so
+nothing here changes existing demos.
+
+**Raise the framerate for a moving camera.** The defaults (`fixed_fps` 30, GIF
+`fps` 12) are tuned for static-camera battle demos, where only the units move
+slowly. A panning/zooming camera looks choppy at 12 fps, so for a camera-motion
+demo bump the manifest — e.g. `"fixed_fps": 60, "max_frames": 600, "fps": 30` —
+to record at the full physics-tick rate and output a smooth 30 fps GIF (at the
+cost of a larger file). `demos/demo.json` here uses those values.
+
 ## Hand-authoring a scenario
 
 You can also write a replay JSON by hand — a **scenario** — to stage a specific

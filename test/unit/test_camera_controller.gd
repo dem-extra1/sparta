@@ -149,3 +149,24 @@ func test_wheel_zoom_down_anchors_on_cursor() -> void:
 		"wheel-down zoom anchors the world X coordinate under the cursor")
 	assert_almost_eq(world_after.y, world_before.y, 0.01,
 		"wheel-down zoom anchors the world Y coordinate under the cursor")
+
+
+func test_input_yields_while_a_presentation_track_drives_the_camera() -> void:
+	# During playback of a replay with a camera track, Battle drives the camera, so the
+	# controller must ignore pan/zoom input rather than fight the recorded framing.
+	var cam := _make_camera()
+	var before := cam.position
+	Replay.mode = Replay.Mode.PLAYBACK
+	Replay.drive_camera = true
+	Replay._camera_track = [{"tick": 0, "x": 0.0, "y": 0.0, "zoom": 1.0}]
+	var event := InputEventPanGesture.new()
+	event.delta = Vector2(50, 0)
+	cam._unhandled_input(event)
+	assert_eq(cam.position, before, "input is ignored while a presentation track drives the camera")
+	# A plain replay (drive_camera off) keeps manual control even with a track loaded.
+	Replay.drive_camera = false
+	cam._unhandled_input(event)
+	assert_gt(cam.position.x, before.x, "input still pans when the camera isn't presentation-driven")
+	# Restore the shared Replay autoload so other tests see a clean state.
+	Replay._camera_track = []
+	Replay.reset()

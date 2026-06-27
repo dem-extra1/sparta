@@ -26,6 +26,9 @@ func _ready() -> void:
 	var replay_path := OS.get_environment("SPARTA_DEMO_REPLAY")
 	if replay_path != "":
 		if Replay.start_playback(replay_path):
+			# Reproduce the recorded camera framing (pan/zoom) in the clip; a replay with
+			# no presentation track still plays with the default static camera.
+			Replay.drive_camera = true
 			print("[demo] Playing back replay: %s" % replay_path)
 		else:
 			push_warning("[demo] Could not load replay '%s'; recording a fresh battle instead."

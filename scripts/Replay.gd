@@ -49,6 +49,22 @@ var seed_value: int = 0
 #               "formation"?: int (Unit.FORMATION_*; omitted when 0 = NORMAL) }.
 var _orders: Array = []
 var _play_index: int = 0
+
+# Presentation track (cosmetic): camera keyframes captured during live play so a
+# replay reproduces what the player *saw* (zoom/pan), not just the sim. Each entry:
+# { "tick": int, "x": float, "y": float, "zoom": float }. Recorded once per tick
+# during RECORD, with consecutive-identical samples dropped (a static camera stores
+# one keyframe). Never feeds the sim — purely how the recorded battle is framed on
+# playback. Additive and back-compatible: replays without a camera track play with
+# the default static camera, exactly as before (no version bump, like the per-order
+# "mode" field above).
+var _camera_track: Array = []
+var _camera_index: int = 0
+
+# Whether playback should drive the camera from the presentation track. Off by default,
+# so in-app "Watch Replay" keeps free pan/zoom for inspection; the demo recorder
+# (DemoRunner) turns it on so CI clips reproduce the recorded framing.
+var drive_camera: bool = false
 # Bumped per save so two battles finishing in the same wall-clock second don't
 # overwrite each other (the timestamp only has second precision).
 var _save_counter: int = 0
@@ -68,6 +84,9 @@ func start_recording() -> void:
 	seed_value = picker.seed
 	rng.seed = seed_value
 	_orders.clear()
+	_camera_track.clear()
+	_camera_index = 0
+	drive_camera = false
 	_play_index = 0
 	loaded_path = ""
 	# Drop the previous battle's save path so a failed save() this battle can't
@@ -114,6 +133,17 @@ func start_playback(path: String) -> bool:
 			entry["formation"] = int(o["formation"])
 		_orders.append(entry)
 	_play_index = 0
+	# Load the optional presentation (camera) track. Absent in pre-camera replays,
+	# which then play with the default static camera.
+	_camera_track.clear()
+	_camera_index = 0
+	for c in data.get("camera", []):
+		_camera_track.append({
+			"tick": int(c.get("tick", 0)),
+			"x": float(c.get("x", 0.0)),
+			"y": float(c.get("y", 0.0)),
+			"zoom": float(c.get("zoom", 1.0)),
+		})
 	loaded_path = path
 	mode = Mode.PLAYBACK
 	return true
@@ -123,6 +153,7 @@ func start_playback(path: String) -> bool:
 ## Keeps the state transition in one place instead of having callers poke `mode`.
 func reset() -> void:
 	mode = Mode.IDLE
+	drive_camera = false
 
 
 ## The folder replays are saved to (created if needed). For a file picker.
@@ -164,6 +195,43 @@ func orders_for_tick(tick: int) -> Array:
 	return due
 
 
+## RECORD: capture the camera at `tick`. No-op otherwise. A sample equal to the last
+## stored keyframe (same position and zoom) is dropped, so a still camera costs one
+## keyframe and only real moves add entries. Cosmetic — never read by the simulation.
+func record_camera(tick: int, pos: Vector2, zoom: float) -> void:
+	if mode != Mode.RECORD:
+		return
+	if not _camera_track.is_empty():
+		var last: Dictionary = _camera_track[_camera_track.size() - 1]
+		if is_equal_approx(last["x"], pos.x) and is_equal_approx(last["y"], pos.y) \
+				and is_equal_approx(last["zoom"], zoom):
+			return
+	_camera_track.append({"tick": tick, "x": pos.x, "y": pos.y, "zoom": zoom})
+
+
+## Whether a presentation (camera) track is loaded — true only for replays recorded
+## with one. Callers use it to decide whether to drive the camera from the track.
+func has_camera_track() -> bool:
+	return not _camera_track.is_empty()
+
+
+## PLAYBACK: the camera state to apply at `tick` — the latest keyframe at or before it
+## (the camera holds its last framing until the next recorded move; before the first
+## keyframe it holds the first). Returns {} when not in playback or no track is loaded.
+## Advances an internal cursor, so call it with non-decreasing ticks (as the tick loop
+## does); it also tolerates a step back to an earlier tick.
+func camera_for_tick(tick: int) -> Dictionary:
+	if mode != Mode.PLAYBACK or _camera_track.is_empty():
+		return {}
+	# A replay that steps backward (e.g. a restarted playback) rewinds the cursor.
+	if _camera_index > 0 and int(_camera_track[_camera_index]["tick"]) > tick:
+		_camera_index = 0
+	while _camera_index + 1 < _camera_track.size() \
+			and int(_camera_track[_camera_index + 1]["tick"]) <= tick:
+		_camera_index += 1
+	return _camera_track[_camera_index]
+
+
 ## Persist the recorded battle. Returns the file path, or "" if nothing/failed.
 func save(result: String, duration_ticks: int) -> String:
 	if mode != Mode.RECORD:
@@ -185,6 +253,10 @@ func save(result: String, duration_ticks: int) -> String:
 		"duration_ticks": duration_ticks,
 		"orders": _orders,
 	}
+	# Only emit the presentation track when one was captured, so pre-camera-style
+	# recordings (and tooling that never moves the camera) stay byte-for-byte simple.
+	if not _camera_track.is_empty():
+		payload["camera"] = _camera_track
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		push_warning("Could not write replay to %s" % path)

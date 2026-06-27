@@ -24,7 +24,17 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
+## When the demo recorder drives the camera from a replay's presentation track, the
+## live pan/zoom input here must stand down or it would fight the recorded framing.
+## In-app Watch Replay leaves Replay.drive_camera off, so manual control is kept.
+func _presentation_driven() -> bool:
+	return Replay.mode == Replay.Mode.PLAYBACK and Replay.drive_camera \
+			and Replay.has_camera_track()
+
+
 func _process(delta: float) -> void:
+	if _presentation_driven():
+		return
 	var dir := Vector2.ZERO
 
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
@@ -55,6 +65,8 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _presentation_driven():
+		return
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom_anchored(1.1, event.position)

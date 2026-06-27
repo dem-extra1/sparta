@@ -66,6 +66,12 @@ const SPEED_SCALE := 0.6
 # simulation is deterministic and replayable. 60 ticks == 1 second at 60 Hz.
 const AI_PERIOD := 60
 
+# Fraction of the remaining distance the demo camera closes toward its recorded
+# target each tick (exponential smoothing). < 1 low-passes any jitter in the
+# recorded presentation track so the clip glides instead of snapping keyframe to
+# keyframe; ~0.15/tick at 60 Hz settles a step in ~0.3 s — smooth but responsive.
+const CAMERA_SMOOTHING := 0.15
+
 @onready var _units: Node2D = $Units
 @onready var _hud = $HUD
 @onready var _camera: Camera2D = $Camera2D
@@ -106,6 +112,12 @@ func _ready() -> void:
 
 	_camera.bounds = FIELD
 	_camera.position = FIELD.position + FIELD.size * 0.5
+	# When the demo recorder replays a presentation track, start already framed on the
+	# first keyframe so the smoothing below has nothing to glide in from.
+	if Replay.mode == Replay.Mode.PLAYBACK and Replay.drive_camera and Replay.has_camera_track():
+		var first: Dictionary = Replay.camera_for_tick(0)
+		_camera.position = Vector2(first["x"], first["y"])
+		_camera.zoom = Vector2(first["zoom"], first["zoom"])
 
 	# Register terrain patches as PathField obstacles or speed zones; cleared in _exit_tree().
 	PathField.active = PathField.new(FIELD)
@@ -207,6 +219,19 @@ func _physics_process(_delta: float) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		for cmd in Replay.orders_for_tick(_tick):
 			_apply_order_cmd(cmd)
+		# Drive the camera from the recorded presentation track so the replay is framed
+		# (zoom/pan) as it was played — only when asked (the demo recorder), so in-app
+		# Watch Replay keeps free pan/zoom. No track -> static camera, as before.
+		if Replay.drive_camera:
+			var cam: Dictionary = Replay.camera_for_tick(_tick)
+			if not cam.is_empty():
+				# Ease toward the recorded framing rather than snapping to it, so jitter in
+				# the track (e.g. a recording that followed the shifting melee) is low-passed
+				# into a smooth glide.
+				var target_pos := Vector2(cam["x"], cam["y"])
+				var target_zoom := Vector2(cam["zoom"], cam["zoom"])
+				_camera.position = _camera.position.lerp(target_pos, CAMERA_SMOOTHING)
+				_camera.zoom = _camera.zoom.lerp(target_zoom, CAMERA_SMOOTHING)
 	else:
 		for o in _pending_orders:
 			Replay.record_order(_tick, o["units"], Vector2(o["x"], o["y"]), o["target"],
@@ -214,6 +239,8 @@ func _physics_process(_delta: float) -> void:
 					int(o.get("formation", UnitRef.FORMATION_NORMAL)))
 			_apply_order_cmd(o)
 		_pending_orders.clear()
+		# Capture the camera each tick so a live recording reproduces what the player saw.
+		Replay.record_camera(_tick, _camera.position, _camera.zoom.x)
 
 	# Enemy AI is part of the deterministic sim (not player input): re-run it on
 	# the same cadence during playback so it reaches the same decisions.
