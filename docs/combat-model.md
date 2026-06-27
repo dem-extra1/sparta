@@ -96,6 +96,12 @@ A strike happens when $A$'s soldier has $D$'s within reach $r_A$ on $A$'s attack
 cadence. We resolve it as: a closing term, an **opposed** land contest, a wound to
 health, a stamina cost on both sides, and a knockback impulse.
 
+Notation used throughout: a subscript $A$ or $D$ tags the attacker's or defender's
+value (so $s_A$ is the attacker's skill, $a_D$ the defender's armour); a hat marks a
+unit vector ($\hat{u}$, $\hat{n}$); $(x)_+ = \max(x, 0)$ is the **positive part**;
+and $\operatorname{clip}(x, \mathit{lo}, \mathit{hi})$ clamps $x$ to the interval
+$[\mathit{lo}, \mathit{hi}]$.
+
 ### 0. Closing velocity (the charge term)
 
 Let $\hat{u}_{A\to D}$ be the unit vector from $A$ to $D$ and $\vec{v}_A,\vec{v}_D$
@@ -105,8 +111,9 @@ $$v_c = \big((\vec{v}_A - \vec{v}_D)\cdot \hat{u}_{A\to D}\big)_+,
 \qquad
 c = v_c / v_{\mathrm{ref}},$$
 
-the relative velocity *aimed at the target*, normalised to a reference gallop and
-clamped non-negative. This is exactly the attacker's **posture** in motion: a
+the relative velocity *aimed at the target*, clamped non-negative and normalised by
+$v_{\mathrm{ref}}$, a reference gallop speed (so $c \approx 1$ at a full charge).
+This is exactly the attacker's **posture** in motion: a
 planted (*braced* / *at attention*) fighter has $c = 0$, an *advancing* one a small
 $c$, a *sprinting* cavalryman a large $c$. The single quantity $c$ feeds the hit
 contest, the damage, **and** the knockback below — closing fast makes you harder to
@@ -140,7 +147,9 @@ $$\mathcal{D} = \phi_D\,\big(s_D + \lambda\,b_D\big)\,q(h_D)\,g(\sigma_D),
 \qquad
 \phi_D = \big(\hat{n}_D \cdot \hat{u}_{D\to A}\big)_+ .$$
 
-$\phi_D$ is the **facing gate**: the dot of the defender's facing with the
+Here $\mu \ge 0$ weights closing speed into the attack (how much a charge helps it
+land), and $\lambda \ge 0$ weights the shield into active defence. $\phi_D$ is the
+**facing gate**: the dot of the defender's facing with the
 direction the blow comes from, clamped to non-negative. A blow from the front
 ($\phi_D \to 1$) meets full active defence; a blow from the flank meets little; a
 blow to the **back** ($\phi_D = 0$) meets *none* — no parry, no shield block, no
@@ -150,9 +159,12 @@ $$p_{\mathrm{land}} = \operatorname{clip}\!\Big(L\big(\beta\,(\mathcal{A} - \mat
 \qquad
 L(x) = \frac{1}{1 + e^{-x}}.$$
 
-Evenly-matched, fresh, front-facing soldiers land near $L(0) = \tfrac12$; a veteran
-against an exhausted or back-turned foe lands far more often. The clip keeps a blow
-from ever being automatic or impossible. **Shield and skill defend only from the
+where $L$ is the logistic (so a contest score of $0$ gives an even chance),
+$\beta > 0$ sets how sharply the gap $\mathcal{A} - \mathcal{D}$ swings the odds, and
+the clip floor and ceiling $p_{\min}, p_{\max}$ bound the result. Evenly-matched,
+fresh, front-facing soldiers land near $L(0) = \tfrac12$; a veteran against an
+exhausted or back-turned foe lands far more often. The clip keeps a blow from ever
+being automatic or impossible. **Shield and skill defend only from the
 front and only while you have the stamina to use them; armour does not care.**
 
 ### 2. Wound: damage to the health pool
@@ -165,7 +177,8 @@ $$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\,q(h_A),
 \qquad
 h_D \leftarrow h_D - \Delta h.$$
 
-The soldier **dies** when $h_D \le 0$. Until then it fights on at reduced capacity
+$D_0 > 0$ is a base damage scale (the wound a baseline weapon, $\ell = 1$, deals to
+an unarmoured, standing target). The soldier **dies** when $h_D \le 0$. Until then it fights on at reduced capacity
 through $q(h_D)$ — wounds compound, because a hurt soldier both defends and hits
 worse, so the second and third wounds come easier than the first. Armour $a_D$ is
 the only thing that protects a back-turned or downed man, since it sits outside the
@@ -180,7 +193,9 @@ $$\sigma_D \mathrel{-}= \kappa_d\,\phi_D\,(1 + c) \qquad\text{(meeting a blow yo
 $$\sigma \mathrel{-}= \kappa_p \qquad\text{(the tick a soldier rises from prone)},$$
 $$\sigma \mathrel{+}= \rho_\sigma(\text{posture})\,\Delta t \qquad\text{(posture baseline: fast } at\ ease,\ \text{slow } at\ attention,\ \text{negative while } sprinting/\text{rising; capped at } \sigma_{\max}).$$
 
-Defending is not free: a soldier under sustained assault spends $\kappa_d$ on
+Here $\kappa_a, \kappa_d, \kappa_p \ge 0$ are the stamina costs of a strike, of
+meeting one blow, and of rising from prone; $\rho_\sigma(\text{posture})$ is the
+posture-set regen rate; and $\Delta t$ is the tick duration. Defending is not free: a soldier under sustained assault spends $\kappa_d$ on
 **every** incoming blow it meets, so its stamina falls, $g(\sigma)$ falls, and its
 active defence $\mathcal{D}$ collapses — after which blows land freely. This is the
 engine behind several tactics: a **surrounded** soldier meets many blows per tick,
@@ -197,6 +212,8 @@ $$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\;\eta,
 \qquad
 \eta = \begin{cases} \eta_{\mathrm{def}} \in (0,1) & \text{defended (turned aside)} \\ 1 & \text{landed.} \end{cases}$$
 
+$J_0 > 0$ is a base impulse scale, and $\eta$ is the fraction of momentum
+transmitted — $\eta_{\mathrm{def}}$ for a defended blow, $1$ for a clean landing.
 The struck soldier is displaced by $J\,\hat{u}_{A\to D}$; the formation spring then
 reels it back over the following ticks. A blocked blow draws no blood but still
 shoves — which is how a spear wall pushes a stalled enemy back even when it can't
@@ -210,7 +227,10 @@ probabilistic:
 
 $$p_{\mathrm{prone}} = \operatorname{clip}\!\Big(\frac{J - J_{\mathrm{fall}}\,(1 + \mathrm{br}_D)\,m_D}{J_{\mathrm{scale}}},\; 0,\; p_{\mathrm{prone}}^{\max}\Big).$$
 
-A **prone** soldier has $\phi_D \to 0$ in every contest (no active defence — only
+where $J_{\mathrm{fall}} > 0$ is the base knockdown threshold (an impulse below it
+never fells a man), $J_{\mathrm{scale}} > 0$ how fast the fall chance climbs with
+surplus impulse, and $p_{\mathrm{prone}}^{\max} \le 1$ caps it (no single blow is a
+certain knockdown). A **prone** soldier has $\phi_D \to 0$ in every contest (no active defence — only
 armour saves it), $b_{\mathrm{post}} = 0$, cannot strike, and must spend
 $T_{\mathrm{up}}$ ticks and $\kappa_p$ stamina to return to *at attention*. So a
 charge that bowls men over does not just push them — it lays them down defenceless
@@ -229,10 +249,12 @@ file behind it:
 $$C_i = J_{\mathrm{cap}}\Big(\mathrm{br}_i + \sum_{k\ge1}\zeta^{\,k}\,\mathrm{br}_{i+k}\,T_{i,k}\Big),
 \qquad 0 < \zeta \le 1,$$
 
-where $T_{i,k}=1$ only while ranks $i \dots i+k$ form an **unbroken, tight, braced,
-front-facing** file — support transmits through set men in contact, and a gap, a
-loose or unbraced man, or one not facing the blow sets $T=0$ from there back — and
-$\zeta$ is the per-rank transmission efficiency. A lone braced man has $C_i =
+where $J_{\mathrm{cap}} > 0$ is the impulse a fully-set man ($\mathrm{br} = 1$) can
+absorb, $\zeta \in (0, 1]$ is the per-rank support-transmission efficiency, and
+$T_{i,k} \in \{0,1\}$ flags whether ranks $i \dots i+k$ form an **unbroken, tight,
+braced, front-facing** file — support transmits through set men in contact, and a
+gap, a loose or unbraced man, or one not facing the blow sets $T = 0$ from there
+back. A lone braced man has $C_i =
 J_{\mathrm{cap}}\,\mathrm{br}_i$; a **deep** braced phalanx sums down the column, so
 the front rank resists far more than any one man could. That is the historical depth
 effect (rear ranks bracing into the front), emergent from support — not a "depth
@@ -244,7 +266,8 @@ the impulse reaching the $i$-th soldier in the chain:
 $$J_{i+1} = \tau\,\big(J_i - C_i\big)_+,
 \qquad 0 < \tau < 1,$$
 
-where $(\cdot)_+$ is the positive part. A blow **below** the front column's capacity
+where $\tau$ is the per-contact attenuation (the impulse fades as it passes
+rearward). A blow **below** the front column's capacity
 $C_i$ dies there — the charge breaks on the braced depth. A blow that **exceeds** it
 overwhelms the front man (he is shoved, and rolls $p_{\mathrm{prone}}$ on his own
 footing — a hard enough $J$ topples him despite bracing), the supporting file has
@@ -259,11 +282,13 @@ $$\mathrm{br} = \operatorname{clip}\!\big(\mathrm{br}_0
   + w_f\,[\text{formation} = \textsf{TIGHT}]
   + w_d\,(\hat{n}\cdot\hat{u}_{\text{incoming}})_+ ,\; 0,\; 1\big),$$
 
-i.e. a soldier is more braced in a **set posture** ($b_{\mathrm{post}}$ from the
-posture table — max when *braced*, near zero when *sprinting*, *at ease*, or
-*prone*), in **tight formation**, and **facing into** the blow (the last term is the
-facing $\hat{n}$ dotted with the incoming direction, clamped non-negative — the
-*same* facing that gates active defence). A loose, flanked, sprinting, or routing
+i.e. starting from a baseline $\mathrm{br}_0$, a soldier is more braced in a **set
+posture** ($b_{\mathrm{post}}$ from the posture table — max when *braced*, near zero
+when *sprinting*, *at ease*, or *prone*), in **tight formation** (weight $w_f$ on the
+indicator $[\,\text{formation} = \textsf{TIGHT}\,]$, which is $1$ when its condition
+holds and $0$ otherwise), and **facing into** the blow (weight $w_d$ on the last
+term — the facing $\hat{n}$ dotted with the incoming direction, clamped
+non-negative — the *same* facing that gates active defence). A loose, flanked, sprinting, or routing
 file has $\mathrm{br}\to 0$, dominoes, and goes down; a *braced*, tight,
 front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 

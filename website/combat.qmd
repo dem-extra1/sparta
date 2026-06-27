@@ -40,6 +40,11 @@ to put down --- so wounds and fatigue snowball.
 When a soldier swings at the enemy in front of them, the game resolves a closing
 speed, a contest, a wound, a stamina cost, and a shove.
 
+The formulas below are sketches: a subscript $A$ or $D$ means the **attacker's** or
+**defender's** value (so $a_D$ is the defender's armour), and a trailing $\cdots$
+hides finer factors kept in the full spec. Each symbol is explained where it first
+appears.
+
 **0. How fast are they closing?** The attacker's speed *toward* the target --- call
 it the **charge** $c$ --- is zero standing still and large for a galloping horse. It
 makes the blow harder to dodge, harder-hitting, and harder-shoving, all at once.
@@ -57,11 +62,14 @@ $$p_{\mathrm{land}} = L\big(\beta\,(\mathcal{A} - \mathcal{D})\big),
 \qquad
 \mathcal{D} = \phi\,(s_D + \lambda\,b_D)\cdots$$
 
-where $\phi$ is your **facing** against the incoming blow: full to the front, little
-to the flank, **zero to the back**. A blow to a soldier's back meets no parry and no
-shield --- only armour. Skill, shields, and footwork all live on the front. Wound
-the attacker or wind the defender and these scores shift; nothing is ever a
-guaranteed hit or miss.
+Here $\mathcal{A}$ and $\mathcal{D}$ are the attacker's and defender's scores, $L$
+turns the gap between them into a hit chance (an even gap is even odds), and $\beta$
+sets how sharply skill tells. $\phi$ is your **facing** against the incoming blow:
+full to the front, little to the flank, **zero to the back** --- and $\lambda$ is how
+much a shield ($b_D$) adds to a defence you can actually bring to bear. A blow to a
+soldier's back meets no parry and no shield --- only armour. Skill, shields, and
+footwork all live on the front. Wound the attacker or wind the defender and these
+scores shift; nothing is ever a guaranteed hit or miss.
 
 **2. Does it wound?** A blow that lands subtracts from the defender's **health** ---
 we don't flip a kill-or-not coin, we track damage. Its size is the weapon's
@@ -69,7 +77,8 @@ lethality, boosted by the charge and blunted by armour:
 
 $$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\cdots$$
 
-There is no separate "injured" flag: health just drops, and a soldier near death
+Here $\Delta h$ is the health lost and $D_0$ a base damage scale. There is no
+separate "injured" flag: health just drops, and a soldier near death
 fights weaker, so the next wound comes easier than the last. At zero health they
 fall. Armour is the only thing that protects a man hit from behind.
 
@@ -84,8 +93,9 @@ target back, harder from a charge and less against a heavy soldier:
 
 $$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\cdots$$
 
-A blocked blow draws no blood but still pushes --- which is how a spear wall drives
-a stalled enemy backward.
+Here $J$ is the shove (an impulse) and $J_0$ its base strength. A blocked blow draws
+no blood but still pushes --- which is how a spear wall drives a stalled enemy
+backward.
 
 ## Knocked down --- and the domino
 
@@ -102,7 +112,10 @@ dominoes rearward, fading as it goes:
 
 $$J_{i+1} = \tau\,\big(J_i - \mathrm{capacity}_i\big)_+, \qquad 0 < \tau < 1.$$
 
-So a light shove dies at the first set rank; a heavy charge punches *through*,
+Here $J_i$ is the shove reaching the $i$-th man back, $\mathrm{capacity}_i$ his
+rank's combined footing, and $\tau$ how much of the surplus carries on to the next
+rank ($(\,\cdot\,)_+$ just means a negative result is zero --- a shove fully absorbed
+stops). So a light shove dies at the first set rank; a heavy charge punches *through*,
 toppling rank after rank until it is spent --- and the **deeper** the braced file,
 the bigger the hit it takes to break through. You are more braced when **set** (the
 braced stance), in **tight formation**, and **facing into** the blow --- the same
