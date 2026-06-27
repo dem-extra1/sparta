@@ -10,6 +10,14 @@ kills faster, never turn your back, spears screen, a braced line stops a charge,
 a surrounded man tires and falls --- are not bonuses bolted on. They **emerge**
 from where bodies are and the dice each strike rolls. This page lays out those dice.
 
+::: {.callout-note}
+This model is rolling out in phases. **Live now:** combat resolves per soldier --
+the opposed hit contest, facing (flank and rear), per-soldier health and death, and
+weapon reach (the spear-vs-sword standoff). **Coming:** stamina and exhaustion, the
+posture/stance system, and the knockback -> prone -> domino chain. The sections below
+describe the whole model; where a piece isn't live yet, it soon will be.
+:::
+
 ## What each soldier carries
 
 Every soldier has live state that combat reads and changes moment to moment:

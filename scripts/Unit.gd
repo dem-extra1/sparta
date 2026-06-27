@@ -708,6 +708,16 @@ var _sim_body_vel: PackedVector2Array = PackedVector2Array()
 const SIM_SPRING_STIFFNESS: float = 120.0
 const SIM_SPRING_DAMPING: float = 22.0
 
+# Per-soldier health pool (phase 4b), index-aligned with _sim_soldier_pos: each body
+# accumulates wounds across ticks and dies (removed, re-packing the formation) when it
+# reaches 0. Seeded to the per-type max health. A near-dead soldier also fights worse,
+# via the condition factor below, so wounds compound.
+var _sim_soldier_hp: PackedFloat32Array = PackedFloat32Array()
+
+# Floor of the health condition factor q(h): a near-dead soldier still fights, at this
+# fraction of full effectiveness. q scales both offence and active defence.
+const COND_HEALTH_FLOOR: float = 0.5
+
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -747,6 +757,9 @@ func seed_sim_soldiers() -> void:
 	_sim_soldier_pos = soldier_world_slots(soldiers)
 	_sim_body_vel = PackedVector2Array()
 	_sim_body_vel.resize(_sim_soldier_pos.size())   # all-zero rest velocities
+	_sim_soldier_hp = PackedFloat32Array()
+	_sim_soldier_hp.resize(_sim_soldier_pos.size())
+	_sim_soldier_hp.fill(combat_profile()["max_health"])   # everyone starts at full health
 
 
 ## Advance this regiment's persistent soldier bodies one fixed step. Only the
@@ -774,6 +787,13 @@ func step_sim_soldiers(delta: float) -> void:
 		for j in range(old_n, n):
 			_sim_soldier_pos[j] = slots[j]
 			_sim_body_vel[j] = Vector2.ZERO
+	if _sim_soldier_hp.size() != n:
+		# Keep the health pool index-aligned; new bodies arrive at full health.
+		var hp_old: int = _sim_soldier_hp.size()
+		var maxhp: float = combat_profile()["max_health"]
+		_sim_soldier_hp.resize(n)
+		for j in range(hp_old, n):
+			_sim_soldier_hp[j] = maxhp
 	var engaged := {}
 	for idx in engaged_soldier_indices(n):
 		engaged[idx] = true
@@ -846,6 +866,23 @@ func engaged_soldier_indices(count: int) -> PackedInt32Array:
 ## `separation_radius + other.separation_radius`.
 func soldier_body_radius() -> float:
 	return CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
+
+
+## This regiment's per-soldier strike reach, in world units: the weapon reach
+## (attack_range, set per type from #233 — e.g. spear 48 vs sword 26). A soldier can
+## strike an enemy body within this center-to-center distance; a longer reach lets a
+## soldier strike foes who cannot strike back — the spear-vs-sword standoff (#240).
+func soldier_reach() -> float:
+	return attack_range
+
+
+## The health condition factor q(h) in [COND_HEALTH_FLOOR, 1] for a soldier at `hp`
+## out of `maxhp`: a wounded soldier fights worse — q scales both its offence and its
+## active defence in the land contest — so wounds compound. See docs/combat-model.md.
+static func soldier_condition(hp: float, maxhp: float) -> float:
+	if maxhp <= 0.0:
+		return 1.0
+	return COND_HEALTH_FLOOR + (1.0 - COND_HEALTH_FLOOR) * clampf(hp / maxhp, 0.0, 1.0)
 
 
 ## Center-to-center separation floor between two soldier bodies of this regiment's
@@ -1193,6 +1230,18 @@ func charge_multiplier(enemy: Unit) -> float:
 
 
 func _strike(enemy: Unit) -> void:
+	# Phase 4b: when both regiments have an engaged soldier layer, resolve melee per
+	# soldier (the model's opposed roll + wound against per-soldier health) instead of
+	# the regiment damage formula. This is where flanking, reach (spear vs. sword,
+	# #240), and charge fall out of geometry. Ranged volleys and any non-engaged edge
+	# case fall through to the formula below.
+	if INDIVIDUAL_COLLISION and not is_ranged and is_engaged() and enemy.is_engaged() \
+			and not _sim_soldier_pos.is_empty() and not enemy._sim_soldier_pos.is_empty():
+		resolve_soldier_melee(enemy)
+		_approach_velocity = Vector2.ZERO   # spend the charge on this contact strike
+		Sfx.play(&"hit")
+		return
+
 	# Tired troops hit softer; a freshly-merged unit hits softer still until it
 	# gels. Both scale effective attack before defence.
 	var eff_attack: float = float(attack) * fatigue_attack_factor() * cohesion
@@ -1210,6 +1259,82 @@ func _strike(enemy: Unit) -> void:
 
 	Sfx.play(&"hit")   # presentation only; throttled in Sfx so a line doesn't roar
 	enemy.take_casualties(int(round(dmg)), self)
+
+
+## Per-soldier melee: each of our engaged front-rank soldiers strikes the nearest
+## enemy engaged soldier within reach, rolling the model's opposed land contest; a
+## hit wounds that enemy soldier's health pool, and a soldier whose health reaches 0
+## dies. The enemy's facing (against the strike axis), our closing speed (charge), and
+## each side's health condition feed the rolls, so flanking, the spear-vs-sword reach
+## standoff (#240), and a charge's punch all emerge here rather than from modifiers.
+## Replay-deterministic: attackers are taken in soldier-id order (ascending index) and
+## every RNG draw comes from the single seeded Replay.rng stream in that order.
+func resolve_soldier_melee(enemy: Unit) -> void:
+	var attackers: PackedInt32Array = engaged_soldier_indices(_sim_soldier_pos.size())
+	var defenders: PackedInt32Array = enemy.engaged_soldier_indices(enemy._sim_soldier_pos.size())
+	if attackers.is_empty() or defenders.is_empty():
+		return
+
+	var my_prof: Dictionary = combat_profile()
+	var en_prof: Dictionary = enemy.combat_profile()
+	var my_maxhp: float = my_prof["max_health"]
+	var en_maxhp: float = en_prof["max_health"]
+	var reach: float = soldier_reach()
+
+	for ai in attackers:
+		var apos: Vector2 = _sim_soldier_pos[ai]
+		# Nearest LIVING enemy soldier within our reach — a longer reach lets us hit
+		# foes who can't hit back (the spear screen).
+		var target: int = -1
+		var best_d: float = reach
+		for di in defenders:
+			if enemy._sim_soldier_hp[di] <= 0.0:
+				continue
+			var d: float = apos.distance_to(enemy._sim_soldier_pos[di])
+			if d <= best_d:
+				best_d = d
+				target = di
+		if target < 0:
+			continue   # nothing in reach this strike — no RNG drawn, so order stays stable
+
+		var dpos: Vector2 = enemy._sim_soldier_pos[target]
+		var axis: Vector2 = dpos - apos
+		# Closing speed along the strike axis -> the charge term c (bind on its own
+		# line; an inline ternary as a call arg can mis-evaluate in GDScript).
+		var closing: float = 0.0
+		if axis.length() > 0.001:
+			closing = _approach_velocity.dot(axis.normalized())
+		var c: float = combat_charge_factor(closing)
+		var phi: float = combat_facing_gate(enemy.facing, apos - dpos)
+		var cond_a: float = soldier_condition(_sim_soldier_hp[ai], my_maxhp)
+		var cond_d: float = soldier_condition(enemy._sim_soldier_hp[target], en_maxhp)
+		var p_land: float = combat_land_chance(my_prof["skill"], en_prof["skill"], en_prof["shield"], phi, c, cond_a, cond_d)
+		# One seeded draw per striking attacker, in id order, after the target is fixed.
+		if Replay.rng.randf() < p_land:
+			enemy._sim_soldier_hp[target] -= combat_wound(my_prof["lethality"], c, en_prof["armour"], cond_a)
+
+	enemy._reap_dead_soldiers(self)
+
+
+## Remove this regiment's soldiers whose health has reached 0: compact them out of the
+## per-soldier arrays (so the formation re-packs around the survivors), drop the
+## regiment count to match, and route the deaths through the shared casualty handler
+## for morale, rout/death, and the cosmetic fallen markers. `killer` is the attacking
+## regiment (morale/fallen direction). Facing is already in the strike rolls, so the
+## morale flank is 1.0 here. Deterministic — no RNG; walks high-to-low so a removal
+## never shifts an index still to be checked.
+func _reap_dead_soldiers(killer: Unit) -> void:
+	var dead: int = 0
+	for i in range(_sim_soldier_hp.size() - 1, -1, -1):
+		if _sim_soldier_hp[i] <= 0.0:
+			_sim_soldier_pos.remove_at(i)
+			_sim_body_vel.remove_at(i)
+			_sim_soldier_hp.remove_at(i)
+			dead += 1
+	if dead == 0:
+		return
+	soldiers = maxi(0, soldiers - dead)
+	_register_casualties(dead, killer, 1.0)
 
 
 ## A ranged volley: like a melee strike without the cavalry charge, scaled
@@ -1271,9 +1396,19 @@ func take_casualties(amount: int, attacker: Unit) -> void:
 	var flank: float = _flank_multiplier(attacker)
 	var total: int = max(1, int(round(amount * flank)))
 	soldiers -= total
+	# The flank multiplier scales the morale hit too (a rout from being taken in the
+	# rear). The per-soldier melee path passes flank 1.0 — it models facing in the
+	# strike contest instead, so the directional penalty isn't applied twice.
+	_register_casualties(total, attacker, flank)
 
-	# Morale erodes from losses, worse when hit in the flank/rear.
-	morale -= float(total) * 0.12 * flank
+
+## Apply the consequences of `total` casualties ALREADY subtracted from `soldiers`:
+## morale erosion (scaled by `morale_flank`), the thin-regiment crumble, death/rout
+## thresholds, and the cosmetic fallen markers. Shared by the regiment-formula path
+## (take_casualties) and the per-soldier melee path (which compacts the dead bodies
+## and decrements `soldiers` itself, then calls this with morale_flank 1.0).
+func _register_casualties(total: int, attacker: Unit, morale_flank: float) -> void:
+	morale -= float(total) * 0.12 * morale_flank
 	var ratio: float = float(soldiers) / float(max_soldiers)
 	if ratio < 0.4:
 		morale -= (0.4 - ratio) * 6.0   # crumble as a regiment thins out
