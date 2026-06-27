@@ -57,8 +57,9 @@ something else does the killing.
 
 ::: {.g-col-12 .g-col-md-4}
 ### 🐎 Cavalry
-**Fast**, with a **charge bonus**. Devastating into a flank or rear --- but blunted
-when it charges into braced spears.
+**Fast** --- they charge at a real gallop (~8.5 m/s, far quicker than any foot
+unit's advance) --- with a **charge bonus** that grows with closing speed.
+Devastating into a flank or rear, but blunted when it charges into braced spears.
 :::
 
 ::: {.g-col-12 .g-col-md-4}
@@ -91,6 +92,21 @@ another reason to lead with spearmen and let the shorter weapons pin and flank. 
 opening-strike edge is on the *approach*; once both sides are locked together they
 both reach. Sustained spacing --- a spear actively holding a swordsman at bay --- is
 a planned follow-up.)
+
+## Movement speed
+
+Units move at **realistic real-world speeds**, measured in metres per second:
+
+- **Foot** advances to contact at a brisk pace --- heavy **spearmen** slowest
+  (~2.2 m/s), **infantry** a touch quicker (~2.6 m/s), light **archers** quickest
+  of the foot (~3.0 m/s).
+- **Cavalry** charge at a **gallop** (~8.5 m/s) --- roughly three times any foot
+  unit's pace.
+
+That gap is a lever: cavalry cross the field and reach an exposed flank far sooner
+than infantry can re-form to face them, so commit horse decisively and time your
+foot to be where the charge lands. (The faster the gallop at the moment of contact,
+the bigger the charge bonus --- so a clean run-up hits harder than a standing start.)
 
 ## Order stances
 

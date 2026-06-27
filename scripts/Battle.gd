@@ -59,8 +59,10 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.SUPPORT, "slug": "support"},
 ]
 
-# Global movement scale: lower = units move slower (relative speeds preserved).
-const SPEED_SCALE := 0.6
+# Global movement multiplier applied on top of each unit's real-world speed (which
+# the loadout now states in metres/second). 1.0 = units move at the authored m/s;
+# lower it to slow the whole battle uniformly without disturbing relative speeds.
+const SPEED_SCALE := 1.0
 
 # World scale: how many sim/world units make up one metre. Used to express
 # real-world lengths (weapon reach, and later movement speed) in metres and
@@ -184,12 +186,17 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# Infantry's sword sits at the 1.3 m baseline (= the old flat 26-unit reach);
 	# the spear out-reaches it, the cavalry sword a touch longer than the foot sword,
 	# and the archers' sidearm is short (they fight at range, not in the press).
+	#
+	# `speed_mps` is the unit's movement speed in metres/second, converted to world
+	# units below. The foot types move at a brisk advance-to-contact pace (heavy
+	# spearmen slowest, light archers quickest); cavalry charge at a real gallop,
+	# noticeably faster than any foot. See website/tactics.qmd for the full table.
 	var loadout := [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "spd": 80, "reach_m": 2.4, "training": 0.75},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "spd": 90, "reach_m": 1.3, "training": 0.5},
-		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "spd": 95, "reach_m": 0.6, "training": 0.3},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160, "reach_m": 1.5, "training": 0.6},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "spd": 160, "reach_m": 1.5, "training": 0.6},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "speed_mps": 2.2, "reach_m": 2.4, "training": 0.75},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "speed_mps": 2.6, "reach_m": 1.3, "training": 0.5},
+		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "speed_mps": 3.0, "reach_m": 0.6, "training": 0.3},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "speed_mps": 8.5, "reach_m": 1.5, "training": 0.6},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "speed_mps": 8.5, "reach_m": 1.5, "training": 0.6},
 	]
 	# Tighten spacing as the line grows so even a max stack stays on the field.
 	var spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
@@ -209,7 +216,8 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 		u.max_soldiers = d["soldiers"]
 		u.attack = d["atk"]
 		u.defense = d["def"]
-		u.move_speed = d["spd"] * SPEED_SCALE
+		# Real-world m/s -> world units, times the global movement multiplier.
+		u.move_speed = d["speed_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 		# Weapon reach (metres) -> world units. Falls back to the unit default if a
 		# loadout entry omits it.
 		if d.has("reach_m"):

@@ -115,6 +115,11 @@ var field_bounds: Rect2 = Rect2(-100000, -100000, 200000, 200000)
 
 const RADIUS: float = 18.0
 const DETECTION_RANGE: float = 190.0
+# How often a melee unit applies a damage tick. This is the regiment's *aggregate*
+# cadence — one tick stands for the whole front rank trading blows over that span,
+# not a single soldier's swing — so it's tuned for battle pace, not literal sword
+# strikes per second. (Per-soldier strike timing would come with the individual-
+# soldier layer; see docs/individual-collision-design.md.)
 const ATTACK_INTERVAL: float = 0.6
 const ROUT_TIME: float = 6.0
 # Radius over which a rout shakes friendly morale. Shared by the morale-spread
@@ -189,14 +194,14 @@ const SEPARATION_RADIUS_MAX: float = 28.0
 const CHARGE_BONUS_AT_REF_SPEED: float = 0.8
 # Reference closing speed at which a head-on charge yields the full bonus above. An
 # independent balance knob, NOT a hard link to Battle: it's set near a typical cavalry
-# gallop (~96 = base 160 * Battle.SPEED_SCALE 0.6) so a full charge ~matches the prior
-# flat x1.8, but it's a plain literal on purpose — deriving it from Battle.SPEED_SCALE
-# would reintroduce the Unit<->Battle preload cycle this file avoids elsewhere. Changing
-# cavalry speed just rescales the charge (faster hits harder, by design); nothing breaks.
-# The bonus always scales with the unit's own gallop (speed_toward <= move_speed): a
-# cavalry at the reference speed peaks at the reference x1.8, and a faster one exceeds it
-# on purpose — that's intended scaling, not a cap to enforce (so no assert pins it).
-const CHARGE_REFERENCE_SPEED: float = 96.0
+# gallop (~170 = the loadout's 8.5 m/s * Battle.WORLD_UNITS_PER_METER 20) so a full
+# charge ~matches the intended x1.8, but it's a plain literal on purpose — deriving it
+# from Battle's constants would reintroduce the Unit<->Battle preload cycle this file
+# avoids elsewhere. Changing cavalry speed just rescales the charge (faster hits harder,
+# by design); nothing breaks. The bonus always scales with the unit's own gallop
+# (speed_toward <= move_speed): a cavalry at the reference speed peaks at the reference
+# x1.8, and a faster one exceeds it on purpose — intended scaling, not a cap (no assert).
+const CHARGE_REFERENCE_SPEED: float = 170.0
 # Anti-cavalry spearmen brace and turn the charge against the rider: the momentum
 # becomes a speed-scaled PENALTY (impaling yourself at a gallop hurts) instead of a
 # bonus, floored so even a full charge into spears never drops below the old x0.6.

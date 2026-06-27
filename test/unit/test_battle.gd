@@ -284,3 +284,13 @@ func test_world_scale_keeps_the_sword_baseline_at_the_old_reach() -> void:
 			"the 1.3 m sword reach equals the 26-unit melee baseline")
 	assert_gt(2.4 * BattleScript.WORLD_UNITS_PER_METER, 1.3 * BattleScript.WORLD_UNITS_PER_METER,
 			"the spear out-reaches the sword")
+
+
+func test_charge_reference_matches_the_cavalry_gallop() -> void:
+	# The cavalry loadout's 8.5 m/s gallop, in world units, equals the charge
+	# reference speed, so a full-speed head-on charge peaks at the intended bonus.
+	# Pins the coupling between Battle's cavalry speed and Unit's charge knob.
+	assert_almost_eq(8.5 * BattleScript.WORLD_UNITS_PER_METER, UnitScript.CHARGE_REFERENCE_SPEED,
+			0.001, "cavalry gallop (8.5 m/s) in world units == the charge reference speed")
+	assert_gt(8.5 * BattleScript.WORLD_UNITS_PER_METER, 3.0 * BattleScript.WORLD_UNITS_PER_METER,
+			"cavalry gallop outpaces the quickest foot (archers, 3.0 m/s)")
