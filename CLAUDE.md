@@ -97,6 +97,26 @@ links back to its source of truth in the repo root.
 Keep website changes on the **same PR branch** as the code change — don't split
 them into a follow-up PR, since reviewers need to see both together.
 
+**Re-check website sync at each review round and at the end of every work
+session — not just when first authoring the PR.** Before declaring a round done
+or reporting a PR clean, audit the live `website/` content against the current
+state of the game and confirm nothing has drifted, including:
+
+- **Prose** — does any page describe behaviour the PR (or an earlier merged PR
+  that never updated the site) has since changed?
+- **Demo videos** — the `<video>` embeds (`website/media/*.mp4`) are recorded
+  fresh at deploy time, so they track code automatically; the exception is
+  anything that only shows at a non-default camera (zoom/pan), which the static
+  demo camera can't capture (tracked in the demo-recording follow-up). When the
+  change is camera-dependent, note that the clip won't show it.
+- **Screenshots / images** — any committed image embedded in a page must still
+  match what the game looks like now; a visual change can make an existing
+  screenshot stale even when no prose changed. Recapture it on the PR branch.
+
+This audit covers drift from **previously merged PRs** too, not only the one in
+hand — if you spot a page that an earlier change left stale, fix it on the
+current PR when it's in scope, or file a follow-up issue otherwise.
+
 ## Code conventions
 
 ### Comments: no issue-number references
