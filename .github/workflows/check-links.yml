@@ -3,6 +3,10 @@
 # tracking issue when links break; on PRs add the `links checked by hand` label to
 # skip.
 #
+# Single job: the reusable link-checker job declares `issues: write`, and a
+# reusable workflow's permissions must be <= the caller's, so a read-only PR job
+# startup-fails. Grant issues: write here (issue-filing still only runs on main).
+#
 # Pinned to the @v2 moving major tag (not @main) — the upstream-recommended
 # consumer pin: it tracks reviewed v2 releases rather than every main commit.
 name: Check Links
@@ -16,23 +20,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  # PR runs only read the skip-label and the tree — no issue creation, so the
-  # token stays read-only (least privilege).
-  links-pr:
-    if: github.event_name == 'pull_request'
+  check:
     permissions:
       contents: read
+      issues: write          # file/update the broken-links issue (main only)
       pull-requests: read    # read the skip-label on PRs
     uses: d-morrison/gha/.github/workflows/check-links.yml@v2
-
-  # main / scheduled / manual runs may file the broken-links tracking issue, so
-  # they get issues: write.
-  links-main:
-    if: github.event_name != 'pull_request'
-    permissions:
-      contents: read
-      issues: write          # file/update the broken-links issue
-    uses: d-morrison/gha/.github/workflows/check-links.yml@v2
+    with:
+      lychee-config: lychee.toml
     # with:
     #   lychee-args: '--verbose "**/*.md"'   # override the default glob set
     #   create-issue-on-main: false          # don't auto-open an issue
