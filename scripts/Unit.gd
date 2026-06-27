@@ -87,14 +87,18 @@ const TIGHT_CHARGE_ABSORPTION: float = 0.55
 # Separation-radius scale factors per formation mode.
 const TIGHT_SEPARATION_SCALE: float = 0.75
 const LOOSE_SEPARATION_SCALE: float = 1.35
-# Melee intermixing: how fast enemy separation dissolves when two non-hold units are
-# locked in mutual combat. Rise rate is fraction per second; max is the dissolution
-# ceiling (so a floor of 1-MAX always remains — spears still feel solid). Decay is 4×
-# faster than rise so a unit that breaks contact re-solidifies in roughly 3 s at max
-# instead of 12 s, matching the "disengages promptly" expectation.
+# Melee intermixing: a legacy softening of enemy separation for fighting non-hold
+# units. Largely superseded by the engaged-enemy front-rank close-up in _separate
+# (which lets lines meet at contact and the per-soldier collision set the spacing);
+# kept as a fallback for the non-engaged path. Rise is fraction per second; decay is
+# 4x faster so a unit that breaks contact re-solidifies promptly.
 const MELEE_INTERMIX_RATE: float = 0.07
 const MELEE_INTERMIX_DECAY_RATE: float = 0.28
 const MELEE_INTERMIX_MAX: float = 0.85
+# How hard a committed melee unit presses onto the enemy while fighting, as a fraction
+# of move speed. The separation / engaged-enemy front-rank floor counters it, so the
+# value only sets how fast the lines close to contact, not the final spacing.
+const MELEE_PRESS_FRACTION: float = 0.6
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
@@ -394,6 +398,13 @@ func _think(delta: float) -> void:
 			if _attack_cd <= 0.0:
 				_attack_cd = ATTACK_INTERVAL
 				_strike(enemy)
+			# Press into contact: a committed melee unit keeps advancing onto the enemy
+			# while it fights, so the lines close to body contact (separation provides the
+			# counterforce, settling them at the engaged-enemy front-rank floor) instead
+			# of trading blows at arm's length. A HOLD stance holds its ground and doesn't
+			# press; ranged units don't melee-press at all.
+			if not is_ranged and order_mode != ORDER_HOLD:
+				_press_into(enemy.position, delta)
 			return
 		elif target_enemy != null:
 			# Explicit attack order, not yet in contact: chase past any move target.
@@ -548,6 +559,19 @@ func _move_to(point: Vector2, delta: float) -> void:
 	_approach_velocity = dir * effective_speed
 
 
+## Lean into a melee: nudge the position toward `point` WITHOUT flipping to MOVING or
+## carrying a charge velocity. Unlike _move_to, it leaves `state` (FIGHTING) and
+## `_approach_velocity` untouched — a grinding melee mustn't re-charge every strike,
+## and the cavalry's one-shot impact velocity must survive the cooldown wait. The
+## separation / engaged-enemy front-rank floor counters the press, so the line settles
+## at body contact instead of trading blows at arm's length.
+func _press_into(point: Vector2, delta: float) -> void:
+	var to: Vector2 = point - position
+	if to.length() < 1.0:
+		return
+	position += to.normalized() * move_speed * MELEE_PRESS_FRACTION * delta
+
+
 func _face(point: Vector2) -> void:
 	_face_dir(point - position)
 
@@ -565,6 +589,17 @@ func _type_separation_radius() -> float:
 	if anti_cavalry:
 		return SEPARATION_RADIUS_SPEARMEN
 	return SEPARATION_RADIUS_INFANTRY
+
+
+## The block's depth from its centre to its FRONT rank, in world units: how far the
+## leading rank sits ahead of the unit centre along its facing (the formation is
+## rank-major, front rank at -Y locally). Two enemy blocks whose centres are this far
+## apart, summed, meet front-to-front — so engaged enemies use it as their separation
+## floor, closing the lines to contact instead of holding a fixed gap.
+func _front_depth() -> float:
+	var files: int = _frontage()
+	var ranks: int = int(ceil(float(soldiers) / float(files)))
+	return float(ranks - 1) * 0.5 * FORMATION_SPACING
 
 
 ## Change the regiment's formation and recalculate its separation footprint.
@@ -604,10 +639,19 @@ func _separate() -> void:
 		# A moving unit and an idle friendly pass cleanly through each other.
 		if _separation_exempt(other):
 			continue
-		var min_dist: float = separation_radius + other.separation_radius
-		if _is_melee_intermixing_with(other):
-			var dissolve := minf(_combat_intermixing, other._combat_intermixing)
-			min_dist *= (1.0 - dissolve)
+		var min_dist: float
+		if other.team != team and is_engaged() and other.is_engaged():
+			# Engaged enemy lines close until their FRONT RANKS meet (centres a block-
+			# depth apart on each side), then the per-soldier collision pass holds the
+			# contact and packs the soldiers — so the spacing emerges from the bodies,
+			# not a fixed enemy gap. No type-specific standoff here: a spear's reach
+			# standoff is meant to emerge from knockback, not a separation rule.
+			min_dist = _front_depth() + other._front_depth()
+		else:
+			min_dist = separation_radius + other.separation_radius
+			if _is_melee_intermixing_with(other):
+				var dissolve := minf(_combat_intermixing, other._combat_intermixing)
+				min_dist *= (1.0 - dissolve)
 		var offset: Vector2 = position - other.position
 		var d: float = offset.length()
 		if d >= min_dist:
@@ -657,7 +701,8 @@ func _tick_intermixing(delta: float) -> void:
 
 
 ## True when mutual melee intermixing should soften the separation push between
-## this unit and `other`. Both must be actively fighting without a hold order.
+## this unit and `other`, so their lines close into contact. Both must be actively
+## fighting without a hold order.
 func _is_melee_intermixing_with(other: Unit) -> bool:
 	if other.team == team:
 		return false
@@ -797,7 +842,7 @@ func engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
 		return out
-	var cutoff: int = mini(count, _formation_files(count) * ENGAGED_RANKS)
+	var cutoff: int = mini(count, _frontage() * ENGAGED_RANKS)
 	for i in range(cutoff):
 		out.push_back(i)
 	return out
@@ -1029,7 +1074,15 @@ func _separation_exempt(other: Unit) -> bool:
 ## Friendly pairs and every other enemy matchup stay soft (0.5).
 func _push_share(other: Unit) -> float:
 	if other.team == team:
-		return 0.5
+		# A unit locked in melee is ANCHORED against arriving friendlies: the newcomer
+		# yields and flows around it, instead of shoving the fighting unit out of
+		# position (which made it rotate to re-face the enemy). Both engaged, or
+		# neither, split the correction evenly as before.
+		if is_engaged() == other.is_engaged():
+			return 0.5
+		if is_engaged():
+			return 0.0   # I'm fighting — hold the line; the newcomer gives way
+		return 1.0       # the other is fighting — I give way fully and flow around it
 	if anti_cavalry and not is_cavalry and other.is_cavalry:
 		return 0.0   # spearman holds firm against the charging cavalry
 	if is_cavalry and other.anti_cavalry and not other.is_cavalry:
@@ -1551,19 +1604,28 @@ const RELIEF_SPREAD_MAX: float = 0.45
 ## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep
 ## grid (front rank toward -Y, the rotated "forward"). Pure and deterministic — a
 ## function of n only — so it's unit-testable; _slot_target() adds stable jitter.
-## Number of files (columns) in the formation block for `n` soldiers: a
-## wider-than-deep grid (FORMATION_ASPECT files per rank). Pure of n; shared by
-## the slot layout, the render's rank cycling, and the engaged-rank cutoff so all
-## three agree on the block shape.
+## Number of files (columns) for `n` soldiers: a wider-than-deep grid
+## (FORMATION_ASPECT files per rank). Pure of n. The live layout uses `_frontage()`
+## (this evaluated at FULL strength), not the live count — see below.
 func _formation_files(n: int) -> int:
 	return maxi(1, int(ceil(sqrt(float(n) * FORMATION_ASPECT))))
+
+
+## The regiment's stable file count (frontage): `_formation_files` at FULL strength,
+## so the LINE KEEPS ITS WIDTH as casualties thin its DEPTH (ranks). Keying the slot
+## layout, the engaged-rank cutoff, and the render's rank cycling off this — not the
+## live count — stops the whole grid from reflowing (every soldier jumping to a new
+## file at once) each time the count crosses a sqrt threshold mid-fight. At full
+## strength it equals `_formation_files(soldiers)`, so nothing changes there.
+func _frontage() -> int:
+	return _formation_files(max_soldiers)
 
 
 func _formation_slots(n: int) -> PackedVector2Array:
 	var slots := PackedVector2Array()
 	if n <= 0:
 		return slots
-	var files: int = _formation_files(n)
+	var files: int = _frontage()
 	var ranks: int = int(ceil(float(n) / float(files)))
 	var y0: float = -(ranks - 1) * 0.5 * FORMATION_SPACING
 	for i in range(n):
@@ -2142,7 +2204,7 @@ func _update_flock(delta: float) -> void:
 	if cycling:
 		_rank_cycle_timer -= dt
 		if _rank_cycle_timer <= 0.0:
-			var files: int = _formation_files(n)
+			var files: int = _frontage()
 			_rank_cycle_slot_offset = (_rank_cycle_slot_offset + files) % n
 			_rank_cycle_timer = RANK_CYCLE_INTERVAL / training
 			_rank_cycle_anim = 0.0
