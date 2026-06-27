@@ -1927,3 +1927,59 @@ func test_cavalry_and_foot_get_distinct_figure_meshes() -> void:
 	var horse := _cavalry()
 	assert_true(foot._figure_body_mesh != horse._figure_body_mesh,
 			"foot and cavalry figures are distinct meshes")
+
+
+func _archer_unit() -> Unit:
+	var u: Unit = Unit.new()
+	u.is_ranged = true   # set before _ready() so the figure is built as an archer
+	add_child_autofree(u)
+	u.facing = Vector2.DOWN
+	u.position = Vector2.ZERO
+	return u
+
+
+func test_foot_kind_matches_unit_type() -> void:
+	# Each foot type maps to the figure variant whose held item matches its mark shape.
+	assert_eq(_make_unit(4)._foot_kind(), Unit.FOOT_INFANTRY, "plain unit -> infantry (shield)")
+	assert_eq(_spearman_unit()._foot_kind(), Unit.FOOT_SPEAR, "anti-cavalry unit -> spear")
+	assert_eq(_archer_unit()._foot_kind(), Unit.FOOT_ARCHER, "ranged unit -> archer (bow)")
+
+
+func test_foot_types_build_distinct_figure_meshes() -> void:
+	# Spearmen, archers and line infantry each carry a different held item, so their
+	# zoomed-in silhouettes are distinct meshes — the per-type read survives up close.
+	var infantry := _make_unit(4)
+	var spear := _spearman_unit()
+	var archer := _archer_unit()
+	assert_true(infantry._figure_body_mesh != spear._figure_body_mesh,
+			"infantry and spearman figures differ")
+	assert_true(infantry._figure_body_mesh != archer._figure_body_mesh,
+			"infantry and archer figures differ")
+	assert_true(spear._figure_body_mesh != archer._figure_body_mesh,
+			"spearman and archer figures differ")
+
+
+func test_figure_has_distinct_left_facing_mirror() -> void:
+	# The left-facing figure is a separate, mirrored mesh (MultiMesh 2D can't store a
+	# reflected instance transform, so the facing flip is a mesh swap).
+	var u := _make_unit(4)
+	assert_not_null(u._figure_body_mesh_flip, "the mirrored figure mesh is built")
+	assert_true(u._figure_body_mesh != u._figure_body_mesh_flip,
+			"the left- and right-facing figure meshes are distinct")
+
+
+func test_lod_meshes_pick_facing_mirror_when_detailed() -> void:
+	# At the figure LOD the MultiMesh draws the mirror matching the unit's facing side;
+	# at the flat LOD it always draws the symmetric mark, regardless of facing.
+	var u := _make_unit(4)
+	u._detailed_lod = true
+	u._figure_faces_left = true
+	u._apply_lod_meshes()
+	assert_eq(u._mm_body.mesh, u._figure_body_mesh_flip, "facing left -> mirrored figure")
+	u._figure_faces_left = false
+	u._apply_lod_meshes()
+	assert_eq(u._mm_body.mesh, u._figure_body_mesh, "facing right -> right-facing figure")
+	u._detailed_lod = false
+	u._figure_faces_left = true
+	u._apply_lod_meshes()
+	assert_eq(u._mm_body.mesh, u._mark_body_mesh, "flat LOD always draws the symmetric mark")

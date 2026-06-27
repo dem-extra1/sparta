@@ -40,9 +40,11 @@ A right-click on empty ground is a **move** order; a right-click on an enemy is 
 under pressure.
 
 **Zoom in to see the soldiers.** From the usual overview each regiment is a block of
-small marks. Zoom in far enough and those marks become individual figures --- a
-standing soldier for foot, a mounted rider for cavalry --- so you can watch the
-ranks as people, not dots. Zoom back out and they collapse to the legible marks again.
+small marks. Zoom in far enough and those marks become individual figures, and each
+type carries its own gear --- spearmen shoulder a spear, archers carry a bow, other
+foot raise a shield, and cavalry ride a mount that faces the regiment's march. So you
+can watch the ranks as people, not dots, and still read who is who. Zoom back out and
+they collapse to the legible marks again.
 
 **Order stances.** Beyond plain move/attack you can arm a *stance* with a hotkey
 before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> clears it.

@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Zoom level-of-detail: soldier marks become detailed figure silhouettes only when the camera zooms in past the threshold. A recorded battle plays at the default zoom and can't show the swap, so the change is shown by zoomed-in screenshots in the PR description instead (demos/shots/zoom-figures.png and zoom-figures-closeup.png)."
+  "reason": "Zoom level-of-detail: soldier marks become detailed figure silhouettes only when the camera zooms in past the threshold, and this change (per-type foot gear, a facing cavalry mount, no centre emblem up close) is only visible at that zoom. A recorded battle plays at the default zoom and can't show it, so the change is shown by zoomed-in screenshots in the PR description instead (demos/shots/zoom-figures-per-type.png and zoom-figures-cavalry.png)."
 }
