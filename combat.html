@@ -6,9 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Controls, the objective, and the moment-to-moment battle loop.">
+<meta name="description" content="The probabilistic, per-soldier model behind every clash — hits, wounds, stamina, footing, and the spear wall.">
 
-<title>How to Play – Sparta</title>
+<title>How Combat Works – Sparta</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -34,8 +34,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./tactics.html" rel="next">
-<link href="./getting-started.html" rel="prev">
+<link href="./replays.html" rel="next">
+<link href="./tactics.html" rel="prev">
 <link href=".//favicon.svg" rel="icon" type="image/svg+xml">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -80,6 +80,35 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <style>html{ scroll-behavior: smooth; }</style>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -341,7 +370,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./getting-started.html">Play</a></li><li class="breadcrumb-item"><a href="./how-to-play.html">How to Play</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./getting-started.html">Play</a></li><li class="breadcrumb-item"><a href="./combat.html">How Combat Works</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -376,7 +405,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./how-to-play.html" class="sidebar-item-text sidebar-link active">
+  <a href="./how-to-play.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">How to Play</span></a>
   </div>
 </li>
@@ -388,7 +417,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./combat.html" class="sidebar-item-text sidebar-link">
+  <a href="./combat.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">How Combat Works</span></a>
   </div>
 </li>
@@ -439,25 +468,25 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#controls" id="toc-controls" class="nav-link active" data-scroll-target="#controls">Controls</a></li>
-  <li><a href="#the-battle-loop" id="toc-the-battle-loop" class="nav-link" data-scroll-target="#the-battle-loop">The battle loop</a></li>
-  <li><a href="#campaign-map" id="toc-campaign-map" class="nav-link" data-scroll-target="#campaign-map">Campaign Map</a></li>
-  <li><a href="#recording-replays" id="toc-recording-replays" class="nav-link" data-scroll-target="#recording-replays">Recording &amp; replays</a></li>
+  <li><a href="#what-each-soldier-carries" id="toc-what-each-soldier-carries" class="nav-link active" data-scroll-target="#what-each-soldier-carries">What each soldier carries</a></li>
+  <li><a href="#one-blow-step-by-step" id="toc-one-blow-step-by-step" class="nav-link" data-scroll-target="#one-blow-step-by-step">One blow, step by step</a></li>
+  <li><a href="#knocked-down-and-the-domino" id="toc-knocked-down-and-the-domino" class="nav-link" data-scroll-target="#knocked-down-and-the-domino">Knocked down — and the domino</a></li>
+  <li><a href="#why-your-tactics-work" id="toc-why-your-tactics-work" class="nav-link" data-scroll-target="#why-your-tactics-work">Why your tactics work</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Lacaedemon/sparta/edit/main/website/how-to-play.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/Lacaedemon/sparta/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li><li><a href="https://github.com/Lacaedemon/sparta/blob/main/website/how-to-play.qmd" class="toc-action"><i class="bi empty"></i>View source</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Lacaedemon/sparta/edit/main/website/combat.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/Lacaedemon/sparta/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li><li><a href="https://github.com/Lacaedemon/sparta/blob/main/website/combat.qmd" class="toc-action"><i class="bi empty"></i>View source</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./getting-started.html">Play</a></li><li class="breadcrumb-item"><a href="./how-to-play.html">How to Play</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./getting-started.html">Play</a></li><li class="breadcrumb-item"><a href="./combat.html">How Combat Works</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">How to Play</h1>
+<h1 class="title">How Combat Works</h1>
 </div>
 
 <div>
   <div class="description">
-    Controls, the objective, and the moment-to-moment battle loop.
+    The probabilistic, per-soldier model behind every clash — hits, wounds, stamina, footing, and the spear wall.
   </div>
 </div>
 
@@ -480,152 +509,76 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>You command the <span class="army-blue"><strong>blue army</strong></span> (top of the field). Your objective: defeat the <span class="army-red"><strong>red army</strong></span> (bottom). A side loses when it has no units left fighting — every remaining unit is dead or routing.</p>
-<figure class="demo figure">
-  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/clash.jpg">
-    <source src="media/clash.mp4" type="video/mp4">
-    Your browser can't play this clip --- see the
-    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
-  </video>
-  <figcaption>Selecting units and issuing move/attack orders during a battle.</figcaption>
-</figure>
-<section id="controls" class="level2">
-<h2 class="anchored" data-anchor-id="controls">Controls</h2>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 50%">
-<col style="width: 50%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Action</th>
-<th>Control</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Select a unit</td>
-<td><strong>Left-click</strong></td>
-</tr>
-<tr class="even">
-<td>Select multiple</td>
-<td><strong>Left-click and drag</strong> a box</td>
-</tr>
-<tr class="odd">
-<td>Move</td>
-<td><strong>Right-click</strong> the ground</td>
-</tr>
-<tr class="even">
-<td>Attack</td>
-<td><strong>Right-click</strong> an enemy unit</td>
-</tr>
-<tr class="odd">
-<td>Add waypoint</td>
-<td><strong>Shift + Right-click</strong> (chain several move points)</td>
-</tr>
-<tr class="even">
-<td>Order stance</td>
-<td><kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear</td>
-</tr>
-<tr class="odd">
-<td>Formation</td>
-<td><kbd>T</kbd> (cycles Normal / Tight / Loose)</td>
-</tr>
-<tr class="even">
-<td>Pan camera</td>
-<td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges</td>
-</tr>
-<tr class="odd">
-<td>Zoom</td>
-<td><strong>Mouse wheel</strong></td>
-</tr>
-<tr class="even">
-<td>Show all orders</td>
-<td>hold <kbd>Space</kbd></td>
-</tr>
-<tr class="odd">
-<td>Active pause</td>
-<td><kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>)</td>
-</tr>
-</tbody>
-</table>
-<p>A right-click on empty ground is a <strong>move</strong> order; a right-click on an enemy is an <strong>attack</strong> order. Selection and camera stay live even while paused, so you can plan under pressure.</p>
-<p><strong>Zoom in to see the soldiers.</strong> From the usual overview each regiment is a block of small marks. Zoom in far enough and those marks become individual figures, and each type carries its own gear — spearmen shoulder a spear, archers carry a bow, other foot raise a shield, and cavalry ride a mount that faces the regiment’s march. So you can watch the ranks as people, not dots, and still read who is who. Zoom back out and they collapse to the legible marks again.</p>
-<p><strong>Order stances.</strong> Beyond plain move/attack you can arm a <em>stance</em> with a hotkey before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> clears it.</p>
+<p>Battles in Sparta are not resolved by two numbers trading blows. Every soldier fights the individual in front of them, carries their own health, stamina, and footing, and each blow is rolled on its own. The tactics you know — flanking kills faster, never turn your back, spears screen, a braced line stops a charge, a surrounded man tires and falls — are not bonuses bolted on. They <strong>emerge</strong> from where bodies are and the dice each strike rolls. This page lays out those dice.</p>
+<section id="what-each-soldier-carries" class="level2">
+<h2 class="anchored" data-anchor-id="what-each-soldier-carries">What each soldier carries</h2>
+<p>Every soldier has live state that combat reads and changes moment to moment:</p>
 <ul>
-<li><strong>Hold</strong> (<kbd>H</kbd>) — stand ground; don’t chase a detected enemy.</li>
-<li><strong>Attack flank</strong> (<kbd>F</kbd>) / <strong>Attack rear</strong> (<kbd>R</kbd>) — maneuver to strike the enemy’s side or back, where hits land far harder (see <a href="./tactics.html#order-stances">Tactics</a>).</li>
-<li><strong>Skirmish</strong> (<kbd>K</kbd>) — a ranged unit keeps its distance, backing off when a threat closes instead of standing to fire.</li>
-<li><strong>Support</strong> (<kbd>G</kbd>) — right-click a friendly to guard it: the unit shadows that ally and engages anything that threatens it.</li>
+<li><strong>Health</strong> — wounds add up here; at zero, the soldier falls.</li>
+<li><strong>Stamina</strong> — spent by every action; when it runs low, everything gets worse.</li>
+<li><strong>Facing</strong> — the direction they are turned. You can only defend what you face.</li>
+<li><strong>Stance</strong> — from <em>at ease</em>, through <em>advancing</em> and <em>sprinting</em>, to <em>braced</em> (set to receive a hit), or knocked <strong>prone</strong>. Stance sets how hard you hit on the move, how well you hold your ground, and how fast you tire — and changing it takes time, so you must be set <em>before</em> the blow arrives.</li>
 </ul>
-<p>Press <kbd>T</kbd> to cycle a selected unit’s <strong>formation</strong> — <em>Tight</em> closes ranks for better missile and charge defence, <em>Loose</em> spreads out, <em>Normal</em> is the default.</p>
-</section>
-<section id="the-battle-loop" class="level2">
-<h2 class="anchored" data-anchor-id="the-battle-loop">The battle loop</h2>
-<ol type="1">
-<li><strong>Select</strong> — left-click a unit, or drag a box to grab several at once. The info panel fills with the selected unit’s stats.</li>
-<li><strong>Order</strong> — right-click to send them. Move them onto an enemy’s flank, or right-click the enemy directly to attack. There is a brief <strong>reaction delay</strong> (~0.5 s, faster for cavalry) before units execute — orders aren’t instant.</li>
-<li><strong>Watch the bars</strong> — each unit flies a small <strong>regimental flag</strong> in its team colour and shows a strength bar that drops as it takes casualties. Morale matters as much as numbers (see <a href="./tactics.html">Tactics</a>).</li>
-<li><strong>Navigate terrain</strong> — the field has two terrain patches: a <strong>dark-green forest</strong> (slows movement to 60%) on the left flank, and a <strong>tan hill</strong> (impassable) on the right. Units route around the hill automatically. See <a href="./tactics.html#terrain">Tactics → Terrain</a>.</li>
-<li><strong>Exploit the break</strong> — when a unit <strong>routs</strong>, it flees (shown faded) and stops counting toward the battle. Routs spread to nearby allies, so a single break can cascade.</li>
-<li><strong>Win</strong> — eliminate or rout the entire enemy army and a <strong>Victory</strong> overlay appears, with <strong>Fight Again</strong> to restart.</li>
-</ol>
-</section>
-<section id="campaign-map" class="level2">
-<h2 class="anchored" data-anchor-id="campaign-map">Campaign Map</h2>
-<p>Sparta includes a turn-based campaign layer on top of its tactical battles. Select a scenario from the <strong>Main Menu</strong> to open the campaign map.</p>
-<p><strong>On your turn:</strong></p>
-<ol type="1">
-<li>Click one of your provinces (highlighted when you have an army there).</li>
-<li>Click an adjacent province to move, or attack an enemy one if you are at war.</li>
-<li>Press <strong>End Turn</strong> when you are done. Each AI faction takes its turn automatically.</li>
-</ol>
-<p><strong>Diplomacy:</strong> the right-hand panel lists every surviving rival. Click <strong>Declare War</strong> or <strong>Sue for Peace</strong> to change your stance. Suing for peace sets a truce that prevents re-declaring war for a few turns.</p>
-<p><strong>Rulers and AI personality:</strong> each faction is led by a named ruler whose <em>trait</em> shapes its diplomacy. The turn banner at top-left names the current faction’s ruler in parentheses (for example, Rome’s banner reads “Rome (Julius Caesar)”).</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 33%">
-<col style="width: 33%">
-<col style="width: 33%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Trait</th>
-<th>War threshold</th>
-<th>Peace threshold</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Normal</td>
-<td>Attacks at 1.5× strength advantage</td>
-<td>Sues for peace below 0.6×</td>
-</tr>
-<tr class="even">
-<td>Aggressive</td>
-<td>Attacks at 1.25× advantage</td>
-<td>Fights longer (sues below 0.33×)</td>
-</tr>
-<tr class="odd">
-<td>Defensive</td>
-<td>Needs a 2× advantage to attack</td>
-<td>Sues for peace sooner (below 0.8×)</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Province counts</strong> appear in the standings line below the banner. Own every province to win the campaign.</p>
-</section>
-<section id="recording-replays" class="level2">
-<h2 class="anchored" data-anchor-id="recording-replays">Recording &amp; replays</h2>
-<p>Every battle is recorded automatically — a <code>● REC</code> indicator shows top-center. When a battle ends it’s saved, and you can:</p>
+<p>and fixed traits from their regiment:</p>
 <ul>
-<li><strong>Watch Replay</strong> — re-run the battle you just played (<code>▶ REPLAY</code>). You can still pan and inspect units during playback, but can’t issue new orders.</li>
-<li><strong>Load Replay</strong> — open any earlier saved battle from a file picker (top-right, also on the end screen).</li>
-<li><strong>Fight Again</strong> — start a fresh, newly-recorded battle.</li>
+<li><strong>Skill</strong> <span class="math inline">\(s\)</span> — training. Lands blows, parries, beats shields, tires slower.</li>
+<li><strong>Armour</strong> <span class="math inline">\(a\)</span> — soaks part of a landed blow, from <em>any</em> angle.</li>
+<li><strong>Shield</strong> <span class="math inline">\(b\)</span> — blocks blows, but only ones you face.</li>
+<li><strong>Lethality</strong> <span class="math inline">\(\ell\)</span> — how deadly the weapon is.</li>
+<li><strong>Reach</strong> <span class="math inline">\(r\)</span> — how far the weapon strikes (a spear out-reaches a sword).</li>
+<li><strong>Mass</strong> <span class="math inline">\(m\)</span> — how hard they are to shove or knock down (a horse is heavy).</li>
 </ul>
-<p>See <strong><a href="./replays.html">Replays</a></strong> for how the deterministic system works and why the logs are tiny.</p>
-<hr>
-<p><em>Source: <a href="https://github.com/Lacaedemon/sparta/blob/main/README.md"><code>README.md</code></a> in the repository.</em></p>
+<p>Two things scale <em>everything</em> a soldier does: being <strong>wounded</strong> and being <strong>winded</strong>. A hurt or exhausted soldier hits softer, defends weaker, and is easier to put down — so wounds and fatigue snowball.</p>
+</section>
+<section id="one-blow-step-by-step" class="level2">
+<h2 class="anchored" data-anchor-id="one-blow-step-by-step">One blow, step by step</h2>
+<p>When a soldier swings at the enemy in front of them, the game resolves a closing speed, a contest, a wound, a stamina cost, and a shove.</p>
+<p>The formulas below are sketches: a subscript <span class="math inline">\(A\)</span> or <span class="math inline">\(D\)</span> means the <strong>attacker’s</strong> or <strong>defender’s</strong> value (so <span class="math inline">\(a_D\)</span> is the defender’s armour), and a trailing <span class="math inline">\(\cdots\)</span> hides finer factors kept in the full spec. Each symbol is explained where it first appears.</p>
+<p><strong>0. How fast are they closing?</strong> The attacker’s speed <em>toward</em> the target — call it the <strong>charge</strong> <span class="math inline">\(c\)</span> — is zero standing still and large for a galloping horse. It makes the blow harder to dodge, harder-hitting, and harder-shoving, all at once. Closing speed belongs to <strong>both</strong> fighters: it counts for <em>whoever strikes during the rush</em>, in either direction, and head-on speeds <strong>add</strong>. So a spearman who holds his point into a charge spits the rider on its own momentum, and two horsemen charging each other trade blows at <em>combined</em> speed — cavalry into cavalry is the deadliest clash there is.</p>
+<p><strong>1. Does it land? (attack vs.&nbsp;defence)</strong> The blow is an <em>opposed</em> roll: the attacker’s offence against the defender’s <strong>active defence</strong> — footwork, parry, shield. Crucially, you can only actively defend what you can <strong>see</strong>:</p>
+<p><span class="math display">\[p_{\mathrm{land}} = L\big(\beta\,(\mathcal{A} - \mathcal{D})\big),
+\qquad
+\mathcal{D} = \phi\,(s_D + \lambda\,b_D)\cdots\]</span></p>
+<p>Here <span class="math inline">\(\mathcal{A}\)</span> and <span class="math inline">\(\mathcal{D}\)</span> are the attacker’s and defender’s scores, <span class="math inline">\(L\)</span> turns the gap between them into a hit chance (an even gap is even odds), and <span class="math inline">\(\beta\)</span> sets how sharply skill tells. <span class="math inline">\(\phi\)</span> is your <strong>facing</strong> against the incoming blow: full to the front, little to the flank, <strong>zero to the back</strong> — and <span class="math inline">\(\lambda\)</span> is how much a shield (<span class="math inline">\(b_D\)</span>) adds to a defence you can actually bring to bear. A blow to a soldier’s back meets no parry and no shield — only armour. Skill, shields, and footwork all live on the front. Wound the attacker or wind the defender and these scores shift; nothing is ever a guaranteed hit or miss.</p>
+<p><strong>2. Does it wound?</strong> A blow that lands subtracts from the defender’s <strong>health</strong> — we don’t flip a kill-or-not coin, we track damage. Its size is the weapon’s lethality, boosted by the charge and blunted by armour:</p>
+<p><span class="math display">\[\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\cdots\]</span></p>
+<p>Here <span class="math inline">\(\Delta h\)</span> is the health lost and <span class="math inline">\(D_0\)</span> a base damage scale. There is no separate “injured” flag: health just drops, and a soldier near death fights weaker, so the next wound comes easier than the last. At zero health they fall. Armour is the only thing that protects a man hit from behind.</p>
+<p><strong>3. Everyone tires.</strong> Stamina is spent by <strong>attacking</strong>, by <strong>defending</strong> (every blow you meet costs you — a charge costs more), and by <strong>getting up</strong> after being knocked down. It refills only while resting. So a soldier under sustained pressure, or surrounded, burns through stamina, their defence collapses, and then blows land freely. Fatigue, not a hidden timer, is what breaks a line.</p>
+<p><strong>4. The shove.</strong> Every blow that connects — even a blocked one — shoves the target back, harder from a charge and less against a heavy soldier:</p>
+<p><span class="math display">\[J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\cdots\]</span></p>
+<p>Here <span class="math inline">\(J\)</span> is the shove (an impulse) and <span class="math inline">\(J_0\)</span> its base strength. A blocked blow draws no blood but still pushes — which is how a spear wall drives a stalled enemy backward.</p>
+</section>
+<section id="knocked-down-and-the-domino" class="level2">
+<h2 class="anchored" data-anchor-id="knocked-down-and-the-domino">Knocked down — and the domino</h2>
+<p>A hard enough shove <strong>knocks a soldier prone</strong>. Bracing and mass make you harder to topple; once down, you defend nothing, can’t strike, and must spend time <em>and</em> stamina scrambling up — which is exactly when the next blow kills you.</p>
+<p>A shoved soldier also collides with whoever is behind them. Bracing soaks only so much — but the men behind help. <strong>Braced comrades in a tight file back up the man in front</strong>, so the front rank resists with the <em>whole column’s</em> footing, not one man’s. A shove smaller than that combined footing dies at the front; a hit <strong>stronger</strong> than the column can absorb bowls the front man over and the surplus dominoes rearward, fading as it goes:</p>
+<p><span class="math display">\[J_{i+1} = \tau\,\big(J_i - \mathrm{capacity}_i\big)_+, \qquad 0 &lt; \tau &lt; 1.\]</span></p>
+<p>Here <span class="math inline">\(J_i\)</span> is the shove reaching the <span class="math inline">\(i\)</span>-th man back, <span class="math inline">\(\mathrm{capacity}_i\)</span> his rank’s combined footing, and <span class="math inline">\(\tau\)</span> how much of the surplus carries on to the next rank (<span class="math inline">\((\,\cdot\,)_+\)</span> just means a negative result is zero — a shove fully absorbed stops). So a light shove dies at the first set rank; a heavy charge punches <em>through</em>, toppling rank after rank until it is spent — and the <strong>deeper</strong> the braced file, the bigger the hit it takes to break through. You are more braced when <strong>set</strong> (the braced stance), in <strong>tight formation</strong>, and <strong>facing into</strong> the blow — the same facing that lets you defend, and the support vanishes the instant the file loosens, opens a gap, or is hit from a side it isn’t facing. A loose, flanked, or sprinting file dominoes and goes down; a deep, set, front-facing shield wall stands.</p>
+</section>
+<section id="why-your-tactics-work" class="level2">
+<h2 class="anchored" data-anchor-id="why-your-tactics-work">Why your tactics work</h2>
+<p>Everything tactical comes out of the rolls above:</p>
+<ul>
+<li><strong>Flank and surround.</strong> A soldier hemmed in is in reach of more enemies (more blows rolled at them), burns stamina meeting all of them (their defence collapses), and takes hits they <strong>can’t face</strong> (armour only). Three effects, one cause — not a “rear bonus” number. Get around the flank and the line melts.</li>
+<li><strong>Never show your back.</strong> Facing gates both your defence and your footing. A soldier fighting to their front is hard to hit and hard to topple; the moment they turn — routing, or caught from behind — defence and footing vanish and they’re run down. That’s why a breaking line dies so fast.</li>
+<li><strong>Spears screen.</strong> A spear’s reach holds shorter weapons out past their own reach: the spearmen jab and shove while the swordsmen can’t answer. Put a spear line in front of what you want to protect.</li>
+<li><strong>Brace for the charge — in time.</strong> A charge lights up everything at once — harder to dodge, deadlier, and a shove that bowls men over and lays them out. Into a loose line it’s a massacre. A <strong>braced, deep</strong> spear line, set and facing, soaks it at the front rank — the ranks behind buttressing the front — stays on its feet, and out-reaches the horse: the charge breaks on the hedge. But setting the brace takes time, so order it <em>before</em> contact (a line caught still at ease is ridden down), keep it <strong>deep</strong> (a shallow braced line can be punched through), and a heavy enough charge topples men even when braced. Never take a charge loose or in the flank; never send horse into set spears.</li>
+<li><strong>Armour and shields buy time.</strong> Heavy, shielded troops turn wounds into blocked shoves and glancing hits — they grind slowly and endure. Light troops caught in the press evaporate.</li>
+<li><strong>Fight fresh, fight skilled.</strong> Skill and stamina help at <em>both</em> ends — landing more, defending more, tiring slower. Rested veterans beat winded levies by more than the headcount suggests, so pace your commitment.</li>
+</ul>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The exact constants (<span class="math inline">\(\beta\)</span>, <span class="math inline">\(D_0\)</span>, <span class="math inline">\(\tau\)</span>, the stamina costs, the knockdown threshold, and the rest) are balance dials we tune against playtests; the <strong>shape</strong> of the model above is what’s fixed. For the full specification, see the <code>docs/combat-model.md</code> design note in the project repository.</p>
+</div>
+</div>
 
 
 </section>
@@ -1053,13 +1006,13 @@ ul.task-list li input[type="checkbox"] {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./getting-started.html" class="pagination-link" aria-label="Getting Started">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Getting Started</span>
+      <a href="./tactics.html" class="pagination-link" aria-label="Tactics That Matter">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Tactics That Matter</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./tactics.html" class="pagination-link" aria-label="Tactics That Matter">
-        <span class="nav-page-text">Tactics That Matter</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./replays.html" class="pagination-link" aria-label="Replays">
+        <span class="nav-page-text">Replays</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1071,7 +1024,7 @@ ul.task-list li input[type="checkbox"] {
 </div>   
     <div class="nav-footer-center">
 <p>Built with <a href="https://quarto.org/">Quarto</a></p>
-<div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Lacaedemon/sparta/edit/main/website/how-to-play.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/Lacaedemon/sparta/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li><li><a href="https://github.com/Lacaedemon/sparta/blob/main/website/how-to-play.qmd" class="toc-action"><i class="bi empty"></i>View source</a></li></ul></div></div>
+<div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Lacaedemon/sparta/edit/main/website/combat.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/Lacaedemon/sparta/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li><li><a href="https://github.com/Lacaedemon/sparta/blob/main/website/combat.qmd" class="toc-action"><i class="bi empty"></i>View source</a></li></ul></div></div>
     <div class="nav-footer-right">
       <ul class="footer-items list-unstyled">
     <li class="nav-item compact">
