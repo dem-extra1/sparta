@@ -254,3 +254,42 @@ func test_dispatch_key_routes_resize_and_reports_handled() -> void:
 	assert_true(sm._dispatch_key(_key_event(KEY_BRACKETRIGHT)), "] is a handled hotkey")
 	assert_eq(UnitFormation.frontage(u), start + 1, "and widens the selected unit")
 	assert_false(sm._dispatch_key(_key_event(KEY_P)), "an unbound key is not handled")
+
+
+# --- drag-to-form-up (#286) ------------------------------------
+
+func test_form_up_facing_is_perpendicular_to_the_flank_line() -> void:
+	var sm := _sm()
+	# A left->right horizontal flank line: the unit faces up (perpendicular).
+	var facing := Vector2.from_angle(sm._form_up_facing(Vector2(0, 0), Vector2(100, 0)))
+	assert_almost_eq(facing.x, 0.0, 0.001, "a horizontal flank line gives a vertical facing")
+	assert_almost_eq(facing.y, -1.0, 0.001, "and faces up for a left-to-right drag")
+
+
+func test_can_form_up_requires_single_selection_and_width() -> void:
+	var sm := _sm()
+	var a := _unit()
+	var c := _unit()
+	assert_false(sm._can_form_up(Vector2.ZERO, Vector2(100, 0)), "no selection -> plain move")
+	sm._select(a)
+	assert_true(sm._can_form_up(Vector2.ZERO, Vector2(100, 0)), "one unit + wide drag -> form-up")
+	assert_false(sm._can_form_up(Vector2.ZERO, Vector2(5, 0)), "too-short drag -> plain move")
+	sm._select(c)
+	assert_false(sm._can_form_up(Vector2.ZERO, Vector2(100, 0)),
+			"a multi-selection falls back to plain move (multi-unit deferred)")
+
+
+func test_issue_form_up_routes_a_recorded_order() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 11
+	u.max_soldiers = 120
+	u.position = Vector2(0, 100)
+	b._by_uid[11] = u
+	sm._select(u)
+	sm._issue_form_up(Vector2(400, 500), Vector2(540, 500))   # 140 px wide line
+	assert_eq(u.move_target, Vector2(470, 500), "deploys at the flank-line midpoint")
+	assert_true(b._pending_orders[-1].has("face"), "routed as a recorded form-up order")

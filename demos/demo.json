@@ -1,8 +1,8 @@
 {
-  "replay": "demos/scenarios/resizable-widths.json",
-  "caption": "Resizable unit widths: a regiment (pulled aside to show it clearly) is widened with ] into a broad, shallow line, then narrowed with [ into a deep column -- the same soldiers reflowing between shapes. The pressed keys flash on screen next to the cursor (a new keystroke overlay for demos).",
+  "replay": "demos/scenarios/drag-form-up.json",
+  "caption": "Drag-to-form-up: right-click-drag from the left flank to the right flank deploys the selected regiment along that line -- the green deploy line and forward arrow preview the order, then the unit marches over and wheels into an angled line at the dragged width and facing.",
   "fixed_fps": 60,
-  "max_frames": 244,
+  "max_frames": 300,
   "fps": 30,
   "width": 720
 }

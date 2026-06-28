@@ -350,3 +350,17 @@ func test_enqueue_frontage_steps_each_unit_from_its_own_width() -> void:
 	b.enqueue_frontage([1, 2], 2)
 	assert_eq(UnitFormation.frontage(a), fa + 2, "unit a widens from its own width")
 	assert_eq(UnitFormation.frontage(c), fc + 2, "unit c widens from its own width")
+
+
+# --- drag-to-form-up (#286) ------------------------------------
+
+func test_enqueue_form_up_sets_destination_facing_and_width() -> void:
+	var u := _unit(1, Vector2(0, 100))
+	u.max_soldiers = 120
+	var b := _battle([u])
+	b.enqueue_form_up([1], Vector2(500, 500), 0.0, 20)   # face 0 = facing right
+	assert_eq(u.move_target, Vector2(500, 500), "the unit marches to the flank-line midpoint")
+	assert_true(u.has_move_target, "and is set moving")
+	assert_almost_eq(u.deploy_facing.angle(), 0.0, 0.001, "the deploy facing is parked from the order")
+	assert_eq(UnitFormation.frontage(u), 20, "the dragged width becomes the frontage")
+	assert_true(b._pending_orders[-1].has("face"), "the order records its deploy facing")

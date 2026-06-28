@@ -68,6 +68,10 @@ var formation_mode: int = FORMATION_NORMAL
 # change rides the replay command stream so playback reproduces it. Honoured and
 # clamped to [1, max_soldiers] in UnitFormation.frontage.
 var frontage_override: int = 0
+# Facing to wheel to once a move order's destination is reached, set by a
+# drag-to-form-up order so the unit deploys facing the dragged line rather than its
+# march direction. Vector2.ZERO means "keep the march facing" (no deploy turn).
+var deploy_facing: Vector2 = Vector2.ZERO
 # Stance values from Battle.OrderMode that Unit's own behaviour reacts to, mirrored
 # as plain ints to avoid a Unit<->Battle preload cycle (kept in sync with the enum;
 # Battle._ready asserts they match). NORMAL is 0 (Unit's default order_mode).
@@ -440,6 +444,11 @@ func _think(delta: float) -> void:
 		else:
 			has_move_target = false
 			state = State.IDLE
+			# A drag-to-form-up order parks a deploy facing here; wheel to it on
+			# arrival (the soldier bodies then ease into the rotated formation).
+			if deploy_facing != Vector2.ZERO:
+				facing = deploy_facing
+				deploy_facing = Vector2.ZERO
 	elif enemy != null and order_mode != ORDER_HOLD:
 		_move_to(enemy.position, delta)
 	else:

@@ -21,6 +21,12 @@ const RESIZE_HANDLE_SIZE: float = 6.0     # grip half-size (px)
 const RESIZE_HANDLE_HIT: float = 13.0     # cursor radius that grabs a grip (px)
 const RESIZE_HANDLE_COLOR: Color = Color(0.95, 0.95, 0.3, 0.9)   # match selection yellow
 
+# Drag-to-form-up: a right-drag at least this wide (world px) deploys the unit along
+# the dragged line; shorter drags fall back to a plain move order.
+const FORM_UP_MIN_WIDTH: float = 24.0
+const FORM_UP_COLOR: Color = Color(0.45, 0.95, 0.55, 0.95)   # match the move-order green
+const DEMO_FORMUP_WINDOW: int = 90   # ticks a replayed deploy line lingers (spans the march)
+
 # Order-overlay colours (common RTS convention: green = move, red = attack). Teal marks
 # a SUPPORT link — same hue as the SUPPORT order cursor (_order_mode_color).
 const ORDER_MOVE_COLOR: Color = Color(0.45, 0.95, 0.55, 0.9)
@@ -48,6 +54,11 @@ var _drag_cur: Vector2 = Vector2.ZERO
 var _resizing: bool = false
 var _resize_unit = null
 var _resize_files: int = 0
+# Right-mouse drag: a press-hold-drag-release that deploys a single selected unit
+# along the dragged line (left flank -> right flank); a short press is a plain order.
+var _rmb_down: bool = false
+var _rmb_dragging: bool = false
+var _rmb_start: Vector2 = Vector2.ZERO
 # Gameplay-hotkey labels pressed since the last sim tick; Battle drains this each tick
 # (take_keys_this_tick) into the replay's keystroke track for the demo overlay.
 var _keys_this_tick: Array = []
@@ -112,13 +123,22 @@ func _unhandled_input(event: InputEvent) -> void:
 				_dragging = false
 				_finish_selection()
 				queue_redraw()
-		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			# Shift+right-click appends a waypoint to the route instead of replacing
-			# it, so a march can be plotted as a multi-leg path.
-			_issue_order(_cursor_world(), event.shift_pressed)
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			if event.pressed:
+				# Hold to start a possible form-up drag; resolved on release.
+				_rmb_down = true
+				_rmb_start = _cursor_world()
+				_rmb_dragging = false
+			else:
+				_finish_right_button(_cursor_world(), event.shift_pressed)
+				queue_redraw()
 	elif event is InputEventMouseMotion:
 		if _resizing:
 			_update_resize(_cursor_world())
+			queue_redraw()
+		elif _rmb_down:
+			if _rmb_start.distance_to(_cursor_world()) > CLICK_THRESHOLD:
+				_rmb_dragging = true
 			queue_redraw()
 		elif _dragging:
 			_drag_cur = _cursor_world()
@@ -242,6 +262,59 @@ func _issue_order(world_pos: Vector2, append: bool = false) -> void:
 		return
 	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode)
 	Sfx.play(&"order")
+
+
+# --- drag-to-form-up (move orders) -----------------------------------------
+
+## Resolve a right-button release: a wide-enough drag on open ground with a single
+## unit selected deploys it along the dragged flank line; anything else is the
+## ordinary right-click order (move / attack / relief / waypoint).
+func _finish_right_button(end_pos: Vector2, append: bool) -> void:
+	var was_drag: bool = _rmb_dragging
+	var start: Vector2 = _rmb_start
+	_rmb_down = false
+	_rmb_dragging = false
+	if was_drag and _can_form_up(start, end_pos):
+		_issue_form_up(start, end_pos)
+	else:
+		# Shift+right-click appends a waypoint to the route instead of replacing it,
+		# so a march can be plotted as a multi-leg path.
+		_issue_order(end_pos, append)
+
+
+## Whether a right-drag from `a` to `b` should deploy a formation line rather than
+## issue a plain move: exactly one unit selected, no SUPPORT stance armed, neither
+## end on an enemy (that's an attack), and the line is wide enough to be deliberate.
+func _can_form_up(a: Vector2, b: Vector2) -> bool:
+	if Replay.mode == Replay.Mode.PLAYBACK or _selected.size() != 1:
+		return false
+	if _armed_mode == BattleRef.OrderMode.SUPPORT:
+		return false
+	if _unit_at(a, 1) != null or _unit_at(b, 1) != null:
+		return false
+	return a.distance_to(b) >= FORM_UP_MIN_WIDTH
+
+
+## Deploy the single selected unit along the dragged flank line: `a` is the left
+## flank, `b` the right. Width comes from the line length, facing is perpendicular
+## (so `a` ends up on the unit's left), and the centre lands on the line midpoint.
+## Routed through Battle so the deploy is recorded and replays exactly.
+func _issue_form_up(a: Vector2, b: Vector2) -> void:
+	var u = _selected[0]
+	if not is_instance_valid(u):
+		return
+	var center: Vector2 = (a + b) * 0.5
+	var face: float = _form_up_facing(a, b)
+	var files: int = UnitFormation.files_for_halfwidth(a.distance_to(b) * 0.5, u.max_soldiers)
+	_battle.enqueue_form_up([u.uid], center, face, files, _armed_mode)
+	Sfx.play(&"order")
+
+
+## Deploy facing (radians) for a left-flank `a` -> right-flank `b` line: perpendicular
+## to the line, oriented so `a` sits on the unit's left when it faces forward. Inverts
+## the _file_axis mapping (file axis = facing rotated +90 degrees).
+func _form_up_facing(a: Vector2, b: Vector2) -> float:
+	return (b - a).angle() - PI * 0.5
 
 
 ## Merge the selected friendly regiments into the first-selected one. Encoded
@@ -569,11 +642,32 @@ func _draw() -> void:
 	if _demo_orders_active() and Replay.has_pointer_track():
 		_draw_demo_pointer()
 	_draw_resize_handles()
+	_draw_form_up_preview()
 	if not _dragging:
 		return
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
 	draw_rect(rect, Color(0.4, 0.9, 0.4, 0.15))
 	draw_rect(rect, Color(0.5, 1.0, 0.5, 0.9), false, 1.5)
+
+
+## While a form-up right-drag is open, preview the deploy: the flank line, a forward
+## arrow from its midpoint (the facing), and the resulting file count.
+func _draw_form_up_preview() -> void:
+	if not _rmb_dragging:
+		return
+	var end_pos: Vector2 = _cursor_world()
+	if not _can_form_up(_rmb_start, end_pos):
+		return
+	var u = _selected[0]
+	draw_line(_rmb_start, end_pos, FORM_UP_COLOR, 2.0)
+	draw_circle(_rmb_start, 3.0, FORM_UP_COLOR)   # left flank marker
+	var center: Vector2 = (_rmb_start + end_pos) * 0.5
+	var forward: Vector2 = Vector2.from_angle(_form_up_facing(_rmb_start, end_pos))
+	var tip: Vector2 = center + forward * 22.0
+	draw_line(center, tip, FORM_UP_COLOR, 2.0)   # facing arrow
+	var files: int = UnitFormation.files_for_halfwidth(_rmb_start.distance_to(end_pos) * 0.5, u.max_soldiers)
+	draw_string(ThemeDB.fallback_font, end_pos + Vector2(8.0, -6.0), UnitFormation.files_label(files),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, FORM_UP_COLOR)
 
 
 ## Flank resize grips on a singly-selected unit, plus -- while a grip is held -- a
@@ -707,8 +801,28 @@ func _draw_demo_pointer() -> void:
 		draw_string(ThemeDB.fallback_font, cursor + Vector2(9.0, -6.0), label,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, cursor_color)
 
+	# Form-up drags: replay the dragged flank line + facing arrow, reconstructed from
+	# the recorded order, so the clip shows the deploy gesture.
+	for fu in Replay.form_ups_for_tick(tick, DEMO_FORMUP_WINDOW):
+		var fade: float = 1.0 - float(int(fu["age"])) / float(DEMO_FORMUP_WINDOW)
+		_draw_form_up_line(Vector2(fu["x"], fu["y"]), float(fu["face"]), int(fu["frontage"]),
+				Color(FORM_UP_COLOR, FORM_UP_COLOR.a * fade))
+
 	# Pressed-key chips, stacked by the cursor so the clip shows which keys drove the action.
 	_draw_demo_keys(tick, cursor)
+
+
+## Draw a form-up's flank line (left dot + line) and forward-facing arrow about its
+## centre, used both for the live preview and the demo replay. `face` is the deploy
+## facing in radians; the line spans the frontage along the perpendicular file axis.
+func _draw_form_up_line(center: Vector2, face: float, files: int, color: Color) -> void:
+	var file_axis: Vector2 = Vector2.from_angle(face + PI * 0.5)   # left -> right along the front
+	var half: float = float(files - 1) * 0.5 * UnitRef.FORMATION_SPACING
+	var a: Vector2 = center - file_axis * half
+	var b: Vector2 = center + file_axis * half
+	draw_line(a, b, color, 2.0)
+	draw_circle(a, 3.0, color)   # left-flank marker
+	draw_line(center, center + Vector2.from_angle(face) * 22.0, color, 2.0)   # facing arrow
 
 
 ## Replay-only: draw labelled chips for the recently pressed hotkeys, stacked below the
