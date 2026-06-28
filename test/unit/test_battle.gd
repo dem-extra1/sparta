@@ -364,3 +364,14 @@ func test_enqueue_form_up_sets_destination_facing_and_width() -> void:
 	assert_almost_eq(u.deploy_facing.angle(), 0.0, 0.001, "the deploy facing is parked from the order")
 	assert_eq(UnitFormation.frontage(u), 20, "the dragged width becomes the frontage")
 	assert_true(b._pending_orders[-1].has("face"), "the order records its deploy facing")
+
+
+func test_plain_move_clears_a_stale_deploy_facing() -> void:
+	# A form-up parks a deploy facing; a superseding plain move must clear it so the
+	# unit doesn't wheel to the old heading at the new destination.
+	var u := _unit(1, Vector2(0, 100))
+	var b := _battle([u])
+	b.enqueue_form_up([1], Vector2(500, 500), 1.0, 20)
+	assert_ne(u.deploy_facing, Vector2.ZERO, "form-up parks a deploy facing")
+	b._apply_order_cmd({"units": [1], "x": 300.0, "y": 0.0, "target": -1})   # plain move
+	assert_eq(u.deploy_facing, Vector2.ZERO, "a superseding plain move clears the stale facing")

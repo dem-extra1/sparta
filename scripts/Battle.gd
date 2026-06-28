@@ -523,6 +523,10 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					u.deploy_facing = Vector2.from_angle(float(cmd["face"]))
 					if cmd.has("frontage"):
 						u.set_frontage(int(cmd["frontage"]))
+				else:
+					# A plain move clears any deploy facing a superseded form-up parked,
+					# so the unit won't wheel to a stale heading on arrival.
+					u.deploy_facing = Vector2.ZERO
 		if not append:
 			u.start_order_response()
 

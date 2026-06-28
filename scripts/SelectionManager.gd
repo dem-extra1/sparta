@@ -286,7 +286,9 @@ func _finish_right_button(end_pos: Vector2, append: bool) -> void:
 ## issue a plain move: exactly one unit selected, no SUPPORT stance armed, neither
 ## end on an enemy (that's an attack), and the line is wide enough to be deliberate.
 func _can_form_up(a: Vector2, b: Vector2) -> bool:
-	if Replay.mode == Replay.Mode.PLAYBACK or _selected.size() != 1:
+	# Reuse the grip precondition: exactly one live selected unit, not mid-playback —
+	# so a unit that died mid-drag can't be deployed (or drawn from a freed instance).
+	if _single_selected_unit() == null:
 		return false
 	if _armed_mode == BattleRef.OrderMode.SUPPORT:
 		return false
@@ -300,8 +302,8 @@ func _can_form_up(a: Vector2, b: Vector2) -> bool:
 ## (so `a` ends up on the unit's left), and the centre lands on the line midpoint.
 ## Routed through Battle so the deploy is recorded and replays exactly.
 func _issue_form_up(a: Vector2, b: Vector2) -> void:
-	var u = _selected[0]
-	if not is_instance_valid(u):
+	var u = _single_selected_unit()
+	if u == null:
 		return
 	var center: Vector2 = (a + b) * 0.5
 	var face: float = _form_up_facing(a, b)
@@ -658,14 +660,16 @@ func _draw_form_up_preview() -> void:
 	var end_pos: Vector2 = _cursor_world()
 	if not _can_form_up(_rmb_start, end_pos):
 		return
-	var u = _selected[0]
-	draw_line(_rmb_start, end_pos, FORM_UP_COLOR, 2.0)
-	draw_circle(_rmb_start, 3.0, FORM_UP_COLOR)   # left flank marker
+	var u = _single_selected_unit()
+	if u == null:
+		return
+	# Draw the same formation-scaled (frontage-clamped) line the replay overlay uses,
+	# so the preview can't extend past where the unit actually deploys when the drag is
+	# wider than max_soldiers allows.
 	var center: Vector2 = (_rmb_start + end_pos) * 0.5
-	var forward: Vector2 = Vector2.from_angle(_form_up_facing(_rmb_start, end_pos))
-	var tip: Vector2 = center + forward * 22.0
-	draw_line(center, tip, FORM_UP_COLOR, 2.0)   # facing arrow
+	var face: float = _form_up_facing(_rmb_start, end_pos)
 	var files: int = UnitFormation.files_for_halfwidth(_rmb_start.distance_to(end_pos) * 0.5, u.max_soldiers)
+	_draw_form_up_line(center, face, files, FORM_UP_COLOR)
 	draw_string(ThemeDB.fallback_font, end_pos + Vector2(8.0, -6.0), UnitFormation.files_label(files),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, FORM_UP_COLOR)
 
