@@ -48,6 +48,23 @@ every-few-seconds chore.
 Training therefore pays off in a long grind: a drilled regiment wears down a green
 one of equal numbers, because the green unit tires and wavers first.
 
+## Line width (frontage)
+
+You set how wide each regiment fights --- <kbd>[</kbd> and <kbd>]</kbd> step the
+width by a file, or drag a selected unit's flank grips. The same soldiers spread
+across a different shape:
+
+- **Wide and shallow** puts more men in the front rank, so more of them are
+  swinging at once --- good for overlapping an enemy's flank or covering ground so a
+  foe can't slip around your line.
+- **Narrow and deep** stacks more ranks behind a thinner front. Fewer fight at any
+  moment, but the column has more bodies to feed forward as the front falls --- it
+  holds a chokepoint or punches through one spot rather than spreading thin.
+
+A wider line is easier to outlast in depth and quicker to crumble once it bends;
+a deeper one trades frontage for staying power. The width holds as casualties thin
+the ranks, so a line you set wide stays wide until you change it.
+
 ## The unit triangle (rock-paper-scissors)
 
 Three roles, each strong against one and weak to another:

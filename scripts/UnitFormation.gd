@@ -19,8 +19,24 @@ static func _files(n: int) -> int:
 ## stops the whole grid from reflowing (every soldier jumping to a new file at once) each
 ## time the count crosses a sqrt threshold mid-fight. At full strength it equals
 ## `_files(soldiers)`, so nothing changes there.
+##
+## A player-set `frontage_override` (> 0) wins over the auto width, clamped to
+## [1, max_soldiers] -- so the line can be widened (shallower) or narrowed (deeper)
+## by hand, still keying every downstream layout off one stable file count.
 static func frontage(u: Unit) -> int:
+	if u.frontage_override > 0:
+		return clampi(u.frontage_override, 1, maxi(1, u.max_soldiers))
 	return _files(u.max_soldiers)
+
+
+## File count for a drag-resize handle pulled to `half_width` world units from the
+## regiment's centre along its file axis. A grid of f files spans (f-1) gaps of
+## FORMATION_SPACING, so its half-width is (f-1)/2 * SPACING; invert that and round
+## to the nearest file. Clamped to [1, max_soldiers]. Pure -- unit-testable, and the
+## drag preview and the committed value read the same mapping.
+static func files_for_halfwidth(half_width: float, max_soldiers: int) -> int:
+	var f: int = int(round(2.0 * half_width / Unit.FORMATION_SPACING)) + 1
+	return clampi(f, 1, maxi(1, max_soldiers))
 
 
 ## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep grid (front

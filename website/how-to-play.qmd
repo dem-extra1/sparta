@@ -30,6 +30,7 @@ left fighting --- every remaining unit is dead or routing.
 | Add waypoint | **Shift + Right-click** (chain several move points) |
 | Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear |
 | Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose) |
+| Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
 | Pan camera | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges |
 | Zoom | **Mouse wheel** |
 | Show all orders | hold <kbd>Space</kbd> |
@@ -65,6 +66,13 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
 
 Press <kbd>T</kbd> to cycle a selected unit's **formation** --- *Tight* closes ranks
 for better missile and charge defence, *Loose* spreads out, *Normal* is the default.
+
+**Resize the line.** A regiment normally forms up at a sensible width, but you can
+reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more men
+fighting at the front) or <kbd>[</kbd> to narrow it (deeper, fewer up front but more
+staying power). With a single unit selected, two small grips appear on its flanks ---
+**drag** a grip in or out to set the width directly, with a live preview of the new
+file count. The width holds as the unit takes casualties, and shows in the info panel.
 
 ## The battle loop
 

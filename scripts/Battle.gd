@@ -27,6 +27,10 @@ const ORDER_APPEND_WAYPOINT := -2
 # Sentinel for a formation-change-only order (no movement, no target). Handled
 # before the main move/attack/merge logic so it doesn't clear waypoints or stances.
 const ORDER_FORMATION_ONLY := -3
+# Sentinel for a frontage-resize-only order (widen/narrow the line). Carries a
+# signed "frontage_delta"; each unit resolves its own current frontage and steps
+# by that delta. Handled like the formation-only order, leaving movement untouched.
+const ORDER_FRONTAGE_ONLY := -4
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
@@ -274,7 +278,8 @@ func _physics_process(_delta: float) -> void:
 		for o in _pending_orders:
 			Replay.record_order(_tick, o["units"], Vector2(o["x"], o["y"]), o["target"],
 					int(o.get("mode", OrderMode.NORMAL)),
-					int(o.get("formation", UnitRef.FORMATION_NORMAL)))
+					int(o.get("formation", UnitRef.FORMATION_NORMAL)),
+					int(o.get("frontage", 0)))
 			_apply_order_cmd(o)
 		_pending_orders.clear()
 		# Capture the camera each tick so a live recording reproduces what the player saw.
@@ -361,6 +366,32 @@ func enqueue_formation(uids: Array, formation: int) -> void:
 	_apply_order_cmd(cmd)
 
 
+## Widen (delta > 0) or narrow (delta < 0) the frontage of a set of units by
+## `delta` files each. Each unit steps from its OWN current frontage to an absolute
+## target (so a mixed selection keeps its relative widths), emitting one command per
+## unit. Absolute (not delta) keeps the command idempotent — the tick re-applies
+## every pending order, so a delta would double — and it's recorded so replays
+## stay exact.
+func enqueue_frontage(uids: Array, delta: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	for uid in uids:
+		var u: Unit = _unit_by_uid(int(uid))
+		if u == null:
+			continue
+		var files: int = clampi(UnitFormation.frontage(u) + delta, 1, maxi(1, u.max_soldiers))
+		var cmd := {
+			"units": [uid],
+			"x": 0.0,
+			"y": 0.0,
+			"target": ORDER_FRONTAGE_ONLY,
+			"mode": OrderMode.NORMAL,
+			"frontage": files,
+		}
+		_pending_orders.append(cmd)
+		_apply_order_cmd(cmd)
+
+
 ## Apply one order (move or attack) to its units. Shared by live play and
 ## playback so both produce identical results.
 func _apply_order_cmd(cmd: Dictionary) -> void:
@@ -373,6 +404,17 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
 				u.set_formation(fm)
+		return
+	# Frontage-resize-only: set each unit's file count to the absolute target,
+	# leaving movement and order-mode state untouched. Absolute so re-applying the
+	# pending order on the tick is a no-op (idempotent), matching move/formation.
+	if target_uid == ORDER_FRONTAGE_ONLY:
+		var files: int = int(cmd.get("frontage", 0))
+		if files > 0:
+			for uid in cmd["units"]:
+				var u: Unit = _unit_by_uid(int(uid))
+				if u != null:
+					u.set_frontage(files)
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the

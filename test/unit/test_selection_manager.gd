@@ -145,3 +145,68 @@ func test_pointer_state_reports_live_selection_drag_and_stance() -> void:
 	assert_true(ps["dragging"], "the open drag-box is reported")
 	assert_eq(ps["drag_start"], Vector2(12, 34), "the drag start corner is reported")
 	assert_eq(ps["mode"], BattleScript.OrderMode.SKIRMISH, "the armed stance is reported")
+
+
+# --- frontage resize handles (#266) ----------------------------
+
+func test_file_axis_is_perpendicular_to_facing() -> void:
+	var sm := _sm()
+	var u := _unit()
+	u.facing = Vector2.DOWN   # forward is +Y, so the width axis is horizontal
+	var axis: Vector2 = sm._file_axis(u)
+	assert_almost_eq(axis.y, 0.0, 0.001, "a down-facing unit's file axis is horizontal")
+	assert_almost_eq(absf(axis.x), 1.0, 0.001, "and is a unit vector")
+
+
+func test_resize_handles_straddle_the_unit_along_the_file_axis() -> void:
+	var sm := _sm()
+	var u := _unit()
+	u.facing = Vector2.DOWN
+	u.position = Vector2(100, 100)
+	var hs: Array = sm._resize_handle_positions(u)
+	assert_eq(hs.size(), 2, "two grips, one per flank")
+	# Symmetric about the unit centre.
+	var mid: Vector2 = (hs[0] + hs[1]) * 0.5
+	assert_almost_eq(mid.distance_to(u.global_position), 0.0, 0.001,
+			"the grips are centred on the unit")
+	assert_gt(hs[0].distance_to(hs[1]), 0.0, "the grips are separated across the line")
+
+
+func test_single_selected_unit_requires_exactly_one() -> void:
+	var sm := _sm()
+	var a := _unit()
+	var c := _unit()
+	assert_null(sm._single_selected_unit(), "nothing selected -> no resize target")
+	sm._select(a)
+	assert_eq(sm._single_selected_unit(), a, "one selected unit is the resize target")
+	sm._select(c)
+	assert_null(sm._single_selected_unit(), "a multi-selection shows no single-unit grips")
+
+
+func test_resize_handle_at_grabs_a_grip_and_ignores_empty_space() -> void:
+	var sm := _sm()
+	var u := _unit()
+	u.facing = Vector2.DOWN
+	u.position = Vector2(50, 50)
+	sm._select(u)
+	var grip: Vector2 = sm._resize_handle_positions(u)[0]
+	assert_eq(sm._resize_handle_at(grip), u, "a cursor on a grip grabs that unit for resizing")
+	assert_null(sm._resize_handle_at(u.global_position + Vector2(9999, 0)),
+			"a cursor far from any grip grabs nothing")
+
+
+func test_resize_frontage_routes_an_absolute_command_to_battle() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u := _unit()
+	u.uid = 5
+	u.max_soldiers = 80
+	b._by_uid[5] = u
+	var start: int = UnitFormation.frontage(u)
+	sm._select(u)
+	sm._resize_frontage(1)
+	assert_eq(UnitFormation.frontage(u), start + 1, "the keyboard widen steps the line out one file")
+	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_FRONTAGE_ONLY,
+			"routed as a recorded frontage command")

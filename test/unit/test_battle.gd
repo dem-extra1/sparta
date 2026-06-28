@@ -294,3 +294,59 @@ func test_charge_reference_matches_the_cavalry_gallop() -> void:
 			0.001, "cavalry gallop (8.5 m/s) in world units == the charge reference speed")
 	assert_gt(8.5 * BattleScript.WORLD_UNITS_PER_METER, 3.0 * BattleScript.WORLD_UNITS_PER_METER,
 			"cavalry gallop outpaces the quickest foot (archers, 3.0 m/s)")
+
+
+# --- frontage resize (#266) ------------------------------------
+
+func test_enqueue_frontage_sets_an_absolute_target_from_the_current_width() -> void:
+	# A 60-soldier unit's auto frontage is _files(60); widening by 3 records and
+	# applies that as an absolute file count (not a delta), so re-application is safe.
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 60
+	var start: int = UnitFormation.frontage(u)
+	var b := _battle([u])
+	b.enqueue_frontage([1], 3)
+	assert_eq(UnitFormation.frontage(u), start + 3, "widen steps the line out by three files")
+	assert_eq(int(b._pending_orders[-1]["frontage"]), start + 3,
+		"the absolute target width is recorded on the pending order")
+	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_FRONTAGE_ONLY,
+		"tagged as a frontage-only command")
+
+
+func test_frontage_apply_is_idempotent_under_tick_reapplication() -> void:
+	# enqueue applies immediately; the physics tick re-applies every pending order.
+	# An absolute target makes that second application a no-op (a delta would double).
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 80
+	var start: int = UnitFormation.frontage(u)
+	var b := _battle([u])
+	b.enqueue_frontage([1], 4)
+	for o in b._pending_orders:
+		b._apply_order_cmd(o)   # the tick drains and re-applies
+	assert_eq(UnitFormation.frontage(u), start + 4,
+		"re-applying the recorded order leaves the width unchanged (idempotent)")
+
+
+func test_enqueue_frontage_clamps_at_the_extremes() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 40
+	var b := _battle([u])
+	b.enqueue_frontage([1], -999)
+	assert_eq(UnitFormation.frontage(u), 1, "narrowing can't go below a single file")
+	b.enqueue_frontage([1], 999)
+	assert_eq(UnitFormation.frontage(u), 40, "widening can't exceed max_soldiers")
+
+
+func test_enqueue_frontage_steps_each_unit_from_its_own_width() -> void:
+	# A mixed selection: each unit resolves its own current frontage, so the same
+	# delta keeps their relative widths (one command emitted per unit).
+	var a := _unit(1, Vector2.ZERO)
+	a.max_soldiers = 40
+	var c := _unit(2, Vector2(200, 0))
+	c.max_soldiers = 160
+	var fa: int = UnitFormation.frontage(a)
+	var fc: int = UnitFormation.frontage(c)
+	var b := _battle([a, c])
+	b.enqueue_frontage([1, 2], 2)
+	assert_eq(UnitFormation.frontage(a), fa + 2, "unit a widens from its own width")
+	assert_eq(UnitFormation.frontage(c), fc + 2, "unit c widens from its own width")

@@ -44,9 +44,10 @@ var seed_value: int = 0
 
 # Orders for the battle being recorded or played back.
 # Each entry: { "tick": int, "units": Array[int] (uids), "x": float, "y": float,
-#               "target": int (enemy uid, -1 move, -3 formation-only),
+#               "target": int (enemy uid, -1 move, -3 formation-only, -4 frontage-only),
 #               "mode": int (Battle.OrderMode; 0 = NORMAL),
-#               "formation"?: int (Unit.FORMATION_*; omitted when 0 = NORMAL) }.
+#               "formation"?: int (Unit.FORMATION_*; omitted when 0 = NORMAL),
+#               "frontage"?: int (absolute file count for a -4 resize; omitted when 0) }.
 var _orders: Array = []
 var _play_index: int = 0
 
@@ -156,6 +157,8 @@ func start_playback(path: String) -> bool:
 		}
 		if o.has("formation"):
 			entry["formation"] = int(o["formation"])
+		if o.has("frontage"):
+			entry["frontage"] = int(o["frontage"])
 		_orders.append(entry)
 	_play_index = 0
 	# Load the optional presentation (camera) track. Absent in pre-camera replays,
@@ -210,7 +213,7 @@ func replays_dir() -> String:
 
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
-		order_mode: int = 0, formation: int = 0) -> void:
+		order_mode: int = 0, formation: int = 0, frontage: int = 0) -> void:
 	if mode != Mode.RECORD:
 		return
 	var entry := {
@@ -223,6 +226,8 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	}
 	if formation != 0:
 		entry["formation"] = formation
+	if frontage != 0:
+		entry["frontage"] = frontage
 	_orders.append(entry)
 
 

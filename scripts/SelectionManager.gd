@@ -4,6 +4,8 @@ class_name SelectionManager
 ##   Left click        — select one friendly unit
 ##   Left click + drag — box-select friendly units
 ##   Right click       — move there, or attack the enemy unit clicked
+##   Drag a flank grip — resize a single selected unit's frontage (line width)
+##   [ / ]             — narrow / widen the selected units by one file
 
 const UnitRef = preload("res://scripts/Unit.gd")  # avoid global-class-cache dependency
 const BattleRef = preload("res://scripts/Battle.gd")  # for the waypoint-append sentinel
@@ -11,6 +13,13 @@ const BattleRef = preload("res://scripts/Battle.gd")  # for the waypoint-append 
 const CLICK_THRESHOLD: float = 6.0
 const DOUBLE_CLICK_MS: int = 350
 const CURSOR_SIZE: int = 24   # generated order-mode cursor
+
+# Frontage resize grips: small squares on a singly-selected unit's flanks. Drag one
+# to widen/narrow the line; the bracket keys do the same in single-file steps.
+const RESIZE_HANDLE_GAP: float = 10.0     # px the grip sits outside the block extent
+const RESIZE_HANDLE_SIZE: float = 6.0     # grip half-size (px)
+const RESIZE_HANDLE_HIT: float = 13.0     # cursor radius that grabs a grip (px)
+const RESIZE_HANDLE_COLOR: Color = Color(0.95, 0.95, 0.3, 0.9)   # match selection yellow
 
 # Order-overlay colours (common RTS convention: green = move, red = attack). Teal marks
 # a SUPPORT link — same hue as the SUPPORT order cursor (_order_mode_color).
@@ -32,6 +41,11 @@ var _cursor_textures: Dictionary = {}   # mode int -> ImageTexture; cached to av
 var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
 var _drag_cur: Vector2 = Vector2.ZERO
+# Frontage drag-resize: active while a flank grip of a single selected unit is held.
+# _resize_files is the live target file count (drives the preview and the commit).
+var _resizing: bool = false
+var _resize_unit = null
+var _resize_files: int = 0
 var _selected: Array = []
 # Tracks whether the order overlay was visible last frame (Space held to survey
 # all orders), so it's redrawn one final time after Space is released — wiping
@@ -77,9 +91,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
-				_dragging = true
-				_drag_start = _cursor_world()
-				_drag_cur = _drag_start
+				# A press on a selected unit's flank grip starts a frontage resize;
+				# anywhere else begins the usual box-select drag.
+				var grip = _resize_handle_at(_cursor_world())
+				if grip != null:
+					_begin_resize(grip)
+				else:
+					_dragging = true
+					_drag_start = _cursor_world()
+					_drag_cur = _drag_start
+			elif _resizing:
+				_finish_resize()
+				queue_redraw()
 			else:
 				_dragging = false
 				_finish_selection()
@@ -88,9 +111,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			# Shift+right-click appends a waypoint to the route instead of replacing
 			# it, so a march can be plotted as a multi-leg path.
 			_issue_order(_cursor_world(), event.shift_pressed)
-	elif event is InputEventMouseMotion and _dragging:
-		_drag_cur = _cursor_world()
-		queue_redraw()
+	elif event is InputEventMouseMotion:
+		if _resizing:
+			_update_resize(_cursor_world())
+			queue_redraw()
+		elif _dragging:
+			_drag_cur = _cursor_world()
+			queue_redraw()
 	elif event is InputEventKey and event.pressed and not event.echo:
 		var mode: int = _order_mode_for_keycode(event.physical_keycode)
 		if mode >= 0:
@@ -99,6 +126,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_issue_merge()   # merge the selected friendly regiments into one
 		elif event.keycode == KEY_T:
 			_cycle_formation()   # cycle tight → normal → loose for selected units
+		elif event.keycode == KEY_BRACKETRIGHT:
+			_resize_frontage(1)    # ] widens the line by one file
+		elif event.keycode == KEY_BRACKETLEFT:
+			_resize_frontage(-1)   # [ narrows the line by one file
 		else:
 			_handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall
 
@@ -227,6 +258,103 @@ func _cycle_formation() -> void:
 	_battle.enqueue_formation(uids, next)
 	_refresh_hud()
 	Sfx.play(&"order")
+
+
+# --- frontage resize -------------------------------------------------------
+
+## Widen (delta > 0) or narrow (delta < 0) every selected unit's frontage by `delta`
+## files. Routed through Battle so the resize is recorded and replays exactly. Each
+## unit steps from its own current width, so a mixed selection keeps its proportions.
+func _resize_frontage(delta: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	_battle.enqueue_frontage(uids, delta)
+	_refresh_hud()
+	Sfx.play(&"order")
+
+
+## Begin a drag-resize from a flank grip: seed the live target with the unit's
+## current frontage so a click without movement is a no-op.
+func _begin_resize(u) -> void:
+	_resizing = true
+	_resize_unit = u
+	_resize_files = UnitFormation.frontage(u)
+	queue_redraw()
+
+
+## Update the live resize target as the cursor drags: project the cursor onto the
+## unit's file axis for a half-width, then map it to a file count (shared helper).
+func _update_resize(world_pos: Vector2) -> void:
+	if not is_instance_valid(_resize_unit):
+		_resizing = false
+		return
+	var offset: Vector2 = world_pos - _resize_unit.global_position
+	var half_width: float = absf(offset.dot(_file_axis(_resize_unit)))
+	_resize_files = UnitFormation.files_for_halfwidth(half_width, _resize_unit.max_soldiers)
+
+
+## Commit a drag-resize on release: enqueue the delta from the unit's current
+## frontage to the previewed target, sharing the recorded path with the keyboard
+## resize. A zero delta (no real change) issues nothing.
+func _finish_resize() -> void:
+	var u = _resize_unit
+	_resizing = false
+	_resize_unit = null
+	if not is_instance_valid(u) or Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var delta: int = _resize_files - UnitFormation.frontage(u)
+	if delta != 0:
+		_battle.enqueue_frontage([u.uid], delta)
+		Sfx.play(&"order")
+	_refresh_hud()
+
+
+## The selected unit whose flank resize-grip is under `world_pos`, or null.
+func _resize_handle_at(world_pos: Vector2):
+	var u = _single_selected_unit()
+	if u == null:
+		return null
+	for hp in _resize_handle_positions(u):
+		if world_pos.distance_to(hp) <= RESIZE_HANDLE_HIT:
+			return u
+	return null
+
+
+## The sole live selected unit, or null when the selection isn't exactly one (or a
+## replay is playing) -- the precondition for showing and grabbing resize grips.
+func _single_selected_unit():
+	if Replay.mode == Replay.Mode.PLAYBACK or _selected.size() != 1:
+		return null
+	var u = _selected[0]
+	if not is_instance_valid(u) or u.state == UnitRef.State.DEAD:
+		return null
+	return u
+
+
+## World positions of a unit's two flank resize grips: out along its file axis, just
+## past the block extent, on each side.
+func _resize_handle_positions(u) -> Array:
+	var right: Vector2 = _file_axis(u)
+	var reach: float = u.render_block_extent() + RESIZE_HANDLE_GAP
+	return [u.global_position + right * reach, u.global_position - right * reach]
+
+
+## Unit vector along a regiment's file (width) axis in world space: its facing turned
+## 90 degrees, matching UnitFormation.slots' local-X spread (local forward is -Y).
+func _file_axis(u) -> Vector2:
+	return Vector2.RIGHT.rotated(u.facing.angle() + PI * 0.5)
+
+
+## Stable uids of the live (alive) units in the current selection.
+func _selected_uids() -> Array:
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit) and unit.state != UnitRef.State.DEAD:
+			uids.append(unit.uid)
+	return uids
 
 
 # --- helpers ---------------------------------------------------------------
@@ -421,11 +549,38 @@ func _draw() -> void:
 	# selection halos, the drag-box, click pulses and the cursor with its armed stance.
 	if _demo_orders_active() and Replay.has_pointer_track():
 		_draw_demo_pointer()
+	_draw_resize_handles()
 	if not _dragging:
 		return
 	var rect := Rect2(_drag_start, _drag_cur - _drag_start).abs()
 	draw_rect(rect, Color(0.4, 0.9, 0.4, 0.15))
 	draw_rect(rect, Color(0.5, 1.0, 0.5, 0.9), false, 1.5)
+
+
+## Flank resize grips on a singly-selected unit, plus -- while a grip is held -- a
+## preview line across the target width with its file count.
+func _draw_resize_handles() -> void:
+	var u = _single_selected_unit()
+	if u == null:
+		return
+	for hp in _resize_handle_positions(u):
+		var box := Rect2(hp - Vector2.ONE * RESIZE_HANDLE_SIZE, Vector2.ONE * RESIZE_HANDLE_SIZE * 2.0)
+		draw_rect(box, RESIZE_HANDLE_COLOR)
+		draw_rect(box, Color.BLACK, false, 1.0)   # rim for contrast on any background
+	if _resizing and is_instance_valid(_resize_unit):
+		_draw_resize_preview(u)
+
+
+## Preview the dragged frontage: a line spanning the target width and the file count
+## as text, so the player sees the new line before releasing.
+func _draw_resize_preview(u) -> void:
+	var right: Vector2 = _file_axis(u)
+	var half: float = float(_resize_files - 1) * 0.5 * UnitRef.FORMATION_SPACING
+	var a: Vector2 = u.global_position - right * half
+	var b: Vector2 = u.global_position + right * half
+	draw_line(a, b, RESIZE_HANDLE_COLOR, 2.0)
+	draw_string(ThemeDB.fallback_font, b + Vector2(8.0, -6.0), "%d files" % _resize_files,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, RESIZE_HANDLE_COLOR)
 
 
 ## The cursor's world position: the injected position when one is set (deterministic
