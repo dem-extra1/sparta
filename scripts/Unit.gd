@@ -557,8 +557,10 @@ func _front_depth() -> float:
 	# deep player-set frontage would otherwise make the summed floor exceed melee
 	# contact range, pushing fighting lines apart faster than they close and
 	# stuttering the melee. Half the unit's own reach keeps the summed floor
-	# (this + the foe's) safely inside contact distance, while every normal/auto
-	# formation is far shallower than this cap and so is untouched.
+	# (this + the foe's) safely inside contact distance for every unit type. Heavy
+	# melee units at normal widths sit below their cap, so it only bites on
+	# narrowed columns; short-reach archers can clip it even at auto width, but
+	# that only allows fractionally more overlap and they kite rather than grind.
 	return minf(depth, attack_range * 0.5)
 
 
