@@ -1244,6 +1244,11 @@ func test_files_for_halfwidth_maps_and_clamps() -> void:
 			"a huge drag clamps to max_soldiers")
 
 
+func test_files_label_pluralizes() -> void:
+	assert_eq(UnitFormation.files_label(1), "1 file", "singular for one file")
+	assert_eq(UnitFormation.files_label(12), "12 files", "plural for many files")
+
+
 func test_formation_block_is_horizontally_centered() -> void:
 	# Each rank is centred on its own count, so the block's horizontal centroid stays on
 	# the unit even when the last rank is partial (non-perfect n) — not just for a perfect

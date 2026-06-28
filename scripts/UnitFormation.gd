@@ -39,6 +39,11 @@ static func files_for_halfwidth(half_width: float, max_soldiers: int) -> int:
 	return clampi(f, 1, maxi(1, max_soldiers))
 
 
+## "%d file(s)" with correct singular/plural, for the HUD readout and resize preview.
+static func files_label(n: int) -> String:
+	return "%d file" % n if n == 1 else "%d files" % n
+
+
 ## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep grid (front
 ## rank toward -Y, the rotated "forward"). Pure and deterministic -- a function of `n` and
 ## the unit's frontage -- so it's unit-testable; the render adds stable jitter on top.

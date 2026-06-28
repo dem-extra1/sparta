@@ -27,9 +27,10 @@ const ORDER_APPEND_WAYPOINT := -2
 # Sentinel for a formation-change-only order (no movement, no target). Handled
 # before the main move/attack/merge logic so it doesn't clear waypoints or stances.
 const ORDER_FORMATION_ONLY := -3
-# Sentinel for a frontage-resize-only order (widen/narrow the line). Carries a
-# signed "frontage_delta"; each unit resolves its own current frontage and steps
-# by that delta. Handled like the formation-only order, leaving movement untouched.
+# Sentinel for a frontage-resize-only order (widen/narrow the line). Carries an
+# absolute "frontage" (the target file count, resolved per unit at enqueue time, so
+# re-applying on the tick is idempotent). Handled like the formation-only order,
+# leaving movement untouched.
 const ORDER_FRONTAGE_ONLY := -4
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the

@@ -598,7 +598,7 @@ func _draw_resize_preview(u) -> void:
 	var a: Vector2 = u.global_position - right * half
 	var b: Vector2 = u.global_position + right * half
 	draw_line(a, b, RESIZE_HANDLE_COLOR, 2.0)
-	draw_string(ThemeDB.fallback_font, b + Vector2(8.0, -6.0), "%d files" % _resize_files,
+	draw_string(ThemeDB.fallback_font, b + Vector2(8.0, -6.0), UnitFormation.files_label(_resize_files),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, RESIZE_HANDLE_COLOR)
 
 
