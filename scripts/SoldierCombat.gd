@@ -33,6 +33,18 @@ const CHARGE_REFERENCE_SPEED: float = 170.0
 # fraction of full effectiveness. q scales both offence and active defence.
 const COND_HEALTH_FLOOR: float = 0.5
 
+# Knockback impulse (docs/combat-model.md "Knockback impulse"):
+#   J = KNOCKBACK_IMPULSE_SCALE * lethality_A * (1 + c) / m_D * eta
+# the velocity (world units/sec) added to the struck body along the strike axis. Scaled by
+# the blow's force (lethality, and the charge term 1+c) and INVERSELY by the defender's mass
+# -- a heavy horse is shoved less than a light archer. eta is the fraction of momentum
+# transmitted: 1 for a clean landing, ETA_DEFENDED for a turned-aside blow (a blocked blow
+# draws no blood but still shoves -- a spear wall pushes a stalled enemy back). J0 / eta_def
+# are tuned to the prior flat knockback feel at baseline (lethality 1, c 0, mass 1: landed
+# ~40, defended ~14), so the lines still settle at body contact; mass + charge now scale it.
+const KNOCKBACK_IMPULSE_SCALE: float = 40.0   # J0
+const ETA_DEFENDED: float = 0.35              # eta for a defended (not landed) blow
+
 
 ## Per-type combat profile (docs/combat-model.md "Soldier attributes"): skill is the
 ## unit's training; armour, shield, lethality, and the health/stamina pools are per
@@ -40,12 +52,12 @@ const COND_HEALTH_FLOOR: float = 0.5
 static func profile_for(p_is_cavalry: bool, p_anti_cavalry: bool, p_is_ranged: bool, p_training: float) -> Dictionary:
 	var skill: float = clampf(p_training, 0.0, 1.0)
 	if p_is_cavalry:
-		return {"skill": skill, "armour": 0.40, "shield": 0.25, "lethality": 1.10, "max_health": 140.0, "max_stamina": 120.0}
+		return {"skill": skill, "armour": 0.40, "shield": 0.25, "lethality": 1.10, "max_health": 140.0, "max_stamina": 120.0, "mass": 2.5}
 	if p_anti_cavalry:
-		return {"skill": skill, "armour": 0.35, "shield": 0.65, "lethality": 0.85, "max_health": 100.0, "max_stamina": 100.0}
+		return {"skill": skill, "armour": 0.35, "shield": 0.65, "lethality": 0.85, "max_health": 100.0, "max_stamina": 100.0, "mass": 1.0}
 	if p_is_ranged:
-		return {"skill": skill, "armour": 0.10, "shield": 0.05, "lethality": 0.50, "max_health": 80.0, "max_stamina": 90.0}
-	return {"skill": skill, "armour": 0.45, "shield": 0.60, "lethality": 1.00, "max_health": 110.0, "max_stamina": 100.0}
+		return {"skill": skill, "armour": 0.10, "shield": 0.05, "lethality": 0.50, "max_health": 80.0, "max_stamina": 90.0, "mass": 0.9}
+	return {"skill": skill, "armour": 0.45, "shield": 0.60, "lethality": 1.00, "max_health": 110.0, "max_stamina": 100.0, "mass": 1.0}
 
 
 ## The charge factor c from a closing speed (world units/sec) along the strike axis:
@@ -86,6 +98,14 @@ static func wound(lethality_a: float, c: float, armour_d: float, cond_a: float =
 	var armour: float = clampf(armour_d, 0.0, 1.0)
 	var cond: float = clampf(cond_a, 0.0, 1.0)
 	return DAMAGE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) * (1.0 - armour) * cond
+
+
+## Knockback impulse magnitude J (world units/sec along the strike axis): the blow's force
+## (lethality * (1 + charge)) divided by the defender's mass, times eta (1 landed, < 1
+## defended). See docs/combat-model.md "Knockback impulse". Pure; never negative.
+static func knockback_impulse(lethality_a: float, c: float, defender_mass: float, eta: float) -> float:
+	return KNOCKBACK_IMPULSE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) \
+			/ maxf(0.01, defender_mass) * maxf(0.0, eta)
 
 
 ## The health condition factor q(h) in [COND_HEALTH_FLOOR, 1] for a soldier at `hp`

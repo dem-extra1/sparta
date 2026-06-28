@@ -1,8 +1,4 @@
 {
-  "replay": "demos/scenarios/friendly-soldier-collision.json",
-  "caption": "Individual-level collision, phase 5 slice 1: two friendly regiments ordered onto the same spot now pack together at the SOLDIER level -- their soldiers press into tight contact instead of the regiments bouncing apart as big circles. Friendly spacing emerges from per-soldier steering plus a soldier->regiment coupling (no teleport); enemy collision and the spear-vs-cavalry hard block are unchanged.",
-  "fixed_fps": 60,
-  "max_frames": 300,
-  "fps": 30,
-  "width": 720
+  "skip": true,
+  "reason": "Physics slice A makes melee knockback mass- and charge-scaled (heavy cavalry shrug off shoves; a charging hit throws foot back harder). It changes the magnitude of an existing effect, which a standalone clip can't show without a side-by-side before/after. Pinned by the SoldierCombat/SoldierMelee tests instead; a visible knockdown will come with the prone/charge slices."
 }

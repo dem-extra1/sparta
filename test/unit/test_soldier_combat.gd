@@ -207,3 +207,44 @@ func test_math_is_deterministic() -> void:
 	var w1: float = SoldierCombat.wound(0.85, 0.7, 0.35)
 	var w2: float = SoldierCombat.wound(0.85, 0.7, 0.35)
 	assert_eq(w1, w2, "wound is a pure function")
+
+
+# --- mass + knockback impulse (#201 slice A) -------------------
+
+func test_profiles_carry_per_type_mass() -> void:
+	assert_almost_eq(SoldierCombat.profile_for(true, false, false, 0.5)["mass"], 2.5, 1e-6, "cavalry are heavy")
+	assert_almost_eq(SoldierCombat.profile_for(false, true, false, 0.5)["mass"], 1.0, 1e-6, "spearmen baseline mass")
+	assert_almost_eq(SoldierCombat.profile_for(false, false, false, 0.5)["mass"], 1.0, 1e-6, "infantry baseline mass")
+	assert_almost_eq(SoldierCombat.profile_for(false, false, true, 0.5)["mass"], 0.9, 1e-6, "archers are light")
+
+
+func test_knockback_impulse_baseline() -> void:
+	# lethality 1, no charge, mass 1, landed -> the base scale.
+	assert_almost_eq(SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, 1.0),
+			SoldierCombat.KNOCKBACK_IMPULSE_SCALE, 1e-6, "baseline landed impulse is J0")
+
+
+func test_knockback_impulse_is_inverse_in_mass() -> void:
+	var light: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, 1.0)
+	var heavy: float = SoldierCombat.knockback_impulse(1.0, 0.0, 2.0, 1.0)
+	assert_almost_eq(heavy, light * 0.5, 1e-5, "doubling the defender's mass halves the knockback")
+
+
+func test_knockback_impulse_scales_with_charge_and_lethality() -> void:
+	var base: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, 1.0)
+	assert_almost_eq(SoldierCombat.knockback_impulse(1.0, 1.0, 1.0, 1.0), base * 2.0, 1e-5,
+			"a full charge (c=1) doubles the impulse via (1+c)")
+	assert_almost_eq(SoldierCombat.knockback_impulse(2.0, 0.0, 1.0, 1.0), base * 2.0, 1e-5,
+			"twice the lethality, twice the impulse")
+
+
+func test_defended_impulse_is_a_fraction_of_a_landed_one() -> void:
+	var landed: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, 1.0)
+	var defended: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, SoldierCombat.ETA_DEFENDED)
+	assert_almost_eq(defended, landed * SoldierCombat.ETA_DEFENDED, 1e-5, "a turned-aside blow still shoves, less")
+	assert_lt(defended, landed, "but less than a clean landing")
+
+
+func test_knockback_impulse_never_negative() -> void:
+	assert_eq(SoldierCombat.knockback_impulse(-1.0, 0.0, 1.0, 1.0), 0.0, "negative lethality clamps to no impulse")
+	assert_gt(SoldierCombat.knockback_impulse(1.0, 0.0, 0.0, 1.0), 0.0, "zero mass is floored, not a divide-by-zero")

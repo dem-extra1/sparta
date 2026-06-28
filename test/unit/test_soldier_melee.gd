@@ -124,15 +124,18 @@ func test_melee_is_deterministic() -> void:
 
 func test_in_reach_strike_shoves_the_defender_away() -> void:
 	# Attacker at the origin facing down; defender just ahead, in reach. Every in-reach
-	# strike adds at least the contact shove to the defender's body velocity, pointed away
-	# from the attacker (here: +y). Health is pinned high so the one strike can't kill and
-	# reap the body before we read it.
+	# strike adds at least the defended-blow impulse (eta_def) to the defender's body
+	# velocity, pointed away from the attacker (here: +y). Health is pinned high so the one
+	# strike can't kill and reap the body before we read it.
 	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
 	b._sim_soldier_hp[0] = 9999.0
 	a.resolve_soldier_melee(b)
-	assert_gte(b._sim_body_vel[0].y, SoldierMelee.KNOCKBACK_SHOVE - 1e-3,
-		"the struck soldier is knocked back at least the contact shove, away from the attacker")
+	# Infantry attacker (lethality 1) vs infantry defender (mass 1), no charge: the minimum
+	# (turned-aside) impulse is the floor every in-reach strike clears.
+	var min_shove: float = SoldierCombat.knockback_impulse(1.0, 0.0, 1.0, SoldierCombat.ETA_DEFENDED)
+	assert_gte(b._sim_body_vel[0].y, min_shove - 1e-3,
+		"the struck soldier is knocked back at least the defended-blow impulse, away from the attacker")
 	assert_almost_eq(b._sim_body_vel[0].x, 0.0, 1e-3, "no lateral knockback for a head-on strike")
 
 
@@ -168,3 +171,37 @@ func test_knockback_is_deterministic() -> void:
 	d._sim_soldier_hp[0] = 9999.0
 	c.resolve_soldier_melee(d)
 	assert_almost_eq(d._sim_body_vel[0].y, first.y, 1e-6, "same seed -> same knockback (incl. any landed impulse)")
+
+
+func _typed_defender(uid: int, pos: Vector2, face: Vector2, cavalry: bool, ranged: bool) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 1
+	add_child_autofree(u)
+	u.uid = uid
+	u.team = 1
+	u.position = pos
+	u.facing = face
+	u.training = 0.5
+	u.is_cavalry = cavalry
+	u.is_ranged = ranged
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.1)
+	u.seed_sim_soldiers()
+	u._sim_soldier_hp[0] = 9999.0   # survive the strike so we can read the knockback
+	return u
+
+
+func test_heavier_defender_is_knocked_back_less() -> void:
+	# Same infantry attacker and the same seed, striking a light archer (mass 0.9) vs a heavy
+	# cavalry body (mass 2.5): the heavy body takes a smaller impulse (J ~ 1/mass).
+	Replay.rng.seed = SEED
+	var atk1 := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var archer := _typed_defender(2, Vector2(0, 6), Vector2.UP, false, true)
+	atk1.resolve_soldier_melee(archer)
+	var light_kb: float = archer._sim_body_vel[0].length()
+	Replay.rng.seed = SEED
+	var atk2 := _unit(3, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var cav := _typed_defender(4, Vector2(0, 6), Vector2.UP, true, false)
+	atk2.resolve_soldier_melee(cav)
+	var heavy_kb: float = cav._sim_body_vel[0].length()
+	assert_lt(heavy_kb, light_kb, "a heavy (cavalry) defender is knocked back less than a light (archer) one")

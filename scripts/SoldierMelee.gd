@@ -8,14 +8,6 @@ class_name SoldierMelee
 ## modifiers. Replay-deterministic: attackers in soldier-id order, one Replay.rng draw
 ## per striking attacker, and no RNG in the death-reaping.
 
-# Knockback impulses (world units/sec added to the struck body's velocity). The shove
-# lands on every in-reach strike; the firmer landed-hit impulse is additionally scaled by
-# (1 + charge), so a charging hit throws the victim back harder. Tuned against playtests
-# so the lines settle at body contact rather than interpenetrating or bouncing apart.
-const KNOCKBACK_SHOVE: float = 14.0
-const KNOCKBACK_LAND: float = 26.0
-
-
 ## Resolve one melee cadence of `attacker`'s engaged front rank striking `defender`.
 static func resolve(attacker: Unit, defender: Unit) -> void:
 	var attackers: PackedInt32Array = attacker.engaged_soldier_indices(attacker._sim_soldier_pos.size())
@@ -56,16 +48,19 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		var cond_a: float = SoldierCombat.condition(attacker._sim_soldier_hp[ai], my_maxhp)
 		var cond_d: float = SoldierCombat.condition(defender._sim_soldier_hp[target], en_maxhp)
 		var p_land: float = SoldierCombat.land_chance(my_prof["skill"], en_prof["skill"], en_prof["shield"], phi, c, cond_a, cond_d)
-		# Knockback is the enemy collision response (no separation pass): a small shove on
-		# every in-reach strike, away from the attacker, keeps the lines from interpenetrating;
-		# a landed blow adds a firmer impulse, scaled up by the attacker's charge. The body
-		# holds the push and the slot-spring eases it back, so the standoff emerges from
-		# press-in vs knockback. Velocity only -- never a position correction.
-		defender._sim_body_vel[target] += push_dir * KNOCKBACK_SHOVE
 		# One seeded draw per striking attacker, in id order, after the target is fixed.
-		if Replay.rng.randf() < p_land:
+		var landed: bool = Replay.rng.randf() < p_land
+		# Knockback is the enemy collision response (no separation pass): every in-reach strike
+		# imparts a momentum impulse away from the attacker -- a clean landing transmits full
+		# momentum (eta 1), a turned-aside blow a fraction (ETA_DEFENDED), and a heavier body
+		# (high mass) is shoved less. So a charging horse throws foot back hard while shrugging
+		# off shoves, and a blocked spear wall still pushes a stalled enemy back. The body holds
+		# the push and the slot-spring eases it back. Velocity only -- never a position snap.
+		var eta: float = 1.0 if landed else SoldierCombat.ETA_DEFENDED
+		defender._sim_body_vel[target] += push_dir * SoldierCombat.knockback_impulse(
+				my_prof["lethality"], c, en_prof["mass"], eta)
+		if landed:
 			defender._sim_soldier_hp[target] -= SoldierCombat.wound(my_prof["lethality"], c, en_prof["armour"], cond_a)
-			defender._sim_body_vel[target] += push_dir * (KNOCKBACK_LAND * (1.0 + c))
 
 	reap(defender, attacker)
 
