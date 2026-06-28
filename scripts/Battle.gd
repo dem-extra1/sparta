@@ -320,11 +320,15 @@ func _on_soldier_tick() -> void:
 		return
 	var units: Array = get_tree().get_nodes_in_group("units")
 	# Friendly-avoidance steering first (it sets the velocity bias the bodies feed
-	# forward), then integrate the bodies. Enemy spacing is handled by combat knockback,
-	# not a separation pass — so nothing position-corrects a soldier; it all moves at
-	# velocity. See SoldierSteering / SoldierBodies.
+	# forward), then integrate the bodies, then slide each regiment center toward its
+	# soldiers' centroid (phase 5: friendly collision emerges from the soldier layer via
+	# this coupling). Enemy spacing is handled by combat knockback, not a separation pass —
+	# so nothing position-corrects a soldier; it all moves at velocity. See SoldierSteering
+	# / SoldierBodies.
+	var delta: float = get_physics_process_delta_time()
 	SoldierSteering.accumulate(units, Engine.get_physics_frames())
-	UnitRef.step_all_sim_soldiers(units, get_physics_process_delta_time())
+	UnitRef.step_all_sim_soldiers(units, delta)
+	UnitRef.couple_all_sim_soldiers(units, delta)
 
 
 ## Called by SelectionManager when the player issues a right-click order. The

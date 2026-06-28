@@ -647,9 +647,12 @@ func test_infantry_pair_clear_at_40px_not_pushed() -> void:
 
 
 func test_cavalry_pair_overlap_at_40px_pushed_apart() -> void:
-	# 40px is inside the cavalry floor (24+24=48), so the pair pushes apart.
+	# 40px is inside the cavalry floor (24+24=48), so the enemy pair pushes apart.
+	# (Friendly separation moved to the soldier layer in phase 5; the regiment circle
+	# now separates ENEMIES only, so this exercises an enemy pair.)
 	var a := _cavalry()
 	var b := _cavalry()
+	b.team = 1
 	a.position = Vector2.ZERO
 	b.position = Vector2(40.0, 0.0)
 	a._separate()
@@ -675,9 +678,11 @@ func test_spearmen_footprint_between_infantry_and_cavalry() -> void:
 
 func test_spearmen_pair_overlap_at_38px_pushed_apart() -> void:
 	# 38px is inside the spearmen floor (20+20=40) but outside the infantry
-	# floor (18+18=36), so only spearmen push at this gap.
+	# floor (18+18=36), so only spearmen push at this gap. Enemy pair (regiment-circle
+	# separation is enemy-only since phase 5).
 	var a := _spearman_unit()
 	var b := _spearman_unit()
+	b.team = 1
 	a.position = Vector2.ZERO
 	b.position = Vector2(38.0, 0.0)
 	a._separate()
@@ -687,10 +692,12 @@ func test_spearmen_pair_overlap_at_38px_pushed_apart() -> void:
 # --- co-located fan-out determinism ----------------------------
 
 func test_co_located_pair_fans_apart_by_uid() -> void:
-	# Two regiments stacked on the exact same spot must push in OPPOSITE
-	# directions so they fan apart instead of staying welded together.
+	# Two enemy regiments stacked on the exact same spot must push in OPPOSITE
+	# directions so they fan apart instead of staying welded together. (Co-located
+	# fan-out is the enemy-only regiment path since phase 5 moved friendlies to soldiers.)
 	var a := _make_unit()
 	var b := _make_unit()
+	b.team = 1
 	a.uid = 5
 	b.uid = 7
 	a.position = Vector2.ZERO
@@ -712,13 +719,14 @@ func test_co_located_push_matches_uid_formula() -> void:
 	# vector the uid formula produces so a regression to instance ids is caught.
 	var a := _make_unit()
 	var b := _make_unit()
+	b.team = 1
 	a.uid = 5
 	b.uid = 7
 	a.position = Vector2.ZERO
 	b.position = Vector2.ZERO
 	a._separate()
 	# lo = min(5, 7) = 5 -> angle = 5/100 * TAU; a holds the lower uid so dir = -1.
-	# magnitude = (sep_a + sep_b) * share, share = 0.5 for two infantry friendlies.
+	# magnitude = (sep_a + sep_b) * share, share = 0.5 for two infantry enemies.
 	var magnitude: float = (a.separation_radius + b.separation_radius) * 0.5
 	var expected: Vector2 = Vector2.RIGHT.rotated(0.05 * TAU) * -1.0 * magnitude
 	assert_almost_eq(a.position.x, expected.x, 0.001, "co-located push x matches the uid formula")
@@ -731,6 +739,7 @@ func test_co_located_equal_uid_pair_still_fans_apart() -> void:
 	# between two objects) so the pair still fans apart rather than stacking.
 	var a := _make_unit()
 	var b := _make_unit()
+	b.team = 1   # enemy pair (regiment-circle separation is enemy-only since phase 5)
 	assert_eq(a.uid, -1, "unspawned units keep the default uid")
 	assert_eq(b.uid, -1, "unspawned units keep the default uid")
 	a.position = Vector2.ZERO
@@ -866,7 +875,10 @@ func test_mover_passes_through_idle_friendly() -> void:
 		"a moving unit is not pushed off an idle friendly — it passes through")
 
 
-func test_two_idle_friendlies_still_separate() -> void:
+func test_separate_leaves_friendly_pairs_to_the_soldier_layer() -> void:
+	# Phase 5: friendly regiments no longer separate as circles -- their spacing emerges at
+	# the soldier level (SoldierSteering's friendly tier feeds the body->regiment coupling).
+	# So _separate() leaves a friendly pair in place; only enemies are pushed by the circle.
 	var a := _make_unit()
 	var b := _make_unit()
 	a.team = 0
@@ -876,7 +888,8 @@ func test_two_idle_friendlies_still_separate() -> void:
 	a.position = Vector2.ZERO
 	b.position = Vector2(10.0, 0.0)
 	a._separate()
-	assert_lt(a.position.x, 0.0, "two idle friendlies are solid and push apart")
+	assert_almost_eq(a.position.x, 0.0, 0.001,
+		"_separate() leaves friendlies to the soldier layer (no regiment-circle push)")
 
 
 func test_mover_does_not_pass_through_idle_enemy() -> void:
@@ -908,18 +921,9 @@ func test_idle_friendly_does_not_push_the_mover_either() -> void:
 		"idle does not push itself off the mover — the exemption fires from both sides")
 
 
-func test_mover_does_not_pass_through_fighting_friendly() -> void:
-	# Only IDLE friendlies are passed through; a FIGHTING friendly is solid.
-	var mover := _make_unit()
-	var fighter := _make_unit()
-	mover.team = 0
-	fighter.team = 0
-	mover.state = Unit.State.MOVING
-	fighter.state = Unit.State.FIGHTING
-	mover.position = Vector2.ZERO
-	fighter.position = Vector2(10.0, 0.0)
-	mover._separate()
-	assert_lt(mover.position.x, 0.0, "a moving unit cannot pass through a fighting friendly")
+# A moving unit yielding to a FIGHTING friendly (the newcomer flows around the anchored
+# fighter) is now a soldier-level behaviour -- the engaged-anchor asymmetry in
+# SoldierSteering -- covered by test_soldier_steering.gd, not the regiment circle.
 
 
 # --- hard blocking: spearmen stop cavalry -----------------------

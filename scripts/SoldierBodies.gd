@@ -74,8 +74,44 @@ static func step(unit: Unit, delta: float) -> void:
 		# near-critically-damped hold-and-recover spring that lets a body keep a knockback
 		# push and ease back). (`_approach_velocity` is itself zero while a unit stands
 		# idle, so an idle bulk eases onto its slots, not drifts.)
-		var feed_forward: Vector2 = unit._sim_steer[i] if engaged.has(i) else unit._approach_velocity
+		# Engaged front-rank bodies are ~stationary in melee, so their feed-forward is just
+		# the friendly-avoidance steering. The unengaged bulk feeds the unit's march velocity
+		# forward, PLUS any friendly-contact steering (phase 5): a marching regiment overlapping
+		# a friendly steers its contact bodies off formation while still keeping up with the
+		# march, so the body->regiment coupling slides the two apart. _sim_steer is zero for any
+		# body not gathered by the steering pass this tick (it clears all steer first), so this
+		# reduces to the plain march for the uncrowded bulk.
+		var feed_forward: Vector2 = unit._sim_steer[i] if engaged.has(i) \
+				else unit._approach_velocity + unit._sim_steer[i]
 		var to_slot: Vector2 = slots[i] - unit._sim_soldier_pos[i]
 		var accel: Vector2 = to_slot * SPRING_STIFFNESS - (unit._sim_body_vel[i] - feed_forward) * SPRING_DAMPING
 		unit._sim_body_vel[i] += accel * delta
 		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
+
+
+## Slide the regiment center toward its soldiers' centroid, at a bounded velocity (phase 5).
+## The formation slots are centred (mean(slots) ~ position), so the drift body_centroid -
+## slot_centroid is how far the bodies have been pushed off formation as a whole; stepping
+## the center a fraction of that each tick drives the slot centroid onto the body centroid
+## (geometric decay, stable). When bodies are pushed off slot by friendly avoidance or
+## knockback, the whole regiment follows -- so friendly regiments separate from the soldier
+## level up. During a clean march the bodies sit on their moving slots (drift ~0) so this is
+## silent and never double-counts the march. Capped at MAX_FOLLOW_SPEED*delta so the center
+## can never teleport. Per-unit and RNG-free -- replay-safe.
+static func couple(unit: Unit, delta: float) -> void:
+	var n: int = unit._sim_soldier_pos.size()
+	if n == 0:
+		return
+	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
+	if slots.size() != n:
+		return   # arrays mid-resize this tick; couple next tick when they realign
+	var body_centroid := Vector2.ZERO
+	var slot_centroid := Vector2.ZERO
+	for i in range(n):
+		body_centroid += unit._sim_soldier_pos[i]
+		slot_centroid += slots[i]
+	var inv: float = 1.0 / float(n)
+	var drift: Vector2 = (body_centroid - slot_centroid) * inv
+	var step: Vector2 = (drift * Unit.FOLLOW_RATE * delta).limit_length(Unit.MAX_FOLLOW_SPEED * delta)
+	unit._body_follow_vel = step / delta if delta > 0.0 else Vector2.ZERO
+	unit.position += step
