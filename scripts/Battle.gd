@@ -481,6 +481,10 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.waypoints.clear()
 			u.order_mode = mode
 			u.support_target = null
+			# Any fresh order drops a deploy facing a prior form-up parked; the form-up
+			# move branch below re-sets it. So attack / support / relief / plain move all
+			# clear it, and a unit can't wheel to a stale heading on arrival.
+			u.deploy_facing = Vector2.ZERO
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
 			u.target_enemy = target_unit   # attack an enemy
 			u.has_move_target = false
@@ -523,10 +527,6 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					u.deploy_facing = Vector2.from_angle(float(cmd["face"]))
 					if cmd.has("frontage"):
 						u.set_frontage(int(cmd["frontage"]))
-				else:
-					# A plain move clears any deploy facing a superseded form-up parked,
-					# so the unit won't wheel to a stale heading on arrival.
-					u.deploy_facing = Vector2.ZERO
 		if not append:
 			u.start_order_response()
 

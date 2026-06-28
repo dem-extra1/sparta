@@ -2084,7 +2084,7 @@ func test_lod_meshes_pick_facing_mirror_when_detailed() -> void:
 	assert_eq(u._mm_body.mesh, u._mark_body_mesh, "flat LOD always draws the symmetric mark")
 
 
-# --- drag-to-form-up: deploy facing on arrival (#286) ----------
+# --- drag-to-form-up: deploy facing on arrival ----------
 
 func test_deploy_facing_wheels_on_arrival() -> void:
 	var u := _make_unit()

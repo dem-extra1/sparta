@@ -147,7 +147,7 @@ func test_pointer_state_reports_live_selection_drag_and_stance() -> void:
 	assert_eq(ps["mode"], BattleScript.OrderMode.SKIRMISH, "the armed stance is reported")
 
 
-# --- frontage resize handles (#266) ----------------------------
+# --- frontage resize handles ----------------------------
 
 func test_file_axis_is_perpendicular_to_facing() -> void:
 	var sm := _sm()
@@ -212,7 +212,7 @@ func test_resize_frontage_routes_an_absolute_command_to_battle() -> void:
 			"routed as a recorded frontage command")
 
 
-# --- keystroke overlay capture (#266) --------------------------
+# --- keystroke overlay capture --------------------------
 
 func _key_event(keycode: int, ctrl: bool = false) -> InputEventKey:
 	var ev := InputEventKey.new()
@@ -256,7 +256,7 @@ func test_dispatch_key_routes_resize_and_reports_handled() -> void:
 	assert_false(sm._dispatch_key(_key_event(KEY_P)), "an unbound key is not handled")
 
 
-# --- drag-to-form-up (#286) ------------------------------------
+# --- drag-to-form-up ------------------------------------
 
 func test_form_up_facing_is_perpendicular_to_the_flank_line() -> void:
 	var sm := _sm()

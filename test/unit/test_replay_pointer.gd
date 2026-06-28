@@ -1,5 +1,5 @@
 extends GutTest
-## Tests for the Replay pointer track (#247): recording the cursor / selection / drag-box /
+## Tests for the Replay pointer track: recording the cursor / selection / drag-box /
 ## stance with dedup, playback stepping, order click-pulses, save/load round-trip, and
 ## back-compat with replays that have no pointer track.
 
@@ -170,7 +170,7 @@ func test_replay_without_pointer_has_no_track() -> void:
 	assert_eq(loaded.pointer_for_tick(0), {}, "playback shows no cursor overlay")
 
 
-# --- keystroke track (#266 demo overlay) -----------------------
+# --- keystroke track (demo overlay) -----------------------
 
 func test_record_keys_appends_only_when_pressed() -> void:
 	var r := _fresh()
@@ -224,7 +224,7 @@ func test_replay_without_keys_has_empty_track() -> void:
 	assert_eq(loaded.keys_for_tick(0, 42), [], "playback shows no key chips")
 
 
-# --- form-up deploy facing in the order stream (#286) ----------
+# --- form-up deploy facing in the order stream ----------
 
 func test_record_order_round_trips_the_deploy_facing() -> void:
 	var r := _fresh()

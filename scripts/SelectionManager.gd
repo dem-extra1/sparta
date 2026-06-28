@@ -59,6 +59,7 @@ var _resize_files: int = 0
 var _rmb_down: bool = false
 var _rmb_dragging: bool = false
 var _rmb_start: Vector2 = Vector2.ZERO
+var _rmb_shift: bool = false   # Shift state captured at right-button press
 # Gameplay-hotkey labels pressed since the last sim tick; Battle drains this each tick
 # (take_keys_this_tick) into the replay's keystroke track for the demo overlay.
 var _keys_this_tick: Array = []
@@ -129,8 +130,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_rmb_down = true
 				_rmb_start = _cursor_world()
 				_rmb_dragging = false
+				_rmb_shift = event.shift_pressed   # capture Shift at press, not release
 			else:
-				_finish_right_button(_cursor_world(), event.shift_pressed)
+				_finish_right_button(_cursor_world(), _rmb_shift)
 				queue_redraw()
 	elif event is InputEventMouseMotion:
 		if _resizing:
