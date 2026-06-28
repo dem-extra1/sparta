@@ -1,0 +1,44 @@
+class_name UnitFormation
+## Formation-block geometry for a Unit, extracted from Unit.gd: the file count
+## (frontage) and the centred, wider-than-deep grid of local-space slot offsets a
+## regiment's soldiers arrange into. Pure and deterministic -- a function of the unit's
+## soldier counts and the FORMATION_* constants only -- so it's directly unit-testable and
+## replay-safe. The render's per-mark jitter and the world-space transform live elsewhere
+## (Unit / the flock render); this is just the bare block layout.
+
+
+## Number of files (columns) for `n` soldiers: a wider-than-deep grid
+## (FORMATION_ASPECT files per rank). Pure of n.
+static func _files(n: int) -> int:
+	return maxi(1, int(ceil(sqrt(float(n) * Unit.FORMATION_ASPECT))))
+
+
+## The regiment's stable file count (frontage): `_files` at FULL strength, so the LINE
+## KEEPS ITS WIDTH as casualties thin its DEPTH (ranks). Keying the slot layout, the
+## engaged-rank cutoff, and the render's rank cycling off this -- not the live count --
+## stops the whole grid from reflowing (every soldier jumping to a new file at once) each
+## time the count crosses a sqrt threshold mid-fight. At full strength it equals
+## `_files(soldiers)`, so nothing changes there.
+static func frontage(u: Unit) -> int:
+	return _files(u.max_soldiers)
+
+
+## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep grid (front
+## rank toward -Y, the rotated "forward"). Pure and deterministic -- a function of `n` and
+## the unit's frontage -- so it's unit-testable; the render adds stable jitter on top.
+static func slots(u: Unit, n: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	if n <= 0:
+		return out
+	var files: int = frontage(u)
+	var ranks: int = int(ceil(float(n) / float(files)))
+	var y0: float = -(ranks - 1) * 0.5 * Unit.FORMATION_SPACING
+	for i in range(n):
+		var file: int = i % files
+		var rank: int = i / files
+		# Centre each rank on its own count, so a partial last rank doesn't pull the
+		# block's centroid off the unit (most visible on small / heavily-depleted units).
+		var rank_count: int = mini(files, n - rank * files)
+		var rx0: float = -(rank_count - 1) * 0.5 * Unit.FORMATION_SPACING
+		out.push_back(Vector2(rx0 + file * Unit.FORMATION_SPACING, y0 + rank * Unit.FORMATION_SPACING))
+	return out

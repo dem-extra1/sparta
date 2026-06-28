@@ -534,7 +534,7 @@ func _type_separation_radius() -> float:
 ## apart, summed, meet front-to-front — so engaged enemies use it as their separation
 ## floor, closing the lines to contact instead of holding a fixed gap.
 func _front_depth() -> float:
-	var files: int = _frontage()
+	var files: int = UnitFormation.frontage(self)
 	var ranks: int = int(ceil(float(soldiers) / float(files)))
 	return float(ranks - 1) * 0.5 * FORMATION_SPACING
 
@@ -713,7 +713,7 @@ func soldier_id(index: int) -> int:
 ## cosmetic jitter, so the sim layer stays exactly reproducible.
 func soldier_world_slots(count: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
-	var slots := _formation_slots(count)
+	var slots := UnitFormation.slots(self, count)
 	var ang: float = facing.angle() + PI * 0.5
 	for i in range(slots.size()):
 		out.push_back(position + slots[i].rotated(ang))
@@ -724,7 +724,7 @@ func soldier_world_slots(count: int) -> PackedVector2Array:
 ## containment radius the parallel layer must stay within while the regiment
 ## circle is authoritative. Reuses the render's block-extent math.
 func soldier_block_extent() -> float:
-	return _compute_extent(_formation_slots(soldiers))
+	return _compute_extent(UnitFormation.slots(self, soldiers))
 
 
 ## Seed the parallel soldier-body layer from the current formation. Deterministic
@@ -777,14 +777,14 @@ func is_engaged() -> bool:
 
 
 ## Indices of the engaged soldiers: the front ENGAGED_RANKS ranks of an engaged
-## regiment, or none when it isn't engaged. `_formation_slots` is rank-major
+## regiment, or none when it isn't engaged. `UnitFormation.slots` is rank-major
 ## (rank = index / files, rank 0 = front), so the front ranks are exactly the
 ## first files*ENGAGED_RANKS indices. Pure and deterministic.
 func engaged_soldier_indices(count: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if not is_engaged() or count <= 0:
 		return out
-	var cutoff: int = mini(count, _frontage() * ENGAGED_RANKS)
+	var cutoff: int = mini(count, UnitFormation.frontage(self) * ENGAGED_RANKS)
 	for i in range(cutoff):
 		out.push_back(i)
 	return out
@@ -1240,44 +1240,6 @@ const RANK_CYCLE_WIDEN: float = 3.5       # max lateral spread for rear marks (p
 const RELIEF_SPREAD_MAX: float = 0.45
 
 
-## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep
-## grid (front rank toward -Y, the rotated "forward"). Pure and deterministic — a
-## function of n only — so it's unit-testable; _slot_target() adds stable jitter.
-## Number of files (columns) for `n` soldiers: a wider-than-deep grid
-## (FORMATION_ASPECT files per rank). Pure of n. The live layout uses `_frontage()`
-## (this evaluated at FULL strength), not the live count — see below.
-func _formation_files(n: int) -> int:
-	return maxi(1, int(ceil(sqrt(float(n) * FORMATION_ASPECT))))
-
-
-## The regiment's stable file count (frontage): `_formation_files` at FULL strength,
-## so the LINE KEEPS ITS WIDTH as casualties thin its DEPTH (ranks). Keying the slot
-## layout, the engaged-rank cutoff, and the render's rank cycling off this — not the
-## live count — stops the whole grid from reflowing (every soldier jumping to a new
-## file at once) each time the count crosses a sqrt threshold mid-fight. At full
-## strength it equals `_formation_files(soldiers)`, so nothing changes there.
-func _frontage() -> int:
-	return _formation_files(max_soldiers)
-
-
-func _formation_slots(n: int) -> PackedVector2Array:
-	var slots := PackedVector2Array()
-	if n <= 0:
-		return slots
-	var files: int = _frontage()
-	var ranks: int = int(ceil(float(n) / float(files)))
-	var y0: float = -(ranks - 1) * 0.5 * FORMATION_SPACING
-	for i in range(n):
-		var file: int = i % files
-		var rank: int = i / files
-		# Centre each rank on its own count, so a partial last rank doesn't pull the
-		# block's centroid off the unit (most visible on small / heavily-depleted units).
-		var rank_count: int = mini(files, n - rank * files)
-		var rx0: float = -(rank_count - 1) * 0.5 * FORMATION_SPACING
-		slots.push_back(Vector2(rx0 + file * FORMATION_SPACING, y0 + rank * FORMATION_SPACING))
-	return slots
-
-
 ## Deterministic pseudo-random float in [0, 1) from an int, for stable (non-flickering)
 ## per-mark jitter in the formation render. Cosmetic only — never used by the simulation.
 func _hash01(i: int) -> float:
@@ -1383,7 +1345,7 @@ func _seed_soldiers() -> void:
 	var n: int = soldiers
 	_soldier_pos.resize(n)
 	_soldier_vel.resize(n)
-	var slots := _formation_slots(n)
+	var slots := UnitFormation.slots(self, n)
 	var ang: float = facing.angle() + PI * 0.5
 	for i in range(n):
 		_soldier_pos[i] = _slot_target(slots, i, ang)
@@ -1521,7 +1483,7 @@ func _update_flock(delta: float) -> void:
 	_flock_last_pos = position
 	_flock_last_facing = facing
 
-	var slots := _formation_slots(n)
+	var slots := UnitFormation.slots(self, n)
 	var ang: float = facing.angle() + PI * 0.5
 
 	var new_extent: float = _compute_extent(slots)
@@ -1539,7 +1501,7 @@ func _update_flock(delta: float) -> void:
 	var sep_dist: float = FORMATION_SPACING * 0.9
 	var grid := _build_soldier_grid(sep_dist)
 	var dt: float = minf(delta, FLOCK_DT_MAX)
-	# Front rank depth datum (slot 0 is the front-centre rank, see _formation_slots): a
+	# Front rank depth datum (slot 0 is the front-centre rank, see UnitFormation.slots): a
 	# mark's depth behind it scales how hard it churns while fighting (Stage C).
 	var front_y: float = slots[0].y if n > 0 else 0.0
 	if fighting:
@@ -1557,7 +1519,7 @@ func _update_flock(delta: float) -> void:
 	if cycling:
 		_rank_cycle_timer -= dt
 		if _rank_cycle_timer <= 0.0:
-			var files: int = _frontage()
+			var files: int = UnitFormation.frontage(self)
 			_rank_cycle_slot_offset = (_rank_cycle_slot_offset + files) % n
 			_rank_cycle_timer = RANK_CYCLE_INTERVAL / training
 			_rank_cycle_anim = 0.0
@@ -1672,7 +1634,7 @@ static func _flock_step(pos: Vector2, vel: Vector2, target: Vector2,
 
 
 ## Melee churn offset for one front-rank mark (Stage C). Returns an offset in the
-## unit's UNROTATED local frame (forward / toward-enemy is -Y, matching _formation_slots),
+## unit's UNROTATED local frame (forward / toward-enemy is -Y, matching UnitFormation.slots),
 ## which the caller rotates onto the unit's facing. `depth` is how far behind the front
 ## rank the mark sits (0 = front rank): the churn fades linearly to zero by COMBAT_REACH,
 ## so only the fighting edge moves. The forward press rides a raised sine (always into the
