@@ -1,11 +1,13 @@
 class_name SoldierBodies
-## Persistent per-soldier body dynamics (phase 4), extracted from Unit.gd. The
-## engaged front-rank bodies spring toward their formation slots and integrate their
-## own velocity, so a body shoved by the separation pass HOLDS the displacement and
-## eases back rather than snapping to formation; the unengaged bulk snaps to its
-## slots. Operates on a Unit's `_sim_soldier_pos` / `_sim_body_vel` (the state stays
-## on the unit, where the render and the separation pass read it). Deterministic and
-## order-free across soldiers, no RNG — replay-safe like the rest of the soldier layer.
+## Persistent per-soldier body dynamics (phase 4), extracted from Unit.gd. Every body
+## accelerates toward its formation slot and integrates its own velocity — no body ever
+## teleports. An engaged front-rank body shoved by the separation pass HOLDS the
+## displacement and eases back rather than snapping; the unengaged bulk feeds the unit's
+## march velocity forward so it tracks its moving slots with no lag, easing onto a
+## reformed slot instead of snapping. Operates on a Unit's `_sim_soldier_pos` /
+## `_sim_body_vel` (the state stays on the unit, where the render and the separation pass
+## read it). Deterministic and order-free across soldiers, no RNG — replay-safe like the
+## rest of the soldier layer.
 
 # Near-critically-damped arrival spring (DAMPING ~ 2*sqrt(STIFFNESS)): a body eases
 # onto its slot without overshoot or oscillation.
@@ -24,13 +26,13 @@ static func seed(unit: Unit) -> void:
 	unit._sim_soldier_hp.fill(unit.combat_profile()["max_health"])   # everyone starts at full health
 
 
-## Advance a unit's persistent bodies one fixed step. Only ENGAGED front-rank bodies
-## persist (spring + integrate); the unengaged bulk snaps to its slots (it is never
-## separated, and a persistent spring would only make the marching bulk lag, whereas
-## engaged regiments are ~stationary in melee). Resizes to the live soldier count
-## first — a casualty trims the rear bodies; the first call (empty arrays) seeds every
-## body on its slot at rest. Order-free across soldiers; driven by the fixed physics
-## delta, so it reproduces on replay.
+## Advance a unit's persistent bodies one fixed step. Every body springs toward its slot
+## and integrates its velocity; the unengaged bulk additionally feeds the unit's march
+## velocity forward, which cancels the lag a plain spring would give a moving formation
+## (engaged regiments are ~stationary in melee, so their feed-forward is zero). Resizes
+## to the live soldier count first — a casualty trims the rear bodies; the first call
+## (empty arrays) seeds every body on its slot at rest. Order-free across soldiers; driven
+## by the fixed physics delta, so it reproduces on replay.
 static func step(unit: Unit, delta: float) -> void:
 	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
 	var n: int = slots.size()
@@ -53,15 +55,19 @@ static func step(unit: Unit, delta: float) -> void:
 	var engaged := {}
 	for idx in unit.engaged_soldier_indices(n):
 		engaged[idx] = true
+	# No body ever teleports: every body accelerates toward its slot and integrates its
+	# own velocity (semi-implicit Euler, fixed delta), so position only ever changes by
+	# velocity * delta.
 	for i in range(n):
-		if not engaged.has(i):
-			# Unengaged bulk: snap to the slot at rest (re-seed, phase-3 behaviour).
-			unit._sim_soldier_pos[i] = slots[i]
-			unit._sim_body_vel[i] = Vector2.ZERO
-			continue
-		# Engaged front rank: near-critically-damped arrival spring (semi-implicit
-		# Euler, fixed delta), so a separated body holds its push and eases back.
+		# Damp around a feed-forward velocity. For the marching bulk that is the unit's
+		# march velocity (the rate its formation slots translate), so a body keeps up with
+		# zero lag and eases onto a reformed or rotated slot over a few frames instead of
+		# snapping to it. For an engaged front-rank body the feed-forward is zero, leaving
+		# the unchanged near-critically-damped hold-and-recover spring that lets a body
+		# keep a separation/knockback push and ease back. (`_approach_velocity` is itself
+		# zero while a unit stands idle, so an idle bulk eases onto its slots, not drifts.)
+		var feed_forward: Vector2 = Vector2.ZERO if engaged.has(i) else unit._approach_velocity
 		var to_slot: Vector2 = slots[i] - unit._sim_soldier_pos[i]
-		var accel: Vector2 = to_slot * SPRING_STIFFNESS - unit._sim_body_vel[i] * SPRING_DAMPING
+		var accel: Vector2 = to_slot * SPRING_STIFFNESS - (unit._sim_body_vel[i] - feed_forward) * SPRING_DAMPING
 		unit._sim_body_vel[i] += accel * delta
 		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
