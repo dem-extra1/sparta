@@ -28,8 +28,12 @@ The simulation is deterministic by construction:
   variable-framerate / wall-clock timer. Enemy AI re-evaluates on a fixed tick
   cadence for the same reason.
 - **Orders, not selections.** Only right-click orders change the outcome; selection,
-  camera, and zoom are pure presentation and aren't recorded. Each order references
-  units by a stable per-battle `uid` so it survives a scene reload.
+  cursor, camera, and zoom are pure presentation and never feed the simulation. They
+  *are* captured separately into optional **presentation tracks** (camera, and the
+  pointer: cursor / selection / drag-box / stance) so a demo clip can reproduce what
+  the player saw and did with the mouse --- but those tracks are cosmetic and a replay
+  without them just plays the bare sim. Each order references units by a stable
+  per-battle `uid` so it survives a scene reload.
 - **Next-tick application.** Orders are queued and applied on the *next* physics
   tick, so live play and playback take the exact same code path.
 
@@ -53,9 +57,19 @@ Replay files are small JSON:
   "orders": [
     { "tick": 84,  "units": [0, 1], "x": 740.0, "y": 560.0, "target": -1 },
     { "tick": 132, "units": [3],    "x": 0.0,   "y": 0.0,   "target": 7 }
+  ],
+  "camera": [
+    { "tick": 0, "x": 800.0, "y": 500.0, "zoom": 0.62 }
+  ],
+  "pointer": [
+    { "tick": 84, "x": 740.0, "y": 560.0, "drag": false, "sel": [0, 1], "mode": 0 }
   ]
 }
 ```
+
+The `camera` and `pointer` arrays are optional **presentation tracks** (camera pan/zoom,
+and the mouse cursor / selection / drag-box / stance) -- cosmetic, captured live, and
+absent from older replays. See [`REPLAY.md`](https://github.com/Lacaedemon/sparta/blob/main/REPLAY.md) for their fields.
 
 - An order with `target: -1` is a **move** (to `x,y`); otherwise it's an **attack**
   on the enemy unit with that `uid`.

@@ -34,7 +34,8 @@ The simulation is deterministic by construction:
   change the outcome, and each references units by a stable per-battle `uid` so it
   survives a scene reload. Camera pan and zoom are also recorded, but as a separate
   **presentation track** that's purely cosmetic — it reproduces how the battle was
-  framed without ever feeding the sim. Selection isn't recorded.
+  framed without ever feeding the sim. The player's mouse (cursor, selection,
+  drag-box, armed stance) rides along in a second such track, for the demo overlay.
 - Orders are queued and applied on the **next** physics tick, so live play and
   playback take the exact same code path (`Battle._apply_order_cmd`).
 
@@ -72,6 +73,11 @@ Replay files are small JSON:
   "camera": [
     { "tick": 0, "x": 800.0, "y": 500.0, "zoom": 0.62 },
     { "tick": 90, "x": 812.0, "y": 470.0, "zoom": 1.70 }
+  ],
+  "pointer": [
+    { "tick": 0, "x": 540.0, "y": 360.0, "drag": false, "sel": [], "mode": 0 },
+    { "tick": 8, "x": 430.0, "y": 500.0, "drag": true, "sx": 430.0, "sy": 500.0, "sel": [], "mode": 0 },
+    { "tick": 19, "x": 720.0, "y": 700.0, "drag": false, "sel": [0, 1, 2], "mode": 4 }
   ]
 }
 ```
@@ -82,6 +88,16 @@ identical samples are dropped, so a still camera costs one keyframe. On playback
 camera holds the latest keyframe at or before the current tick. The field is additive
 — replays without it (every pre-camera recording) play with the default static
 camera — so no `version` bump is needed.
+
+The optional `pointer` array is a second presentation track: the player's **mouse**
+over time — cursor world position (`x`, `y`), whether a multi-select drag-box is open
+(`drag`, with its start corner `sx`/`sy`), the selected unit uids (`sel`), and the
+armed order stance (`mode`, a `Battle.OrderMode`). Like the camera track it's
+tick-stamped and dedup'd (a still pointer costs one keyframe), holds the latest
+keyframe at or before the current tick, and is additive — replays without it show no
+cursor overlay. The **demo recorder** draws it over the battle (cursor reticle,
+selection halos, drag-box, a click pulse at each order, and a stance label), so a clip
+shows what the player *did with the mouse*, not just the orders that resulted.
 
 Each order's `target` overloads one int to encode the order kind, so the JSON
 schema stays fixed as order types are added (`Battle._apply_order_cmd` dispatches

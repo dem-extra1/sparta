@@ -97,8 +97,15 @@ green dashed path with a destination ring (plus dots for shift-waypoints) for a
 move, and a red line with a crosshair for an attack. It's driven from the orders
 already in the replay, so any scenario with player orders shows them
 automatically — no manifest field to set. The overlay is recording-only: in-app
-**Watch Replay** keeps orders on the hold-Space survey, unchanged. (Capturing the
-live cursor and selection box is a tracked follow-up.)
+**Watch Replay** keeps orders on the hold-Space survey, unchanged.
+
+The clip also replays the player's **mouse**, captured into the replay's `pointer`
+track (see `REPLAY.md`): the cursor reticle, yellow selection halos on the selected
+regiments, the multi-select drag-box, a pulse ringing out where each order is issued,
+and a label + tint on the cursor when a stance is armed. It's captured live while a
+battle is recorded -- same as the orders and camera -- so playing and saving a replay
+records your real mouse for free (`demos/scenarios/pointer-demo.json` is one such
+recording). Replays without a pointer track simply show no cursor overlay.
 
 ## Hand-authoring a scenario
 

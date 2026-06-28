@@ -87,6 +87,7 @@ const CAMERA_SMOOTHING := 0.15
 @onready var _units: Node2D = $Units
 @onready var _hud = $HUD
 @onready var _camera: Camera2D = $Camera2D
+@onready var _selection = $SelectionManager
 
 # Fixed-step clock driving the whole simulation; also the timeline for replays.
 var _tick: int = 0
@@ -278,6 +279,12 @@ func _physics_process(_delta: float) -> void:
 		_pending_orders.clear()
 		# Capture the camera each tick so a live recording reproduces what the player saw.
 		Replay.record_camera(_tick, _camera.position, _camera.zoom.x)
+		# Capture the pointer (cursor / selection / drag-box / armed stance) too, so a demo
+		# replay can reproduce what the player did with the mouse, not just the orders.
+		if _selection != null:
+			var ps: Dictionary = _selection.pointer_state()
+			Replay.record_pointer(_tick, ps["cursor"], ps["dragging"], ps["drag_start"],
+					ps["selection"], ps["mode"])
 
 	# Enemy AI is part of the deterministic sim (not player input): re-run it on
 	# the same cadence during playback so it reaches the same decisions.
@@ -513,6 +520,18 @@ func pending_append_points_for(u: Unit) -> Array[Vector2]:
 func _unit_by_uid(uid: int) -> UnitRef:
 	var u = _by_uid.get(uid)
 	return u if (u != null and is_instance_valid(u)) else null
+
+
+## The current simulation tick. Used by the demo-pointer overlay to look up the recorded
+## cursor/selection state for the frame being drawn.
+func current_tick() -> int:
+	return _tick
+
+
+## Public uid -> unit lookup (alive units only, else null). The demo-pointer overlay
+## resolves the recorded selection's uids to the units to highlight.
+func unit_by_uid(uid: int) -> UnitRef:
+	return _unit_by_uid(uid)
 
 
 func _run_enemy_ai() -> void:

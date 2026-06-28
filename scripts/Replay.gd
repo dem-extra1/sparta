@@ -61,6 +61,23 @@ var _play_index: int = 0
 var _camera_track: Array = []
 var _camera_index: int = 0
 
+# Pointer track (cosmetic): the player's live mouse cursor, selection and multi-select
+# drag-box captured during live play, so a demo replay reproduces what the player *did*
+# with the mouse (not just the orders that resulted). Each entry:
+# { "tick": int, "x": float, "y": float (cursor, world space), "drag": bool,
+#   "sx": float, "sy": float (drag-box start corner, present only while dragging),
+#   "sel": Array[int] (selected unit uids), "mode": int (armed Battle.OrderMode) }.
+# Recorded once per tick during RECORD, dropping samples that don't differ from the last
+# (cursor within POINTER_EPS, same drag/selection/mode) so a still pointer costs one
+# keyframe. Never feeds the sim. Additive and back-compatible: replays without a pointer
+# track play with no cursor overlay, exactly as before (no version bump).
+var _pointer_track: Array = []
+var _pointer_index: int = 0
+# Cursor moves smaller than this (world px) don't add a keyframe — drops sub-pixel jitter
+# while keeping deliberate motion. Larger than the camera track's exact dedup because the
+# cursor is a continuous signal, not the camera's occasional pan.
+const POINTER_EPS := 1.5
+
 # Whether playback should drive the camera from the presentation track. Off by default,
 # so in-app "Watch Replay" keeps free pan/zoom for inspection; the demo recorder
 # (DemoRunner) turns it on so CI clips reproduce the recorded framing.
@@ -91,6 +108,8 @@ func start_recording() -> void:
 	_orders.clear()
 	_camera_track.clear()
 	_camera_index = 0
+	_pointer_track.clear()
+	_pointer_index = 0
 	drive_camera = false
 	show_demo_orders = false
 	_play_index = 0
@@ -150,6 +169,26 @@ func start_playback(path: String) -> bool:
 			"y": float(c.get("y", 0.0)),
 			"zoom": float(c.get("zoom", 1.0)),
 		})
+	# Load the optional pointer (cursor/selection/drag-box) track. Absent in replays
+	# recorded before this track existed, which then play with no cursor overlay.
+	_pointer_track.clear()
+	_pointer_index = 0
+	for p in data.get("pointer", []):
+		var sel: Array = []
+		for u in p.get("sel", []):
+			sel.append(int(u))
+		var entry := {
+			"tick": int(p.get("tick", 0)),
+			"x": float(p.get("x", 0.0)),
+			"y": float(p.get("y", 0.0)),
+			"drag": bool(p.get("drag", false)),
+			"sel": sel,
+			"mode": int(p.get("mode", 0)),
+		}
+		if entry["drag"]:
+			entry["sx"] = float(p.get("sx", entry["x"]))
+			entry["sy"] = float(p.get("sy", entry["y"]))
+		_pointer_track.append(entry)
 	loaded_path = path
 	mode = Mode.PLAYBACK
 	return true
@@ -239,6 +278,107 @@ func camera_for_tick(tick: int) -> Dictionary:
 	return _camera_track[_camera_index]
 
 
+## RECORD: capture the pointer (cursor world pos, drag-box, selection, armed mode) at
+## `tick`. No-op otherwise. A sample that matches the last keyframe — cursor within
+## POINTER_EPS, same drag corner, same selection set and mode — is dropped, so a still
+## pointer costs one keyframe. Cosmetic — never read by the simulation.
+func record_pointer(tick: int, cursor: Vector2, dragging: bool, drag_start: Vector2,
+		selection: Array, armed_mode: int) -> void:
+	# `mode` here is the Replay member (RECORD/PLAYBACK); the stance is `armed_mode`.
+	if mode != Mode.RECORD:
+		return
+	if not _pointer_track.is_empty():
+		var last: Dictionary = _pointer_track[_pointer_track.size() - 1]
+		var still: bool = bool(last["drag"]) == dragging \
+				and int(last["mode"]) == armed_mode \
+				and last["sel"] == selection \
+				and Vector2(last["x"], last["y"]).distance_to(cursor) <= POINTER_EPS
+		if still and dragging:
+			still = Vector2(last.get("sx", 0.0), last.get("sy", 0.0)).distance_to(drag_start) <= POINTER_EPS
+		if still:
+			return
+	var entry := {
+		"tick": tick,
+		"x": cursor.x,
+		"y": cursor.y,
+		"drag": dragging,
+		"sel": selection.duplicate(),
+		"mode": armed_mode,
+	}
+	if dragging:
+		entry["sx"] = drag_start.x
+		entry["sy"] = drag_start.y
+	_pointer_track.append(entry)
+
+
+## Whether a pointer track is loaded — true only for replays recorded with one.
+func has_pointer_track() -> bool:
+	return not _pointer_track.is_empty()
+
+
+## Advance _pointer_index to the latest keyframe at or before `tick`, rewinding if the
+## caller stepped back to an earlier tick. Shared by pointer_for_tick and
+## pointer_cursor_for_tick so they always agree on the current keyframe. Assumes a
+## non-empty track (callers check) and non-decreasing ticks in the common case.
+func _advance_pointer_index(tick: int) -> void:
+	if _pointer_index > 0 and int(_pointer_track[_pointer_index]["tick"]) > tick:
+		_pointer_index = 0
+	while _pointer_index + 1 < _pointer_track.size() \
+			and int(_pointer_track[_pointer_index + 1]["tick"]) <= tick:
+		_pointer_index += 1
+
+
+## PLAYBACK: the pointer state to apply at `tick` — the latest keyframe at or before it
+## (holds its last state until the next recorded change), mirroring camera_for_tick.
+## Returns {} when not in playback or no track is loaded. Advances an internal cursor, so
+## call with non-decreasing ticks; tolerates a step back to an earlier tick.
+func pointer_for_tick(tick: int) -> Dictionary:
+	if mode != Mode.PLAYBACK or _pointer_track.is_empty():
+		return {}
+	_advance_pointer_index(tick)
+	return _pointer_track[_pointer_index]
+
+
+## PLAYBACK: the cursor position at `tick`, linearly interpolated between the surrounding
+## pointer keyframes so the cursor visibly GLIDES between samples instead of snapping --
+## the discrete state (selection, drag, stance from pointer_for_tick) still changes at
+## keyframe boundaries, only the cursor moves continuously. Holds the first/last position
+## outside the track's range. Returns ZERO when not in playback or no track is loaded
+## (callers gate on has_pointer_track). Walks the same _pointer_index as pointer_for_tick.
+func pointer_cursor_for_tick(tick: int) -> Vector2:
+	if mode != Mode.PLAYBACK or _pointer_track.is_empty():
+		return Vector2.ZERO
+	_advance_pointer_index(tick)
+	var cur: Dictionary = _pointer_track[_pointer_index]
+	var cur_pos := Vector2(cur["x"], cur["y"])
+	if _pointer_index + 1 >= _pointer_track.size():
+		return cur_pos
+	var nxt: Dictionary = _pointer_track[_pointer_index + 1]
+	var span: float = float(int(nxt["tick"]) - int(cur["tick"]))
+	if span <= 0.0:
+		return cur_pos
+	var f: float = clampf(float(tick - int(cur["tick"])) / span, 0.0, 1.0)
+	return cur_pos.lerp(Vector2(nxt["x"], nxt["y"]), f)
+
+
+## PLAYBACK: positions of orders issued within `window` ticks before `tick`, each with its
+## age in ticks, so the overlay can pulse a ring where each order was just commanded. All
+## recorded orders are the player's own. Read-only — does not disturb the orders_for_tick
+## read cursor. Returns [] outside playback. Orders are tick-sorted, so the scan stops at the
+## first future order (no need to walk past `tick`).
+func pulses_for_tick(tick: int, window: int) -> Array:
+	if mode != Mode.PLAYBACK:
+		return []
+	var out: Array = []
+	for o in _orders:
+		var ot: int = int(o["tick"])
+		if ot > tick:
+			break
+		if tick - ot <= window:
+			out.append({"x": float(o["x"]), "y": float(o["y"]), "age": tick - ot})
+	return out
+
+
 ## Persist the recorded battle. Returns the file path, or "" if nothing/failed.
 func save(result: String, duration_ticks: int) -> String:
 	if mode != Mode.RECORD:
@@ -264,6 +404,10 @@ func save(result: String, duration_ticks: int) -> String:
 	# recordings (and tooling that never moves the camera) stay byte-for-byte simple.
 	if not _camera_track.is_empty():
 		payload["camera"] = _camera_track
+	# Likewise emit the pointer track only when one was captured, so recordings without
+	# mouse activity (and pre-pointer-track tooling) stay simple.
+	if not _pointer_track.is_empty():
+		payload["pointer"] = _pointer_track
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		push_warning("Could not write replay to %s" % path)

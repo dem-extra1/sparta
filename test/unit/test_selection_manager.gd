@@ -116,3 +116,32 @@ func test_demo_orders_active_only_during_playback_with_the_flag() -> void:
 	assert_false(sm._demo_orders_active(), "off when not in playback")
 	Replay.mode = prev_mode
 	Replay.show_demo_orders = prev_flag
+
+
+# --- demo pointer capture --------------------------------------------
+
+func test_pointer_state_reports_live_selection_drag_and_stance() -> void:
+	# The recorder samples this each tick; it must report the armed stance, the drag-box
+	# state, and the selected units' uids (alive only).
+	var sm := _sm()
+	var u := _unit()
+	u.uid = 7
+	var dead := _unit()
+	dead.uid = 9
+	dead.state = UnitScript.State.DEAD
+	sm._selected = [u, dead]
+	sm._dragging = true
+	sm._drag_start = Vector2(12, 34)
+	sm._armed_mode = BattleScript.OrderMode.SKIRMISH
+
+	sm.set_cursor_override(Vector2(640, 480))
+	var ps: Dictionary = sm.pointer_state()
+	assert_eq(ps["cursor"], Vector2(640, 480), "an injected cursor is reported as the cursor")
+	assert_eq(ps["selection"], [7], "only living selected units' uids are reported")
+	# Clearing the override returns to the live mouse, so the injected value no longer shows.
+	sm.set_cursor_override(null)
+	assert_ne(sm.pointer_state()["cursor"], Vector2(640, 480),
+			"clearing the override falls back to the live OS mouse")
+	assert_true(ps["dragging"], "the open drag-box is reported")
+	assert_eq(ps["drag_start"], Vector2(12, 34), "the drag start corner is reported")
+	assert_eq(ps["mode"], BattleScript.OrderMode.SKIRMISH, "the armed stance is reported")
