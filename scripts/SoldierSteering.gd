@@ -126,7 +126,8 @@ static func _overlaps_friendly(u: Unit, sorted_units: Array) -> bool:
 ## yields fully (share 1), so a newcomer flows around a fighting friendly. Mirrors
 ## `_push_share`'s friendly branch.
 static func _friendly_shares(owner_a: Unit, owner_b: Unit) -> Vector2:
-	if owner_a == owner_b or owner_a.is_engaged() == owner_b.is_engaged():
+	# (The caller has already skipped same-regiment pairs, so owner_a != owner_b here.)
+	if owner_a.is_engaged() == owner_b.is_engaged():
 		return Vector2(0.5, 0.5)
 	return Vector2(0.0, 1.0) if owner_a.is_engaged() else Vector2(1.0, 0.0)
 

@@ -628,9 +628,9 @@ func _separate() -> void:
 		# the steering pass too.)
 		if other.team == team:
 			continue
-		# A moving unit and an idle friendly pass cleanly through each other.
-		if _separation_exempt(other):
-			continue
+		# (The move-through-idle / relief exemptions were friendly-only, so once friendlies
+		# are skipped there's nothing left to exempt here -- the checks re-home to the
+		# steering pass. _separation_exempt is still used there.)
 		var min_dist: float
 		if other.team != team and is_engaged() and other.is_engaged():
 			# Engaged enemy lines close until their FRONT RANKS meet (centres a block-

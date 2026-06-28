@@ -112,6 +112,6 @@ static func couple(unit: Unit, delta: float) -> void:
 		slot_centroid += slots[i]
 	var inv: float = 1.0 / float(n)
 	var drift: Vector2 = (body_centroid - slot_centroid) * inv
-	var step: Vector2 = (drift * Unit.FOLLOW_RATE * delta).limit_length(Unit.MAX_FOLLOW_SPEED * delta)
-	unit._body_follow_vel = step / delta if delta > 0.0 else Vector2.ZERO
-	unit.position += step
+	var follow_step: Vector2 = (drift * Unit.FOLLOW_RATE * delta).limit_length(Unit.MAX_FOLLOW_SPEED * delta)
+	unit._body_follow_vel = follow_step / delta if delta > 0.0 else Vector2.ZERO
+	unit.position += follow_step
