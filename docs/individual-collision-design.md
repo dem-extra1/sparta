@@ -148,9 +148,17 @@ verified before the next phase builds on it.
      layer up; the enemy front-rank closeup and the spear-vs-cavalry hard block are
      unchanged. Soldiers separate substantially (not yet to a perfect zero-overlap; the last
      residual is a later tuning refinement).
-   - **Slices 2-4 (next):** enemy not-both-engaged separation + the hard block move to the
-     soldier level; the engaged front-rank closeup becomes emergent; finally delete
-     `_separate()` and migrate the remaining `position` consumers.
+   - **Enemy collision — deferred to #201 (see #296).** The next slice (move the
+     not-both-engaged enemy separation + the spear-vs-cavalry hard block to the soldier
+     level) hit a wall: the regiment's `_move_to` advances the charge (~170 u/s)
+     independently of the soldier layer, and a velocity-only soldier push + the bounded
+     body->regiment coupling cannot counteract it — a charging cavalry rides clean through
+     a spear line even at extreme tuning. Stopping a charge on a braced line is a
+     **momentum/mass** problem, which is exactly what **#201** layers onto the soldier
+     bodies. So enemy collision (and then retiring the regiment circle entirely + the dead
+     `_push_share`/intermixing helpers) moves with #201, not as a kinematic slice. Until
+     then the regiment circle keeps resolving enemy collision (the `_front_depth` closeup
+     and the hard block), unchanged. Friendly collision stays soldier-level (slice 1).
 
 ## Decisions (resolved)
 
