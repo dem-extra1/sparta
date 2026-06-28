@@ -123,7 +123,8 @@ func test_save_load_round_trips_the_pointer_track() -> void:
 	assert_eq(p["sel"], [7, 8], "selection uids round-trip")
 	assert_eq(p["mode"], 3, "armed stance round-trips")
 	assert_true(bool(p["drag"]), "drag flag round-trips")
-	assert_almost_eq(p["sx"], 10.0, 0.0001, "drag start corner round-trips")
+	assert_almost_eq(p["sx"], 10.0, 0.0001, "drag start corner x round-trips")
+	assert_almost_eq(p["sy"], 20.0, 0.0001, "drag start corner y round-trips")
 
 
 func test_replay_without_pointer_has_no_track() -> void:

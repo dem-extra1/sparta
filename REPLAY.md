@@ -34,7 +34,8 @@ The simulation is deterministic by construction:
   change the outcome, and each references units by a stable per-battle `uid` so it
   survives a scene reload. Camera pan and zoom are also recorded, but as a separate
   **presentation track** that's purely cosmetic — it reproduces how the battle was
-  framed without ever feeding the sim. Selection isn't recorded.
+  framed without ever feeding the sim. The player's mouse (cursor, selection,
+  drag-box, armed stance) rides along in a second such track, for the demo overlay.
 - Orders are queued and applied on the **next** physics tick, so live play and
   playback take the exact same code path (`Battle._apply_order_cmd`).
 

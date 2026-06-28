@@ -334,8 +334,8 @@ func pointer_for_tick(tick: int) -> Dictionary:
 ## PLAYBACK: positions of orders issued within `window` ticks before `tick`, each with its
 ## age in ticks, so the overlay can pulse a ring where each order was just commanded. All
 ## recorded orders are the player's own. Read-only — does not disturb the orders_for_tick
-## read cursor. Returns [] outside playback. Orders are tick-sorted, so this scans the
-## recent tail only.
+## read cursor. Returns [] outside playback. Orders are tick-sorted, so the scan stops at the
+## first future order (no need to walk past `tick`).
 func pulses_for_tick(tick: int, window: int) -> Array:
 	if mode != Mode.PLAYBACK:
 		return []
