@@ -1,8 +1,4 @@
 {
-  "replay": "demos/scenarios/pointer-demo.json",
-  "caption": "Demo overlay now replays the player's mouse, captured live during the recording: the cursor glides in and drag-boxes three regiments (yellow selection halos), click-pulses ring out where each order is issued, and the cursor tints + labels itself when the Skirmish stance is armed -- on top of the existing order markers (move paths + destination rings). Captured into the replay's presentation track alongside the camera.",
-  "fixed_fps": 60,
-  "max_frames": 200,
-  "fps": 30,
-  "width": 720
+  "skip": true,
+  "reason": "Balance tuning: fatigue now accumulates ~11x slower (FATIGUE_PER_SEC 8.0 -> 0.7), so a unit wears down over minutes of sustained melee instead of ~12s. The effect only emerges over a long engagement -- a short recorded clip can't show the changed rate without a side-by-side before/after, so no tailored clip applies."
 }

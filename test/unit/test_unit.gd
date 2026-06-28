@@ -965,7 +965,7 @@ func test_fatigue_builds_while_fighting() -> void:
 	var u := _make_unit()
 	u.state = Unit.State.FIGHTING
 	UnitMorale.tick_fatigue(u, 1.0)
-	assert_almost_eq(u.fatigue, 8.0, 0.001, "a fighting unit accrues fatigue")
+	assert_almost_eq(u.fatigue, Unit.FATIGUE_PER_SEC, 0.001, "a fighting unit accrues fatigue")
 
 
 func test_fatigue_recovers_while_resting() -> void:
@@ -973,7 +973,8 @@ func test_fatigue_recovers_while_resting() -> void:
 	u.fatigue = 20.0
 	u.state = Unit.State.IDLE
 	UnitMorale.tick_fatigue(u, 1.0)
-	assert_almost_eq(u.fatigue, 15.0, 0.001, "a resting unit recovers fatigue")
+	assert_almost_eq(u.fatigue, 20.0 - Unit.FATIGUE_RECOVER_PER_SEC, 0.001,
+			"a resting unit recovers fatigue")
 
 
 func test_fatigue_reduces_attack_factor() -> void:

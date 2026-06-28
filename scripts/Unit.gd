@@ -149,8 +149,13 @@ const RANGED_DAMAGE_FACTOR: float = 0.7
 
 # Fatigue builds while FIGHTING and recovers while resting; it bites into attack
 # so rotating tired regiments out via line relief is a real tactical lever.
-const FATIGUE_PER_SEC: float = 8.0
-const FATIGUE_RECOVER_PER_SEC: float = 5.0
+# Rates are tuned to real time (move speeds are real m/s, SPEED_SCALE = 1.0):
+# sustained melee wears a unit down over minutes, not seconds. At FATIGUE_PER_SEC
+# an untrained unit reaches full exhaustion after ~2.4 min of unbroken fighting
+# (a meaningful ~20% attack penalty after ~1.2 min), and recovers fully after
+# ~3.3 min of rest -- so relief is worth committing to but not constant churn.
+const FATIGUE_PER_SEC: float = 0.7
+const FATIGUE_RECOVER_PER_SEC: float = 0.5
 const FATIGUE_MAX_ATTACK_PENALTY: float = 0.4
 # Rank cycling: well-trained melee units rotate fresh files to the front, reducing
 # effective fatigue buildup. At training=1.0, buildup is halved. Ranged units don't

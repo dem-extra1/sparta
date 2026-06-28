@@ -40,6 +40,11 @@ line steps back and a fresh rank takes its place, signalled by a whistle. Cyclin
 **recover morale even while still fighting**. The better trained the unit, the more
 often it cycles. Ranged units don't cycle.
 
+Fatigue builds at a realistic pace --- sustained melee wears a unit down over
+**minutes**, not seconds, and resting in the rear restores it just as gradually.
+So relief is a deliberate decision for a prolonged fight, not a frantic
+every-few-seconds chore.
+
 Training therefore pays off in a long grind: a drilled regiment wears down a green
 one of equal numbers, because the green unit tires and wavers first.
 
