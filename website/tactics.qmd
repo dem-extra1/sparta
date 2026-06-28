@@ -97,6 +97,10 @@ spear line keeps knocking swordsmen out past their own reach while staying in it
 lines no longer snap apart by a spacing rule; the gap is the live balance of the press
 forward against the knockback, so it breathes as the fight ebbs and flows.
 
+You can **see** the reach difference: zoom in on a clash and each front-rank fighter
+thrusts or swings a blade whose length tracks its weapon's reach, so a spear line reaches
+visibly further toward the enemy than a sword line.
+
 ## Movement speed
 
 Units move at **realistic real-world speeds**, measured in metres per second:
