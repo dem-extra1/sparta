@@ -437,7 +437,7 @@ func _cursor_world() -> Vector2:
 
 ## Inject a cursor world position (deterministic input), or pass null to resume the live
 ## mouse. Used by the demo recorder and tests; never called in normal play.
-func set_cursor_override(world_pos) -> void:
+func set_cursor_override(world_pos: Variant) -> void:
 	_cursor_override = world_pos
 
 
@@ -477,7 +477,7 @@ func _draw_demo_pointer() -> void:
 	for uid in p["sel"]:
 		var u: UnitRef = _battle.unit_by_uid(int(uid))
 		if u != null and u.state != UnitRef.State.DEAD:
-			draw_arc(u.global_position, u._block_extent + 4.0, 0.0, TAU, 36, DEMO_SELECT_COLOR, 2.0)
+			draw_arc(u.global_position, u.render_block_extent() + 4.0, 0.0, TAU, 36, DEMO_SELECT_COLOR, 2.0)
 
 	# Drag-box: the marquee from its recorded start corner to the (gliding) cursor.
 	if bool(p["drag"]):

@@ -732,6 +732,14 @@ func soldier_block_extent() -> float:
 	return SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
 
 
+## The render block's current half-size: the cached extent SoldierFlock.update maintains as
+## the block forms and takes casualties (what _draw sizes the state ring / selection halo /
+## bars to). Unlike soldier_block_extent(), this returns the maintained field rather than a
+## fresh recompute, so the demo-pointer overlay's selection halo matches the drawn block.
+func render_block_extent() -> float:
+	return _block_extent
+
+
 ## Seed the parallel soldier-body layer from the current formation. Deterministic
 ## and side-effect-free beyond `_sim_soldier_pos`. Read by the global separation
 ## pass and the flock render (phase 3), but NOT by gameplay (the regiment circle

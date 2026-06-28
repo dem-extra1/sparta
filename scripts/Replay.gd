@@ -316,6 +316,18 @@ func has_pointer_track() -> bool:
 	return not _pointer_track.is_empty()
 
 
+## Advance _pointer_index to the latest keyframe at or before `tick`, rewinding if the
+## caller stepped back to an earlier tick. Shared by pointer_for_tick and
+## pointer_cursor_for_tick so they always agree on the current keyframe. Assumes a
+## non-empty track (callers check) and non-decreasing ticks in the common case.
+func _advance_pointer_index(tick: int) -> void:
+	if _pointer_index > 0 and int(_pointer_track[_pointer_index]["tick"]) > tick:
+		_pointer_index = 0
+	while _pointer_index + 1 < _pointer_track.size() \
+			and int(_pointer_track[_pointer_index + 1]["tick"]) <= tick:
+		_pointer_index += 1
+
+
 ## PLAYBACK: the pointer state to apply at `tick` — the latest keyframe at or before it
 ## (holds its last state until the next recorded change), mirroring camera_for_tick.
 ## Returns {} when not in playback or no track is loaded. Advances an internal cursor, so
@@ -323,11 +335,7 @@ func has_pointer_track() -> bool:
 func pointer_for_tick(tick: int) -> Dictionary:
 	if mode != Mode.PLAYBACK or _pointer_track.is_empty():
 		return {}
-	if _pointer_index > 0 and int(_pointer_track[_pointer_index]["tick"]) > tick:
-		_pointer_index = 0
-	while _pointer_index + 1 < _pointer_track.size() \
-			and int(_pointer_track[_pointer_index + 1]["tick"]) <= tick:
-		_pointer_index += 1
+	_advance_pointer_index(tick)
 	return _pointer_track[_pointer_index]
 
 
@@ -340,11 +348,7 @@ func pointer_for_tick(tick: int) -> Dictionary:
 func pointer_cursor_for_tick(tick: int) -> Vector2:
 	if mode != Mode.PLAYBACK or _pointer_track.is_empty():
 		return Vector2.ZERO
-	if _pointer_index > 0 and int(_pointer_track[_pointer_index]["tick"]) > tick:
-		_pointer_index = 0
-	while _pointer_index + 1 < _pointer_track.size() \
-			and int(_pointer_track[_pointer_index + 1]["tick"]) <= tick:
-		_pointer_index += 1
+	_advance_pointer_index(tick)
 	var cur: Dictionary = _pointer_track[_pointer_index]
 	var cur_pos := Vector2(cur["x"], cur["y"])
 	if _pointer_index + 1 >= _pointer_track.size():

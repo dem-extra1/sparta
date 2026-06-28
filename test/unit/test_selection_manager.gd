@@ -138,6 +138,10 @@ func test_pointer_state_reports_live_selection_drag_and_stance() -> void:
 	var ps: Dictionary = sm.pointer_state()
 	assert_eq(ps["cursor"], Vector2(640, 480), "an injected cursor is reported as the cursor")
 	assert_eq(ps["selection"], [7], "only living selected units' uids are reported")
+	# Clearing the override returns to the live mouse, so the injected value no longer shows.
+	sm.set_cursor_override(null)
+	assert_ne(sm.pointer_state()["cursor"], Vector2(640, 480),
+			"clearing the override falls back to the live OS mouse")
 	assert_true(ps["dragging"], "the open drag-box is reported")
 	assert_eq(ps["drag_start"], Vector2(12, 34), "the drag start corner is reported")
 	assert_eq(ps["mode"], BattleScript.OrderMode.SKIRMISH, "the armed stance is reported")

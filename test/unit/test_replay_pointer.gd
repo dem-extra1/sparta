@@ -105,6 +105,18 @@ func test_cursor_is_zero_without_track_or_playback() -> void:
 	assert_eq(r.pointer_cursor_for_tick(0), Vector2.ZERO, "no track / not playing back -> zero")
 
 
+func test_cursor_for_tick_rewinds_on_step_back() -> void:
+	var r := _fresh()
+	r.mode = ReplayScript.Mode.PLAYBACK
+	r._pointer_track = [
+		{"tick": 0, "x": 0.0, "y": 0.0, "drag": false, "sel": [], "mode": 0},
+		{"tick": 10, "x": 100.0, "y": 0.0, "drag": false, "sel": [], "mode": 0},
+	]
+	assert_eq(r.pointer_cursor_for_tick(10), Vector2(100, 0), "advance the cursor to the later keyframe")
+	assert_almost_eq(r.pointer_cursor_for_tick(5).x, 50.0, 0.001,
+			"a step back rewinds and re-interpolates from the first keyframe")
+
+
 func test_pulses_return_recent_orders_with_age() -> void:
 	var r := _fresh()
 	r.mode = ReplayScript.Mode.PLAYBACK
