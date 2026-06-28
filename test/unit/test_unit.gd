@@ -1177,9 +1177,9 @@ func test_rout_shatters_when_gutted_even_if_clear() -> void:
 
 func test_formation_slots_one_per_soldier() -> void:
 	var u := _make_unit(120)
-	assert_eq(u._formation_slots(120).size(), 120, "one slot per living soldier")
-	assert_eq(u._formation_slots(1).size(), 1, "a single soldier gets one slot")
-	assert_eq(u._formation_slots(0).size(), 0, "no soldiers -> no slots (an empty block)")
+	assert_eq(UnitFormation.slots(u, 120).size(), 120, "one slot per living soldier")
+	assert_eq(UnitFormation.slots(u, 1).size(), 1, "a single soldier gets one slot")
+	assert_eq(UnitFormation.slots(u, 0).size(), 0, "no soldiers -> no slots (an empty block)")
 
 
 func test_formation_block_is_horizontally_centered() -> void:
@@ -1188,7 +1188,7 @@ func test_formation_block_is_horizontally_centered() -> void:
 	# grid. (review: a left-aligned partial rank used to drift small/depleted blocks.)
 	var u := _make_unit()
 	for n in [50, 51, 53, 87, 7]:
-		var slots := u._formation_slots(n)
+		var slots := UnitFormation.slots(u, n)
 		var sum_x := 0.0
 		for s in slots:
 			sum_x += s.x
@@ -1199,7 +1199,7 @@ func test_formation_block_is_horizontally_centered() -> void:
 func test_formation_is_wider_than_deep() -> void:
 	# Soldiers form up wider than they are deep (files > ranks for a full block).
 	var u := _make_unit()
-	var slots := u._formation_slots(100)
+	var slots := UnitFormation.slots(u, 100)
 	var min_x := INF
 	var max_x := -INF
 	var min_y := INF
@@ -1309,7 +1309,7 @@ func test_flock_marks_stay_finite_and_bounded_while_moving() -> void:
 
 func test_combat_lunge_presses_front_rank_toward_the_enemy() -> void:
 	# A front-rank mark (depth 0) is pushed forward — toward the enemy, which is -Y in the
-	# unrotated local frame (matching _formation_slots' front rank) — and stays bounded.
+	# unrotated local frame (matching UnitFormation.slots' front rank) — and stays bounded.
 	var off := Unit._combat_lunge_offset(0.0, 0.0, 0.0)
 	assert_lt(off.y, 0.0, "a front-rank mark presses toward the enemy (-Y)")
 	assert_lte(off.length(), Unit.COMBAT_LUNGE + Unit.COMBAT_LATERAL + 0.001,
