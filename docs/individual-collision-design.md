@@ -91,9 +91,13 @@ verified before the next phase builds on it.
    orchestrated by `Battle` on `physics_frame`) gathers engaged soldiers across all
    regiments in soldier-id order, buckets them in the soldier-sized
    `SoldierSpatialHash`, and applies a Jacobi accumulate-then-apply step — so enemy
-   front ranks press into each other. Determinism + order-independence + hard-block +
-   a perf smoke test are in `test_soldier_separation.gd`. (A debug overlay made the
-   layer visible at this stage; phase 3 replaced it with the real soldier render.)
+   front ranks press into each other. (A debug overlay made the layer visible at this
+   stage; phase 3 replaced it with the real soldier render.)
+   **Superseded (#270):** this position-correction separation pass has since been
+   retired. Soldiers never teleport — friendly crowding is handled by a velocity-based
+   avoidance pass (`SoldierSteering`, written into each body's feed-forward) and enemy
+   contact by combat **knockback**, so spacing emerges from steering + press-vs-recoil
+   rather than a per-tick position snap.
 3. **[DONE] Render-as-reality.** The flock render (`_update_flock`) now follows
    `_sim_soldier_pos`: each mark's target gains the simulated body's collision push
    (~0 for the unengaged bulk, the real per-soldier separation for engaged front
@@ -117,14 +121,16 @@ verified before the next phase builds on it.
    profile, charge term, facing gate, opposed land contest, and wound) as pure,
    unit-tested functions on `Unit`, and (ii) **persistent soldier-body dynamics** —
    the engaged front-rank bodies spring toward their slots and integrate their own
-   velocity (`step_sim_soldiers`), so a body shoved by the separation pass holds the
+   velocity (`step_sim_soldiers`), so a body knocked back in melee holds the
    displacement and eases back instead of re-seeding onto formation each tick (the
-   unengaged bulk still snaps to its slots). The regiment circle still resolves
+   unengaged bulk feeds the unit's march velocity forward, tracking its slots at
+   velocity with no teleport — #270). The regiment circle still resolves
    casualties, exactly as phase 1 added the soldier-body state before later phases
    read it. **Phase 4b** wires the contest and wound into the live melee against a
    per-soldier health pool that accumulates on these persistent bodies (the first
-   gameplay change; unblocks #240); later slices add stamina, posture, and the
-   knockback/prone/domino chain.
+   gameplay change; unblocks #240). A later slice (#270) retired the separation pass
+   and added **knockback** as the enemy collision response; remaining slices add
+   stamina, posture, and the prone/domino chain.
 5. **Retire the regiment circle.** Once soldiers are authoritative, `RADIUS`-based
    `_separate()` becomes derived/diagnostic. `#201`'s physics (mass, momentum,
    knock-back) then layers on the soldier bodies.

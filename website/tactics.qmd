@@ -92,9 +92,10 @@ another reason to lead with spearmen and let the shorter weapons pin and flank. 
 now resolves **per soldier** by weapon reach: a spearman strikes any enemy within its
 longer reach, while a swordsman beyond its own (shorter) reach cannot strike back. The
 *sustained* standoff --- a spear line physically holding swordsmen out at weapon length
---- emerges once a hit knocks the enemy back out of range (the knockback step of the
-combat model); until then, once lines lock together both reach. So the spear's edge is
-real on the approach today, and grows into a standing wall as the model fills in.
+--- now emerges from **knockback**: a landed blow shoves the struck soldier back, so a
+spear line keeps knocking swordsmen out past their own reach while staying in its. The
+lines no longer snap apart by a spacing rule; the gap is the live balance of the press
+forward against the knockback, so it breathes as the fight ebbs and flows.
 
 ## Movement speed
 

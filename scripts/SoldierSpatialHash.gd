@@ -1,12 +1,12 @@
 class_name SoldierSpatialHash
 extends RefCounted
-## Per-physics-frame spatial hash for individual-SOLDIER separation — the
+## Per-physics-frame spatial hash for the individual-SOLDIER steering pass — the
 ## soldier-scale sibling of SpatialHash (which buckets whole regiments).
 ##
-## The global engaged-soldier pass (Unit.separate_engaged_global) gathers every
+## The global engaged-soldier steering pass (SoldierSteering.accumulate) gathers every
 ## engaged soldier across all regiments into one flat, id-sorted array, rebuilds
 ## this grid from those world positions, then queries the 3x3 cell block around
-## each soldier to get a small superset of possible overlaps — replacing an
+## each soldier to get a small superset of possible neighbours — replacing an
 ## O(n^2) all-pairs scan over ~1,500 engaged bodies with O(n) bucketing + local
 ## neighbourhoods. It stores RECORD INDICES into that flat array (not nodes), so
 ## the caller can map a candidate back to its owning regiment and id.

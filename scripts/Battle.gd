@@ -289,20 +289,25 @@ func _physics_process(_delta: float) -> void:
 
 
 ## Per-tick orchestration of the parallel individual-soldier layer (connected to
-## physics_frame in _ready, so it runs after every unit has settled this frame):
-## step every regiment's persistent soldier bodies one fixed tick (phase 4 — the
-## bodies ease toward formation and hold any displacement, rather than re-seeding
-## onto their slots each tick), then run one global engaged-soldier separation
-## across all regiments (SoldierSpatialHash keyed by the physics frame). Skipped
-## while ended or paused — physics_frame keeps emitting while paused even though
-## node callbacks don't run, so without the guard the pass would re-run on frozen
-## state. Non-authoritative: nothing in the sim reads _sim_soldier_pos.
+## physics_frame in _ready, so it runs after every unit has settled this frame): run the
+## global friendly-avoidance steering pass (SoldierSpatialHash keyed by the physics
+## frame), then step every regiment's persistent soldier bodies one fixed tick — the
+## bodies ease toward formation, hold any knockback displacement, and damp away from a
+## crowding friendly, all at velocity (no body teleports). Skipped while ended or paused —
+## physics_frame keeps emitting while paused even though node callbacks don't run, so
+## without the guard the pass would re-run on frozen state. The engaged soldier positions
+## feed the per-soldier melee (who is in reach of whom — see SoldierMelee), so the layer
+## is authoritative for melee resolution but not for regiment movement/morale.
 func _on_soldier_tick() -> void:
 	if _ended or get_tree().paused:
 		return
 	var units: Array = get_tree().get_nodes_in_group("units")
+	# Friendly-avoidance steering first (it sets the velocity bias the bodies feed
+	# forward), then integrate the bodies. Enemy spacing is handled by combat knockback,
+	# not a separation pass — so nothing position-corrects a soldier; it all moves at
+	# velocity. See SoldierSteering / SoldierBodies.
+	SoldierSteering.accumulate(units, Engine.get_physics_frames())
 	UnitRef.step_all_sim_soldiers(units, get_physics_process_delta_time())
-	UnitRef.separate_engaged_global(units, Engine.get_physics_frames())
 
 
 ## Called by SelectionManager when the player issues a right-click order. The

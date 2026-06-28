@@ -118,3 +118,53 @@ func test_melee_is_deterministic() -> void:
 	Replay.rng.seed = SEED
 	var second: int = _run_casualties()
 	assert_eq(first, second, "same seed + same orders reproduce the same casualties")
+
+
+# --- knockback: the enemy collision response ----------------------------------
+
+func test_in_reach_strike_shoves_the_defender_away() -> void:
+	# Attacker at the origin facing down; defender just ahead, in reach. Every in-reach
+	# strike adds at least the contact shove to the defender's body velocity, pointed away
+	# from the attacker (here: +y). Health is pinned high so the one strike can't kill and
+	# reap the body before we read it.
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	b._sim_soldier_hp[0] = 9999.0
+	a.resolve_soldier_melee(b)
+	assert_gte(b._sim_body_vel[0].y, SoldierMelee.KNOCKBACK_SHOVE - 1e-3,
+		"the struck soldier is knocked back at least the contact shove, away from the attacker")
+	assert_almost_eq(b._sim_body_vel[0].x, 0.0, 1e-3, "no lateral knockback for a head-on strike")
+
+
+func test_knockback_points_away_from_the_attacker() -> void:
+	# Off-axis geometry: the impulse follows the attacker->defender line, not a fixed axis.
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 1, Vector2(5, 5), Vector2.UP, false)
+	b._sim_soldier_hp[0] = 9999.0
+	a.resolve_soldier_melee(b)
+	assert_gt(b._sim_body_vel[0].x, 0.0, "knocked back along +x, away from the attacker")
+	assert_gt(b._sim_body_vel[0].y, 0.0, "and +y")
+
+
+func test_no_target_means_no_knockback() -> void:
+	# Out of reach (100 apart, reach 26): no target is selected, so no shove is applied.
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 1, Vector2(0, 100), Vector2.UP, false)
+	a.resolve_soldier_melee(b)
+	assert_almost_eq(b._sim_body_vel[0].length(), 0.0, 1e-3,
+		"a strike with nothing in reach neither rolls nor knocks back")
+
+
+func test_knockback_is_deterministic() -> void:
+	Replay.rng.seed = SEED
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	b._sim_soldier_hp[0] = 9999.0
+	a.resolve_soldier_melee(b)
+	var first: Vector2 = b._sim_body_vel[0]
+	Replay.rng.seed = SEED
+	var c := _unit(3, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var d := _unit(4, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	d._sim_soldier_hp[0] = 9999.0
+	c.resolve_soldier_melee(d)
+	assert_almost_eq(d._sim_body_vel[0].y, first.y, 1e-6, "same seed -> same knockback (incl. any landed impulse)")

@@ -711,22 +711,22 @@ func _is_melee_intermixing_with(other: Unit) -> bool:
 			and other.order_mode != ORDER_HOLD
 
 
-# --- Individual-soldier simulation (phases 1-3: simulated bodies, rendered) ---
-# The soldiers you SEE are the simulated bodies. Each tick Battle re-seeds every
-# regiment's world-space `_sim_soldier_pos` from its formation slots, then runs one
-# global engaged-soldier separation pass across all regiments (SoldierSpatialHash +
-# a deterministic Jacobi pass) so enemy front ranks press into each other; the flock
-# render (`_update_flock`) then follows those positions (phase 3), so the
-# cross-regiment per-soldier collision is visible. The layer is still
-# non-authoritative for the SIMULATION — combat, movement, morale, and `_separate()`
-# read the regiment circle, NOT `_sim_soldier_pos` — so gameplay OUTCOMES are
-# unchanged; only the rendered soldier positions reflect the collision. Next:
-# phase 4 (combat per-soldier), phase 5 (retire the circle). Full migration plan in
+# --- Individual-soldier simulation (simulated bodies, rendered + authoritative melee) ---
+# The soldiers you SEE are the simulated bodies. Each tick Battle advances every
+# regiment's persistent world-space `_sim_soldier_pos` at velocity (SoldierBodies): a
+# body springs toward its formation slot, feeds the friendly-avoidance steering velocity
+# forward (SoldierSteering), and holds any knockback the melee dealt it (SoldierMelee) —
+# no body teleports, and there is no position-correction separation pass. The flock
+# render (`_update_flock`) follows those positions, so the cross-regiment per-soldier
+# spacing is visible. The engaged positions are AUTHORITATIVE for per-soldier melee (who
+# is in reach of whom), but movement, morale, and `_separate()` still read the regiment
+# circle, so those OUTCOMES come from the circle. Full plan in
 # docs/individual-collision-design.md.
 
 # Master switch for the soldier layer. ON: the persistent soldier bodies advance one
-# step + the global separation pass run each tick, and the soldier render follows
-# them. Non-authoritative for gameplay until a later phase retires the regiment circle.
+# velocity step per tick (steering + knockback, no separation pass) and the soldier
+# render follows them. Per-soldier melee reads the engaged bodies; regiment
+# movement/morale still run off the circle.
 const INDIVIDUAL_COLLISION: bool = true
 
 # A soldier's global id is `uid * SOLDIER_ID_STRIDE + index`: a unique,
@@ -746,6 +746,12 @@ var _sim_soldier_pos: PackedVector2Array = PackedVector2Array()
 # displacement and eases back rather than snapping to formation. The spring itself
 # lives in SoldierBodies; this is the state it advances. Still non-authoritative.
 var _sim_body_vel: PackedVector2Array = PackedVector2Array()
+
+# Per-soldier friendly-avoidance steering velocity (world space), index-aligned with
+# _sim_soldier_pos. Recomputed each tick by SoldierSteering for the engaged subset (zero
+# elsewhere); SoldierBodies feeds it forward so an engaged body drifts off a crowding
+# friendly instead of overlapping it. Velocity-based — it never moves a body directly.
+var _sim_steer: PackedVector2Array = PackedVector2Array()
 
 # Per-soldier health pool (phase 4b), index-aligned with _sim_soldier_pos: each body
 # accumulates wounds across ticks and dies (removed, re-packing the formation) when it
@@ -798,15 +804,14 @@ func step_sim_soldiers(delta: float) -> void:
 	SoldierBodies.step(self, delta)
 
 
-# --- Individual-soldier simulation, phase 2: engaged tier + separation -----
-# The expensive per-soldier pass runs only for *engaged* soldiers — the front
-# ranks of a regiment in (or just out of) melee — while the unengaged bulk keeps
-# following its formation slot cheaply. This is the level-of-detail split from
-# docs/individual-collision-design.md: it bounds the full pass to ~the contact
-# faces rather than every soldier on the field. The pass itself is global, across
-# all regiments (see Battle's per-tick soldier orchestration and
-# separate_engaged_global below), so enemy front ranks press into each other —
-# it is not confined within a regiment.
+# --- Individual-soldier simulation: engaged tier --------------------------
+# The expensive per-soldier work (the friendly-avoidance steering pass and per-soldier
+# melee) runs only for *engaged* soldiers — the front ranks of a regiment in (or just out
+# of) melee — while the unengaged bulk keeps following its formation slot cheaply. This is
+# the level-of-detail split from docs/individual-collision-design.md: it bounds the work
+# to ~the contact faces rather than every soldier on the field. The steering pass is
+# global across all regiments (see Battle's per-tick soldier orchestration and
+# SoldierSteering), so friendly front ranks avoid each other across regiment lines.
 
 # A regiment is "engaged" while FIGHTING and for ENGAGED_LINGER seconds after, so
 # the tier boundary has hysteresis and soldiers don't flap between full-sim and
@@ -863,135 +868,14 @@ func soldier_reach() -> float:
 	return attack_range
 
 
-## Center-to-center separation floor between two soldier bodies of this regiment's
-## type (same-type case). Kept for the within-set primitive's tests; the global
-## pass uses the per-pair `a.soldier_body_radius() + b.soldier_body_radius()`.
-func soldier_separation_min_dist() -> float:
-	return 2.0 * soldier_body_radius()
-
-
-## The FULL-penetration correction vector for soldier `a` of an overlapping pair
-## (b takes the negative); callers scale each side by its push share. Zero when
-## the pair isn't overlapping. The single source of truth for the soldier-pair
-## push convention — both the within-set primitive and the global pass call it,
-## so the deterministic, replay-safe tie-break lives in exactly one place: a
-## co-located pair (d ~ 0) fans apart along an angle keyed off the lower stable
-## soldier id with the sign from the id order — the same scheme as `_separate()`,
-## so no RNG or instance-id ordering leaks in. `gid_a`/`gid_b` are stable ids.
-static func _soldier_pair_push(pos_a: Vector2, pos_b: Vector2, gid_a: int, gid_b: int, min_dist: float) -> Vector2:
-	var offset: Vector2 = pos_a - pos_b
-	var d: float = offset.length()
-	if d >= min_dist:
-		return Vector2.ZERO
-	if d > 0.01:
-		return offset / d * (min_dist - d)
-	var lo: int = mini(gid_a, gid_b)
-	var angle: float = float(posmod(lo, 100)) / 100.0 * TAU
-	var dir: float = 1.0 if gid_a > gid_b else -1.0
-	return Vector2.RIGHT.rotated(angle) * dir * min_dist
-
-
-## Resolve overlap among a set of same-type soldier bodies, returning corrected
-## positions. Each overlapping pair splits the penetration 50/50, mirroring the
-## regiment-level `_separate()`. Deterministic and replay-safe via the shared
-## `_soldier_pair_push` tie-break. Pure: copies the input, mutates nothing.
-## `ids[k]` is the stable id of `positions[k]`. The global cross-regiment pass
-## lives in `separate_engaged_global`; this stays the tested same-set primitive.
-static func separate_soldier_bodies(positions: PackedVector2Array, ids: PackedInt32Array, min_dist: float) -> PackedVector2Array:
-	var out: PackedVector2Array = positions.duplicate()
-	var n: int = out.size()
-	for a in range(n):
-		for b in range(a + 1, n):
-			var push: Vector2 = _soldier_pair_push(out[a], out[b], ids[a], ids[b], min_dist)
-			out[a] += push * 0.5
-			out[b] -= push * 0.5
-	return out
-
-
-## Re-seed every regiment's `_sim_soldier_pos` from its current formation slots.
-## The cheap per-tick formation update for ALL soldiers (engaged or not); the
-## expensive separation below then runs only over the engaged subset. Called by
-## Battle once per tick, after the units have settled.
-static func seed_all_sim_soldiers(units: Array) -> void:
-	for o in units:
-		var u: Unit = o as Unit
-		if u != null and u.state != State.DEAD:
-			u.seed_sim_soldiers()
-
-
-## Step every regiment's persistent soldier bodies one fixed tick (the phase-4
-## replacement for seed_all_sim_soldiers): bodies persist and ease toward formation
-## instead of being re-seeded onto it each tick. Called by Battle before the global
-## separation pass. Order-free across regiments, so it stays replay-safe.
+## Step every regiment's persistent soldier bodies one fixed tick. Called by Battle each
+## tick, after the steering pass has set the bodies' friendly-avoidance velocity bias.
+## Order-free across regiments, so it stays replay-safe.
 static func step_all_sim_soldiers(units: Array, delta: float) -> void:
 	for o in units:
 		var u: Unit = o as Unit
 		if u != null and u.state != State.DEAD:
 			u.step_sim_soldiers(delta)
-
-
-## The global engaged-soldier separation pass, across ALL regiments, so enemy
-## front ranks press into each other. Gathers every engaged soldier into one flat
-## array sorted by global soldier id, buckets it in the SoldierSpatialHash, then
-## runs a deterministic Jacobi pass — every pair's push computed against the
-## frozen input, summed per soldier in id order, applied once — and writes the
-## result back to each regiment's `_sim_soldier_pos`. Determinism: id-sorted
-## gather + canonical pair order (`gid_b > gid_a`) + accumulate-then-apply, no RNG
-## / instance-id / wall-clock. Per-pair push share comes from `_push_share` (the
-## same function the regiment circle uses), so the spear-vs-cavalry hard block and
-## the 50/50 default carry down to soldiers for free; the floor is the sum of the
-## two soldiers' body radii. `frame` keys the hash; tests pass a distinct frame.
-static func separate_engaged_global(units: Array, frame: int) -> void:
-	# Canonical order is global-soldier-id order. Since a soldier's id is
-	# `uid * SOLDIER_ID_STRIDE + index`, processing REGIMENTS in uid order and each
-	# regiment's engaged soldiers in ascending index yields the gathered arrays
-	# already globally id-sorted — so we sort the handful of regiments, not the
-	# thousands of soldiers. This is what makes the pass independent of
-	# get_nodes_in_group() ordering and reproducible on replay.
-	var sorted_units: Array = units.duplicate()
-	sorted_units.sort_custom(func(x: Variant, y: Variant) -> bool: return (x as Unit).uid < (y as Unit).uid)
-
-	# Gather engaged soldiers into parallel arrays, already in global-id order.
-	var spos := PackedVector2Array()
-	var sgids := PackedInt32Array()
-	var sowners: Array = []          # owning Unit per entry
-	var sslots := PackedInt32Array() # local index into the owner's _sim_soldier_pos
-	var sradii := PackedFloat32Array()
-	for o in sorted_units:
-		var u: Unit = o as Unit
-		if u == null or u.state == State.DEAD:
-			continue
-		var engaged: PackedInt32Array = u.engaged_soldier_indices(u._sim_soldier_pos.size())
-		var r: float = u.soldier_body_radius()
-		for i in engaged:
-			spos.push_back(u._sim_soldier_pos[i])
-			sgids.push_back(u.soldier_id(i))
-			sowners.push_back(u)
-			sslots.push_back(i)
-			sradii.push_back(r)
-	var n: int = spos.size()
-	if n < 2:
-		return
-
-	# Bucket the id-sorted positions, then accumulate each soldier's displacement
-	# against the frozen input (Jacobi), processing each unordered pair once.
-	SoldierSpatialHash.rebuild(spos, frame)
-	var disp := PackedVector2Array()
-	disp.resize(n)
-	for a in range(n):
-		var ua: Unit = sowners[a]
-		for b in SoldierSpatialHash.query(spos[a]):
-			if sgids[b] <= sgids[a]:
-				continue   # each pair once, in canonical (lower-id-first) order
-			var ub: Unit = sowners[b]
-			var push: Vector2 = _soldier_pair_push(spos[a], spos[b], sgids[a], sgids[b], sradii[a] + sradii[b])
-			if push == Vector2.ZERO:
-				continue
-			disp[a] += push * ua._push_share(ub)
-			disp[b] -= push * ub._push_share(ua)
-	for k in range(n):
-		var owner: Unit = sowners[k]
-		owner._sim_soldier_pos[sslots[k]] = spos[k] + disp[k]
 
 
 # --- Individual-soldier combat profile -------------------------------------
