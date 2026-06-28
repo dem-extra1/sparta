@@ -58,6 +58,22 @@ static func combat_lunge_offset(depth: float, phase: float, t: float) -> Vector2
 	return Vector2(churn, -press)
 
 
+## Melee weapon stroke for one front-rank fighting mark (Stage F). Returns [length, swing]:
+## `length` is the blade's current px length along the unit's facing -- it pulses between a
+## drawn-back `reach_px * (1 - thrust_frac)` and a full extension of `reach_px` on the attack
+## cadence, so a longer-reach weapon (a spear) visibly out-thrusts a shorter one (a sword).
+## `swing` is the blade's angular offset (rad) from straight-ahead, sweeping side to side so a
+## sabre/sword reads as a swing rather than a pure thrust. `phase` is a per-mark offset so the
+## line doesn't strike in unison. Render-only -- never read by the sim.
+static func weapon_stroke(t: float, phase: float, reach_px: float,
+		thrust_frac: float, swing_amp: float) -> Array:
+	var beat: float = t * Unit.WEAPON_FREQ + phase
+	var length: float = reach_px * (1.0 - thrust_frac * (0.5 - 0.5 * sin(beat)))
+	# Swing leads the thrust by a quarter cycle so the blade sweeps across as it extends.
+	var swing: float = swing_amp * sin(beat + PI * 0.5)
+	return [length, swing]
+
+
 ## Relief corridor offset for one mark (Stage E). Returns a lateral offset pushing the mark
 ## away from the approach axis, opening a lane for the incoming relief partner. `mark_pos` is
 ## the mark's current local position; `relief_perp` is the unit vector perpendicular to the
@@ -136,6 +152,7 @@ static func update(unit: Unit, delta: float) -> void:
 		if unit._mm_body.instance_count != 0:
 			unit._mm_body.instance_count = 0
 			unit._mm_outline.instance_count = 0
+			unit._set_weapon_instances([])
 		return
 
 	var n: int = unit.soldiers
@@ -228,6 +245,29 @@ static func update(unit: Unit, delta: float) -> void:
 	# rank-cycle widen, relief) still layer on top. Guarded on a size match so a 1-frame
 	# casualty/merge gap falls back to the plain formation slot. to_local == p - position.
 	var use_sim: bool = Unit.INDIVIDUAL_COLLISION and unit._sim_soldier_pos.size() == n
+
+	# Weapon stroke (Stage F): front-rank marks of a fighting melee block animate a thrusting/
+	# swinging blade toward the enemy, its length scaled from the unit's reach so a spear visibly
+	# out-reaches a sword. Only at the figure LOD (you can't read a weapon on a flat dot) and not
+	# for ranged units (they loose arrows, they don't melee-thrust). Collected here, pushed to the
+	# weapon MultiMesh after the loop. Render-only -- weapon_xforms stays empty when hidden.
+	var show_weapons: bool = fighting and unit._detailed_lod and not unit.is_ranged
+	var mark_r: float = Unit.CAV_MARK_RADIUS if unit.is_cavalry else Unit.MARK_RADIUS
+	var fwd_axis: Vector2 = Vector2(0.0, -1.0).rotated(ang)   # local forward (toward enemy)
+	var reach_px: float = unit.attack_range * Unit.WEAPON_REACH_SCALE
+	var w_halfwidth: float = mark_r * Unit.WEAPON_WIDTH
+	# Per-type motion: spears thrust long with little swing; swords/sabres swing wider on a
+	# shorter reach. Cavalry sabres swing widest.
+	var thrust_frac: float = Unit.WEAPON_THRUST_SWORD
+	var swing_amp: float = Unit.WEAPON_SWING_SWORD
+	if unit.anti_cavalry:
+		thrust_frac = Unit.WEAPON_THRUST_SPEAR
+		swing_amp = Unit.WEAPON_SWING_SPEAR
+	elif unit.is_cavalry:
+		thrust_frac = Unit.WEAPON_THRUST_CAV
+		swing_amp = Unit.WEAPON_SWING_CAV
+	var weapon_xforms: Array = []
+
 	var still: bool = true
 	for i in range(n):
 		var slot_i: int = (i + unit._rank_cycle_slot_offset) % n if cycling else i
@@ -262,6 +302,16 @@ static func update(unit: Unit, delta: float) -> void:
 		unit._soldier_vel[i] = res[1]
 		if res[1].length() > Unit.FLOCK_SETTLE_VEL or res[0].distance_to(target) > Unit.FLOCK_SETTLE_POS:
 			still = false
+		# Front-rank weapon: build one blade instance per fighting front-rank mark. The basis
+		# columns set the blade's length (along facing+swing) and thickness; the origin is the
+		# mark's leading edge so the blade reaches out from the body, not the centre.
+		if show_weapons and slots[slot_i].y - front_y <= Unit.WEAPON_FRONT_DEPTH:
+			var stroke := weapon_stroke(unit._combat_clock, float(i) * 1.7,
+					reach_px, thrust_frac, swing_amp)
+			var w_dir: Vector2 = fwd_axis.rotated(stroke[1])
+			var w_perp := Vector2(-w_dir.y, w_dir.x)
+			var hand: Vector2 = res[0] + fwd_axis * mark_r
+			weapon_xforms.append(Transform2D(w_dir * stroke[0], w_perp * w_halfwidth, hand))
 
 	# A fighting block keeps churning, so it never sleeps even if a frame reads as "still". A
 	# block in a relief spread likewise stays active: settling onto plain slot positions would
@@ -284,8 +334,9 @@ static func update(unit: Unit, delta: float) -> void:
 	# penetration each, after the spring integration. The slot-spring can hold marks closer
 	# than their diameter (especially with jitter), so this pass enforces a hard floor. One
 	# pass is sufficient for typical in-play overlap; the spring reels them back next frame.
-	hard_separate(unit, Unit.CAV_MARK_RADIUS if unit.is_cavalry else Unit.MARK_RADIUS)
+	hard_separate(unit, mark_r)
 
+	unit._set_weapon_instances(weapon_xforms)
 	unit._refresh_flock_render()
 
 

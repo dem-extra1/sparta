@@ -259,6 +259,11 @@ var _mm_body: MultiMesh = null
 var _mm_outline: MultiMesh = null
 var _mmi_body: MultiMeshInstance2D = null
 var _mmi_outline: MultiMeshInstance2D = null
+# Weapon blades (Stage F): one MultiMesh of thrusting/swinging blades, one instance per
+# fighting front-rank mark (empty when not engaged / zoomed out). See _set_weapon_instances.
+var _mm_weapon: MultiMesh = null
+var _mmi_weapon: MultiMeshInstance2D = null
+var _weapon_mesh: ArrayMesh = null
 var _shadow: Polygon2D = null
 # Both level-of-detail variants of the body/outline meshes, built once in
 # _setup_flock_renderer and swapped on the MultiMeshes as the camera zooms.
@@ -1148,6 +1153,24 @@ const RANK_CYCLE_WIDEN: float = 3.5       # max lateral spread for rear marks (p
 # mark's perpendicular distance from that axis) when the partner is fully overlapping.
 const RELIEF_SPREAD_MAX: float = 0.45
 
+# Weapon animation (Stage F). Front-rank marks of a fighting melee block (figure LOD only)
+# animate a blade thrusting/swinging toward the enemy. The blade's peak length is the unit's
+# attack_range * WEAPON_REACH_SCALE, so the spear's longer reach (48 px) reads visibly longer
+# than a sword's (26 px) without drawing a literal full-reach pike across the tiny marks.
+# Per-type motion: spears thrust (long, little swing), swords/sabres swing (shorter, wider).
+# Purely cosmetic -- driven by the render-time combat clock, never read by the sim.
+const WEAPON_FREQ: float = 7.5            # thrust/swing cadence (rad/s)
+const WEAPON_REACH_SCALE: float = 0.20    # peak blade length as a fraction of attack_range (px)
+const WEAPON_WIDTH: float = 0.28          # blade half-width as a fraction of the mark radius
+const WEAPON_FRONT_DEPTH: float = 2.0     # only marks within this depth of the front rank arm (px)
+const WEAPON_THRUST_SPEAR: float = 0.55   # spear: blade pulses ~half its length on the thrust
+const WEAPON_SWING_SPEAR: float = 0.07    # spear: barely swings (rad) -- a steady hedge of points
+const WEAPON_THRUST_SWORD: float = 0.35
+const WEAPON_SWING_SWORD: float = 0.26    # sword: a modest swing (rad); wider merges into a band
+const WEAPON_THRUST_CAV: float = 0.30
+const WEAPON_SWING_CAV: float = 0.32      # sabre: the widest swing
+const WEAPON_COLOR: Color = Color(0.80, 0.82, 0.86)   # steel, untinted by team
+
 
 
 
@@ -1190,6 +1213,17 @@ func _setup_flock_renderer() -> void:
 	_mmi_body.multimesh = _mm_body
 	_mmi_body.z_index = -1   # eff 2, added after the outline -> drawn in front of it
 	add_child(_mmi_body)
+
+	# Weapon blades draw in front of the soldier bodies (added last at eff 2), tinted steel.
+	_weapon_mesh = UnitMeshes.weapon_mesh()
+	_mm_weapon = MultiMesh.new()
+	_mm_weapon.transform_format = MultiMesh.TRANSFORM_2D
+	_mm_weapon.mesh = _weapon_mesh
+	_mmi_weapon = MultiMeshInstance2D.new()
+	_mmi_weapon.multimesh = _mm_weapon
+	_mmi_weapon.z_index = -1   # eff 2, added after the body -> drawn in front of the marks
+	_mmi_weapon.modulate = WEAPON_COLOR
+	add_child(_mmi_weapon)
 
 	_flock_last_pos = position   # local-to-parent frame; see _update_flock
 	_flock_last_facing = facing
@@ -1302,6 +1336,20 @@ func _refresh_flock_render() -> void:
 		_mm_body.set_instance_transform_2d(i, t)
 		_mm_outline.set_instance_transform_2d(i, t)
 	_apply_flock_color()
+
+
+## Push the front-rank weapon blade transforms into the weapon MultiMesh (one instance per
+## arming mark; empty when the block isn't engaged or is zoomed out, which hides them all).
+## Each transform's basis already encodes the blade's length, thickness and swing angle, so
+## this just resizes and assigns. Cosmetic only -- see SoldierFlock.weapon_stroke.
+func _set_weapon_instances(xforms: Array) -> void:
+	if _mm_weapon == null:
+		return
+	var n: int = xforms.size()
+	if _mm_weapon.instance_count != n:
+		_mm_weapon.instance_count = n
+	for i in range(n):
+		_mm_weapon.set_instance_transform_2d(i, xforms[i])
 
 
 ## Tint the marks via the MultiMeshInstance modulate (one colour for the whole block, so
