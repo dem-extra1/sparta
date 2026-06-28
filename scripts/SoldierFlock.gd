@@ -266,7 +266,7 @@ static func update(unit: Unit, delta: float) -> void:
 	elif unit.is_cavalry:
 		thrust_frac = Unit.WEAPON_THRUST_CAV
 		swing_amp = Unit.WEAPON_SWING_CAV
-	var weapon_xforms: Array = []
+	var weapon_xforms: Array[Transform2D] = []
 
 	var still: bool = true
 	for i in range(n):
