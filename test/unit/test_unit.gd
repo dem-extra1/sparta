@@ -1213,7 +1213,7 @@ func test_formation_is_wider_than_deep() -> void:
 
 
 # --- individual-soldier flocking (Stage B) -----------------------
-# _flock_step() is the pure, deterministic per-mark steering (arrival spring +
+# SoldierFlock.step() is the pure, deterministic per-mark steering (arrival spring +
 # separation + clamps). It's cosmetic — never read by the sim — but unit-tested so the
 # motion stays stable: marks converge onto formation, push apart when overlapping, and
 # can't smear across the map from a far/teleported start.
@@ -1224,7 +1224,7 @@ func test_flock_mark_converges_to_its_slot() -> void:
 	var target := Vector2.ZERO
 	var none := PackedVector2Array()
 	for _i in range(600):   # ~10s at 60 fps
-		var res := Unit._flock_step(pos, vel, target, none, 3.0, 1.0 / 60.0)
+		var res := SoldierFlock.step(pos, vel, target, none, 3.0, 1.0 / 60.0)
 		pos = res[0]
 		vel = res[1]
 	assert_lt(pos.distance_to(target), Unit.FLOCK_SETTLE_POS, "mark eases onto its slot")
@@ -1242,8 +1242,8 @@ func test_flock_overlapping_marks_push_apart() -> void:
 	var vb := Vector2.ZERO
 	var start: float = a.distance_to(b)
 	for _i in range(180):
-		var ra := Unit._flock_step(a, va, a, PackedVector2Array([b]), sep, 1.0 / 60.0)
-		var rb := Unit._flock_step(b, vb, b, PackedVector2Array([a]), sep, 1.0 / 60.0)
+		var ra := SoldierFlock.step(a, va, a, PackedVector2Array([b]), sep, 1.0 / 60.0)
+		var rb := SoldierFlock.step(b, vb, b, PackedVector2Array([a]), sep, 1.0 / 60.0)
 		a = ra[0]
 		va = ra[1]
 		b = rb[0]
@@ -1254,7 +1254,7 @@ func test_flock_overlapping_marks_push_apart() -> void:
 func test_flock_mark_never_trails_its_slot_too_far() -> void:
 	# A step from far away (a spawn/teleport) is clamped to within FLOCK_MAX_LAG of the
 	# slot and stays finite — bounds the integration so a hitch can't smear the block.
-	var res := Unit._flock_step(Vector2(5000, -3000), Vector2.ZERO, Vector2.ZERO,
+	var res := SoldierFlock.step(Vector2(5000, -3000), Vector2.ZERO, Vector2.ZERO,
 			PackedVector2Array(), 3.0, 1.0 / 60.0)
 	var pos: Vector2 = res[0]
 	assert_lte(pos.length(), Unit.FLOCK_MAX_LAG + 0.001, "a mark stays within max-lag of its slot")
@@ -1302,7 +1302,7 @@ func test_flock_marks_stay_finite_and_bounded_while_moving() -> void:
 
 
 # --- individual-soldier combat churn (Stage C) -------------------
-# _combat_lunge_offset() is the pure, deterministic per-mark melee churn layered onto a
+# SoldierFlock.combat_lunge_offset() is the pure, deterministic per-mark melee churn layered onto a
 # fighting block's front rank (press/recoil into the contact line + sideways jitter). It's
 # cosmetic — never read by the sim — but unit-tested so the motion stays bounded and only
 # the fighting edge moves: front-rank marks press toward the enemy, deep ranks hold still.
@@ -1310,7 +1310,7 @@ func test_flock_marks_stay_finite_and_bounded_while_moving() -> void:
 func test_combat_lunge_presses_front_rank_toward_the_enemy() -> void:
 	# A front-rank mark (depth 0) is pushed forward — toward the enemy, which is -Y in the
 	# unrotated local frame (matching UnitFormation.slots' front rank) — and stays bounded.
-	var off := Unit._combat_lunge_offset(0.0, 0.0, 0.0)
+	var off := SoldierFlock.combat_lunge_offset(0.0, 0.0, 0.0)
 	assert_lt(off.y, 0.0, "a front-rank mark presses toward the enemy (-Y)")
 	assert_lte(off.length(), Unit.COMBAT_LUNGE + Unit.COMBAT_LATERAL + 0.001,
 			"and the churn never exceeds its amplitude budget")
@@ -1319,26 +1319,26 @@ func test_combat_lunge_presses_front_rank_toward_the_enemy() -> void:
 func test_combat_lunge_fades_for_rear_ranks() -> void:
 	# A mark deeper than COMBAT_REACH behind the front doesn't churn at all — only the
 	# fighting edge moves while the body of the block holds formation.
-	var rear := Unit._combat_lunge_offset(Unit.COMBAT_REACH + 5.0, 0.0, 0.0)
+	var rear := SoldierFlock.combat_lunge_offset(Unit.COMBAT_REACH + 5.0, 0.0, 0.0)
 	assert_eq(rear, Vector2.ZERO, "a deep-rank mark stays in formation (no churn)")
 
 
 func test_combat_lunge_surges_and_recoils_over_time() -> void:
 	# The same front-rank mark presses by different amounts at different times — it surges
 	# forward and recoils rather than sitting at a fixed offset, so the contact edge churns.
-	var rest := Unit._combat_lunge_offset(0.0, 0.0, 0.0)
-	var surge := Unit._combat_lunge_offset(0.0, 0.0, (PI * 0.5) / Unit.COMBAT_FREQ)
+	var rest := SoldierFlock.combat_lunge_offset(0.0, 0.0, 0.0)
+	var surge := SoldierFlock.combat_lunge_offset(0.0, 0.0, (PI * 0.5) / Unit.COMBAT_FREQ)
 	assert_lt(surge.y, rest.y, "the front-rank press deepens toward the enemy as it surges")
 
 
 # --- relief corridor (Stage E) -------------------------------------------
-# _relief_spread_offset() is the pure function that computes a lateral spread
+# SoldierFlock.relief_spread_offset() is the pure function that computes a lateral spread
 # offset for one mark, opening a corridor during a line-relief swap.
 
 func test_relief_spread_offset_pushes_mark_away_from_axis() -> void:
 	# A mark to the right of the approach axis is pushed further right.
 	var perp := Vector2(1.0, 0.0)
-	var off := Unit._relief_spread_offset(Vector2(5.0, 0.0), perp, 0.5)
+	var off := SoldierFlock.relief_spread_offset(Vector2(5.0, 0.0), perp, 0.5)
 	assert_gt(off.x, 0.0, "mark right of the corridor axis is pushed further right")
 	assert_eq(off.y, 0.0, "no displacement perpendicular to the spread direction")
 
@@ -1346,15 +1346,15 @@ func test_relief_spread_offset_pushes_mark_away_from_axis() -> void:
 func test_relief_spread_offset_symmetric_about_axis() -> void:
 	# A mark to the left is pushed left by the same magnitude as a mark on the right.
 	var perp := Vector2(1.0, 0.0)
-	var left := Unit._relief_spread_offset(Vector2(-5.0, 0.0), perp, 0.5)
-	var right := Unit._relief_spread_offset(Vector2(5.0, 0.0), perp, 0.5)
+	var left := SoldierFlock.relief_spread_offset(Vector2(-5.0, 0.0), perp, 0.5)
+	var right := SoldierFlock.relief_spread_offset(Vector2(5.0, 0.0), perp, 0.5)
 	assert_eq(left.x, -right.x, "spread is symmetric about the corridor axis")
 
 
 func test_relief_spread_offset_zero_on_axis() -> void:
 	# A mark sitting on the approach axis has no perpendicular component and stays put.
 	var perp := Vector2(1.0, 0.0)
-	var off := Unit._relief_spread_offset(Vector2(0.0, 3.0), perp, 0.5)
+	var off := SoldierFlock.relief_spread_offset(Vector2(0.0, 3.0), perp, 0.5)
 	assert_eq(off, Vector2.ZERO, "mark on the approach axis gets no spread offset")
 
 
@@ -1362,8 +1362,8 @@ func test_relief_spread_offset_scales_with_spread_factor() -> void:
 	# Doubling the spread factor doubles the offset.
 	var perp := Vector2(1.0, 0.0)
 	var mark := Vector2(4.0, 0.0)
-	var half := Unit._relief_spread_offset(mark, perp, 0.25)
-	var full := Unit._relief_spread_offset(mark, perp, 0.50)
+	var half := SoldierFlock.relief_spread_offset(mark, perp, 0.25)
+	var full := SoldierFlock.relief_spread_offset(mark, perp, 0.50)
 	assert_almost_eq(full.x, half.x * 2.0, 0.0001, "spread scales linearly with the factor")
 
 
@@ -1372,11 +1372,11 @@ func test_relief_spread_offset_works_for_diagonal_perp() -> void:
 	# dot-product decomposition when both X and Y contribute to the projection.
 	var perp := Vector2(0.707107, 0.707107)   # normalised up-right diagonal
 	# Mark on the diagonal axis (dot = -1*0.707 + 1*0.707 = 0) → zero offset.
-	var on_axis := Unit._relief_spread_offset(Vector2(-1.0, 1.0), perp, 0.5)
+	var on_axis := SoldierFlock.relief_spread_offset(Vector2(-1.0, 1.0), perp, 0.5)
 	assert_almost_eq(on_axis.length(), 0.0, 0.01,
 			"mark on a diagonal axis gets no spread offset")
 	# Mark off the diagonal axis → non-zero offset driven by both components.
-	var off_axis := Unit._relief_spread_offset(Vector2(3.0, 0.0), perp, 0.5)
+	var off_axis := SoldierFlock.relief_spread_offset(Vector2(3.0, 0.0), perp, 0.5)
 	assert_gt(off_axis.length(), 0.0,
 			"mark off a diagonal axis gets a non-zero spread offset")
 
@@ -1919,16 +1919,16 @@ func test_hard_separate_cavalry_uses_larger_radius() -> void:
 
 func test_lod_hysteresis_latches_on_above_zoom_in() -> void:
 	# Zoomed in past LOD_ZOOM_IN, the detailed figures latch on regardless of prior state.
-	assert_true(Unit._lod_should_detail(false, Unit.LOD_ZOOM_IN),
+	assert_true(SoldierFlock.lod_should_detail(false, Unit.LOD_ZOOM_IN),
 			"at the zoom-in threshold the figures turn on")
-	assert_true(Unit._lod_should_detail(false, Unit.LOD_ZOOM_IN + 0.5),
+	assert_true(SoldierFlock.lod_should_detail(false, Unit.LOD_ZOOM_IN + 0.5),
 			"well past the threshold the figures stay on")
 
 
 func test_lod_hysteresis_latches_off_below_zoom_out() -> void:
-	assert_false(Unit._lod_should_detail(true, Unit.LOD_ZOOM_OUT),
+	assert_false(SoldierFlock.lod_should_detail(true, Unit.LOD_ZOOM_OUT),
 			"at the zoom-out threshold the figures turn off")
-	assert_false(Unit._lod_should_detail(true, Unit.LOD_ZOOM_OUT - 0.2),
+	assert_false(SoldierFlock.lod_should_detail(true, Unit.LOD_ZOOM_OUT - 0.2),
 			"well below the threshold the figures stay off")
 
 
@@ -1936,8 +1936,8 @@ func test_lod_hysteresis_holds_current_level_in_band() -> void:
 	# Between the two thresholds the level is sticky — this is what stops the swap from
 	# flickering when the camera hovers near the boundary.
 	var mid: float = (Unit.LOD_ZOOM_IN + Unit.LOD_ZOOM_OUT) * 0.5
-	assert_true(Unit._lod_should_detail(true, mid), "detailed level holds in the band")
-	assert_false(Unit._lod_should_detail(false, mid), "flat level holds in the band")
+	assert_true(SoldierFlock.lod_should_detail(true, mid), "detailed level holds in the band")
+	assert_false(SoldierFlock.lod_should_detail(false, mid), "flat level holds in the band")
 
 
 func test_setup_builds_both_lod_mesh_variants() -> void:

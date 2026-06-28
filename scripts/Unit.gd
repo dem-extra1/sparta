@@ -241,7 +241,7 @@ var _combat_intermixing: float = 0.0
 # --- Soldier flocking render state (Stage B) ---------------------------
 # Per-mark render positions/velocities in the unit's (unrotated) local frame. Render
 # only — never read by the sim. _soldier_pos[i] is where mark i is drawn; it chases
-# its rotated, jittered formation slot via _flock_step(), plus — while the soldier
+# its rotated, jittered formation slot via SoldierFlock.step(), plus — while the soldier
 # layer is on (phase 3) — that slot's simulated collision push (see _update_flock),
 # so the rendered soldier reflects the per-soldier separation.
 var _soldier_pos: PackedVector2Array = PackedVector2Array()
@@ -1149,11 +1149,6 @@ const RANK_CYCLE_WIDEN: float = 3.5       # max lateral spread for rear marks (p
 const RELIEF_SPREAD_MAX: float = 0.45
 
 
-## Deterministic pseudo-random float in [0, 1) from an int, for stable (non-flickering)
-## per-mark jitter in the formation render. Cosmetic only — never used by the simulation.
-func _hash01(i: int) -> float:
-	var x: float = sin(float(i) * 12.9898) * 43758.5453
-	return x - floor(x)
 
 
 # --- Soldier flocking (Stage B) ------------------------------------------
@@ -1271,8 +1266,8 @@ func _seed_soldiers() -> void:
 ## moving to a new slot during rank cycling keeps its own stable personality.
 func _slot_target(slots: PackedVector2Array, slot_i: int, ang: float, jitter_i: int = -1) -> Vector2:
 	var ji: int = jitter_i if jitter_i >= 0 else slot_i
-	var jx: float = (_hash01(ji * 2) - 0.5) * MARK_JITTER
-	var jy: float = (_hash01(ji * 2 + 1) - 0.5) * MARK_JITTER
+	var jx: float = (SoldierFlock.hash01(ji * 2) - 0.5) * MARK_JITTER
+	var jy: float = (SoldierFlock.hash01(ji * 2 + 1) - 0.5) * MARK_JITTER
 	return (slots[slot_i] + Vector2(jx, jy)).rotated(ang)
 
 
@@ -1301,7 +1296,7 @@ func _update_lod() -> void:
 	var cam := get_viewport().get_camera_2d()
 	if cam == null:
 		return
-	var want: bool = _lod_should_detail(_detailed_lod, cam.zoom.x)
+	var want: bool = SoldierFlock.lod_should_detail(_detailed_lod, cam.zoom.x)
 	# At the figure LOD the mesh also depends on facing: figures are mirrored to face the
 	# unit's march direction. Re-evaluate when either the LOD level or the facing side flips.
 	var flip: bool = want and facing.x < 0.0
@@ -1330,15 +1325,6 @@ func _apply_lod_meshes() -> void:
 		_mm_body.mesh = _figure_body_mesh
 		_mm_outline.mesh = _figure_outline_mesh
 
-
-## Pure hysteresis rule for the zoom LOD: latch the detailed figures on at/above
-## LOD_ZOOM_IN, off at/below LOD_ZOOM_OUT, and hold the current level in between.
-static func _lod_should_detail(currently_detailed: bool, zoom: float) -> bool:
-	if zoom >= LOD_ZOOM_IN:
-		return true
-	if zoom <= LOD_ZOOM_OUT:
-		return false
-	return currently_detailed
 
 
 ## Advance the cosmetic mark layer one render frame. Cheap fast-path when the block is
@@ -1454,7 +1440,7 @@ func _update_flock(delta: float) -> void:
 		if fighting:
 			# Front-rank marks press into and recoil from the contact line; rotate the
 			# (forward = -Y) lunge onto the unit's facing alongside the slot it modifies.
-			var lunge := _combat_lunge_offset(slots[slot_i].y - front_y, float(i) * 1.3, _combat_clock)
+			var lunge := SoldierFlock.combat_lunge_offset(slots[slot_i].y - front_y, float(i) * 1.3, _combat_clock)
 			target += lunge.rotated(ang)
 		# Rear-rank widen (Stage D): during the rank-cycle animation, rear ranks spread
 		# laterally to open a corridor for the front rank to fall back through. The spread
@@ -1472,9 +1458,9 @@ func _update_flock(delta: float) -> void:
 		# partner. Each mark is pushed away from the approach axis in proportion to how far
 		# it already sits from that axis, so the center clears and the flanks fan out.
 		if relief_spread > 0.0:
-			target += _relief_spread_offset(_soldier_pos[i], relief_perp, relief_spread)
+			target += SoldierFlock.relief_spread_offset(_soldier_pos[i], relief_perp, relief_spread)
 		var neighbors := _neighbors_of(grid, i, sep_dist)
-		var res := _flock_step(_soldier_pos[i], _soldier_vel[i], target, neighbors, sep_dist, dt)
+		var res := SoldierFlock.step(_soldier_pos[i], _soldier_vel[i], target, neighbors, sep_dist, dt)
 		_soldier_pos[i] = res[0]
 		_soldier_vel[i] = res[1]
 		if res[1].length() > FLOCK_SETTLE_VEL or res[0].distance_to(target) > FLOCK_SETTLE_POS:
@@ -1505,67 +1491,6 @@ func _update_flock(delta: float) -> void:
 	_hard_separate_marks(CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS)
 
 	_refresh_flock_render()
-
-
-## Step one mark: a damped arrival spring toward its slot plus separation from neighbours,
-## with a speed cap and a max-lag clamp for stability. Pure and deterministic (a function
-## of its arguments only) so it is unit-testable. Returns [new_pos, new_vel].
-static func _flock_step(pos: Vector2, vel: Vector2, target: Vector2,
-		neighbors: PackedVector2Array, sep_dist: float, dt: float) -> Array:
-	var accel: Vector2 = (target - pos) * FLOCK_STIFFNESS - vel * FLOCK_DAMPING
-	for nb in neighbors:
-		var away: Vector2 = pos - nb
-		var d: float = away.length()
-		if d > 0.0001:
-			if d < sep_dist:
-				accel += (away / d) * (FLOCK_SEPARATION * (1.0 - d / sep_dist))
-		else:
-			# Exactly coincident — avoided in practice (marks spawn fanned out, see
-			# _resize_soldiers), so this is just a guard nudge to break the symmetry.
-			accel += Vector2(FLOCK_SEPARATION, 0.0)
-	var nvel: Vector2 = vel + accel * dt
-	var sp: float = nvel.length()
-	if sp > FLOCK_MAX_SPEED:
-		nvel *= FLOCK_MAX_SPEED / sp
-	var npos: Vector2 = pos + nvel * dt
-	var lag: Vector2 = npos - target
-	var lag_len: float = lag.length()
-	if lag_len > FLOCK_MAX_LAG:
-		npos = target + lag * (FLOCK_MAX_LAG / lag_len)
-		# Re-derive velocity from the clamped move so a clamped mark doesn't carry an
-		# inflated velocity that pops once it re-enters the lag boundary, then re-bound it
-		# (the move is huge only in the degenerate far-spawn case, never in normal play).
-		nvel = (npos - pos) / dt
-		var clamped_sp: float = nvel.length()
-		if clamped_sp > FLOCK_MAX_SPEED:
-			nvel *= FLOCK_MAX_SPEED / clamped_sp
-	return [npos, nvel]
-
-
-## Melee churn offset for one front-rank mark (Stage C). Returns an offset in the
-## unit's UNROTATED local frame (forward / toward-enemy is -Y, matching UnitFormation.slots),
-## which the caller rotates onto the unit's facing. `depth` is how far behind the front
-## rank the mark sits (0 = front rank): the churn fades linearly to zero by COMBAT_REACH,
-## so only the fighting edge moves. The forward press rides a raised sine (always into the
-## enemy, surging and recoiling rather than pulling back past the line); a separate, faster
-## out-of-phase term jitters it sideways. Pure and deterministic (a function of its
-## arguments) so it's unit-testable; render-only, never read by the sim.
-static func _combat_lunge_offset(depth: float, phase: float, t: float) -> Vector2:
-	var falloff: float = clampf(1.0 - depth / COMBAT_REACH, 0.0, 1.0)
-	if falloff <= 0.0:
-		return Vector2.ZERO
-	var press: float = COMBAT_LUNGE * falloff * (0.55 + 0.45 * sin(t * COMBAT_FREQ + phase))
-	var churn: float = COMBAT_LATERAL * falloff * sin(t * COMBAT_FREQ * 1.7 + phase * 2.0)
-	return Vector2(churn, -press)
-
-
-## Relief corridor offset for one mark (Stage E). Returns a lateral offset pushing the
-## mark away from the approach axis, opening a lane for the incoming relief partner.
-## `mark_pos` is the mark's current local position; `relief_perp` is the unit vector
-## perpendicular to the approach direction; `spread` is the fractional scale (0–1).
-## Pure and deterministic so it is unit-testable. Render-only; never read by the sim.
-static func _relief_spread_offset(mark_pos: Vector2, relief_perp: Vector2, spread: float) -> Vector2:
-	return relief_perp * mark_pos.dot(relief_perp) * spread
 
 
 ## Bucket marks into a uniform grid (cell = sep_dist) so separation is a local 3x3 lookup
