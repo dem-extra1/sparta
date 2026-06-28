@@ -155,8 +155,9 @@ verified before the next phase builds on it.
      body->regiment coupling cannot counteract it — a charging cavalry rides clean through
      a spear line even at extreme tuning. Stopping a charge on a braced line is a
      **momentum/mass** problem, which is exactly what **#201** layers onto the soldier
-     bodies. So enemy collision (and then retiring the regiment circle entirely + the dead
-     `_push_share`/intermixing helpers) moves with #201, not as a kinematic slice. Until
+     bodies. So enemy collision (and then retiring the regiment circle entirely, plus the
+     `_push_share` / intermixing helpers it still uses) moves with #201, not as a
+     kinematic slice. Until
      then the regiment circle keeps resolving enemy collision (the `_front_depth` closeup
      and the hard block), unchanged. Friendly collision stays soldier-level (slice 1).
 
