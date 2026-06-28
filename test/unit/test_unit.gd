@@ -992,7 +992,7 @@ func test_relief_swaps_the_fight_and_exempts_the_pair() -> void:
 	tired.team = 0
 	foe.team = 1
 	tired.target_enemy = foe
-	fresh.begin_relief(tired)
+	UnitRelief.begin(fresh, tired)
 	assert_eq(fresh.target_enemy, foe, "the reliever takes over the tired unit's fight")
 	assert_null(tired.target_enemy, "the tired unit disengages")
 	assert_true(tired.has_move_target, "the tired unit peels back to the rear")
@@ -1011,7 +1011,7 @@ func test_relief_inherits_nearest_enemy_when_target_is_unset() -> void:
 	tired.position = Vector2.ZERO
 	foe.position = Vector2(30.0, 0.0)   # within tired's detection range
 	tired.target_enemy = null
-	fresh.begin_relief(tired)
+	UnitRelief.begin(fresh, tired)
 	assert_eq(fresh.target_enemy, foe,
 		"the reliever inherits the tired unit's nearest enemy even when unset")
 
@@ -1023,10 +1023,10 @@ func test_relief_exemption_clears_when_partner_routs() -> void:
 	tired.team = 0
 	fresh.position = Vector2.ZERO
 	tired.position = Vector2(5.0, 0.0)   # still adjacent, so it's not "apart"
-	fresh.begin_relief(tired)
+	UnitRelief.begin(fresh, tired)
 	assert_true(fresh._separation_exempt(tired), "exempt during the swap")
 	tired.state = Unit.State.ROUTING
-	fresh._update_relief()
+	UnitRelief.update(fresh)
 	assert_false(fresh._separation_exempt(tired),
 		"a routed partner is no longer exempt — it gets shouldered again")
 
@@ -1038,11 +1038,11 @@ func test_relief_exemption_clears_once_pair_moves_apart() -> void:
 	tired.team = 0
 	tired.position = Vector2.ZERO
 	fresh.position = Vector2.ZERO
-	fresh.begin_relief(tired)
+	UnitRelief.begin(fresh, tired)
 	assert_true(fresh._separation_exempt(tired), "exempt while still overlapping")
 	# Move the reliever well clear of the tired unit (past the clear distance).
 	fresh.position = Vector2(fresh.separation_radius + tired.separation_radius + 50.0, 0.0)
-	fresh._update_relief()
+	UnitRelief.update(fresh)
 	assert_false(fresh._separation_exempt(tired),
 		"the exemption ends once the swapping pair has moved apart")
 

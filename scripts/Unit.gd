@@ -313,7 +313,7 @@ func _physics_process(delta: float) -> void:
 	UnitMorale.tick_cohesion(self, delta)
 	UnitMorale.tick_morale(self, delta)
 	tick_engaged(delta)
-	_update_relief()
+	UnitRelief.update(self)
 
 	# A stationary, non-fighting unit carries no momentum: drop any leftover approach
 	# velocity so a later standing strike can't charge off it. While FIGHTING we
@@ -938,10 +938,10 @@ func resolve_soldier_melee(enemy: Unit) -> void:
 	SoldierMelee.resolve(self, enemy)
 
 
-# --- Merge & line relief ----------------------------------------------------
-# The per-tick condition updates (fatigue, cohesion, morale) live in UnitMorale; Unit's
-# _physics_process calls UnitMorale.tick_* each frame. The merge (absorb) and line-relief
-# swap below stay here.
+# --- Order response & merge -------------------------------------------------
+# The per-tick condition updates live in UnitMorale and the line-relief swap in
+# UnitRelief (Unit's _physics_process calls UnitMorale.tick_* and UnitRelief.update each
+# frame); the order-response countdown and the regiment merge (absorb) stay here.
 
 ## Start the order-response countdown. Called by Battle after stamping new
 ## motion fields onto the unit. The unit holds its current action for
@@ -982,66 +982,6 @@ func _merged_away() -> void:
 	_relief_partner = null
 	_remove_from_play()
 
-
-## Begin relieving an engaged friendly: this (fresh) unit takes over its fight
-## and advances, the tired unit peels back to the rear. The pair is mutually
-## exempt from separation (see _separation_exempt) so they pass through each
-## other during the swap; the exemption clears once they're apart (_update_relief).
-func begin_relief(tired: Unit) -> void:
-	if tired == self:
-		return   # a unit can't relieve itself (a self-link would never clear)
-	# If either unit was already mid-relief with someone else, close those old
-	# back-links first so a previous partner doesn't keep a dangling exemption.
-	var old_self: Unit = _relief_partner
-	if is_instance_valid(old_self) and old_self != tired:
-		old_self._relief_partner = null
-	var old_tired: Unit = tired._relief_partner
-	if is_instance_valid(old_tired) and old_tired != self:
-		old_tired._relief_partner = null
-	_relief_partner = tired
-	tired._relief_partner = self
-	# Take over the tired unit's fight so the front isn't left open. A unit can be
-	# FIGHTING an auto-acquired foe with target_enemy still null, so fall back to
-	# its nearest enemy rather than just walking onto an empty slot.
-	var foe: Unit = tired.target_enemy
-	if foe == null:
-		foe = UnitTargeting.nearest_enemy(tired)
-	target_enemy = foe
-	if foe != null:
-		has_move_target = false
-	else:
-		move_target = tired.position   # truly no foe: advance onto its slot
-		has_move_target = true
-	# Tired unit disengages and falls back toward its own back edge.
-	tired.target_enemy = null
-	tired.move_target = tired._rear_point()
-	tired.has_move_target = true
-
-
-## A point toward this unit's own back edge — where a relieved unit retreats to.
-func _rear_point() -> Vector2:
-	var back: Vector2 = Vector2.UP if team == 0 else Vector2.DOWN
-	return position + back * 160.0
-
-
-## End the relief exemption once the partner has left the line (gone, dead, or
-## routing) or the swapping pair has moved clear of each other.
-func _update_relief() -> void:
-	if _relief_partner == null:
-		return
-	# Drop the exemption if the partner is gone or has left the line (dead or
-	# routing), or once the swapping pair has moved clear of each other.
-	var gone: bool = not is_instance_valid(_relief_partner) \
-		or _relief_partner.state == State.DEAD \
-		or _relief_partner.state == State.ROUTING
-	var apart: bool = is_instance_valid(_relief_partner) \
-		and position.distance_to(_relief_partner.position) \
-			> separation_radius + _relief_partner.separation_radius + 24.0
-	if gone or apart:
-		var partner: Unit = _relief_partner
-		_relief_partner = null
-		if is_instance_valid(partner) and partner._relief_partner == self:
-			partner._relief_partner = null
 
 
 # --- Death & routing -------------------------------------------------------
