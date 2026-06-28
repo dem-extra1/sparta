@@ -34,7 +34,7 @@ const CHARGE_REFERENCE_SPEED: float = 170.0
 const COND_HEALTH_FLOOR: float = 0.5
 
 # Knockback impulse (docs/combat-model.md "Knockback impulse"):
-#   J = KNOCKBACK_IMPULSE_SCALE * lethality_A * (1 + c) / m_D * eta
+#   J = KNOCKBACK_IMPULSE_SCALE * lethality_A * (1 + c) * eta / m_D
 # the velocity (world units/sec) added to the struck body along the strike axis. Scaled by
 # the blow's force (lethality, and the charge term 1+c) and INVERSELY by the defender's mass
 # -- a heavy horse is shoved less than a light archer. eta is the fraction of momentum
