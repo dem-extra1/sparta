@@ -1,7 +1,7 @@
 extends GutTest
-## Unit tests for the deterministic combat math in scripts/Unit.gd:
+## Unit tests for the deterministic combat math (UnitCombat) and other Unit logic:
 ## flanking multipliers and casualty/morale application. (The randomised
-## damage in _strike() is intentionally not tested here.)
+## damage in UnitCombat.strike() is intentionally not tested here.)
 
 const FRONT := Vector2(0, 100)    # ahead of a unit facing DOWN
 const SIDE := Vector2(100, 0)     # to its flank
@@ -335,50 +335,50 @@ func test_attack_flank_tie_break_picks_the_perp_side() -> void:
 
 func test_frontal_hit_is_1x() -> void:
 	var u := _make_unit()
-	assert_almost_eq(u._flank_multiplier(_attacker_at(FRONT)), 1.0, 0.001)
+	assert_almost_eq(UnitCombat.flank_multiplier(u, _attacker_at(FRONT)), 1.0, 0.001)
 
 
 func test_flank_hit_is_1_5x() -> void:
 	var u := _make_unit()
-	assert_almost_eq(u._flank_multiplier(_attacker_at(SIDE)), 1.5, 0.001)
+	assert_almost_eq(UnitCombat.flank_multiplier(u, _attacker_at(SIDE)), 1.5, 0.001)
 
 
 func test_rear_hit_is_2x() -> void:
 	var u := _make_unit()
-	assert_almost_eq(u._flank_multiplier(_attacker_at(REAR)), 2.0, 0.001)
+	assert_almost_eq(UnitCombat.flank_multiplier(u, _attacker_at(REAR)), 2.0, 0.001)
 
 
 # --- take_casualties -------------------------------------------------------
 
 func test_frontal_casualties_reduce_soldiers_one_for_one() -> void:
 	var u := _make_unit(120)
-	u.take_casualties(10, _attacker_at(FRONT))
+	UnitCombat.take_casualties(u, 10, _attacker_at(FRONT))
 	assert_eq(u.soldiers, 110, "frontal: 10 casualties -> -10 soldiers")
 
 
 func test_rear_casualties_are_doubled() -> void:
 	var u := _make_unit(120)
-	u.take_casualties(10, _attacker_at(REAR))
+	UnitCombat.take_casualties(u, 10, _attacker_at(REAR))
 	assert_eq(u.soldiers, 100, "rear hit doubles casualties (10 -> 20)")
 
 
 func test_casualties_erode_morale() -> void:
 	var u := _make_unit(120)
-	u.take_casualties(10, _attacker_at(FRONT))
+	UnitCombat.take_casualties(u, 10, _attacker_at(FRONT))
 	assert_lt(u.morale, 100.0, "taking losses lowers morale")
 
 
 func test_lethal_casualties_kill_the_unit() -> void:
 	var u := _make_unit(120)
-	u.take_casualties(1000, _attacker_at(FRONT))
+	UnitCombat.take_casualties(u, 1000, _attacker_at(FRONT))
 	assert_eq(u.soldiers, 0, "soldiers floored at 0")
 	assert_eq(u.state, Unit.State.DEAD, "a wiped-out unit dies")
 
 
 func test_dead_unit_ignores_further_casualties() -> void:
 	var u := _make_unit(120)
-	u.take_casualties(1000, _attacker_at(FRONT))   # kills it
-	u.take_casualties(10, _attacker_at(FRONT))     # should be a no-op
+	UnitCombat.take_casualties(u, 1000, _attacker_at(FRONT))   # kills it
+	UnitCombat.take_casualties(u, 10, _attacker_at(FRONT))     # should be a no-op
 	assert_eq(u.soldiers, 0, "a dead unit takes no more casualties")
 
 
@@ -475,7 +475,7 @@ func test_charge_full_on_headon_gallop() -> void:
 	enemy.position = Vector2(100, 0)                  # straight ahead
 	u._approach_velocity = Vector2(u.move_speed, 0)   # full-speed, dead-on
 	var expected: float = 1.0 + Unit.CHARGE_BONUS_AT_REF_SPEED * (u.move_speed / Unit.CHARGE_REFERENCE_SPEED)
-	assert_almost_eq(u.charge_multiplier(enemy), expected, 0.001,
+	assert_almost_eq(UnitCombat.charge_multiplier(u, enemy), expected, 0.001,
 		"a full-speed head-on charge lands the full momentum bonus")
 
 
@@ -486,7 +486,7 @@ func test_charge_none_when_stationary() -> void:
 	enemy.team = 1
 	enemy.position = Vector2(100, 0)
 	u._approach_velocity = Vector2.ZERO              # carrying no momentum
-	assert_almost_eq(u.charge_multiplier(enemy), 1.0, 0.001,
+	assert_almost_eq(UnitCombat.charge_multiplier(u, enemy), 1.0, 0.001,
 		"a stationary cavalry unit (no impact velocity) gets no charge")
 
 
@@ -497,7 +497,7 @@ func test_charge_ignores_motion_across_the_target() -> void:
 	enemy.team = 1
 	enemy.position = Vector2(100, 0)                 # target on the +x axis
 	u._approach_velocity = Vector2(0, u.move_speed)  # moving perpendicular to it
-	assert_almost_eq(u.charge_multiplier(enemy), 1.0, 0.001,
+	assert_almost_eq(UnitCombat.charge_multiplier(u, enemy), 1.0, 0.001,
 		"velocity across the target (not toward it) earns no charge")
 
 
@@ -508,9 +508,9 @@ func test_charge_glancing_is_between_none_and_full() -> void:
 	enemy.team = 1
 	enemy.position = Vector2(100, 0)
 	u._approach_velocity = Vector2(u.move_speed, 0)
-	var full: float = u.charge_multiplier(enemy)
+	var full: float = UnitCombat.charge_multiplier(u, enemy)
 	u._approach_velocity = Vector2(1, 1).normalized() * u.move_speed   # 45-degree approach
-	var glancing: float = u.charge_multiplier(enemy)
+	var glancing: float = UnitCombat.charge_multiplier(u, enemy)
 	assert_gt(glancing, 1.0, "a glancing charge still lands some bonus")
 	assert_lt(glancing, full, "but less than a head-on charge at the same speed")
 
@@ -522,9 +522,9 @@ func test_charge_into_spears_backfires_into_a_penalty() -> void:
 	spear.team = 1
 	spear.position = Vector2(100, 0)
 	u._approach_velocity = Vector2(u.move_speed, 0)  # full charge onto braced spears
-	assert_lt(u.charge_multiplier(spear), 1.0,
+	assert_lt(UnitCombat.charge_multiplier(u, spear), 1.0,
 		"charging a braced spear line backfires into a damage penalty")
-	assert_gte(u.charge_multiplier(spear), Unit.ANTI_CAV_CHARGE_FLOOR,
+	assert_gte(UnitCombat.charge_multiplier(u, spear), Unit.ANTI_CAV_CHARGE_FLOOR,
 		"the backfire is floored so it never zeroes the rider's damage")
 
 
@@ -535,7 +535,7 @@ func test_non_cavalry_never_charges() -> void:
 	enemy.team = 1
 	enemy.position = Vector2(100, 0)
 	u._approach_velocity = Vector2(u.move_speed, 0)
-	assert_almost_eq(u.charge_multiplier(enemy), 1.0, 0.001,
+	assert_almost_eq(UnitCombat.charge_multiplier(u, enemy), 1.0, 0.001,
 		"only cavalry get a charge bonus")
 
 
@@ -546,7 +546,7 @@ func test_cavalry_does_not_charge_cavalry() -> void:
 	enemy.team = 1
 	enemy.position = Vector2(100, 0)
 	u._approach_velocity = Vector2(u.move_speed, 0)
-	assert_almost_eq(u.charge_multiplier(enemy), 1.0, 0.001,
+	assert_almost_eq(UnitCombat.charge_multiplier(u, enemy), 1.0, 0.001,
 		"a charge doesn't apply cavalry-vs-cavalry")
 
 
@@ -579,7 +579,7 @@ func test_strike_spends_the_charge_velocity() -> void:
 	var enemy := _make_unit()
 	enemy.team = 1
 	enemy.position = Vector2(100, 0)
-	u._strike(enemy)
+	UnitCombat.strike(u, enemy)
 	assert_eq(u._approach_velocity, Vector2.ZERO,
 		"a strike consumes the carried impact velocity")
 
@@ -614,7 +614,7 @@ func test_stationary_cavalry_takes_no_spear_penalty() -> void:
 	spear.team = 1
 	spear.position = Vector2(100, 0)
 	u._approach_velocity = Vector2.ZERO      # standing, not charging
-	assert_almost_eq(u.charge_multiplier(spear), 1.0, 0.001,
+	assert_almost_eq(UnitCombat.charge_multiplier(u, spear), 1.0, 0.001,
 		"a stationary (non-charging) cavalry unit takes no anti-cavalry penalty")
 
 
@@ -1100,7 +1100,7 @@ func test_merge_blends_using_current_soldiers_not_max() -> void:
 	# A depleted unit contributes its CURRENT strength to the weighted blend,
 	# while max_soldiers still sums.
 	var a := _make_unit(100)
-	a.take_casualties(30, _attacker_at(FRONT))   # 100 -> 70 soldiers
+	UnitCombat.take_casualties(a, 30, _attacker_at(FRONT))   # 100 -> 70 soldiers
 	a.attack = 10
 	var b := _make_unit(60)
 	b.attack = 20
@@ -1473,12 +1473,12 @@ func test_tight_formation_reduces_cavalry_charge_bonus() -> void:
 	var normal_target := _make_unit()
 	normal_target.team = 1
 	normal_target.position = Vector2(100, 0)
-	var full_charge: float = cav.charge_multiplier(normal_target)
+	var full_charge: float = UnitCombat.charge_multiplier(cav, normal_target)
 	var tight_target := _make_unit()
 	tight_target.team = 1
 	tight_target.position = Vector2(100, 0)
 	tight_target.set_formation(Unit.FORMATION_TIGHT)
-	var reduced_charge: float = cav.charge_multiplier(tight_target)
+	var reduced_charge: float = UnitCombat.charge_multiplier(cav, tight_target)
 	assert_gt(full_charge, reduced_charge,
 		"TIGHT formation absorbs part of the cavalry charge bonus")
 	assert_gt(reduced_charge, 1.0,
@@ -1620,7 +1620,7 @@ func test_friendly_fire_intercepts_unit_in_path() -> void:
 	var enemy_before: int = enemy.soldiers
 	var blocker_before: int = blocker.soldiers
 
-	archer._shoot(enemy)
+	UnitCombat.shoot(archer, enemy)
 
 	assert_eq(enemy.soldiers, enemy_before,
 		"enemy is unhurt when a friendly intercepts the shot")
@@ -1647,7 +1647,7 @@ func test_no_friendly_fire_when_path_clear() -> void:
 	var enemy_before: int = enemy.soldiers
 	var bystander_before: int = bystander.soldiers
 
-	archer._shoot(enemy)
+	UnitCombat.shoot(archer, enemy)
 
 	assert_lt(enemy.soldiers, enemy_before,
 		"enemy takes damage when the path is clear")
@@ -1665,7 +1665,7 @@ func test_interceptor_returns_null_when_only_enemy_in_path() -> void:
 	enemy.team = 1
 	enemy.position = Vector2(160, 0)
 
-	assert_null(archer._friendly_interceptor(enemy),
+	assert_null(UnitCombat.friendly_interceptor(archer, enemy),
 		"no interceptor when only the enemy is in the path")
 
 
@@ -1683,7 +1683,7 @@ func test_interceptor_skips_unit_past_target() -> void:
 	enemy.team = 1
 	enemy.position = Vector2(160, 0)
 
-	assert_null(archer._friendly_interceptor(enemy),
+	assert_null(UnitCombat.friendly_interceptor(archer, enemy),
 		"friendly unit past the target is not counted as an interceptor")
 
 

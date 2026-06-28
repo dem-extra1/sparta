@@ -385,7 +385,7 @@ func _think(delta: float) -> void:
 			_face(enemy.position)
 			if _attack_cd <= 0.0:
 				_attack_cd = RANGED_INTERVAL
-				_shoot(enemy)
+				UnitCombat.shoot(self, enemy)
 			return
 		# Fight when in contact, UNLESS the player gave a plain move order with no
 		# explicit attack target — that's a disengage command, so march off and let
@@ -396,7 +396,7 @@ func _think(delta: float) -> void:
 			_face(enemy.position)
 			if _attack_cd <= 0.0:
 				_attack_cd = ATTACK_INTERVAL
-				_strike(enemy)
+				UnitCombat.strike(self, enemy)
 			# Press into contact: a committed melee unit keeps advancing onto the enemy
 			# while it fights, so the lines close to body contact (separation provides the
 			# counterforce, settling them at the engaged-enemy front-rank floor) instead
@@ -455,13 +455,13 @@ func _support_tick(delta: float) -> void:
 			_face(threat.position)
 			if _attack_cd <= 0.0:
 				_attack_cd = RANGED_INTERVAL
-				_shoot(threat)
+				UnitCombat.shoot(self, threat)
 		elif in_contact:
 			state = State.FIGHTING
 			_face(threat.position)
 			if _attack_cd <= 0.0:
 				_attack_cd = ATTACK_INTERVAL
-				_strike(threat)
+				UnitCombat.strike(self, threat)
 		else:
 			_move_to(threat.position, delta)
 		return
@@ -924,193 +924,18 @@ func _separation_candidates() -> Array:
 	return all
 
 
-# --- Combat ----------------------------------------------------------------
-
-## Physics-based cavalry charge multiplier: the bonus is the rider's IMPACT
-## MOMENTUM, not a one-shot token. It scales with the component of the unit's approach
-## velocity aimed straight at the target — so a fast, head-on gallop lands the full
-## bonus, a shallow/glancing approach lands less, and a near-stationary unit (a unit
-## grinding in melee, or a shadowing supporter) lands none. Cavalry only, and not
-## against other cavalry. Anti-cavalry spearmen brace and turn it into a speed-scaled
-## penalty (charging onto set spears backfires) — so a cavalry unit that ISN'T moving
-## carries no momentum and fights spearmen at x1.0, neither charging nor impaling itself
-## (intended; the old model applied a flat first-strike x0.6 even when stationary).
-## Deterministic — derived from positions and move_speed, which live play and replay
-## reach identically — so replays stay exact.
-func charge_multiplier(enemy: Unit) -> float:
-	if not is_cavalry or enemy.is_cavalry:
-		return 1.0
-	var to_target: Vector2 = enemy.position - position
-	if to_target.length() < 0.001:
-		return 1.0
-	# Speed directed at the target (combines closing speed and angle, relative to it).
-	var speed_toward: float = maxf(0.0, _approach_velocity.dot(to_target.normalized()))
-	var charge: float = CHARGE_BONUS_AT_REF_SPEED * (speed_toward / CHARGE_REFERENCE_SPEED)
-	if enemy.anti_cavalry:
-		# A braced spear line reverses the charge into a penalty that grows with the
-		# closing speed, floored so it never drops below the old flat x0.6.
-		return maxf(ANTI_CAV_CHARGE_FLOOR, 1.0 - charge * ANTI_CAV_CHARGE_BACKFIRE)
-	# Tight formation: soldiers brace for impact, absorbing a fraction of the
-	# charge bonus (but not reversing it — that's the spearmen's specialty).
-	if enemy.formation_mode == FORMATION_TIGHT:
-		return 1.0 + charge * (1.0 - TIGHT_CHARGE_ABSORPTION)
-	return 1.0 + charge
-
-
-func _strike(enemy: Unit) -> void:
-	# Phase 4b: when both regiments have an engaged soldier layer, resolve melee per
-	# soldier (the model's opposed roll + wound against per-soldier health) instead of
-	# the regiment damage formula. This is where flanking, reach (spear vs. sword,
-	# #240), and charge fall out of geometry. Ranged volleys and any non-engaged edge
-	# case fall through to the formula below.
-	if INDIVIDUAL_COLLISION and not is_ranged and is_engaged() and enemy.is_engaged() \
-			and not _sim_soldier_pos.is_empty() and not enemy._sim_soldier_pos.is_empty():
-		resolve_soldier_melee(enemy)
-		_approach_velocity = Vector2.ZERO   # spend the charge on this contact strike
-		Sfx.play(&"hit")
-		return
-
-	# Tired troops hit softer; a freshly-merged unit hits softer still until it
-	# gels. Both scale effective attack before defence.
-	var eff_attack: float = float(attack) * fatigue_attack_factor() * cohesion
-	var base: float = maxf(1.0, eff_attack - float(enemy.defense))
-	# Draw from the seeded replay RNG (one stream, stable order) so battles are
-	# reproducible. This is the simulation's only source of randomness.
-	var dmg: float = base * Replay.rng.randf_range(0.6, 1.4)
-
-	# Cavalry charge: a momentum-scaled bonus (or a backfire onto braced spears),
-	# computed from the rider's impact velocity at this contact. Spend it so the
-	# charge lands only on this first, contact-making strike — not the grinding strikes
-	# that follow in the same melee.
-	dmg *= charge_multiplier(enemy)
-	_approach_velocity = Vector2.ZERO
-
-	Sfx.play(&"hit")   # presentation only; throttled in Sfx so a line doesn't roar
-	enemy.take_casualties(int(round(dmg)), self)
-
+# --- Combat -----------------------------------------------------------------
+# The regiment-level combat resolution (charge multiplier, strike, volley,
+# friendly-fire interception, casualty/morale/rout bookkeeping) lives in UnitCombat;
+# the AI brain and support tick call UnitCombat.strike/shoot. Only resolve_soldier_melee
+# stays here — a thin delegate to the per-soldier SoldierMelee, kept for _strike and the
+# soldier-melee tests.
 
 ## Resolve a melee cadence per soldier against `enemy`. The resolution lives in
 ## SoldierMelee.resolve (the opposed contest, the wound to per-soldier health, and
-## the death/re-pack); this thin wrapper keeps the call from _strike and the tests.
+## the death/re-pack); this thin wrapper keeps the call from UnitCombat and the tests.
 func resolve_soldier_melee(enemy: Unit) -> void:
 	SoldierMelee.resolve(self, enemy)
-
-
-## A ranged volley: like a melee strike without the cavalry charge, scaled
-## by RANGED_DAMAGE_FACTOR — archers trade per-hit punch for striking from beyond
-## melee reach. Draws from the same seeded RNG stream so battles stay reproducible.
-## Damage flows through take_casualties, so volleys inherit the same flank/rear
-## multiplier as melee (relative to the TARGET's facing): fire into a flank or
-## rear deals the full 1.5x / 2.0x bonus, so archers in a pincer hit notably
-## harder than head-on.
-func _shoot(enemy: Unit) -> void:
-	# RNG consumed first so the seeded stream stays deterministic regardless of
-	# which unit is ultimately hit.
-	var rng_roll: float = Replay.rng.randf_range(0.6, 1.4)
-	var interceptor: Unit = _friendly_interceptor(enemy)
-	var target: Unit = enemy if interceptor == null else interceptor
-	var eff_attack: float = float(attack) * fatigue_attack_factor() * cohesion
-	var base: float = maxf(1.0, eff_attack - float(target.defense))
-	var dmg: float = base * RANGED_DAMAGE_FACTOR * rng_roll * target.missile_defense_factor()
-	Sfx.play(&"shoot")
-	# Cosmetic volley trail: arrows streak toward whoever was actually hit, so the
-	# player can see why a friendly is taking damage. Spawned on the (deterministic)
-	# sim tick but animated/faded on render time — no effect on replays.
-	if is_inside_tree():
-		VolleyTrail.spawn(get_parent(), global_position, target.global_position, team_color)
-	target.take_casualties(int(round(dmg)), self)
-
-
-## Return the nearest living friendly unit that lies in the straight-line flight
-## path from this unit toward `target`, or null if the path is clear. A friendly
-## blocks a shot when their centre is within their own separation_radius of the
-## flight line AND the closest point on that line is strictly between shooter and
-## target (projection in [0.05, 0.95]).
-func _friendly_interceptor(target: Unit) -> Unit:
-	var seg: Vector2 = target.position - position
-	var seg_len_sq: float = seg.length_squared()
-	if seg_len_sq < 0.001:
-		return null
-	var closest: Unit = null
-	var closest_proj: float = INF
-	for u_node in get_tree().get_nodes_in_group("units"):
-		var u: Unit = u_node as Unit
-		if u == null or u == self or u.team != team or u.state == State.DEAD:
-			continue
-		var proj: float = (u.position - position).dot(seg) / seg_len_sq
-		if proj < 0.05 or proj > 0.95:
-			continue
-		var foot: Vector2 = position + seg * proj
-		if (u.position - foot).length() < u.separation_radius and proj < closest_proj:
-			closest = u
-			closest_proj = proj
-	return closest
-
-
-## Called by an attacker. Applies flanking from THIS unit's facing.
-func take_casualties(amount: int, attacker: Unit) -> void:
-	if state == State.DEAD or state == State.ROUTING:
-		return
-
-	var flank: float = _flank_multiplier(attacker)
-	var total: int = max(1, int(round(amount * flank)))
-	soldiers -= total
-	# The flank multiplier scales the morale hit too (a rout from being taken in the
-	# rear). The per-soldier melee path passes flank 1.0 — it models facing in the
-	# strike contest instead, so the directional penalty isn't applied twice.
-	_register_casualties(total, attacker, flank)
-
-
-## Apply the consequences of `total` casualties ALREADY subtracted from `soldiers`:
-## morale erosion (scaled by `morale_flank`), the thin-regiment crumble, death/rout
-## thresholds, and the cosmetic fallen markers. Shared by the regiment-formula path
-## (take_casualties) and the per-soldier melee path (which compacts the dead bodies
-## and decrements `soldiers` itself, then calls this with morale_flank 1.0).
-func _register_casualties(total: int, attacker: Unit, morale_flank: float) -> void:
-	morale -= float(total) * 0.12 * morale_flank
-	var ratio: float = float(soldiers) / float(max_soldiers)
-	if ratio < 0.4:
-		morale -= (0.4 - ratio) * 6.0   # crumble as a regiment thins out
-
-	if soldiers <= 0:
-		soldiers = 0
-		_die()
-		Sfx.play(&"death")
-	elif morale <= 0.0:
-		_rout()
-		Sfx.play(&"rout")
-
-	# Cosmetic "men fall" markers (Stage C): drop a small fading heap of bodies on the
-	# contact edge where this strike's casualties fell, leaning toward where the blow came
-	# from. Spawned on the deterministic sim tick but render-only — no sim group, no
-	# Replay.rng — so it has no simulation/replay/determinism impact (same contract as the
-	# volley trail and rout shockwave). Guarded by is_inside_tree() like those.
-	if is_inside_tree():
-		var edge: Vector2 = global_position
-		if is_instance_valid(attacker):
-			# World-space throughout: edge is global_position, so the direction to the
-			# attacker must be a global delta too. Mixing in local `position` would skew
-			# the offset if the units' parent ever had a non-identity transform.
-			var toward: Vector2 = attacker.global_position - global_position
-			if toward.length() > 0.001:
-				edge += toward.normalized() * _block_extent
-		# Cavalry leave bigger bodies (matching their larger live marks); foot soldiers the default.
-		var body_r: float = CAV_MARK_RADIUS if is_cavalry else MARK_RADIUS
-		Fallen.spawn(get_parent(), edge, team_color, total, body_r)
-
-	queue_redraw()
-
-
-## 1.0 = frontal, 1.5 = flank, 2.0 = rear (relative to our facing).
-func _flank_multiplier(attacker: Unit) -> float:
-	var to_attacker: Vector2 = (attacker.position - position).normalized()
-	var d: float = facing.dot(to_attacker)
-	if d >= 0.35:
-		return 1.0
-	elif d >= -0.5:
-		return 1.5
-	else:
-		return 2.0
 
 
 # --- Fatigue & line relief --------------------------------------------

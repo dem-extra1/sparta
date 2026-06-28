@@ -90,4 +90,4 @@ static func reap(unit: Unit, killer: Unit) -> void:
 	if dead == 0:
 		return
 	unit.soldiers = maxi(0, unit.soldiers - dead)
-	unit._register_casualties(dead, killer, 1.0)
+	UnitCombat.register_casualties(unit, dead, killer, 1.0)
