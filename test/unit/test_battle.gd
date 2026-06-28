@@ -190,7 +190,7 @@ func test_plain_order_clears_a_prior_support_ward() -> void:
 func test_relief_order_skips_response_delay() -> void:
 	# The primary reliever must advance immediately — a delay lets the tired unit
 	# retreat into an uncovered gap. _apply_order_cmd skips start_order_response()
-	# for the unit that calls begin_relief(), so its timer stays at 0.0.
+	# for the unit that calls UnitRelief.begin(), so its timer stays at 0.0.
 	var fresh := _unit(1, Vector2.ZERO)
 	fresh.team = 0
 	fresh.order_response_delay = 0.5

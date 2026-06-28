@@ -419,8 +419,8 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			elif not relieved:
 				# Relief: the first reliever swaps with the tired unit; any others
 				# just advance on the same fight so they don't shove the retreating unit.
-				u.begin_relief(target_unit)
-				# Capture the foe begin_relief() resolved (it clears the tired
+				UnitRelief.begin(u, target_unit)
+				# Capture the foe UnitRelief.begin() resolved (it clears the tired
 				# unit's target_enemy, so later relievers can't read it from there).
 				relief_foe = u.target_enemy
 				relieved = true
