@@ -964,7 +964,7 @@ func test_enemy_infantry_still_separates_softly_from_spearman() -> void:
 func test_fatigue_builds_while_fighting() -> void:
 	var u := _make_unit()
 	u.state = Unit.State.FIGHTING
-	u.tick_fatigue(1.0)
+	UnitMorale.tick_fatigue(u, 1.0)
 	assert_almost_eq(u.fatigue, 8.0, 0.001, "a fighting unit accrues fatigue")
 
 
@@ -972,16 +972,16 @@ func test_fatigue_recovers_while_resting() -> void:
 	var u := _make_unit()
 	u.fatigue = 20.0
 	u.state = Unit.State.IDLE
-	u.tick_fatigue(1.0)
+	UnitMorale.tick_fatigue(u, 1.0)
 	assert_almost_eq(u.fatigue, 15.0, 0.001, "a resting unit recovers fatigue")
 
 
 func test_fatigue_reduces_attack_factor() -> void:
 	var u := _make_unit()
 	u.fatigue = 0.0
-	assert_almost_eq(u.fatigue_attack_factor(), 1.0, 0.001, "fresh = full attack")
+	assert_almost_eq(UnitMorale.fatigue_attack_factor(u), 1.0, 0.001, "fresh = full attack")
 	u.fatigue = 100.0
-	assert_almost_eq(u.fatigue_attack_factor(), 0.6, 0.001, "spent = 60% attack")
+	assert_almost_eq(UnitMorale.fatigue_attack_factor(u), 0.6, 0.001, "spent = 60% attack")
 
 
 func test_relief_swaps_the_fight_and_exempts_the_pair() -> void:
@@ -1072,7 +1072,7 @@ func test_merge_starts_with_a_strangers_debuff() -> void:
 	var b := _make_unit(60)
 	a.absorb(b)
 	assert_lt(a.cohesion, 1.0, "a freshly merged unit starts below full cohesion")
-	a.tick_cohesion(1.0)
+	UnitMorale.tick_cohesion(a, 1.0)
 	assert_almost_eq(a.cohesion, Unit.MERGE_COHESION_FLOOR + 0.1, 0.001,
 		"cohesion ramps back toward full over time")
 
@@ -1693,7 +1693,7 @@ func test_morale_recovers_while_idle() -> void:
 	var u := _make_unit()
 	u.morale = 50.0
 	u.state = Unit.State.IDLE
-	u.tick_morale(1.0)
+	UnitMorale.tick_morale(u, 1.0)
 	assert_almost_eq(u.morale, 52.0, 0.001, "an idle unit recovers morale at MORALE_RECOVER_PER_SEC")
 
 
@@ -1701,7 +1701,7 @@ func test_morale_does_not_recover_while_fighting() -> void:
 	var u := _make_unit()
 	u.morale = 50.0
 	u.state = Unit.State.FIGHTING
-	u.tick_morale(1.0)
+	UnitMorale.tick_morale(u, 1.0)
 	assert_almost_eq(u.morale, 50.0, 0.001, "a fighting unit does not recover morale")
 
 
@@ -1709,7 +1709,7 @@ func test_morale_recovers_while_moving() -> void:
 	var u := _make_unit()
 	u.morale = 80.0
 	u.state = Unit.State.MOVING
-	u.tick_morale(1.0)
+	UnitMorale.tick_morale(u, 1.0)
 	assert_almost_eq(u.morale, 82.0, 0.001, "a moving unit also recovers morale")
 
 
@@ -1717,7 +1717,7 @@ func test_morale_caps_at_100_during_recovery() -> void:
 	var u := _make_unit()
 	u.morale = 99.5
 	u.state = Unit.State.IDLE
-	u.tick_morale(1.0)
+	UnitMorale.tick_morale(u, 1.0)
 	assert_almost_eq(u.morale, 100.0, 0.001, "morale recovery does not exceed 100")
 
 
@@ -1806,7 +1806,7 @@ func test_untrained_unit_builds_fatigue_at_full_rate() -> void:
 	u.training = 0.0
 	u.state = Unit.State.FIGHTING
 	var before := u.fatigue
-	u.tick_fatigue(1.0)
+	UnitMorale.tick_fatigue(u, 1.0)
 	var expected := before + Unit.FATIGUE_PER_SEC
 	assert_almost_eq(u.fatigue, expected, 0.001,
 			"untrained unit fatigues at full FATIGUE_PER_SEC")
@@ -1817,7 +1817,7 @@ func test_fully_trained_unit_builds_fatigue_at_half_rate() -> void:
 	u.training = 1.0
 	u.state = Unit.State.FIGHTING
 	var before := u.fatigue
-	u.tick_fatigue(1.0)
+	UnitMorale.tick_fatigue(u, 1.0)
 	var expected := before + Unit.FATIGUE_PER_SEC * (1.0 - Unit.RANK_CYCLE_FATIGUE_REDUCTION)
 	assert_almost_eq(u.fatigue, expected, 0.001,
 			"fully trained unit fatigues at half rate due to rank cycling")
@@ -1829,7 +1829,7 @@ func test_ranged_unit_gets_no_rank_cycle_fatigue_reduction() -> void:
 	u.is_ranged = true
 	u.state = Unit.State.FIGHTING
 	var before := u.fatigue
-	u.tick_fatigue(1.0)
+	UnitMorale.tick_fatigue(u, 1.0)
 	var expected := before + Unit.FATIGUE_PER_SEC
 	assert_almost_eq(u.fatigue, expected, 0.001,
 			"ranged units don't cycle ranks; full fatigue rate applies")
@@ -1841,7 +1841,7 @@ func test_well_trained_melee_unit_recovers_morale_while_fighting() -> void:
 	u.state = Unit.State.FIGHTING
 	u.morale = 50.0
 	var before := u.morale
-	u.tick_morale(1.0)
+	UnitMorale.tick_morale(u, 1.0)
 	assert_gt(u.morale, before,
 			"well-trained melee unit recovers morale while fighting via rank cycling")
 
@@ -1852,7 +1852,7 @@ func test_poorly_trained_unit_does_not_recover_morale_while_fighting() -> void:
 	u.state = Unit.State.FIGHTING
 	u.morale = 50.0
 	var before := u.morale
-	u.tick_morale(1.0)
+	UnitMorale.tick_morale(u, 1.0)
 	assert_eq(u.morale, before,
 			"unit below training threshold gains no morale while fighting")
 
@@ -1864,7 +1864,7 @@ func test_ranged_unit_does_not_recover_morale_while_fighting() -> void:
 	u.state = Unit.State.FIGHTING
 	u.morale = 50.0
 	var before := u.morale
-	u.tick_morale(1.0)
+	UnitMorale.tick_morale(u, 1.0)
 	assert_eq(u.morale, before,
 			"ranged units don't cycle ranks; no morale recovery while fighting")
 

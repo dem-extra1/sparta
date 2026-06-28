@@ -309,9 +309,9 @@ func _physics_process(delta: float) -> void:
 	# walk straight through (or over) the one in front of it.
 	_separate()
 
-	tick_fatigue(delta)
-	tick_cohesion(delta)
-	tick_morale(delta)
+	UnitMorale.tick_fatigue(self, delta)
+	UnitMorale.tick_cohesion(self, delta)
+	UnitMorale.tick_morale(self, delta)
 	tick_engaged(delta)
 	_update_relief()
 
@@ -938,41 +938,10 @@ func resolve_soldier_melee(enemy: Unit) -> void:
 	SoldierMelee.resolve(self, enemy)
 
 
-# --- Fatigue & line relief --------------------------------------------
-
-## Fatigue builds while fighting and recovers while resting. Well-trained melee
-## units cycle their ranks, reducing effective buildup by up to RANK_CYCLE_FATIGUE_REDUCTION.
-func tick_fatigue(delta: float) -> void:
-	if state == State.FIGHTING:
-		var cycle_reduction := 0.0 if is_ranged else training * RANK_CYCLE_FATIGUE_REDUCTION
-		fatigue = minf(100.0, fatigue + FATIGUE_PER_SEC * (1.0 - cycle_reduction) * delta)
-	else:
-		fatigue = maxf(0.0, fatigue - FATIGUE_RECOVER_PER_SEC * delta)
-
-
-## Attack multiplier from fatigue: 1.0 fresh, down to (1 - max penalty) spent.
-func fatigue_attack_factor() -> float:
-	return 1.0 - FATIGUE_MAX_ATTACK_PENALTY * (fatigue / 100.0)
-
-
-## The "strangers" cohesion debuff from a merge ramps back to full over time.
-func tick_cohesion(delta: float) -> void:
-	if cohesion < 1.0:
-		cohesion = minf(1.0, cohesion + COHESION_RECOVER_PER_SEC * delta)
-
-
-## Morale recovers when resting; well-trained melee units also sustain it while
-## fighting via visible rank rotation keeping the formation steady.
-func tick_morale(delta: float) -> void:
-	if state != State.FIGHTING and morale < 100.0:
-		morale = minf(100.0, morale + MORALE_RECOVER_PER_SEC * delta)
-	elif state == State.FIGHTING and not is_ranged \
-			and training >= RANK_CYCLE_MORALE_THRESHOLD and morale < 100.0:
-		var recovery := RANK_CYCLE_MORALE_PER_SEC \
-				* ((training - RANK_CYCLE_MORALE_THRESHOLD) / (1.0 - RANK_CYCLE_MORALE_THRESHOLD)) \
-				* delta
-		morale = minf(100.0, morale + recovery)
-
+# --- Merge & line relief ----------------------------------------------------
+# The per-tick condition updates (fatigue, cohesion, morale) live in UnitMorale; Unit's
+# _physics_process calls UnitMorale.tick_* each frame. The merge (absorb) and line-relief
+# swap below stay here.
 
 ## Start the order-response countdown. Called by Battle after stamping new
 ## motion fields onto the unit. The unit holds its current action for

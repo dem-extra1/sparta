@@ -50,7 +50,7 @@ static func strike(u: Unit, enemy: Unit) -> void:
 
 	# Tired troops hit softer; a freshly-merged unit hits softer still until it gels.
 	# Both scale effective attack before defence.
-	var eff_attack: float = float(u.attack) * u.fatigue_attack_factor() * u.cohesion
+	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion
 	var base: float = maxf(1.0, eff_attack - float(enemy.defense))
 	# Draw from the seeded replay RNG (one stream, stable order) so battles are
 	# reproducible. This is the simulation's only source of randomness.
@@ -77,7 +77,7 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	var rng_roll: float = Replay.rng.randf_range(0.6, 1.4)
 	var interceptor: Unit = friendly_interceptor(u, enemy)
 	var target: Unit = enemy if interceptor == null else interceptor
-	var eff_attack: float = float(u.attack) * u.fatigue_attack_factor() * u.cohesion
+	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion
 	var base: float = maxf(1.0, eff_attack - float(target.defense))
 	var dmg: float = base * Unit.RANGED_DAMAGE_FACTOR * rng_roll * target.missile_defense_factor()
 	Sfx.play(&"shoot")
