@@ -448,6 +448,9 @@ func _draw_demo_pointer() -> void:
 	var p: Dictionary = Replay.pointer_for_tick(tick)
 	if p.is_empty():
 		return
+	# Discrete state (selection, drag, stance) snaps at keyframes via `p`; the cursor itself
+	# interpolates between keyframes so it visibly glides rather than teleporting.
+	var cursor: Vector2 = Replay.pointer_cursor_for_tick(tick)
 
 	# Selection halos: a yellow ring around each still-living selected unit, matching the
 	# live selection ring (units aren't flagged `selected` during playback, so draw it here).
@@ -456,8 +459,7 @@ func _draw_demo_pointer() -> void:
 		if u != null and u.state != UnitRef.State.DEAD:
 			draw_arc(u.global_position, u._block_extent + 4.0, 0.0, TAU, 36, DEMO_SELECT_COLOR, 2.0)
 
-	# Drag-box: the marquee from its recorded start corner to the cursor.
-	var cursor := Vector2(p["x"], p["y"])
+	# Drag-box: the marquee from its recorded start corner to the (gliding) cursor.
 	if bool(p["drag"]):
 		var rect := Rect2(Vector2(p["sx"], p["sy"]), cursor - Vector2(p["sx"], p["sy"])).abs()
 		draw_rect(rect, Color(0.4, 0.9, 0.4, 0.15))

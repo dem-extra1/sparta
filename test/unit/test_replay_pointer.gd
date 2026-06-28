@@ -86,6 +86,25 @@ func test_pointer_for_tick_empty_without_track_or_playback() -> void:
 	assert_eq(r.pointer_for_tick(0), {}, "no track / not playing back -> empty")
 
 
+func test_cursor_interpolates_between_keyframes() -> void:
+	var r := _fresh()
+	r.mode = ReplayScript.Mode.PLAYBACK
+	r._pointer_track = [
+		{"tick": 0, "x": 0.0, "y": 0.0, "drag": false, "sel": [], "mode": 0},
+		{"tick": 10, "x": 100.0, "y": 0.0, "drag": false, "sel": [], "mode": 0},
+	]
+	assert_eq(r.pointer_cursor_for_tick(0), Vector2(0, 0), "at the first keyframe")
+	assert_almost_eq(r.pointer_cursor_for_tick(5).x, 50.0, 0.001, "halfway glides to the midpoint")
+	assert_almost_eq(r.pointer_cursor_for_tick(8).x, 80.0, 0.001, "four-fifths of the way")
+	assert_eq(r.pointer_cursor_for_tick(10), Vector2(100, 0), "at the next keyframe")
+	assert_eq(r.pointer_cursor_for_tick(20), Vector2(100, 0), "past the last keyframe it holds the last")
+
+
+func test_cursor_is_zero_without_track_or_playback() -> void:
+	var r := _fresh()   # IDLE
+	assert_eq(r.pointer_cursor_for_tick(0), Vector2.ZERO, "no track / not playing back -> zero")
+
+
 func test_pulses_return_recent_orders_with_age() -> void:
 	var r := _fresh()
 	r.mode = ReplayScript.Mode.PLAYBACK

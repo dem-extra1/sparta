@@ -331,6 +331,32 @@ func pointer_for_tick(tick: int) -> Dictionary:
 	return _pointer_track[_pointer_index]
 
 
+## PLAYBACK: the cursor position at `tick`, linearly interpolated between the surrounding
+## pointer keyframes so the cursor visibly GLIDES between samples instead of snapping --
+## the discrete state (selection, drag, stance from pointer_for_tick) still changes at
+## keyframe boundaries, only the cursor moves continuously. Holds the first/last position
+## outside the track's range. Returns ZERO when not in playback or no track is loaded
+## (callers gate on has_pointer_track). Walks the same _pointer_index as pointer_for_tick.
+func pointer_cursor_for_tick(tick: int) -> Vector2:
+	if mode != Mode.PLAYBACK or _pointer_track.is_empty():
+		return Vector2.ZERO
+	if _pointer_index > 0 and int(_pointer_track[_pointer_index]["tick"]) > tick:
+		_pointer_index = 0
+	while _pointer_index + 1 < _pointer_track.size() \
+			and int(_pointer_track[_pointer_index + 1]["tick"]) <= tick:
+		_pointer_index += 1
+	var cur: Dictionary = _pointer_track[_pointer_index]
+	var cur_pos := Vector2(cur["x"], cur["y"])
+	if _pointer_index + 1 >= _pointer_track.size():
+		return cur_pos
+	var nxt: Dictionary = _pointer_track[_pointer_index + 1]
+	var span: float = float(int(nxt["tick"]) - int(cur["tick"]))
+	if span <= 0.0:
+		return cur_pos
+	var f: float = clampf(float(tick - int(cur["tick"])) / span, 0.0, 1.0)
+	return cur_pos.lerp(Vector2(nxt["x"], nxt["y"]), f)
+
+
 ## PLAYBACK: positions of orders issued within `window` ticks before `tick`, each with its
 ## age in ticks, so the overlay can pulse a ring where each order was just commanded. All
 ## recorded orders are the player's own. Read-only — does not disturb the orders_for_tick
