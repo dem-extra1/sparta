@@ -1,6 +1,6 @@
 {
-  "replay": "demos/scenarios/drag-form-up.json",
-  "caption": "Drag-to-form-up: right-click-drag from the left flank to the right flank deploys the selected regiment along that line -- the green deploy line and forward arrow preview the order, then the unit marches over and wheels into an angled line at the dragged width and facing.",
+  "replay": "demos/scenarios/friendly-soldier-collision.json",
+  "caption": "Individual-level collision, phase 5 slice 1: two friendly regiments ordered onto the same spot now pack together at the SOLDIER level -- their soldiers press into tight contact instead of the regiments bouncing apart as big circles. Friendly spacing emerges from per-soldier steering plus a soldier->regiment coupling (no teleport); enemy collision and the spear-vs-cavalry hard block are unchanged. The regiment broadphase caches each regiment's block extent once per tick (O(n), not O(n²)) for scalability with large campaign stacks.",
   "fixed_fps": 60,
   "max_frames": 300,
   "fps": 30,
