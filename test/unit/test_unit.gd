@@ -1265,14 +1265,14 @@ func test_flock_render_tracks_soldier_count() -> void:
 	# The two MultiMeshes carry one instance per living soldier and follow casualties, so
 	# the block thins as men fall (the sim's `soldiers` drives the render, never vice versa).
 	var u := _make_unit(120)
-	u._update_flock(1.0 / 60.0)
+	SoldierFlock.update(u, 1.0 / 60.0)
 	# Settled + unmoved, so this _update_flock takes the early-return fast-path: the count
 	# of 120 comes from _seed_soldiers (steady state). The casualty step below is what
 	# actually exercises _update_flock's resize/refresh path.
 	assert_eq(u._mm_body.instance_count, 120, "one body instance per soldier")
 	assert_eq(u._mm_outline.instance_count, 120, "one outline instance per soldier")
 	u.soldiers = 40
-	u._update_flock(1.0 / 60.0)
+	SoldierFlock.update(u, 1.0 / 60.0)
 	assert_eq(u._mm_body.instance_count, 40, "instance count tracks casualties")
 
 
@@ -1280,7 +1280,7 @@ func test_flock_merge_growth_spawns_distinct_marks() -> void:
 	# New marks from a merge must not stack on the exact centre (where the separation step
 	# can't tell them apart and they'd drift as one blob); they spawn fanned out.
 	var u := _make_unit(60)
-	u._resize_soldiers(120)   # simulate a merge growing the regiment
+	SoldierFlock.resize(u, 120)   # simulate a merge growing the regiment
 	var seen := {}
 	for i in range(60, 120):
 		var key: String = str(u._soldier_pos[i])
@@ -1295,7 +1295,7 @@ func test_flock_marks_stay_finite_and_bounded_while_moving() -> void:
 	for _i in range(30):
 		u.position += Vector2(6, 0)
 		u.facing = Vector2(1, 0.3).normalized()
-		u._update_flock(1.0 / 60.0)
+		SoldierFlock.update(u, 1.0 / 60.0)
 	for p in u._soldier_pos:
 		assert_true(is_finite(p.x) and is_finite(p.y), "a mark stays finite while moving")
 		assert_lt(p.length(), 200.0, "a mark stays near the block, never smears off")
@@ -1390,7 +1390,7 @@ func test_fighting_block_keeps_animating_instead_of_settling() -> void:
 	var u := _make_unit(60)
 	assert_true(u._flock_settled, "a freshly-seeded, unmoved block starts settled")
 	u.state = Unit.State.FIGHTING
-	u._update_flock(1.0 / 60.0)
+	SoldierFlock.update(u, 1.0 / 60.0)
 	assert_false(u._flock_settled, "but a fighting block un-settles and keeps churning")
 
 
@@ -1876,7 +1876,7 @@ func test_hard_separate_resolves_two_coincident_marks() -> void:
 	# Stack both marks on the same point.
 	u._soldier_pos[0] = Vector2.ZERO
 	u._soldier_pos[1] = Vector2.ZERO
-	u._hard_separate_marks(Unit.MARK_RADIUS)
+	SoldierFlock.hard_separate(u, Unit.MARK_RADIUS)
 	var dist: float = u._soldier_pos[0].distance_to(u._soldier_pos[1])
 	assert_almost_eq(dist, Unit.MARK_RADIUS * 2.0, 0.001,
 			"two coincident marks must be pushed apart to diameter")
@@ -1888,7 +1888,7 @@ func test_hard_separate_leaves_non_overlapping_marks_unchanged() -> void:
 	var b := Vector2(Unit.MARK_RADIUS * 3.0, 0.0)   # well clear of min-dist
 	u._soldier_pos[0] = a
 	u._soldier_pos[1] = b
-	u._hard_separate_marks(Unit.MARK_RADIUS)
+	SoldierFlock.hard_separate(u, Unit.MARK_RADIUS)
 	assert_eq(u._soldier_pos[0], a, "non-overlapping mark 0 should not move")
 	assert_eq(u._soldier_pos[1], b, "non-overlapping mark 1 should not move")
 
@@ -1898,7 +1898,7 @@ func test_hard_separate_partially_resolves_overlap() -> void:
 	var u := _make_unit(2)
 	u._soldier_pos[0] = Vector2(-0.5, 0.0)
 	u._soldier_pos[1] = Vector2( 0.5, 0.0)   # 1 px apart, need 2*MARK_RADIUS apart
-	u._hard_separate_marks(Unit.MARK_RADIUS)
+	SoldierFlock.hard_separate(u, Unit.MARK_RADIUS)
 	var dist: float = u._soldier_pos[0].distance_to(u._soldier_pos[1])
 	assert_almost_eq(dist, Unit.MARK_RADIUS * 2.0, 0.001,
 			"overlapping marks must be pushed to exactly min-dist")
@@ -1909,7 +1909,7 @@ func test_hard_separate_cavalry_uses_larger_radius() -> void:
 	u.is_cavalry = true
 	u._soldier_pos[0] = Vector2.ZERO
 	u._soldier_pos[1] = Vector2.ZERO
-	u._hard_separate_marks(Unit.CAV_MARK_RADIUS)
+	SoldierFlock.hard_separate(u, Unit.CAV_MARK_RADIUS)
 	var dist: float = u._soldier_pos[0].distance_to(u._soldier_pos[1])
 	assert_almost_eq(dist, Unit.CAV_MARK_RADIUS * 2.0, 0.001,
 			"cavalry marks use the larger mark radius for separation")
