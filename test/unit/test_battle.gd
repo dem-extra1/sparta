@@ -296,7 +296,7 @@ func test_charge_reference_matches_the_cavalry_gallop() -> void:
 			"cavalry gallop outpaces the quickest foot (archers, 3.0 m/s)")
 
 
-# --- frontage resize (#266) ------------------------------------
+# --- frontage resize ------------------------------------
 
 func test_enqueue_frontage_sets_an_absolute_target_from_the_current_width() -> void:
 	# A 60-soldier unit's auto frontage is _files(60); widening by 3 records and
@@ -350,3 +350,41 @@ func test_enqueue_frontage_steps_each_unit_from_its_own_width() -> void:
 	b.enqueue_frontage([1, 2], 2)
 	assert_eq(UnitFormation.frontage(a), fa + 2, "unit a widens from its own width")
 	assert_eq(UnitFormation.frontage(c), fc + 2, "unit c widens from its own width")
+
+
+# --- drag-to-form-up ------------------------------------
+
+func test_enqueue_form_up_sets_destination_facing_and_width() -> void:
+	var u := _unit(1, Vector2(0, 100))
+	u.max_soldiers = 120
+	var b := _battle([u])
+	b.enqueue_form_up([1], Vector2(500, 500), 0.0, 20)   # face 0 = facing right
+	assert_eq(u.move_target, Vector2(500, 500), "the unit marches to the flank-line midpoint")
+	assert_true(u.has_move_target, "and is set moving")
+	assert_almost_eq(u.deploy_facing.angle(), 0.0, 0.001, "the deploy facing is parked from the order")
+	assert_eq(UnitFormation.frontage(u), 20, "the dragged width becomes the frontage")
+	assert_true(b._pending_orders[-1].has("face"), "the order records its deploy facing")
+
+
+func test_plain_move_clears_a_stale_deploy_facing() -> void:
+	# A form-up parks a deploy facing; a superseding plain move must clear it so the
+	# unit doesn't wheel to the old heading at the new destination.
+	var u := _unit(1, Vector2(0, 100))
+	var b := _battle([u])
+	b.enqueue_form_up([1], Vector2(500, 500), 1.0, 20)
+	assert_ne(u.deploy_facing, Vector2.ZERO, "form-up parks a deploy facing")
+	b._apply_order_cmd({"units": [1], "x": 300.0, "y": 0.0, "target": -1})   # plain move
+	assert_eq(u.deploy_facing, Vector2.ZERO, "a superseding plain move clears the stale facing")
+
+
+func test_attack_order_clears_a_stale_deploy_facing() -> void:
+	# A non-move order (here an attack) must also clear a deploy facing a prior
+	# form-up parked, now that the clear lives in the shared fresh-order block.
+	var u := _unit(1, Vector2(0, 100))
+	var enemy := _unit(2, Vector2(0, 300))
+	enemy.team = 1
+	var b := _battle([u, enemy])
+	b.enqueue_form_up([1], Vector2(500, 500), 1.0, 20)
+	assert_ne(u.deploy_facing, Vector2.ZERO, "form-up parks a deploy facing")
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0, "target": 2})   # attack the enemy
+	assert_eq(u.deploy_facing, Vector2.ZERO, "an attack order clears the stale facing")

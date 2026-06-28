@@ -1,5 +1,5 @@
 extends GutTest
-## Tests for the Replay pointer track (#247): recording the cursor / selection / drag-box /
+## Tests for the Replay pointer track: recording the cursor / selection / drag-box /
 ## stance with dedup, playback stepping, order click-pulses, save/load round-trip, and
 ## back-compat with replays that have no pointer track.
 
@@ -170,7 +170,7 @@ func test_replay_without_pointer_has_no_track() -> void:
 	assert_eq(loaded.pointer_for_tick(0), {}, "playback shows no cursor overlay")
 
 
-# --- keystroke track (#266 demo overlay) -----------------------
+# --- keystroke track (demo overlay) -----------------------
 
 func test_record_keys_appends_only_when_pressed() -> void:
 	var r := _fresh()
@@ -222,3 +222,34 @@ func test_replay_without_keys_has_empty_track() -> void:
 	assert_true(loaded.start_playback(path), "it loads")
 	assert_eq(loaded._key_track.size(), 0, "no keypresses -> no keys track")
 	assert_eq(loaded.keys_for_tick(0, 42), [], "playback shows no key chips")
+
+
+# --- form-up deploy facing in the order stream ----------
+
+func test_record_order_round_trips_the_deploy_facing() -> void:
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [1], Vector2(300, 300), -1, 0, 0, 20, 1.5)   # form-up: frontage 20, face 1.5
+	r.record_order(6, [1], Vector2(50, 0), -1)                     # plain move: no face
+	var path: String = r.save("Test", 6)
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var orders: Array = loaded._orders
+	assert_almost_eq(float(orders[0]["face"]), 1.5, 0.0001, "a form-up order round-trips its facing")
+	assert_eq(int(orders[0]["frontage"]), 20, "and its frontage")
+	assert_false(orders[1].has("face"), "a plain move carries no facing")
+
+
+func test_form_ups_for_tick_returns_recent_deploys() -> void:
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(10, [1], Vector2(200, 300), -1, 0, 0, 18, 0.8)   # form-up
+	r.record_order(12, [1], Vector2(50, 0), -1)                     # plain move (no face)
+	var path: String = r.save("Test", 20)
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "loads")
+	var due: Array = loaded.form_ups_for_tick(14, 30)
+	assert_eq(due.size(), 1, "only the form-up order is a deploy gesture")
+	assert_almost_eq(float(due[0]["face"]), 0.8, 0.0001, "carries its facing")
+	assert_eq(int(due[0]["frontage"]), 18, "and its width")
+	assert_eq(int(due[0]["age"]), 4, "with its age in ticks")

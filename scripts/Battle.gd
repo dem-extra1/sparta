@@ -280,7 +280,8 @@ func _physics_process(_delta: float) -> void:
 			Replay.record_order(_tick, o["units"], Vector2(o["x"], o["y"]), o["target"],
 					int(o.get("mode", OrderMode.NORMAL)),
 					int(o.get("formation", UnitRef.FORMATION_NORMAL)),
-					int(o.get("frontage", 0)))
+					int(o.get("frontage", 0)),
+					float(o.get("face", INF)))
 			_apply_order_cmd(o)
 		_pending_orders.clear()
 		# Capture the camera each tick so a live recording reproduces what the player saw.
@@ -396,6 +397,27 @@ func enqueue_frontage(uids: Array, delta: int) -> void:
 		_apply_order_cmd(cmd)
 
 
+## Drag-to-form-up: move a single unit to `center` and deploy it there facing
+## `face` (radians) with `frontage` files -- the front rank ends up along the
+## dragged flank line. A plain move order (target -1) carrying the extra face +
+## frontage, recorded so replays reproduce the deploy.
+func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
+		order_mode: int = OrderMode.NORMAL) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var cmd := {
+		"units": uids,
+		"x": center.x,
+		"y": center.y,
+		"target": -1,
+		"mode": order_mode,
+		"frontage": frontage,
+		"face": face,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_cmd(cmd)
+
+
 ## Apply one order (move or attack) to its units. Shared by live play and
 ## playback so both produce identical results.
 func _apply_order_cmd(cmd: Dictionary) -> void:
@@ -459,6 +481,10 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.waypoints.clear()
 			u.order_mode = mode
 			u.support_target = null
+			# Any fresh order drops a deploy facing a prior form-up parked; the form-up
+			# move branch below re-sets it. So attack / support / relief / plain move all
+			# clear it, and a unit can't wheel to a stale heading on arrival.
+			u.deploy_facing = Vector2.ZERO
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
 			u.target_enemy = target_unit   # attack an enemy
 			u.has_move_target = false
@@ -495,6 +521,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			else:
 				u.move_target = point
 				u.has_move_target = true
+				# Drag-to-form-up rides a plain move: deploy at the player-set facing
+				# (applied when the unit reaches the spot) and width.
+				if cmd.has("face"):
+					u.deploy_facing = Vector2.from_angle(float(cmd["face"]))
+					if cmd.has("frontage"):
+						u.set_frontage(int(cmd["frontage"]))
 		if not append:
 			u.start_order_response()
 

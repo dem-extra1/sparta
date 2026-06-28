@@ -47,7 +47,8 @@ var seed_value: int = 0
 #               "target": int (enemy uid, -1 move, -3 formation-only, -4 frontage-only),
 #               "mode": int (Battle.OrderMode; 0 = NORMAL),
 #               "formation"?: int (Unit.FORMATION_*; omitted when 0 = NORMAL),
-#               "frontage"?: int (absolute file count for a -4 resize; omitted when 0) }.
+#               "frontage"?: int (absolute file count for a -4 resize or a form-up move),
+#               "face"?: float (deploy facing in radians for a drag-to-form-up move) }.
 var _orders: Array = []
 var _play_index: int = 0
 
@@ -169,6 +170,8 @@ func start_playback(path: String) -> bool:
 			entry["formation"] = int(o["formation"])
 		if o.has("frontage"):
 			entry["frontage"] = int(o["frontage"])
+		if o.has("face"):
+			entry["face"] = float(o["face"])
 		_orders.append(entry)
 	_play_index = 0
 	# Load the optional presentation (camera) track. Absent in pre-camera replays,
@@ -231,7 +234,7 @@ func replays_dir() -> String:
 
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
-		order_mode: int = 0, formation: int = 0, frontage: int = 0) -> void:
+		order_mode: int = 0, formation: int = 0, frontage: int = 0, face: float = INF) -> void:
 	if mode != Mode.RECORD:
 		return
 	var entry := {
@@ -246,6 +249,10 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		entry["formation"] = formation
 	if frontage != 0:
 		entry["frontage"] = frontage
+	# A drag-to-form-up order carries a deploy facing (radians); INF means "none"
+	# (a plain move), so any real angle -- including 0 -- is recorded.
+	if not is_inf(face):
+		entry["face"] = face
 	_orders.append(entry)
 
 
@@ -424,6 +431,24 @@ func keys_for_tick(tick: int, window: int) -> Array:
 		if tick - kt <= window:
 			for label in k["labels"]:
 				out.append({"label": str(label), "age": tick - kt})
+	return out
+
+
+## PLAYBACK: form-up (drag-deploy) orders issued within `window` ticks before `tick`,
+## each as {x, y (centre), face (radians), frontage, age}, so the overlay can replay the
+## dragged flank line. Read-only; [] outside playback. Tick-sorted, so the scan stops at
+## the first future order.
+func form_ups_for_tick(tick: int, window: int) -> Array:
+	if mode != Mode.PLAYBACK:
+		return []
+	var out: Array = []
+	for o in _orders:
+		var ot: int = int(o["tick"])
+		if ot > tick:
+			break
+		if o.has("face") and tick - ot <= window:
+			out.append({"x": float(o["x"]), "y": float(o["y"]), "face": float(o["face"]),
+					"frontage": int(o.get("frontage", 1)), "age": tick - ot})
 	return out
 
 

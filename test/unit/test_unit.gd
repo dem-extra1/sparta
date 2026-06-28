@@ -2082,3 +2082,31 @@ func test_lod_meshes_pick_facing_mirror_when_detailed() -> void:
 	u._figure_faces_left = true
 	u._apply_lod_meshes()
 	assert_eq(u._mm_body.mesh, u._mark_body_mesh, "flat LOD always draws the symmetric mark")
+
+
+# --- drag-to-form-up: deploy facing on arrival ----------
+
+func test_deploy_facing_wheels_on_arrival() -> void:
+	var u := _make_unit()
+	u.facing = Vector2.DOWN
+	u.position = Vector2.ZERO
+	u.move_target = Vector2(2, 0)   # within the arrival threshold
+	u.has_move_target = true
+	u.deploy_facing = Vector2.RIGHT
+	u._think(0.1)
+	assert_false(u.has_move_target, "the unit arrives at its destination")
+	assert_almost_eq(u.facing.angle(), Vector2.RIGHT.angle(), 0.001,
+			"and wheels to the parked deploy facing")
+	assert_eq(u.deploy_facing, Vector2.ZERO, "the deploy facing is consumed")
+
+
+func test_no_deploy_facing_keeps_march_facing() -> void:
+	var u := _make_unit()
+	u.facing = Vector2.DOWN
+	u.position = Vector2.ZERO
+	u.move_target = Vector2(2, 0)
+	u.has_move_target = true
+	u.deploy_facing = Vector2.ZERO   # a plain move: no deploy turn
+	u._think(0.1)
+	assert_almost_eq(u.facing.angle(), Vector2.DOWN.angle(), 0.001,
+			"a plain arrival keeps the march facing")
