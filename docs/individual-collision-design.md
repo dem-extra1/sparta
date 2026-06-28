@@ -131,9 +131,26 @@ verified before the next phase builds on it.
    gameplay change; unblocks #240). A later slice (#270) retired the separation pass
    and added **knockback** as the enemy collision response; remaining slices add
    stamina, posture, and the prone/domino chain.
-5. **Retire the regiment circle.** Once soldiers are authoritative, `RADIUS`-based
-   `_separate()` becomes derived/diagnostic. `#201`'s physics (mass, momentum,
-   knock-back) then layers on the soldier bodies.
+5. **Retire the regiment circle (in progress, shipping in slices).** Make soldiers
+   authoritative for occupying space, so `RADIUS`-based `_separate()` becomes
+   derived/diagnostic, then `#201`'s physics (mass, momentum, knock-back) layers on the
+   soldier bodies.
+   - **Slice 1 [DONE] — friendly collision.** A soldier->regiment **coupling** slides each
+     regiment's center toward its soldiers' centroid at a bounded velocity, never a snap
+     (`SoldierBodies.couple` / `Unit.couple_all_sim_soldiers`, run as the last soldier
+     sub-step in `Battle._on_soldier_tick`). Because the formation slots are centred, the
+     drift is ~0 during a clean march, so the coupling is silent except when bodies are
+     pushed off formation. `SoldierSteering` gained a **friendly-contact tier**
+     (regiment-broadphase-gated) that steers overlapping friendlies apart even when neither
+     is fighting, carrying the move-through-idle / relief exemptions and the engaged-anchor
+     asymmetry down from `_separate`. `_separate()` now **skips friendly pairs** — the
+     regiment circle separates ENEMIES only. So friendly regiments separate from the soldier
+     layer up; the enemy front-rank closeup and the spear-vs-cavalry hard block are
+     unchanged. Soldiers separate substantially (not yet to a perfect zero-overlap; the last
+     residual is a later tuning refinement).
+   - **Slices 2-4 (next):** enemy not-both-engaged separation + the hard block move to the
+     soldier level; the engaged front-rank closeup becomes emergent; finally delete
+     `_separate()` and migrate the remaining `position` consumers.
 
 ## Decisions (resolved)
 

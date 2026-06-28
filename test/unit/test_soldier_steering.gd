@@ -131,3 +131,52 @@ func test_steering_is_order_independent() -> void:
 	assert_almost_eq(a1._sim_steer[0].x, a2._sim_steer[0].x, 1e-6,
 		"the pass sorts by uid, so unit order and frame don't change the result")
 	assert_almost_eq(a1._sim_steer[0].y, a2._sim_steer[0].y, 1e-6)
+
+
+# --- friendly-contact tier (phase 5): non-engaged overlapping friendlies ------
+
+## An IDLE (not engaged), seeded one-soldier regiment on `team`, co-located center so the
+## regiment broadphase flags an overlap with another at the origin.
+func _idle_block(uid: int, team: int) -> Unit:
+	var u := _make_unit(uid, 1)
+	u.team = team
+	u.state = Unit.State.IDLE
+	u.seed_sim_soldiers()
+	return u
+
+
+func test_overlapping_idle_friendlies_steer_apart() -> void:
+	# Neither is fighting, but their blocks overlap, so the friendly-contact tier picks
+	# them up and they steer apart -- the regiment circle no longer does this.
+	var a := _idle_block(0, 0)
+	var b := _idle_block(1, 0)
+	a._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	b._sim_soldier_pos[0] = Vector2(1.0, 0.0)
+	SoldierSteering.accumulate([a, b], 1)
+	assert_lt(a._sim_steer[0].x, 0.0, "the idle left body steers away even though neither side is engaged")
+	assert_gt(b._sim_steer[0].x, 0.0, "and the idle right body steers the other way")
+
+
+func test_mover_through_idle_friendly_is_exempt() -> void:
+	# A moving regiment passing through an idle friendly is exempt -- no steer (the
+	# move-through-idle exemption, re-homed from _separate to the steering pass).
+	var mover := _idle_block(0, 0)
+	mover.state = Unit.State.MOVING
+	var idle := _idle_block(1, 0)
+	mover._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	idle._sim_soldier_pos[0] = Vector2(1.0, 0.0)
+	SoldierSteering.accumulate([mover, idle], 1)
+	assert_almost_eq(mover._sim_steer[0].length(), 0.0, 1e-4, "the mover passes cleanly through the idle friendly")
+	assert_almost_eq(idle._sim_steer[0].length(), 0.0, 1e-4, "and the idle friendly doesn't shove the mover")
+
+
+func test_engaged_friendly_holds_and_newcomer_yields() -> void:
+	# Engaged-anchor asymmetry: a fighting regiment holds its ground (zero steer) and the
+	# arriving friendly yields fully, flowing around it.
+	var fighter := _engaged(0, 0)
+	var newcomer := _idle_block(1, 0)
+	fighter._sim_soldier_pos[0] = Vector2(0.0, 0.0)
+	newcomer._sim_soldier_pos[0] = Vector2(1.0, 0.0)
+	SoldierSteering.accumulate([fighter, newcomer], 1)
+	assert_almost_eq(fighter._sim_steer[0].length(), 0.0, 1e-4, "the fighting regiment holds the line")
+	assert_gt(newcomer._sim_steer[0].length(), 0.0, "the newcomer yields fully and flows around it")

@@ -240,6 +240,12 @@ var _moved_last_frame: bool = false
 # strikes after) and cleared when the unit goes idle/holds (a stationary unit carries no
 # momentum); kept while FIGHTING so a strike delayed by attack cooldown still lands it.
 var _approach_velocity: Vector2 = Vector2.ZERO
+# Velocity the regiment center followed its soldiers' centroid at this tick (phase 5):
+# the soldier->regiment coupling slides the center toward where its bodies actually are,
+# so friendly collision (and later all collision) emerges from the soldier layer. Stored
+# for diagnostics/tests; the move itself happens in SoldierBodies.couple, bounded so it
+# never teleports.
+var _body_follow_vel: Vector2 = Vector2.ZERO
 var _relief_partner: Unit = null   # unit we're swapping with mid-relief
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
@@ -614,9 +620,17 @@ func _separate() -> void:
 		# DEAD: queue_free'd but not yet removed from its group this frame.
 		if other == null or other == self or other.state == State.DEAD:
 			continue
-		# A moving unit and an idle friendly pass cleanly through each other.
-		if _separation_exempt(other):
+		# Phase 5 (slice 1): friendly regiments no longer collide as circles -- their
+		# spacing is resolved at the soldier level (SoldierSteering's friendly tier feeds
+		# the body->regiment coupling). The regiment circle now only separates ENEMIES; the
+		# enemy front-rank closeup and the spear-vs-cavalry hard block below are unchanged.
+		# (The move-through-idle / relief exemptions were friendly-only, so they re-home to
+		# the steering pass too.)
+		if other.team == team:
 			continue
+		# (The move-through-idle / relief exemptions were friendly-only, so once friendlies
+		# are skipped there's nothing left to exempt here -- the checks re-home to the
+		# steering pass. _separation_exempt is still used there.)
 		var min_dist: float
 		if other.team != team and is_engaged() and other.is_engaged():
 			# Engaged enemy lines close until their FRONT RANKS meet (centres a block-
@@ -806,6 +820,15 @@ func step_sim_soldiers(delta: float) -> void:
 const ENGAGED_LINGER: float = 0.5
 const ENGAGED_RANKS: int = 3
 
+# Soldier->regiment coupling (phase 5): each tick the regiment center slides a fraction
+# FOLLOW_RATE*delta of the way toward its soldiers' centroid (geometric decay, stable for
+# FOLLOW_RATE*delta < 1; ~10%/tick at 60 Hz). The step is capped at MAX_FOLLOW_SPEED*delta
+# so the center can never teleport -- it only ever moves at a bounded velocity, like the
+# soldier bodies. During a clean march the bodies sit on their slots, so the drift is ~0
+# and the coupling is silent; it activates only when bodies are pushed off formation.
+const FOLLOW_RATE: float = 6.0
+const MAX_FOLLOW_SPEED: float = 80.0
+
 # > 0 while engaged; FIGHTING refreshes it, otherwise it decays on the fixed tick.
 var _engaged_linger: float = 0.0
 
@@ -863,6 +886,17 @@ static func step_all_sim_soldiers(units: Array, delta: float) -> void:
 		var u: Unit = o as Unit
 		if u != null and u.state != State.DEAD:
 			u.step_sim_soldiers(delta)
+
+
+## Slide every regiment's center toward its soldiers' centroid (phase 5), after the bodies
+## have integrated this tick. Order-free across regiments (each reads only its own bodies
+## and writes only its own position), so it stays replay-safe. Called by Battle each tick
+## as the last soldier sub-step.
+static func couple_all_sim_soldiers(units: Array, delta: float) -> void:
+	for o in units:
+		var u: Unit = o as Unit
+		if u != null and u.state != State.DEAD:
+			SoldierBodies.couple(u, delta)
 
 
 # --- Individual-soldier combat profile -------------------------------------
