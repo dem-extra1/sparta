@@ -13,9 +13,10 @@ from where bodies are and the dice each strike rolls. This page lays out those d
 ::: {.callout-note}
 This model is rolling out in phases. **Live now:** combat resolves per soldier --
 the opposed hit contest, facing (flank and rear), per-soldier health and death,
-weapon reach (the spear-vs-sword standoff), and **knockback** (a landed blow shoves the
-struck soldier back, so spacing emerges from the press vs the recoil rather than a
-separation rule). **Coming:** stamina and exhaustion, the posture/stance system, and the
+weapon reach (the spear-vs-sword standoff), and **knockback** (every committed strike
+shoves the struck soldier back -- harder on a clean landing or at charge speed, and less
+against a heavy soldier like cavalry -- so spacing emerges from the press vs the recoil
+rather than a separation rule). **Coming:** stamina and exhaustion, the posture/stance system, and the
 knockback -> prone -> domino chain. The sections below describe the whole model; where a
 piece isn't live yet, it soon will be.
 :::

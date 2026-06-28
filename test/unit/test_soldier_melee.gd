@@ -193,7 +193,10 @@ func _typed_defender(uid: int, pos: Vector2, face: Vector2, cavalry: bool, range
 
 func test_heavier_defender_is_knocked_back_less() -> void:
 	# Same infantry attacker and the same seed, striking a light archer (mass 0.9) vs a heavy
-	# cavalry body (mass 2.5): the heavy body takes a smaller impulse (J ~ 1/mass).
+	# cavalry body (mass 2.5): the heavy body takes a smaller impulse (J ~ 1/mass). The eta
+	# can't flip in cavalry's favour -- cavalry's shield (0.25) > archer's (0.05) means its
+	# p_land is strictly <= the archer's, so "cavalry lands" implies "archer lands"; the mass
+	# ratio then dominates in every reachable land/defend outcome.
 	Replay.rng.seed = SEED
 	var atk1 := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var archer := _typed_defender(2, Vector2(0, 6), Vector2.UP, false, true)

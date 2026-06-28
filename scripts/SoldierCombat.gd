@@ -104,8 +104,10 @@ static func wound(lethality_a: float, c: float, armour_d: float, cond_a: float =
 ## (lethality * (1 + charge)) divided by the defender's mass, times eta (1 landed, < 1
 ## defended). See docs/combat-model.md "Knockback impulse". Pure; never negative.
 static func knockback_impulse(lethality_a: float, c: float, defender_mass: float, eta: float) -> float:
-	return KNOCKBACK_IMPULSE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) \
-			/ maxf(0.01, defender_mass) * maxf(0.0, eta)
+	# Numerator (force * charge * eta) over the defender's mass -- grouped so eta reads as a
+	# numerator term, not part of the denominator.
+	var force: float = KNOCKBACK_IMPULSE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) * maxf(0.0, eta)
+	return force / maxf(0.01, defender_mass)
 
 
 ## The health condition factor q(h) in [COND_HEALTH_FLOOR, 1] for a soldier at `hp`
