@@ -1,8 +1,8 @@
 {
   "replay": "demos/scenarios/resizable-widths.json",
-  "caption": "Resizable unit widths: a selected regiment is widened with ] then narrowed with [ -- the same soldiers reflowing from a wide, shallow line into a deeper column. The pressed keys flash on screen next to the cursor (a new keystroke overlay for demos), and the HUD reads out the live file count.",
+  "caption": "Resizable unit widths: a regiment (pulled aside to show it clearly) is widened with ] into a broad, shallow line, then narrowed with [ into a deep column -- the same soldiers reflowing between shapes. The pressed keys flash on screen next to the cursor (a new keystroke overlay for demos).",
   "fixed_fps": 60,
-  "max_frames": 240,
+  "max_frames": 244,
   "fps": 30,
   "width": 720
 }
