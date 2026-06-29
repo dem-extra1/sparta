@@ -250,7 +250,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           # Author-controlled; via env so they can't inject the publish script.
           CAPTION: ${{ steps.demo.outputs.caption }}
-          REPLAY: ${{ steps.demo.outputs.replay }}
+          SOURCE: ${{ steps.demo.outputs.source }}
         run: |
           set -euo pipefail
           PR=${{ github.event.pull_request.number }}
@@ -324,7 +324,7 @@ jobs:
             BODY="$BODY"$(printf '\n\n🔊 The GIF above plays once and is silent — [watch with sound, pause and scrub (MP4)](%s).' "$RAW_MP4_URL")
           fi
           BODY="$BODY"$(printf '\n\n<sub>Recorded from `%s` at `%s`. Updated automatically on each push.</sub>' \
-            "$REPLAY" "$SHA")
+            "$SOURCE" "$SHA")
 
           # Update the existing demo comment in place if present, else create one
           # (shared upsert helper — see the 'no clip applies' step, which reuses it).
