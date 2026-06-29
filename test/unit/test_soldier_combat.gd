@@ -45,6 +45,7 @@ func test_profile_archer_values() -> void:
 	assert_almost_eq(p["shield"], 0.05, TOL)
 	assert_almost_eq(p["lethality"], 0.50, TOL)
 	assert_almost_eq(p["max_health"], 80.0, TOL)
+	assert_almost_eq(p["max_stamina"], 90.0, TOL)
 
 
 func test_profile_infantry_is_the_default() -> void:
@@ -53,6 +54,7 @@ func test_profile_infantry_is_the_default() -> void:
 	assert_almost_eq(p["shield"], 0.60, TOL)
 	assert_almost_eq(p["lethality"], 1.00, TOL)
 	assert_almost_eq(p["max_health"], 110.0, TOL)
+	assert_almost_eq(p["max_stamina"], 100.0, TOL)
 
 
 func test_instance_profile_reads_own_flags() -> void:
