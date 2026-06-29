@@ -173,7 +173,7 @@ A blow that lands wounds. We do **not** roll kill-or-not; we subtract damage fro
 the defender's health. Its size is the weapon's lethality, amplified by closing
 momentum, blunted by armour, and scaled by the attacker's own condition:
 
-$$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\,q(h_A),
+$$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\,q(h_A)\,g(\sigma_A),
 \qquad
 h_D \leftarrow h_D - \Delta h.$$
 
