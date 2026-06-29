@@ -48,6 +48,30 @@
     ]
   },
   {
+    "objectID": "tactics.html#stamina",
+    "href": "tactics.html#stamina",
+    "title": "Tactics That Matter",
+    "section": "Stamina",
+    "text": "Stamina\nEvery soldier carries a stamina pool that drains through combat and refills at rest. Each blow thrown costs stamina; throwing blows costs more than absorbing them. Rising from the ground after being knocked down costs a burst extra. Low stamina lowers the soldier’s condition factor, which scales both attack output and defence — a tired soldier hits softer and is easier to hit.\nSo a unit that has been grinding at the front for a while is measurably weaker than one that just arrived fresh. Rank cycling (above) helps by rotating tired soldiers to the rear to recover; simply pulling a unit out of melee and letting it rest works too.",
+    "crumbs": [
+      "Home",
+      "Play",
+      "Tactics That Matter"
+    ]
+  },
+  {
+    "objectID": "tactics.html#prone-knockdown",
+    "href": "tactics.html#prone-knockdown",
+    "title": "Tactics That Matter",
+    "section": "Prone / knockdown",
+    "text": "Prone / knockdown\nA blow that delivers enough force can knock a soldier off their feet. A prone soldier has no active defence — only their armour absorbs incoming hits — and must spend both time (about two seconds) and stamina to get back up.\nVisually, prone soldiers stand out:\n\nAt normal zoom (mark LOD): a prone soldier’s mark is flattened into a wide horizontal sliver so it reads clearly as “lying flat” among the standing marks.\nZoomed in (figure LOD): the figure silhouette is rotated 90° to show a person lying on their side.\n\nEngaged lines resist knockdown. A unit that is actively locked in melee (and not in Skirmish stance) braces automatically, raising the impulse threshold needed to knock a soldier flat. A skirmishing or unengaged unit does not brace and is easier to topple. A deeper file also helps — more soldiers absorbing the same front-rank pressure means fewer individual soldiers pushed past the knockdown threshold.\nA cluster of prone soldiers in the front rank is a warning sign: your line is tired or outmatched there, and each fallen body briefly opens a gap in your defence before they can rise.",
+    "crumbs": [
+      "Home",
+      "Play",
+      "Tactics That Matter"
+    ]
+  },
+  {
     "objectID": "tactics.html#line-width-frontage",
     "href": "tactics.html#line-width-frontage",
     "title": "Tactics That Matter",

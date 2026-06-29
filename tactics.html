@@ -442,6 +442,8 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#flanking" id="toc-flanking" class="nav-link active" data-scroll-target="#flanking">Flanking</a></li>
   <li><a href="#morale-routing" id="toc-morale-routing" class="nav-link" data-scroll-target="#morale-routing">Morale &amp; routing</a></li>
   <li><a href="#rank-cycling-trained-units" id="toc-rank-cycling-trained-units" class="nav-link" data-scroll-target="#rank-cycling-trained-units">Rank cycling (trained units)</a></li>
+  <li><a href="#stamina" id="toc-stamina" class="nav-link" data-scroll-target="#stamina">Stamina</a></li>
+  <li><a href="#prone-knockdown" id="toc-prone-knockdown" class="nav-link" data-scroll-target="#prone-knockdown">Prone / knockdown</a></li>
   <li><a href="#line-width-frontage" id="toc-line-width-frontage" class="nav-link" data-scroll-target="#line-width-frontage">Line width (frontage)</a></li>
   <li><a href="#the-unit-triangle-rock-paper-scissors" id="toc-the-unit-triangle-rock-paper-scissors" class="nav-link" data-scroll-target="#the-unit-triangle-rock-paper-scissors">The unit triangle (rock-paper-scissors)</a></li>
   <li><a href="#weapon-reach" id="toc-weapon-reach" class="nav-link" data-scroll-target="#weapon-reach">Weapon reach</a></li>
@@ -529,6 +531,22 @@ ul.task-list li input[type="checkbox"] {
 <p>A <strong>well-trained</strong> melee unit periodically rotates its ranks — the tired front line steps back and a fresh rank takes its place, signalled by a whistle. Cycling <strong>slows fatigue buildup</strong> (by up to half at full training) and lets the unit <strong>recover morale even while still fighting</strong>. The better trained the unit, the more often it cycles. Ranged units don’t cycle.</p>
 <p>Fatigue builds at a realistic pace — sustained melee wears a unit down over <strong>minutes</strong>, not seconds, and resting in the rear restores it just as gradually. So relief is a deliberate decision for a prolonged fight, not a frantic every-few-seconds chore.</p>
 <p>Training therefore pays off in a long grind: a drilled regiment wears down a green one of equal numbers, because the green unit tires and wavers first.</p>
+</section>
+<section id="stamina" class="level2">
+<h2 class="anchored" data-anchor-id="stamina">Stamina</h2>
+<p>Every soldier carries a <strong>stamina pool</strong> that drains through combat and refills at rest. Each blow thrown costs stamina; throwing blows costs more than absorbing them. Rising from the ground after being knocked down costs a burst extra. Low stamina lowers the soldier’s <strong>condition factor</strong>, which scales both attack output and defence — a tired soldier hits softer and is easier to hit.</p>
+<p>So a unit that has been grinding at the front for a while is measurably weaker than one that just arrived fresh. Rank cycling (above) helps by rotating tired soldiers to the rear to recover; simply pulling a unit out of melee and letting it rest works too.</p>
+</section>
+<section id="prone-knockdown" class="level2">
+<h2 class="anchored" data-anchor-id="prone-knockdown">Prone / knockdown</h2>
+<p>A blow that delivers enough force can <strong>knock a soldier off their feet</strong>. A prone soldier has no active defence — only their armour absorbs incoming hits — and must spend both time (about two seconds) and stamina to get back up.</p>
+<p>Visually, prone soldiers stand out:</p>
+<ul>
+<li><strong>At normal zoom (mark LOD):</strong> a prone soldier’s mark is flattened into a wide horizontal sliver so it reads clearly as “lying flat” among the standing marks.</li>
+<li><strong>Zoomed in (figure LOD):</strong> the figure silhouette is rotated 90° to show a person lying on their side.</li>
+</ul>
+<p><strong>Engaged lines resist knockdown.</strong> A unit that is actively locked in melee (and not in Skirmish stance) braces automatically, raising the impulse threshold needed to knock a soldier flat. A skirmishing or unengaged unit does not brace and is easier to topple. A deeper file also helps — more soldiers absorbing the same front-rank pressure means fewer individual soldiers pushed past the knockdown threshold.</p>
+<p>A cluster of prone soldiers in the front rank is a warning sign: your line is tired or outmatched there, and each fallen body briefly opens a gap in your defence before they can rise.</p>
 </section>
 <section id="line-width-frontage" class="level2">
 <h2 class="anchored" data-anchor-id="line-width-frontage">Line width (frontage)</h2>
