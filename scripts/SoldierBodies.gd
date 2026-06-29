@@ -111,6 +111,8 @@ static func step(unit: Unit, delta: float) -> void:
 		var to_slot: Vector2 = slots[i] - unit._sim_soldier_pos[i]
 		var accel: Vector2 = to_slot * SPRING_STIFFNESS - (unit._sim_body_vel[i] - feed_forward) * SPRING_DAMPING
 		unit._sim_body_vel[i] += accel * delta
+		if unit._reform_timer > 0.0:
+			unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(Unit.REFORM_JOG_SPEED)
 		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
 
 

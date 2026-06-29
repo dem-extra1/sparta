@@ -141,6 +141,9 @@ const ROUT_TIME: float = 6.0
 # (both count from zero); the effective delay before the march is max(order_response_delay,
 # REFORM_DURATION). Deterministic (a plain counter, no RNG), so replays stay exact.
 const REFORM_DURATION: float = 0.8
+# Speed cap (world units/s) applied to each individual soldier body while the reform
+# hold is active — soldiers jog to their new slots rather than sprinting there.
+const REFORM_JOG_SPEED: float = 150.0
 # Radius over which a rout shakes friendly morale. Shared by the morale-spread
 # loop and the cosmetic shockwave so the visual matches the actual area of effect.
 const ROUT_SHOCK_RADIUS: float = 140.0
@@ -379,7 +382,10 @@ func _think(delta: float) -> void:
 		_order_response_timer = maxf(0.0, _order_response_timer - delta)
 		# Also drain the reform timer concurrently so both run in parallel; the
 		# effective delay before the march is max(order_response_delay, REFORM_DURATION).
-		if _reform_timer > 0.0:
+		# Guard on the order timer still being positive: if it expires this very frame
+		# (just hit 0 above), fall through so the reform block below ticks it once —
+		# not twice.
+		if _reform_timer > 0.0 and _order_response_timer > 0.0:
 			_reform_timer = maxf(0.0, _reform_timer - delta)
 		if _order_response_timer > 0.0 and state != State.FIGHTING:
 			return
@@ -1149,6 +1155,7 @@ func _rout() -> void:
 	selected = false
 	target_enemy = null
 	has_move_target = false
+	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_rout_timer = ROUT_TIME
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit

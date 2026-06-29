@@ -13,19 +13,20 @@ const BattleScript = preload("res://scripts/Battle.gd")
 # Snapshot/restore the global Settings hotkeys around tests that rebind them,
 # so a rebinding test can't leak into others or the real user://settings.cfg.
 var _orig_bindings: Dictionary
-
-
 var _orig_form_up_default: int
+var _orig_reform_before_move: bool
 
 
 func before_each() -> void:
 	_orig_bindings = Settings.order_bindings.duplicate()
 	_orig_form_up_default = Settings.form_up_dist_default
+	_orig_reform_before_move = Settings.reform_before_move
 
 
 func after_each() -> void:
 	Settings.order_bindings = _orig_bindings.duplicate()
 	Settings.form_up_dist_default = _orig_form_up_default
+	Settings.reform_before_move = _orig_reform_before_move
 
 
 func _sm() -> Node2D:

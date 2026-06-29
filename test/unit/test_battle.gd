@@ -8,6 +8,14 @@ extends GutTest
 const BattleScript = preload("res://scripts/Battle.gd")
 const UnitScript = preload("res://scripts/Unit.gd")
 
+var _orig_reform: bool
+
+func before_each() -> void:
+	_orig_reform = Settings.reform_before_move
+
+func after_each() -> void:
+	Settings.reform_before_move = _orig_reform
+
 
 func _unit(uid: int, pos: Vector2) -> Unit:
 	var u: Unit = UnitScript.new()
