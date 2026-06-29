@@ -140,8 +140,9 @@ const BRACE_CAPACITY: float = 50.0  # J_cap: impulse a fully-set man (br = 1) ab
 
 
 ## Depth-buttressed brace sum down a file: file_braces[0] is the struck man's brace, [1..] the
-## braced ranks directly behind him IN ORDER, already truncated by the caller at the first
-## gap / loose / unfacing man (T -> 0). Returns sum_k ZETA^k * br_k (the bracketed term).
+## braced ranks directly behind him IN ORDER, truncated by the caller at the first dead/missing
+## rank (the T -> 0 break for loose or unfacing men is a follow-up — per-soldier truncation is
+## not yet in the melee resolver). Returns sum_k ZETA^k * br_k (the bracketed term).
 static func brace_depth(file_braces: PackedFloat32Array) -> float:
 	var total: float = 0.0
 	var z: float = 1.0

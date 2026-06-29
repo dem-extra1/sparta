@@ -79,7 +79,7 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 				file_braces.append(br)
 				rank_idx += frontage
 		var brace_d: float = SoldierCombat.brace_depth(file_braces)
-		var cap: float = SoldierCombat.brace_capacity(file_braces)
+		var cap: float = SoldierCombat.BRACE_CAPACITY * brace_d   # avoids a second walk of file_braces
 		var received: float = maxf(0.0, impulse_mag - cap)
 		defender._sim_body_vel[target] += push_dir * received
 		if landed:

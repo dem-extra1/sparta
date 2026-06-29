@@ -276,7 +276,7 @@ func _deep_unit(uid: int, n: int, pos: Vector2, face: Vector2) -> Unit:
 	var u: Unit = Unit.new()
 	u.max_soldiers = n
 	add_child_autofree(u)
-	u.frontage_override = 1   # single column; set after _ready so it isn't reset
+	u.frontage_override = 1   # single column; must be set before seed_sim_soldiers()
 	u.uid = uid
 	u.team = 1
 	u.position = pos
