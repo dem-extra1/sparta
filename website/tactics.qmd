@@ -53,7 +53,7 @@ one of equal numbers, because the green unit tires and wavers first.
 Every soldier carries a **stamina pool** that drains through combat and refills at rest.
 Each blow thrown costs stamina; each blow received costs more. Rising from the ground after
 being knocked down costs a burst extra. Low stamina lowers the soldier's **condition
-factor**, which scales both attack output and defence — a tired soldier hits softer and
+factor**, which scales both attack output and defence --- a tired soldier hits softer and
 is easier to hit.
 
 So a unit that has been grinding at the front for a while is measurably weaker than one
@@ -63,7 +63,7 @@ rear to recover; simply pulling a unit out of melee and letting it rest works to
 ## Prone / knockdown
 
 A blow that delivers enough force can **knock a soldier off their feet**. A prone
-soldier has no active defence — only their armour absorbs incoming hits — and must spend
+soldier has no active defence --- only their armour absorbs incoming hits --- and must spend
 both time (about two seconds) and stamina to get back up.
 
 Visually, prone soldiers stand out:
@@ -76,7 +76,7 @@ Visually, prone soldiers stand out:
 **Engaged lines resist knockdown.** A unit that is actively locked in melee (and not
 in Skirmish stance) braces automatically, raising the impulse threshold needed to knock
 a soldier flat. A skirmishing or unengaged unit does not brace and is easier to topple.
-A deeper file also helps — more soldiers absorbing the same front-rank pressure means
+A deeper file also helps --- more soldiers absorbing the same front-rank pressure means
 fewer individual soldiers pushed past the knockdown threshold.
 
 A cluster of prone soldiers in the front rank is a warning sign: your line is tired or
