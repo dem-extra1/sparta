@@ -111,7 +111,11 @@ static func step(unit: Unit, delta: float) -> void:
 		var to_slot: Vector2 = slots[i] - unit._sim_soldier_pos[i]
 		var accel: Vector2 = to_slot * SPRING_STIFFNESS - (unit._sim_body_vel[i] - feed_forward) * SPRING_DAMPING
 		unit._sim_body_vel[i] += accel * delta
-		if unit._reform_timer > 0.0:
+		# Cap individual soldier speed to a jog while the unit is stationary: during the
+		# reform hold phase AND whenever a formation reshape (frontage change, facing wheel)
+		# plays out on an idle unit. A marching unit is exempt — its bodies need to keep
+		# up with moving slots — so the cap only applies when state == IDLE.
+		if unit._reform_timer > 0.0 or unit.state == Unit.State.IDLE:
 			unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(Unit.REFORM_JOG_SPEED)
 		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
 

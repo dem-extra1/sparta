@@ -3,7 +3,8 @@ extends GutTest
 ## center toward its soldiers' centroid at a bounded velocity (never a snap). Pins: it never
 ## teleports (the step is capped), it converges onto the body centroid without overshoot,
 ## and it is silent when the bodies already sit on their slots (so a clean march isn't
-## double-counted).
+## double-counted). Also pins the jog-speed cap that SoldierBodies.step() applies to idle
+## units so frontage reshaping and formation changes never snap or sprint.
 
 const DELTA: float = 1.0 / 60.0
 
@@ -139,3 +140,38 @@ func test_soldier_layer_separation_is_deterministic() -> void:
 	assert_almost_eq(a1.position.x, a2.position.x, 1e-5, "identical runs separate identically (x)")
 	assert_almost_eq(a1.position.y, a2.position.y, 1e-5, "identical runs separate identically (y)")
 	assert_almost_eq(b1.position.x, b2.position.x, 1e-5, "and the partner too")
+
+
+# --- jog-speed cap during idle reshape (frontage changes, facing wheels) ------
+
+func test_idle_soldier_bodies_capped_at_jog_speed() -> void:
+	# Displace bodies far from their slots (simulating a large frontage change).
+	# SoldierBodies.step() must not let any soldier body exceed REFORM_JOG_SPEED
+	# in a single tick when the unit is IDLE — orderly reshape, no sprinting.
+	var u := _make_unit()
+	u.state = Unit.State.IDLE
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] += Vector2(200.0, 0.0)   # far from slots
+	SoldierBodies.step(u, DELTA)
+	for i in range(u._sim_body_vel.size()):
+		assert_lte(u._sim_body_vel[i].length(), Unit.REFORM_JOG_SPEED + 1e-4,
+				"idle soldier speed is capped at REFORM_JOG_SPEED during reshape")
+
+
+func test_moving_soldier_bodies_not_speed_capped() -> void:
+	# A marching unit's bodies must be allowed to exceed REFORM_JOG_SPEED so they
+	# keep up with moving slots. The jog cap must NOT apply when state == MOVING.
+	var u := _make_unit()
+	u.state = Unit.State.MOVING
+	u._approach_velocity = Vector2(0.0, Unit.REFORM_JOG_SPEED)   # full jog already from march
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] += Vector2(200.0, 0.0)   # large lateral offset adds to march speed
+	SoldierBodies.step(u, DELTA)
+	var any_above_cap := false
+	for i in range(u._sim_body_vel.size()):
+		# +1.0 slack: the spring yields ~403 u/s for a 200-unit offset, so any
+		# value above 151 confirms the cap is absent. 1e-4 would also work, but
+		# 1.0 makes the intent ("well above, not barely above") more readable.
+		if u._sim_body_vel[i].length() > Unit.REFORM_JOG_SPEED + 1.0:
+			any_above_cap = true
+	assert_true(any_above_cap, "marching bodies can exceed jog speed — no cap while MOVING")
