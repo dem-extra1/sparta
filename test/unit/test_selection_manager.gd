@@ -284,6 +284,23 @@ func test_can_form_up_requires_a_selection_and_width() -> void:
 			"a multi-selection + wide drag also forms up (distributed along the line)")
 
 
+func test_can_form_up_needs_extra_width_for_each_inter_unit_gap() -> void:
+	# Two units need FORM_UP_MIN_WIDTH plus one gap's worth of drag; a drag only wide enough
+	# for a single unit falls back to a plain move (so the gaps can't eat all the usable width).
+	var sm := _sm()
+	var a := _unit()
+	var c := _unit()
+	sm._select(a)
+	var one_unit_min: float = SelectionManagerScript.FORM_UP_MIN_WIDTH
+	assert_true(sm._can_form_up(Vector2.ZERO, Vector2(one_unit_min, 0)), "one unit forms up at the base minimum")
+	sm._select(c)
+	assert_false(sm._can_form_up(Vector2.ZERO, Vector2(one_unit_min, 0)),
+			"two units need more than the single-unit minimum (room for the gap)")
+	var two_unit_min: float = one_unit_min + SelectionManagerScript.MULTI_FORM_UP_GAP
+	assert_true(sm._can_form_up(Vector2.ZERO, Vector2(two_unit_min, 0)),
+			"a drag wide enough for the gap forms up")
+
+
 # --- clickable flags ------------------------------------
 
 func test_flag_pick_distance_hits_the_standard_and_misses_the_body_and_empty_space() -> void:
@@ -404,11 +421,15 @@ func test_form_up_single_unit_slice_fills_the_whole_line() -> void:
 	var sm := _sm()
 	var u := _unit()
 	u.max_soldiers = 120
+	# A lone unit fills the 140 px drag with the same frontage the original single-unit deploy
+	# used (files_for_halfwidth of the half-width) — in BOTH modes, since equal depth is vacuous.
+	var want_files: int = UnitFormation.files_for_halfwidth(70.0, 120)
 	for mode in [EQUAL_DEPTH, EQUAL_WIDTH]:
 		var slices: Array = sm._form_up_slices([u], Vector2(400, 500), Vector2(540, 500), mode)
 		assert_eq(slices.size(), 1, "a lone unit is one slice")
 		assert_almost_eq(slices[0]["center"].x, 470.0, 0.001, "centred on the line midpoint")
 		assert_eq(slices[0]["center"].y, 500.0, "on the line")
+		assert_eq(slices[0]["files"], want_files, "fills the line at the original single-unit frontage")
 
 
 func test_order_units_for_line_sorts_by_field_position_by_default() -> void:
@@ -488,3 +509,12 @@ func test_unrelated_setting_change_keeps_an_on_the_fly_cycle() -> void:
 	Settings.edge_scroll = not Settings.edge_scroll   # unrelated Settings.changed
 	assert_eq(sm._form_up_dist, EQUAL_WIDTH, "an unrelated setting change leaves the cycled mode intact")
 	Settings.edge_scroll = not Settings.edge_scroll   # restore
+
+
+func test_form_up_dist_default_clamps_out_of_range() -> void:
+	# A corrupt/hand-edited cfg can't propagate an out-of-range mode: the setter clamps it.
+	Settings.form_up_dist_default = 99
+	assert_eq(Settings.form_up_dist_default, Settings.FORM_UP_DIST_MAX,
+			"an over-range default clamps to the last mode")
+	Settings.form_up_dist_default = -5
+	assert_eq(Settings.form_up_dist_default, 0, "a negative default clamps to the first mode")

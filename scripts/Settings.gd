@@ -34,13 +34,17 @@ var sfx_enabled: bool = false:
 # units. Stored as an int (mirrors SelectionManager.FormUpDist: 0 = equal depth / uniform
 # ranks, the default; 1 = equal width / uniform frontage) so Settings stays free of a
 # dependency on that script. This is the DEFAULT a battle starts with; an on-the-fly hotkey
-# cycles the live mode without rewriting this.
+# cycles the live mode without rewriting this. Bump FORM_UP_DIST_MAX when a mode is added.
 const FORM_UP_DIST_EQUAL_DEPTH := 0
+const FORM_UP_DIST_MAX := 1
+# The setter clamps to the valid range so a corrupt/hand-edited cfg (or a stale value after
+# the modes change) can't propagate an out-of-range mode into the game.
 var form_up_dist_default: int = FORM_UP_DIST_EQUAL_DEPTH:
 	set(value):
-		if value == form_up_dist_default:
+		var clamped: int = clampi(value, 0, FORM_UP_DIST_MAX)
+		if clamped == form_up_dist_default:
 			return
-		form_up_dist_default = value
+		form_up_dist_default = clamped
 		if not _loading:
 			_save()
 			changed.emit()

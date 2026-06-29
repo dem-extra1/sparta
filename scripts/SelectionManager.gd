@@ -350,13 +350,17 @@ func _finish_right_button(end_pos: Vector2, append: bool) -> void:
 func _can_form_up(a: Vector2, b: Vector2) -> bool:
 	# At least one live selected unit, not mid-playback — so a unit that died mid-drag
 	# can't be deployed (or drawn from a freed instance).
-	if _live_selected_units().is_empty():
+	var n: int = _live_selected_units().size()
+	if n == 0:
 		return false
 	if _armed_mode == BattleRef.OrderMode.SUPPORT:
 		return false
 	if _unit_at(a, 1) != null or _unit_at(b, 1) != null:
 		return false
-	return a.distance_to(b) >= FORM_UP_MIN_WIDTH
+	# The inter-unit gaps eat MULTI_FORM_UP_GAP*(n-1) of the drag, so require that much extra
+	# on top of FORM_UP_MIN_WIDTH — otherwise a multi-unit drag could leave zero usable width
+	# and collapse every unit to a single-file column. A too-short drag falls back to a move.
+	return a.distance_to(b) >= FORM_UP_MIN_WIDTH + MULTI_FORM_UP_GAP * float(n - 1)
 
 
 ## Deploy the selected units along the dragged flank line: `a` is the left flank, `b` the
@@ -430,9 +434,13 @@ func _form_up_slices(units: Array, a: Vector2, b: Vector2, mode: int) -> Array:
 ## shared rank depth so every unit deploys the same number of ranks (wider units get more
 ## files). Each count is clamped to [1, max_soldiers].
 func _files_for_mode(units: Array, usable: float, mode: int) -> Array:
+	# A lone unit just fills the drag in BOTH modes (equal depth is vacuous with one unit),
+	# matching the original single-unit deploy's frontage exactly.
+	if units.size() == 1:
+		return [UnitFormation.files_for_halfwidth(usable * 0.5, units[0].max_soldiers)]
 	var out: Array = []
 	if mode == FormUpDist.EQUAL_WIDTH:
-		var w: float = usable / float(maxi(1, units.size()))
+		var w: float = usable / float(units.size())
 		for u in units:
 			out.append(UnitFormation.files_for_halfwidth(w * 0.5, u.max_soldiers))
 		return out
@@ -447,14 +455,17 @@ func _files_for_mode(units: Array, usable: float, mode: int) -> Array:
 
 
 ## The shallowest shared rank depth whose total files fit within `f_target` (so the deployed
-## line doesn't overrun the drag). Total files shrink as depth grows, so start deep enough to
-## fit and stop: depth 1 already fits when the drag is long enough to hold every soldier in a
-## single rank. Bounded by the largest unit (depth = its size gives one file).
+## line doesn't overrun the drag). Total files shrink as depth grows, so start at the analytic
+## estimate (total soldiers / f_target — where one shared rank would land) and step up the few
+## times the per-unit ceil() rounding pushes the total back over. Bounded by the largest unit.
 func _equal_depth_for_target(units: Array, f_target: int) -> int:
+	var total_soldiers: int = 0
 	var max_size: int = 1
 	for u in units:
-		max_size = maxi(max_size, maxi(1, u.max_soldiers))
-	var depth: int = 1
+		var size: int = maxi(1, u.max_soldiers)
+		total_soldiers += size
+		max_size = maxi(max_size, size)
+	var depth: int = clampi(total_soldiers / maxi(1, f_target), 1, max_size)
 	while depth < max_size and _total_files_at_depth(units, depth) > f_target:
 		depth += 1
 	return depth

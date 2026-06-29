@@ -254,10 +254,12 @@ func _sync_setting_toggles() -> void:
 	var popup := _menu_button.get_popup()
 	popup.set_item_checked(popup.get_item_index(MENU_EDGE_SCROLL), Settings.edge_scroll)
 	popup.set_item_checked(popup.get_item_index(MENU_SFX), Settings.sfx_enabled)
-	# Radio-check the chosen default form-up distribution (exactly one of the two).
-	var depth_default: bool = Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_DEPTH
-	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_EQUAL_DEPTH), depth_default)
-	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_EQUAL_WIDTH), not depth_default)
+	# Radio-check the chosen default form-up distribution. Compare each item to the setting
+	# directly (not `not depth`) so adding a third mode later can't leave both unchecked.
+	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_EQUAL_DEPTH),
+			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_DEPTH)
+	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_EQUAL_WIDTH),
+			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_WIDTH)
 
 
 ## Rebuild the controls hint, rendering the order-mode keys from the live Settings
