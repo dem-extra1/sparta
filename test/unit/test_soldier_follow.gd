@@ -169,6 +169,9 @@ func test_moving_soldier_bodies_not_speed_capped() -> void:
 	SoldierBodies.step(u, DELTA)
 	var any_above_cap := false
 	for i in range(u._sim_body_vel.size()):
+		# +1.0 slack: the spring yields ~403 u/s for a 200-unit offset, so any
+		# value above 151 confirms the cap is absent. 1e-4 would also work, but
+		# 1.0 makes the intent ("well above, not barely above") more readable.
 		if u._sim_body_vel[i].length() > Unit.REFORM_JOG_SPEED + 1.0:
 			any_above_cap = true
 	assert_true(any_above_cap, "marching bodies can exceed jog speed — no cap while MOVING")

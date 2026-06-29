@@ -1,4 +1,5 @@
 {
-  "skip": true,
-  "reason": "Orderly frontage changes cap individual soldier speed to a jog when the unit is idle, so soldiers trot to their new slots rather than sprinting. The visual difference from the baseline (no snapping) is subtle and requires a before/after comparison to read on a short clip."
+  "input": "demos/inputs/orderly-frontage.json",
+  "caption": "Spearmen widen their frontage six times. Each reshape moves soldiers to their new slots at a jog (REFORM_JOG_SPEED cap) rather than snapping or sprinting — orderly reshaping from issue #288.",
+  "max_frames": 300
 }
