@@ -338,3 +338,117 @@ func test_flank_blow_gets_no_bracing() -> void:
 
 	assert_gt(flank_kb, front_kb,
 		"a flank blow (phi=0) gets no bracing: full impulse vs. a front blow absorbed by brace capacity")
+
+
+# --- stamina drain and exhaustion (docs/combat-model.md "Stamina") ------------
+
+func test_spent_attacker_has_lower_cond_a() -> void:
+	# Stamina at 0 reduces g(sigma) to the floor, which multiplies into cond_a.
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var prof: Dictionary = a.combat_profile()
+	var maxhp: float = prof["max_health"]
+	var maxstam: float = prof["max_stamina"]
+	var fresh_cond: float = SoldierCombat.condition(a._sim_soldier_hp[0], maxhp) \
+		* SoldierCombat.stamina_factor(a._sim_soldier_stamina[0], maxstam)
+	a._sim_soldier_stamina[0] = 0.0
+	var spent_cond: float = SoldierCombat.condition(a._sim_soldier_hp[0], maxhp) \
+		* SoldierCombat.stamina_factor(0.0, maxstam)
+	assert_almost_eq(fresh_cond, 1.0, 1e-3, "fresh soldier starts at full condition")
+	assert_lt(spent_cond, fresh_cond, "a spent attacker has a lower cond_a")
+
+
+func test_tired_defender_has_lower_cond_d() -> void:
+	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	var prof: Dictionary = b.combat_profile()
+	var maxhp: float = prof["max_health"]
+	var maxstam: float = prof["max_stamina"]
+	var fresh_cond: float = SoldierCombat.condition(b._sim_soldier_hp[0], maxhp) \
+		* SoldierCombat.stamina_factor(b._sim_soldier_stamina[0], maxstam)
+	b._sim_soldier_stamina[0] = 0.0
+	var tired_cond: float = SoldierCombat.condition(b._sim_soldier_hp[0], maxhp) \
+		* SoldierCombat.stamina_factor(0.0, maxstam)
+	assert_lt(tired_cond, fresh_cond, "a tired defender has a lower cond_d")
+
+
+func test_attacker_stamina_drains_per_strike() -> void:
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	b._sim_soldier_hp[0] = 9999.0
+	var stam_before: float = a._sim_soldier_stamina[0]
+	a.resolve_soldier_melee(b)
+	assert_lt(a._sim_soldier_stamina[0], stam_before,
+		"attacker stamina drains after a strike")
+	assert_almost_eq(stam_before - a._sim_soldier_stamina[0], SoldierCombat.KAPPA_A, 1e-4,
+		"attacker drains exactly KAPPA_A per strike")
+
+
+func test_defender_stamina_drains_when_facing_blow() -> void:
+	# Defender faces the attacker (phi > 0), so KAPPA_D*(phi*(1+c)) > 0.
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	b._sim_soldier_hp[0] = 9999.0
+	a._sim_soldier_hp[0] = 9999.0
+	var stam_before: float = b._sim_soldier_stamina[0]
+	a.resolve_soldier_melee(b)
+	assert_lt(b._sim_soldier_stamina[0], stam_before,
+		"front-facing defender stamina drains after meeting a blow")
+
+
+func test_defender_stamina_does_not_drain_when_flanked() -> void:
+	# phi = 0 for a flank blow: the formula KAPPA_D*phi*(1+c) gives 0.
+	var a := _unit(1, 0, 1, Vector2(-6, 0), Vector2.RIGHT, false)
+	var b := _unit(2, 1, 1, Vector2(0, 0), Vector2.DOWN, false)   # faces down: phi = 0
+	b._sim_soldier_hp[0] = 9999.0
+	a._sim_soldier_hp[0] = 9999.0
+	var stam_before: float = b._sim_soldier_stamina[0]
+	a.resolve_soldier_melee(b)
+	assert_almost_eq(b._sim_soldier_stamina[0], stam_before, 1e-4,
+		"a flanked defender (phi=0) does not drain stamina")
+
+
+func test_stamina_regens_in_step() -> void:
+	var u := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var maxstam: float = u.combat_profile()["max_stamina"]
+	u._sim_soldier_stamina[0] = maxstam * 0.5
+	var before: float = u._sim_soldier_stamina[0]
+	SoldierBodies.step(u, 1.0)   # one full second
+	assert_gt(u._sim_soldier_stamina[0], before, "stamina regens during step")
+	assert_almost_eq(u._sim_soldier_stamina[0], before + SoldierCombat.RHO_STAMINA, 1e-3,
+		"regen is RHO_STAMINA per second")
+
+
+func test_stamina_regen_is_capped_at_max() -> void:
+	var u := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var maxstam: float = u.combat_profile()["max_stamina"]
+	u._sim_soldier_stamina[0] = maxstam   # already full
+	SoldierBodies.step(u, 10.0)
+	assert_almost_eq(u._sim_soldier_stamina[0], maxstam, 1e-4,
+		"stamina does not exceed max_stamina")
+
+
+func test_kappa_p_charged_on_rise() -> void:
+	# A soldier that was prone rises (timer hits 0) during step — that tick costs KAPPA_P.
+	var u := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var maxstam: float = u.combat_profile()["max_stamina"]
+	u._sim_soldier_stamina[0] = maxstam
+	u._sim_prone[0] = TICK * 0.5   # rises on the very next step
+	SoldierBodies.step(u, TICK)
+	var regen: float = SoldierCombat.RHO_STAMINA * TICK
+	var expected: float = clampf(maxstam + regen - SoldierCombat.KAPPA_P, 0.0, maxstam)
+	assert_almost_eq(u._sim_soldier_stamina[0], expected, 1e-3,
+		"rising from prone costs KAPPA_P on the tick the timer hits zero")
+
+
+func test_death_compacts_stamina_alongside_other_arrays() -> void:
+	# Extend the existing compaction test: after deaths, all five per-soldier arrays
+	# (pos, vel, hp, prone, stamina) must be index-aligned with the live count.
+	var a := _unit(1, 0, 12, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 12, Vector2(0, 10), Vector2.UP, false)
+	for _k in range(120):
+		a.resolve_soldier_melee(b)
+	assert_lt(b.soldiers, 12, "some defenders died")
+	assert_eq(b._sim_soldier_pos.size(), b.soldiers, "positions track the live count")
+	assert_eq(b._sim_soldier_hp.size(), b.soldiers, "health pool tracks it too")
+	assert_eq(b._sim_body_vel.size(), b.soldiers, "velocities track it too")
+	assert_eq(b._sim_prone.size(), b.soldiers, "prone timers track it too")
+	assert_eq(b._sim_soldier_stamina.size(), b.soldiers, "stamina pool tracks it too")

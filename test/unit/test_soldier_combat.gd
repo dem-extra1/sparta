@@ -308,3 +308,40 @@ func test_brace_capacity_deep_file_exceeds_lone() -> void:
 	var three: PackedFloat32Array = PackedFloat32Array([1.0, 1.0, 1.0])
 	assert_gt(SoldierCombat.brace_capacity(three), SoldierCombat.brace_capacity(lone),
 		"a 3-deep file absorbs more than a lone man")
+
+
+# --- stamina factor g(sigma) (docs/combat-model.md "Stamina") ------------------
+
+func test_stamina_factor_full_stamina_is_one() -> void:
+	var max: float = 100.0
+	assert_almost_eq(SoldierCombat.stamina_factor(max, max), 1.0, TOL)
+
+
+func test_stamina_factor_zero_stamina_is_the_floor() -> void:
+	assert_almost_eq(SoldierCombat.stamina_factor(0.0, 100.0),
+		SoldierCombat.COND_STAMINA_FLOOR, TOL)
+
+
+func test_stamina_factor_is_monotone() -> void:
+	var max: float = 100.0
+	var low: float = SoldierCombat.stamina_factor(20.0, max)
+	var mid: float = SoldierCombat.stamina_factor(50.0, max)
+	assert_gt(mid, low, "more stamina -> higher factor")
+	assert_gt(mid, SoldierCombat.COND_STAMINA_FLOOR, "mid is above the floor")
+	assert_lt(mid, 1.0, "mid is below full")
+
+
+func test_stamina_factor_guard_zero_max() -> void:
+	# A zero max_stamina would divide by zero; the guard returns 1.0 instead.
+	assert_almost_eq(SoldierCombat.stamina_factor(50.0, 0.0), 1.0, TOL)
+
+
+func test_stamina_factor_combined_with_condition() -> void:
+	# A soldier at half health AND zero stamina has a lower combined factor than either alone.
+	var max_hp: float = 100.0
+	var max_stam: float = 100.0
+	var q_half: float = SoldierCombat.condition(max_hp * 0.5, max_hp)
+	var g_zero: float = SoldierCombat.stamina_factor(0.0, max_stam)
+	var combined: float = q_half * g_zero
+	assert_lt(combined, q_half, "combined is below health-only factor")
+	assert_lt(combined, g_zero, "combined is below stamina-only factor")

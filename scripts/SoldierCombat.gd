@@ -164,3 +164,21 @@ static func condition(hp: float, maxhp: float) -> float:
 	if maxhp <= 0.0:
 		return 1.0
 	return COND_HEALTH_FLOOR + (1.0 - COND_HEALTH_FLOOR) * clampf(hp / maxhp, 0.0, 1.0)
+
+
+# Stamina pool (docs/combat-model.md "Stamina"): every action drains stamina; rest
+# restores it. Low stamina degrades both offence and active defence through g(sigma).
+const COND_STAMINA_FLOOR: float = 0.4   # g(0): a spent soldier fights at 40% effectiveness
+const KAPPA_A: float = 2.0              # stamina drained per strike thrown
+const KAPPA_D: float = 1.5             # base stamina drained per blow met (scaled by phi*(1+c))
+const KAPPA_P: float = 10.0            # stamina cost of rising from prone
+const RHO_STAMINA: float = 6.0         # stamina restored per second (flat; posture table deferred)
+
+
+## The fatigue factor g(sigma) in [COND_STAMINA_FLOOR, 1]: a spent soldier fights worse
+## in both offence and active defence, so stamina drain compounds like wounds.
+## See docs/combat-model.md. Pure; callers pass 1 where stamina isn't modelled.
+static func stamina_factor(stamina: float, max_stamina: float) -> float:
+	if max_stamina <= 0.0:
+		return 1.0
+	return COND_STAMINA_FLOOR + (1.0 - COND_STAMINA_FLOOR) * clampf(stamina / max_stamina, 0.0, 1.0)
