@@ -87,14 +87,18 @@ jobs:
           ls -la build/windows build/linux build/macos
 
       - name: Install NSIS
+        # NSIS 3.x (currently 3.08 on ubuntu-latest). No exact pin needed — the
+        # script uses only stable NSIS 3 features; a future 3.x bump is safe.
         run: sudo apt-get install -y nsis
 
       - name: Build Windows installer
         run: |
           set -euo pipefail
-          # Derive VERSION from the ref name on tag pushes; fall back to "dev" for
-          # workflow_dispatch test runs so the script always has a non-empty value.
-          V="${GITHUB_REF_NAME}"
+          # Sanitise slashes so branch-name runs (workflow_dispatch from
+          # feat/windows-installer) produce a valid filename, not a missing-parent
+          # directory error. Version tags (v0.1.0) contain no slashes, so this
+          # is a no-op for real releases.
+          V="${GITHUB_REF_NAME//\//-}"
           makensis \
             -DVERSION="${V}" \
             -DEXE_PATH="$(pwd)/build/windows/sparta.exe" \
@@ -104,7 +108,7 @@ jobs:
       - name: Package
         run: |
           set -euo pipefail
-          V="${GITHUB_REF_NAME}"
+          V="${GITHUB_REF_NAME//\//-}"
           cd build
           chmod +x linux/sparta.x86_64
           zip -j "sparta-${V}-windows-x86_64.zip" windows/sparta.exe

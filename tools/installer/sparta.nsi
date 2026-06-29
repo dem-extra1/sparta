@@ -56,7 +56,7 @@ SectionEnd
 Section "Uninstall"
   Delete "$INSTDIR\sparta.exe"
   Delete "$INSTDIR\uninstall.exe"
-  RMDir  "$INSTDIR"
+  RMDir /r "$INSTDIR"
 
   Delete "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk"
   Delete "$SMPROGRAMS\${APPNAME}\Uninstall ${APPNAME}.lnk"
