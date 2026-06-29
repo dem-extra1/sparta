@@ -58,13 +58,6 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		var cond_d: float = SoldierCombat.condition(defender._sim_soldier_hp[target], en_maxhp) \
 				* SoldierCombat.stamina_factor(st_d, en_max_stamina)
 		var p_land: float = SoldierCombat.land_chance(my_prof["skill"], en_prof["skill"], en_prof["shield"], phi, c, cond_a, cond_d)
-		# Drain attacker stamina per in-reach strike (win or lose) and defender stamina per blow met.
-		if ai < attacker._sim_soldier_stamina.size():
-			attacker._sim_soldier_stamina[ai] = maxf(0.0,
-				attacker._sim_soldier_stamina[ai] - SoldierCombat.STAMINA_COST_STRIKE)
-		if target < defender._sim_soldier_stamina.size():
-			defender._sim_soldier_stamina[target] = maxf(0.0,
-				defender._sim_soldier_stamina[target] - SoldierCombat.STAMINA_COST_DEFEND * phi * (1.0 + c))
 		# One seeded draw per striking attacker, in id order, after the target is fixed.
 		var landed: bool = Replay.rng.randf() < p_land
 		# Knockback is the enemy collision response (no separation pass): every in-reach strike
@@ -108,6 +101,15 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		if target < defender._sim_prone.size() \
 				and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"], brace_d):
 			defender._sim_prone[target] = SoldierCombat.PRONE_RISE_TIME
+		# Stamina drain: attacker pays κ_a per strike thrown; defender pays κ_d
+		# scaled by how much of the blow it had to meet (phi*(1+c) — zero for prone/flanked).
+		if ai < attacker._sim_soldier_stamina.size():
+			attacker._sim_soldier_stamina[ai] = maxf(0.0,
+				attacker._sim_soldier_stamina[ai] - SoldierCombat.STAMINA_COST_STRIKE)
+		if target < defender._sim_soldier_stamina.size():
+			defender._sim_soldier_stamina[target] = maxf(0.0,
+				defender._sim_soldier_stamina[target]
+					- SoldierCombat.STAMINA_COST_DEFEND * phi * (1.0 + maxf(0.0, c)))
 
 	reap(defender, attacker)
 

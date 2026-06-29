@@ -45,6 +45,7 @@ func test_profile_archer_values() -> void:
 	assert_almost_eq(p["shield"], 0.05, TOL)
 	assert_almost_eq(p["lethality"], 0.50, TOL)
 	assert_almost_eq(p["max_health"], 80.0, TOL)
+	assert_almost_eq(p["max_stamina"], 90.0, TOL)
 
 
 func test_profile_infantry_is_the_default() -> void:
@@ -53,6 +54,7 @@ func test_profile_infantry_is_the_default() -> void:
 	assert_almost_eq(p["shield"], 0.60, TOL)
 	assert_almost_eq(p["lethality"], 1.00, TOL)
 	assert_almost_eq(p["max_health"], 110.0, TOL)
+	assert_almost_eq(p["max_stamina"], 100.0, TOL)
 
 
 func test_instance_profile_reads_own_flags() -> void:
@@ -341,6 +343,17 @@ func test_stamina_factor_clamps_below_zero() -> void:
 func test_stamina_factor_zero_max_returns_one() -> void:
 	assert_almost_eq(SoldierCombat.stamina_factor(0.0, 0.0), 1.0, TOL,
 		"degenerate max_stamina defaults to 1 (no penalty)")
+
+
+func test_stamina_factor_combined_with_condition() -> void:
+	# A soldier at half health AND zero stamina has a lower combined factor than either alone.
+	var max_hp: float = 100.0
+	var max_stam: float = 100.0
+	var q_half: float = SoldierCombat.condition(max_hp * 0.5, max_hp)
+	var g_zero: float = SoldierCombat.stamina_factor(0.0, max_stam)
+	var combined: float = q_half * g_zero
+	assert_lt(combined, q_half, "combined is below health-only factor")
+	assert_lt(combined, g_zero, "combined is below stamina-only factor")
 
 
 func test_stamina_factor_degrades_land_chance() -> void:

@@ -40,10 +40,15 @@ When your change is **user-visible** — it affects how the game looks or plays
 (`scenes/`, `scripts/`, `assets/`, `project.godot`) — help reviewers *see* it:
 commit a **`demos/demo.json`** so CI records a short clip and posts it on the PR.
 
-- Point `replay` at a replay that exercises your change. Record one by playing the
-  game and copying the saved file from `user://replays/` into `demos/`, or — for
-  changes visible in any battle (unit art, HUD, balance) — reuse the bundled
-  `demos/showcase.json`. Write a `caption` describing what changed.
+- **Author demos as a scripted-input recording — not a hand-authored replay.** Write a
+  deterministic input script (`demos/inputs/*.json`: a list of mouse clicks/drags and
+  keystrokes stamped with the tick they fire on) and point `demos/demo.json` at it with
+  the `input` field. The recorder drives a live battle through the *real* controls, so the
+  clip exercises the actual code and the script stays editable as text. See the
+  **Scripted-input demos** section of `demos/README.md`.
+- The older `replay` field (play-and-save, or hand-authored scenario JSON) still works and
+  is fine for a quick reuse of `demos/showcase.json`, but prefer `input` for anything that
+  shows a specific interaction. Always write a `caption` describing what changed.
 - See `demos/README.md` for the full contract and `demos/demo.example.json` for a
   template.
 - If you skip this, CI still posts a *generic* build demo, but it won't show your
@@ -89,6 +94,14 @@ architecture, and CI changes are exempt.
   creates strategic decisions (terrain types, order delay, unit interactions, etc.).
 - Other pages (`website/index.qmd`, `website/roadmap.qmd`) when the change is
   milestone-level.
+- `website/tools/record-demos.sh` — the `DEMOS` list controls which website
+  video clips get recorded at deploy time. When your PR adds a mechanic or
+  visual that isn't visible in any existing replay scenario, add an entry:
+  record a new replay (play the battle, copy from `user://replays/` into
+  `demos/`, give it a descriptive name), then append a row to `DEMOS` and a
+  matching `<video>` embed on the page that covers that mechanic — follow the
+  pattern in `website/how-to-play.qmd` or `website/index.qmd`, which already
+  have `<video>` embeds. See `website/README.md` for the full pipeline.
 
 **Where to look for site layout:** `website/README.md` describes the page
 structure, build instructions, and how demo clips are recorded. Each `.qmd` page
@@ -105,10 +118,15 @@ state of the game and confirm nothing has drifted, including:
 - **Prose** — does any page describe behaviour the PR (or an earlier merged PR
   that never updated the site) has since changed?
 - **Demo videos** — the `<video>` embeds (`website/media/*.mp4`) are recorded
-  fresh at deploy time, so they track code automatically; the exception is
-  anything that only shows at a non-default camera (zoom/pan), which the static
-  demo camera can't capture (tracked in the demo-recording follow-up). When the
-  change is camera-dependent, note that the clip won't show it.
+  fresh at deploy time from the fixed replay scenarios in
+  `website/tools/record-demos.sh`. That means they track *code* changes
+  automatically (new art, HUD tweaks, balance), but only for features that
+  appear in those scenarios **and** at the scenario's default camera position.
+  Features that only appear at a non-default pan or zoom won't be captured even
+  if a scenario covers them. A new mechanic that requires specific orders, a
+  new scenario, or a camera move won't show up unless you added an entry to
+  `DEMOS` (and a matching `<video>` embed) on this PR. If you didn't, and the
+  feature is worth showing, file a follow-up issue.
 - **Screenshots / images** — any committed image embedded in a page must still
   match what the game looks like now; a visual change can make an existing
   screenshot stale even when no prose changed. Recapture it on the PR branch.

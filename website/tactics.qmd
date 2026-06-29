@@ -65,6 +65,16 @@ A wider line is easier to outlast in depth and quicker to crumble once it bends;
 a deeper one trades frontage for staying power. The width holds as casualties thin
 the ranks, so a line you set wide stays wide until you change it.
 
+**Deploy a whole battle line at once.** Select several regiments and drag one flank
+line (right-click and drag): the line splits among them. By default it splits to **equal
+depth**, so every regiment forms up the same number of ranks --- a uniform front where
+bigger units just take a wider slice. That keeps your whole line's staying power even, with
+no thin spot for the enemy to punch through. Press <kbd>Y</kbd> to switch to **equal width**
+when you'd rather every unit cover the same frontage (small units stack deeper). They sort
+left-to-right by where they already stand, so nobody crosses the field to reach a slot ---
+a fast way to dress a ragged group into one clean front before the enemy closes. Hold Shift
+to place them in selection order instead when you want a specific regiment on a specific flank.
+
 ## The unit triangle (rock-paper-scissors)
 
 Three roles, each strong against one and weak to another:

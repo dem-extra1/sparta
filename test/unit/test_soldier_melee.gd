@@ -342,6 +342,34 @@ func test_flank_blow_gets_no_bracing() -> void:
 
 # --- stamina drain (slice D, #310) -------------------------------------------
 
+func test_spent_attacker_has_lower_cond_a() -> void:
+	# Stamina at 0 reduces g(σ) to the floor, which multiplies into cond_a.
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var prof: Dictionary = a.combat_profile()
+	var maxhp: float = prof["max_health"]
+	var maxstam: float = prof["max_stamina"]
+	var fresh_cond: float = SoldierCombat.condition(a._sim_soldier_hp[0], maxhp) \
+		* SoldierCombat.stamina_factor(a._sim_soldier_stamina[0], maxstam)
+	a._sim_soldier_stamina[0] = 0.0
+	var spent_cond: float = SoldierCombat.condition(a._sim_soldier_hp[0], maxhp) \
+		* SoldierCombat.stamina_factor(0.0, maxstam)
+	assert_almost_eq(fresh_cond, 1.0, 1e-3, "fresh soldier starts at full condition")
+	assert_lt(spent_cond, fresh_cond, "a spent attacker has a lower cond_a")
+
+
+func test_tired_defender_has_lower_cond_d() -> void:
+	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	var prof: Dictionary = b.combat_profile()
+	var maxhp: float = prof["max_health"]
+	var maxstam: float = prof["max_stamina"]
+	var fresh_cond: float = SoldierCombat.condition(b._sim_soldier_hp[0], maxhp) \
+		* SoldierCombat.stamina_factor(b._sim_soldier_stamina[0], maxstam)
+	b._sim_soldier_stamina[0] = 0.0
+	var tired_cond: float = SoldierCombat.condition(b._sim_soldier_hp[0], maxhp) \
+		* SoldierCombat.stamina_factor(0.0, maxstam)
+	assert_lt(tired_cond, fresh_cond, "a tired defender has a lower cond_d")
+
+
 func test_attacker_stamina_drains_per_strike() -> void:
 	# An attacker with a target in reach drains κ_a per resolve() call.
 	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
@@ -356,18 +384,31 @@ func test_attacker_stamina_drains_per_strike() -> void:
 		"drain equals κ_a per in-reach strike")
 
 
-func test_defender_stamina_drains_per_blow_met() -> void:
-	# A front-facing defender (phi = 1, front blow) drains κ_d · phi · (1 + c) per blow met.
-	# No charge (approach_velocity = 0), phi ≈ 1 from the front, so drain ≈ κ_d.
+func test_defender_stamina_drains_when_facing_blow() -> void:
+	# A front-facing defender (phi > 0) drains κ_d · phi · (1 + c) per blow met.
 	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
 	b._sim_soldier_hp[0] = 9999.0
+	a._sim_soldier_hp[0] = 9999.0
 	Replay.rng.seed = SEED
 	var st_before: float = b._sim_soldier_stamina[0]
 	SoldierMelee.resolve(a, b)
 	var st_after: float = b._sim_soldier_stamina[0]
 	assert_lt(st_after, st_before,
 		"the defender's stamina drains when a front blow is met")
+
+
+func test_defender_stamina_does_not_drain_when_flanked() -> void:
+	# phi = 0 for a flank blow: the formula κ_d·phi·(1+c) gives 0.
+	var a := _unit(1, 0, 1, Vector2(-6, 0), Vector2.RIGHT, false)
+	var b := _unit(2, 1, 1, Vector2(0, 0), Vector2.DOWN, false)   # faces down: phi = 0
+	b._sim_soldier_hp[0] = 9999.0
+	a._sim_soldier_hp[0] = 9999.0
+	Replay.rng.seed = SEED
+	var stam_before: float = b._sim_soldier_stamina[0]
+	SoldierMelee.resolve(a, b)
+	assert_almost_eq(b._sim_soldier_stamina[0], stam_before, 1e-4,
+		"a flanked defender (phi=0) does not drain stamina")
 
 
 func test_stamina_does_not_go_negative() -> void:
@@ -380,6 +421,39 @@ func test_stamina_does_not_go_negative() -> void:
 		SoldierMelee.resolve(a, b)
 	assert_ge(a._sim_soldier_stamina[0], 0.0, "attacker stamina never goes below 0")
 	assert_ge(b._sim_soldier_stamina[0], 0.0, "defender stamina never goes below 0")
+
+
+func test_stamina_regens_in_step() -> void:
+	var u := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var maxstam: float = u.combat_profile()["max_stamina"]
+	u._sim_soldier_stamina[0] = maxstam * 0.5
+	var before: float = u._sim_soldier_stamina[0]
+	SoldierBodies.step(u, 1.0)   # one full second
+	assert_gt(u._sim_soldier_stamina[0], before, "stamina regens during step")
+	assert_almost_eq(u._sim_soldier_stamina[0], before + SoldierCombat.STAMINA_REGEN_RATE, 1e-3,
+		"regen is STAMINA_REGEN_RATE per second")
+
+
+func test_stamina_regen_is_capped_at_max() -> void:
+	var u := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var maxstam: float = u.combat_profile()["max_stamina"]
+	u._sim_soldier_stamina[0] = maxstam   # already full
+	SoldierBodies.step(u, 10.0)
+	assert_almost_eq(u._sim_soldier_stamina[0], maxstam, 1e-4,
+		"stamina does not exceed max_stamina")
+
+
+func test_stamina_cost_rise_charged_on_prone_recovery() -> void:
+	# A soldier that was prone rises (timer hits 0) during step — that tick costs STAMINA_COST_RISE.
+	var u := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var maxstam: float = u.combat_profile()["max_stamina"]
+	u._sim_soldier_stamina[0] = maxstam
+	u._sim_prone[0] = TICK * 0.5   # rises on the very next step
+	SoldierBodies.step(u, TICK)
+	var regen: float = SoldierCombat.STAMINA_REGEN_RATE * TICK
+	var expected: float = clampf(maxstam + regen - SoldierCombat.STAMINA_COST_RISE, 0.0, maxstam)
+	assert_almost_eq(u._sim_soldier_stamina[0], expected, 1e-3,
+		"rising from prone costs STAMINA_COST_RISE on the tick the timer hits zero")
 
 
 func test_spent_attacker_lands_fewer_blows() -> void:
@@ -408,3 +482,18 @@ func test_spent_attacker_lands_fewer_blows() -> void:
 
 	assert_lt(count_spent, count_fresh,
 		"a spent attacker (stamina=0) lands fewer blows than a fresh one over many trials")
+
+
+func test_death_compacts_stamina_alongside_other_arrays() -> void:
+	# After deaths, all five per-soldier arrays (pos, vel, hp, prone, stamina)
+	# must be index-aligned with the live count.
+	var a := _unit(1, 0, 12, Vector2(0, 0), Vector2.DOWN, false)
+	var b := _unit(2, 1, 12, Vector2(0, 10), Vector2.UP, false)
+	for _k in range(120):
+		a.resolve_soldier_melee(b)
+	assert_lt(b.soldiers, 12, "some defenders died")
+	assert_eq(b._sim_soldier_pos.size(), b.soldiers, "positions track the live count")
+	assert_eq(b._sim_soldier_hp.size(), b.soldiers, "health pool tracks it too")
+	assert_eq(b._sim_body_vel.size(), b.soldiers, "velocities track it too")
+	assert_eq(b._sim_prone.size(), b.soldiers, "prone timers track it too")
+	assert_eq(b._sim_soldier_stamina.size(), b.soldiers, "stamina pool tracks it too")

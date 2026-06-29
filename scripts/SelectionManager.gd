@@ -27,10 +27,28 @@ const RESIZE_HANDLE_SIZE: float = 6.0     # grip half-size (px)
 const RESIZE_HANDLE_HIT: float = 13.0     # cursor radius that grabs a grip (px)
 const RESIZE_HANDLE_COLOR: Color = Color(0.95, 0.95, 0.3, 0.9)   # match selection yellow
 
-# Drag-to-form-up: a right-drag at least this wide (world px) deploys the unit along
-# the dragged line; shorter drags fall back to a plain move order.
+# Drag-to-form-up: a right-drag at least this wide (world px) deploys the selection along
+# the dragged line; shorter drags fall back to a plain move order. A single unit fills the
+# whole line; several units split it into contiguous slices (see _form_up_slices).
 const FORM_UP_MIN_WIDTH: float = 24.0
 const FORM_UP_COLOR: Color = Color(0.45, 0.95, 0.55, 0.95)   # match the move-order green
+# Gap (world px) left between adjacent units' slices in a multi-unit line, so each regiment
+# reads as distinct and their flanks don't jostle at the seams.
+const MULTI_FORM_UP_GAP: float = 12.0
+
+# How a multi-unit form-up splits the dragged line among the selected units. Equal depth
+# (the default) gives every unit the same number of ranks — wider units just get more files,
+# the uniform battle-line look; equal width gives every unit the same frontage regardless of
+# size. The int values mirror Settings.form_up_dist_default (persisted), so keep them aligned.
+enum FormUpDist { EQUAL_DEPTH, EQUAL_WIDTH }
+const FORM_UP_DIST_NAMES := {
+	FormUpDist.EQUAL_DEPTH: "Equal depth",
+	FormUpDist.EQUAL_WIDTH: "Equal width",
+}
+# Order the on-the-fly hotkey cycles through. A follow-up will let players reorder this in
+# settings; today (two modes) the order is degenerate, but the list keeps the cycle extensible.
+const FORM_UP_DIST_CYCLE := [FormUpDist.EQUAL_DEPTH, FormUpDist.EQUAL_WIDTH]
+const FORM_UP_DIST_CYCLE_KEY := KEY_Y   # cycles the live distribution mode
 const DEMO_FORMUP_WINDOW: int = 90   # ticks a replayed deploy line lingers (spans the march)
 
 # Order-overlay colours (common RTS convention: green = move, red = attack). Teal marks
@@ -66,6 +84,11 @@ var _rmb_down: bool = false
 var _rmb_dragging: bool = false
 var _rmb_start: Vector2 = Vector2.ZERO
 var _rmb_shift: bool = false   # Shift state captured at right-button press
+# Live multi-unit form-up distribution mode (a FormUpDist value). Starts at the persisted
+# default and is cycled on the fly by FORM_UP_DIST_CYCLE_KEY; _form_up_dist_default tracks
+# the persisted default so a menu change to it snaps the live mode over (see _on_settings_changed).
+var _form_up_dist: int = FormUpDist.EQUAL_DEPTH
+var _form_up_dist_default: int = FormUpDist.EQUAL_DEPTH
 # Gameplay-hotkey labels pressed since the last sim tick; Battle drains this each tick
 # (take_keys_this_tick) into the replay's keystroke track for the demo overlay.
 var _keys_this_tick: Array = []
@@ -108,6 +131,19 @@ func _ready() -> void:
 	_cursor_sprite.centered = true
 	_cursor_sprite.visible = false
 	_cursor_canvas.add_child(_cursor_sprite)
+	# Start the live form-up distribution at the persisted default, and follow later
+	# changes to that default (made from the ☰ menu) without clobbering an on-the-fly cycle.
+	_form_up_dist = Settings.form_up_dist_default
+	_form_up_dist_default = _form_up_dist
+	Settings.changed.connect(_on_settings_changed)
+
+
+## Snap the live form-up distribution to the default when the default itself changes (a ☰
+## menu pick); other settings changes leave an on-the-fly cycle untouched.
+func _on_settings_changed() -> void:
+	if Settings.form_up_dist_default != _form_up_dist_default:
+		_form_up_dist_default = Settings.form_up_dist_default
+		_form_up_dist = Settings.form_up_dist_default
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -176,7 +212,23 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_BRACKETLEFT:
 		_resize_frontage(-1)   # [ narrows the line by one file
 		return true
+	elif event.keycode == FORM_UP_DIST_CYCLE_KEY:
+		_cycle_form_up_dist()   # switch how a multi-unit form-up splits the line
+		return true
 	return _handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall
+
+
+## Cycle the live multi-unit form-up distribution mode through FORM_UP_DIST_CYCLE and flash
+## the new mode. Affects only how the dragged line is split among units (not the persisted
+## default); an open form-up preview redraws to show the new split.
+func _cycle_form_up_dist() -> void:
+	var idx: int = FORM_UP_DIST_CYCLE.find(_form_up_dist)
+	_form_up_dist = FORM_UP_DIST_CYCLE[(idx + 1) % FORM_UP_DIST_CYCLE.size()] if idx >= 0 \
+			else FORM_UP_DIST_CYCLE[0]
+	if _hud != null:
+		_hud.flash_message("Form-up: " + str(FORM_UP_DIST_NAMES.get(_form_up_dist, "")))
+	Sfx.play(&"order")
+	queue_redraw()
 
 
 func _finish_selection() -> void:
@@ -274,8 +326,8 @@ func _issue_order(world_pos: Vector2, append: bool = false) -> void:
 
 # --- drag-to-form-up (move orders) -----------------------------------------
 
-## Resolve a right-button release: a wide-enough drag on open ground with a single
-## unit selected deploys it along the dragged flank line; anything else is the
+## Resolve a right-button release: a wide-enough drag on open ground with at least one
+## unit selected deploys the selection along the dragged flank line; anything else is the
 ## ordinary right-click order (move / attack / relief / waypoint).
 func _finish_right_button(end_pos: Vector2, append: bool) -> void:
 	var was_drag: bool = _rmb_dragging
@@ -283,7 +335,9 @@ func _finish_right_button(end_pos: Vector2, append: bool) -> void:
 	_rmb_down = false
 	_rmb_dragging = false
 	if was_drag and _can_form_up(start, end_pos):
-		_issue_form_up(start, end_pos)
+		# On a form-up drag, Shift switches the left->right placement from field order
+		# (the default) to selection order; it has no append meaning here.
+		_issue_form_up(start, end_pos, append)
 	else:
 		# Shift+right-click appends a waypoint to the route instead of replacing it,
 		# so a march can be plotted as a multi-leg path.
@@ -291,33 +345,138 @@ func _finish_right_button(end_pos: Vector2, append: bool) -> void:
 
 
 ## Whether a right-drag from `a` to `b` should deploy a formation line rather than
-## issue a plain move: exactly one unit selected, no SUPPORT stance armed, neither
+## issue a plain move: at least one live unit selected, no SUPPORT stance armed, neither
 ## end on an enemy (that's an attack), and the line is wide enough to be deliberate.
 func _can_form_up(a: Vector2, b: Vector2) -> bool:
-	# Reuse the grip precondition: exactly one live selected unit, not mid-playback —
-	# so a unit that died mid-drag can't be deployed (or drawn from a freed instance).
-	if _single_selected_unit() == null:
+	# At least one live selected unit, not mid-playback — so a unit that died mid-drag
+	# can't be deployed (or drawn from a freed instance).
+	var n: int = _live_selected_units().size()
+	if n == 0:
 		return false
 	if _armed_mode == BattleRef.OrderMode.SUPPORT:
 		return false
 	if _unit_at(a, 1) != null or _unit_at(b, 1) != null:
 		return false
-	return a.distance_to(b) >= FORM_UP_MIN_WIDTH
+	# The inter-unit gaps eat MULTI_FORM_UP_GAP*(n-1) of the drag, so require that much extra
+	# on top of FORM_UP_MIN_WIDTH — otherwise a multi-unit drag could leave zero usable width
+	# and collapse every unit to a single-file column. A too-short drag falls back to a move.
+	return a.distance_to(b) >= FORM_UP_MIN_WIDTH + MULTI_FORM_UP_GAP * float(n - 1)
 
 
-## Deploy the single selected unit along the dragged flank line: `a` is the left
-## flank, `b` the right. Width comes from the line length, facing is perpendicular
-## (so `a` ends up on the unit's left), and the centre lands on the line midpoint.
-## Routed through Battle so the deploy is recorded and replays exactly.
-func _issue_form_up(a: Vector2, b: Vector2) -> void:
-	var u = _single_selected_unit()
-	if u == null:
+## Deploy the selected units along the dragged flank line: `a` is the left flank, `b` the
+## right. The line is split into one contiguous slice per unit (by the live distribution
+## mode — equal depth or equal width), all facing perpendicular (so `a` is on their left).
+## Each unit is routed as its own recorded form-up order, so a single unit fills the whole
+## line exactly as before and a multi-unit deploy replays as the same set of slices.
+func _issue_form_up(a: Vector2, b: Vector2, by_selection_order: bool = false) -> void:
+	var units: Array = _order_units_for_line(_live_selected_units(), a, b, by_selection_order)
+	if units.is_empty():
 		return
-	var center: Vector2 = (a + b) * 0.5
 	var face: float = _form_up_facing(a, b)
-	var files: int = UnitFormation.files_for_halfwidth(a.distance_to(b) * 0.5, u.max_soldiers)
-	_battle.enqueue_form_up([u.uid], center, face, files, _armed_mode)
+	for slice in _form_up_slices(units, a, b, _form_up_dist):
+		_battle.enqueue_form_up([slice["unit"].uid], slice["center"], face, slice["files"], _armed_mode)
 	Sfx.play(&"order")
+
+
+## The live (alive, not mid-playback) units in the current selection, in selection order.
+## Empty during playback so a form-up can't be issued from a replayed selection.
+func _live_selected_units() -> Array:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return []
+	var live: Array = []
+	for u in _selected:
+		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
+			live.append(u)
+	return live
+
+
+## Order the units left->right along the `a`->`b` flank line. By default by current field
+## position (each centre projected onto the line), so each marches to the nearest slice
+## without crossing a neighbour; with `by_selection_order` the selection order is kept
+## (first selected = left flank). A 0/1-unit list needs no ordering.
+func _order_units_for_line(units: Array, a: Vector2, b: Vector2, by_selection_order: bool) -> Array:
+	if by_selection_order or units.size() < 2:
+		return units
+	var dir: Vector2 = (b - a).normalized()
+	var ordered: Array = units.duplicate()
+	ordered.sort_custom(func(p, q): return (p.global_position - a).dot(dir) < (q.global_position - a).dot(dir))
+	return ordered
+
+
+## Split the `a`->`b` flank line into one contiguous slice per unit, per the distribution
+## `mode`. Returns one {unit, center, files} per unit in the given (left->right) order: the
+## slice-centre world point and the file count that fills the slice. The per-unit file counts
+## come from the mode (equal depth or equal width); the slices are then laid out left->right
+## with MULTI_FORM_UP_GAP between them and the whole assembly centred on the drag, so a single
+## unit still lands on the line midpoint (collapsing to the old single-unit deploy).
+func _form_up_slices(units: Array, a: Vector2, b: Vector2, mode: int) -> Array:
+	var dir: Vector2 = (b - a).normalized()
+	var total: float = a.distance_to(b)
+	var usable: float = maxf(total - MULTI_FORM_UP_GAP * float(units.size() - 1), 0.0)
+	var files_per_unit: Array = _files_for_mode(units, usable, mode)
+	# Lay the slices out from a left edge that centres the whole assembly on the drag, so a
+	# line that doesn't exactly fill the drag (file rounding) still sits symmetric on it.
+	var span: float = MULTI_FORM_UP_GAP * float(units.size() - 1)
+	for files in files_per_unit:
+		span += float(int(files) - 1) * UnitRef.FORMATION_SPACING
+	var out: Array = []
+	var cursor: float = (total - span) * 0.5   # distance along the line to the current slice's left edge
+	for i in range(units.size()):
+		var w: float = float(int(files_per_unit[i]) - 1) * UnitRef.FORMATION_SPACING
+		var center: Vector2 = a + dir * (cursor + w * 0.5)
+		out.append({"unit": units[i], "center": center, "files": int(files_per_unit[i])})
+		cursor += w + MULTI_FORM_UP_GAP
+	return out
+
+
+## The per-unit file (frontage) counts for a `usable`-wide span under distribution `mode`,
+## left->right matching `units`. Equal width splits the span evenly; equal depth picks a
+## shared rank depth so every unit deploys the same number of ranks (wider units get more
+## files). Each count is clamped to [1, max_soldiers].
+func _files_for_mode(units: Array, usable: float, mode: int) -> Array:
+	# A lone unit just fills the drag in BOTH modes (equal depth is vacuous with one unit),
+	# matching the original single-unit deploy's frontage exactly.
+	if units.size() == 1:
+		return [UnitFormation.files_for_halfwidth(usable * 0.5, units[0].max_soldiers)]
+	var out: Array = []
+	if mode == FormUpDist.EQUAL_WIDTH:
+		var w: float = usable / float(units.size())
+		for u in units:
+			out.append(UnitFormation.files_for_halfwidth(w * 0.5, u.max_soldiers))
+		return out
+	# EQUAL_DEPTH: target a total frontage that fills the span (a grid of f files spans
+	# (f-1) gaps of FORMATION_SPACING, so the units together want ~usable/SPACING + N files),
+	# then share one rank depth across the units to hit it.
+	var f_target: int = maxi(units.size(), int(round(usable / UnitRef.FORMATION_SPACING)) + units.size())
+	var depth: int = _equal_depth_for_target(units, f_target)
+	for u in units:
+		out.append(clampi(int(ceil(float(maxi(1, u.max_soldiers)) / float(depth))), 1, maxi(1, u.max_soldiers)))
+	return out
+
+
+## The shallowest shared rank depth whose total files fit within `f_target` (so the deployed
+## line doesn't overrun the drag). Total files shrink as depth grows, so start at the analytic
+## estimate (total soldiers / f_target — where one shared rank would land) and step up the few
+## times the per-unit ceil() rounding pushes the total back over. Bounded by the largest unit.
+func _equal_depth_for_target(units: Array, f_target: int) -> int:
+	var total_soldiers: int = 0
+	var max_size: int = 1
+	for u in units:
+		var size: int = maxi(1, u.max_soldiers)
+		total_soldiers += size
+		max_size = maxi(max_size, size)
+	var depth: int = clampi(total_soldiers / maxi(1, f_target), 1, max_size)
+	while depth < max_size and _total_files_at_depth(units, depth) > f_target:
+		depth += 1
+	return depth
+
+
+## Total files across `units` if every unit forms up `depth` ranks deep: ceil(size / depth) each.
+func _total_files_at_depth(units: Array, depth: int) -> int:
+	var total: int = 0
+	for u in units:
+		total += int(ceil(float(maxi(1, u.max_soldiers)) / float(depth)))
+	return total
 
 
 ## Deploy facing (radians) for a left-flank `a` -> right-flank `b` line: perpendicular
@@ -599,6 +758,9 @@ func _exit_tree() -> void:
 	# across scenes (e.g. after reload_current_scene).
 	_cursor_sprite.visible = false
 	DisplayServer.mouse_set_mode(DisplayServer.MOUSE_MODE_VISIBLE)
+	# Settings is a persistent autoload; drop our connection so it doesn't outlive this node.
+	if Settings.changed.is_connected(_on_settings_changed):
+		Settings.changed.disconnect(_on_settings_changed)
 
 
 ## Order-mode hotkeys: keyed on the PHYSICAL keycode (layout-independent, like
@@ -683,26 +845,37 @@ func _draw() -> void:
 	draw_rect(rect, Color(0.5, 1.0, 0.5, 0.9), false, 1.5)
 
 
-## While a form-up right-drag is open, preview the deploy: the flank line, a forward
-## arrow from its midpoint (the facing), and the resulting file count.
+## While a form-up right-drag is open, preview the deploy: one flank line per unit (each a
+## forward-facing arrow over its slice) with the slice's file count. Reads the same slice
+## split and ordering the release commits — including Shift (selection vs field order) — so
+## the preview matches where the units land. Each slice line is frontage-clamped, so it can't
+## extend past where the unit actually deploys when its slice is wider than max_soldiers allows.
 func _draw_form_up_preview() -> void:
 	if not _rmb_dragging:
 		return
 	var end_pos: Vector2 = _cursor_world()
 	if not _can_form_up(_rmb_start, end_pos):
 		return
-	var u = _single_selected_unit()
-	if u == null:
+	var units: Array = _order_units_for_line(_live_selected_units(), _rmb_start, end_pos, _rmb_shift)
+	if units.is_empty():
 		return
-	# Draw the same formation-scaled (frontage-clamped) line the replay overlay uses,
-	# so the preview can't extend past where the unit actually deploys when the drag is
-	# wider than max_soldiers allows.
-	var center: Vector2 = (_rmb_start + end_pos) * 0.5
 	var face: float = _form_up_facing(_rmb_start, end_pos)
-	var files: int = UnitFormation.files_for_halfwidth(_rmb_start.distance_to(end_pos) * 0.5, u.max_soldiers)
-	_draw_form_up_line(center, face, files, FORM_UP_COLOR)
-	draw_string(ThemeDB.fallback_font, end_pos + Vector2(8.0, -6.0), UnitFormation.files_label(files),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, FORM_UP_COLOR)
+	var font := ThemeDB.fallback_font
+	for slice in _form_up_slices(units, _rmb_start, end_pos, _form_up_dist):
+		_draw_form_up_line(slice["center"], face, slice["files"], FORM_UP_COLOR)
+		# Centre the file-count label over the slice (width -1 ignores CENTER alignment, so
+		# offset by half the text width, as the keystroke overlay does).
+		var label: String = UnitFormation.files_label(slice["files"])
+		var tw: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		draw_string(font, slice["center"] + Vector2(-tw * 0.5, -10.0), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, FORM_UP_COLOR)
+	# Name the active distribution mode by the cursor for a multi-unit deploy, so it's clear
+	# which split is in effect and that the cycle key (Y) changed it. One unit fills the line
+	# whatever the mode, so the label would just be noise there.
+	if units.size() > 1:
+		draw_string(font, end_pos + Vector2(10.0, 14.0),
+				str(FORM_UP_DIST_NAMES.get(_form_up_dist, "")),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, FORM_UP_COLOR)
 
 
 ## Flank resize grips on a singly-selected unit, plus -- while a grip is held -- a
@@ -945,6 +1118,7 @@ func _draw_orders() -> void:
 			var route := _move_route_for(u)
 			if not route.is_empty():
 				_draw_move_path(origin, route[0], route.slice(1))
+				_draw_formation_preview(route.back(), u)
 
 
 ## The friendly a SUPPORT unit is guarding, if it's still a valid overlay
@@ -994,6 +1168,19 @@ func _draw_move_path(origin: Vector2, first: Vector2, waypoints: Array[Vector2])
 func _draw_move_marker(p: Vector2, color: Color) -> void:
 	draw_arc(p, 8.0, 0.0, TAU, 18, color, 2.0)
 	draw_circle(p, 2.5, color)
+
+
+## Ghost formation at the move destination: one small dot per soldier slot, at 35 %
+## opacity so it reads as "future" without obscuring the live units. Uses the unit's
+## current facing — exact for form-up orders (which update facing immediately on issue)
+## and single-destination moves; on multi-waypoint routes the ghost may not match the
+## final arrival orientation if the last leg turns significantly from the current one.
+func _draw_formation_preview(p: Vector2, u: UnitRef) -> void:
+	var slots := UnitFormation.slots(u, u.soldiers)
+	var ang: float = u.facing.angle() + PI * 0.5
+	var col := Color(ORDER_MOVE_COLOR.r, ORDER_MOVE_COLOR.g, ORDER_MOVE_COLOR.b, 0.35)
+	for slot in slots:
+		draw_circle(p + slot.rotated(ang), 2.0, col)
 
 
 ## Support marker: a double "shielding" ring over the guarded ward, distinct from the

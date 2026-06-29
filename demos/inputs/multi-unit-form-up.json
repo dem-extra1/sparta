@@ -1,0 +1,11 @@
+{
+  "_comment": "Scripted-input demo: box-select three regiments (uids 0/1/2 — Spearmen 140, Infantry 120, Archers 90, spawned in a row at y=300 on seed 12345), then one right-drag deploys them along a flank line, split to equal depth. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 560.0, "y": 400.0, "zoom": 1.7}
+  ],
+  "steps": [
+    {"tick": 8, "box": {"from": [450, 270], "to": [850, 330]}},
+    {"tick": 32, "rmb_drag": {"from": [880, 470], "to": [260, 470]}}
+  ]
+}
