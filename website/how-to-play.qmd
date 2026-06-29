@@ -26,7 +26,9 @@ left fighting --- every remaining unit is dead or routing.
 | Select a unit | **Left-click** its block or its raised flag |
 | Select multiple | **Left-click and drag** a box |
 | Move | **Right-click** the ground |
-| Form up | **Right-click and drag** open ground (left flank → right flank) |
+| Form up | **Right-click and drag** open ground (left flank → right flank); with several units selected, the line is split among them |
+| Form up in selection order | **Shift + right-click and drag** (instead of the default left-to-right field order) |
+| Form-up split mode | <kbd>Y</kbd> cycles equal-depth ↔ equal-width (set the default in ☰ Menu) |
 | Attack | **Right-click** an enemy unit |
 | Add waypoint | **Shift + Right-click** (chain several move points) |
 | Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear |
@@ -81,6 +83,18 @@ unit's **left flank**, the end is its **right flank**. The unit marches over and
 to face the line --- the drag sets its position, width, and facing in one gesture, with
 a live preview of the front line and a forward arrow. A short right-click (no drag) is
 still a plain move.
+
+**Deploy several units at once.** Select multiple units first, then drag the same
+flank line: it's split into one contiguous slice per unit, with a small gap between them.
+By default the line splits to **equal depth** --- every regiment forms up the same number
+of ranks, so a bigger unit simply takes a wider slice and the whole front is a uniform
+wall. Press <kbd>Y</kbd> to switch to **equal width** (every unit the same frontage, so a
+small unit just stacks deeper) and back; the choice you make in **☰ Menu → Form-up** is the
+default each battle starts with. By default the units fill the line **left-to-right by where
+they already stand**, so each marches to the nearest slice without crossing a neighbour;
+hold **Shift** while you drag to place them in **selection order** instead (the first unit
+you picked takes the left flank). The preview shows every unit's slice, file count, and the
+active split mode before you release.
 
 ## The battle loop
 

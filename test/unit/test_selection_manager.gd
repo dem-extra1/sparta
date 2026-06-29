@@ -15,12 +15,17 @@ const BattleScript = preload("res://scripts/Battle.gd")
 var _orig_bindings: Dictionary
 
 
+var _orig_form_up_default: int
+
+
 func before_each() -> void:
 	_orig_bindings = Settings.order_bindings.duplicate()
+	_orig_form_up_default = Settings.form_up_dist_default
 
 
 func after_each() -> void:
 	Settings.order_bindings = _orig_bindings.duplicate()
+	Settings.form_up_dist_default = _orig_form_up_default
 
 
 func _sm() -> Node2D:
@@ -266,7 +271,7 @@ func test_form_up_facing_is_perpendicular_to_the_flank_line() -> void:
 	assert_almost_eq(facing.y, -1.0, 0.001, "and faces up for a left-to-right drag")
 
 
-func test_can_form_up_requires_single_selection_and_width() -> void:
+func test_can_form_up_requires_a_selection_and_width() -> void:
 	var sm := _sm()
 	var a := _unit()
 	var c := _unit()
@@ -275,8 +280,25 @@ func test_can_form_up_requires_single_selection_and_width() -> void:
 	assert_true(sm._can_form_up(Vector2.ZERO, Vector2(100, 0)), "one unit + wide drag -> form-up")
 	assert_false(sm._can_form_up(Vector2.ZERO, Vector2(5, 0)), "too-short drag -> plain move")
 	sm._select(c)
-	assert_false(sm._can_form_up(Vector2.ZERO, Vector2(100, 0)),
-			"a multi-selection falls back to plain move (multi-unit deferred)")
+	assert_true(sm._can_form_up(Vector2.ZERO, Vector2(100, 0)),
+			"a multi-selection + wide drag also forms up (distributed along the line)")
+
+
+func test_can_form_up_needs_extra_width_for_each_inter_unit_gap() -> void:
+	# Two units need FORM_UP_MIN_WIDTH plus one gap's worth of drag; a drag only wide enough
+	# for a single unit falls back to a plain move (so the gaps can't eat all the usable width).
+	var sm := _sm()
+	var a := _unit()
+	var c := _unit()
+	sm._select(a)
+	var one_unit_min: float = SelectionManagerScript.FORM_UP_MIN_WIDTH
+	assert_true(sm._can_form_up(Vector2.ZERO, Vector2(one_unit_min, 0)), "one unit forms up at the base minimum")
+	sm._select(c)
+	assert_false(sm._can_form_up(Vector2.ZERO, Vector2(one_unit_min, 0)),
+			"two units need more than the single-unit minimum (room for the gap)")
+	var two_unit_min: float = one_unit_min + SelectionManagerScript.MULTI_FORM_UP_GAP
+	assert_true(sm._can_form_up(Vector2.ZERO, Vector2(two_unit_min, 0)),
+			"a drag wide enough for the gap forms up")
 
 
 # --- clickable flags ------------------------------------
@@ -354,3 +376,145 @@ func test_issue_form_up_routes_a_recorded_order() -> void:
 	sm._issue_form_up(Vector2(400, 500), Vector2(540, 500))   # 140 px wide line
 	assert_eq(u.move_target, Vector2(470, 500), "deploys at the flank-line midpoint")
 	assert_true(b._pending_orders[-1].has("face"), "routed as a recorded form-up order")
+
+
+# --- multi-unit drag-to-form-up -------------------------
+
+const EQUAL_DEPTH := SelectionManagerScript.FormUpDist.EQUAL_DEPTH
+const EQUAL_WIDTH := SelectionManagerScript.FormUpDist.EQUAL_WIDTH
+
+
+func test_form_up_equal_depth_gives_units_the_same_rank_depth() -> void:
+	# Equal-depth (default): a bigger unit gets MORE files than a smaller one, but both
+	# deploy at (about) the same number of ranks — the uniform battle-line look.
+	var sm := _sm()
+	var big := _unit()
+	big.max_soldiers = 200
+	var small := _unit()
+	small.max_soldiers = 100
+	var slices: Array = sm._form_up_slices([big, small], Vector2(0, 0), Vector2(400, 0), EQUAL_DEPTH)
+	assert_eq(slices.size(), 2, "one slice per unit")
+	assert_lt(slices[0]["center"].x, slices[1]["center"].x, "slice centres run left to right")
+	assert_gt(slices[0]["files"], slices[1]["files"], "the bigger unit deploys more files (wider)")
+	var depth_big: int = int(ceil(200.0 / float(slices[0]["files"])))
+	var depth_small: int = int(ceil(100.0 / float(slices[1]["files"])))
+	assert_almost_eq(float(depth_big), float(depth_small), 1.0,
+			"both units form up to within one rank of the same depth")
+
+
+func test_form_up_equal_width_gives_units_the_same_frontage() -> void:
+	# Equal-width: same files for equal-line-share regardless of size, so a big and a small
+	# unit get the same frontage (the small one just ends up deeper).
+	var sm := _sm()
+	var big := _unit()
+	big.max_soldiers = 200
+	var small := _unit()
+	small.max_soldiers = 100
+	var slices: Array = sm._form_up_slices([big, small], Vector2(0, 0), Vector2(400, 0), EQUAL_WIDTH)
+	assert_eq(slices[0]["files"], slices[1]["files"],
+			"equal width gives both units the same frontage")
+
+
+func test_form_up_single_unit_slice_fills_the_whole_line() -> void:
+	# One unit collapses to the old behaviour: no gap, slice centre at the line midpoint,
+	# regardless of mode.
+	var sm := _sm()
+	var u := _unit()
+	u.max_soldiers = 120
+	# A lone unit fills the 140 px drag with the same frontage the original single-unit deploy
+	# used (files_for_halfwidth of the half-width) — in BOTH modes, since equal depth is vacuous.
+	var want_files: int = UnitFormation.files_for_halfwidth(70.0, 120)
+	for mode in [EQUAL_DEPTH, EQUAL_WIDTH]:
+		var slices: Array = sm._form_up_slices([u], Vector2(400, 500), Vector2(540, 500), mode)
+		assert_eq(slices.size(), 1, "a lone unit is one slice")
+		assert_almost_eq(slices[0]["center"].x, 470.0, 0.001, "centred on the line midpoint")
+		assert_eq(slices[0]["center"].y, 500.0, "on the line")
+		assert_eq(slices[0]["files"], want_files, "fills the line at the original single-unit frontage")
+
+
+func test_order_units_for_line_sorts_by_field_position_by_default() -> void:
+	# Two units selected right-to-left of where they sit; the default field-position ordering
+	# puts the physically-left unit on the left flank regardless of selection order.
+	var sm := _sm()
+	var left_on_field := _unit()
+	left_on_field.position = Vector2(50, 0)
+	var right_on_field := _unit()
+	right_on_field.position = Vector2(900, 0)
+	# Selected right-first, so selection order is [right, left].
+	var sel: Array = [right_on_field, left_on_field]
+	var by_field: Array = sm._order_units_for_line(sel, Vector2(0, 0), Vector2(1000, 0), false)
+	assert_eq(by_field[0], left_on_field, "field order puts the left-positioned unit on the left flank")
+	var by_sel: Array = sm._order_units_for_line(sel, Vector2(0, 0), Vector2(1000, 0), true)
+	assert_eq(by_sel[0], right_on_field, "selection order keeps the first-selected unit on the left")
+
+
+func test_issue_form_up_routes_one_order_per_selected_unit() -> void:
+	var sm := _sm()
+	var b = BattleScript.new()
+	autofree(b)
+	sm._battle = b
+	var u1 := _unit()
+	u1.uid = 21
+	u1.max_soldiers = 100
+	u1.position = Vector2(100, 500)
+	var u2 := _unit()
+	u2.uid = 22
+	u2.max_soldiers = 100
+	u2.position = Vector2(900, 500)
+	b._by_uid[21] = u1
+	b._by_uid[22] = u2
+	sm._select(u1)
+	sm._select(u2)
+	var before: int = b._pending_orders.size()
+	sm._issue_form_up(Vector2(0, 500), Vector2(1000, 500))
+	assert_eq(b._pending_orders.size() - before, 2, "one recorded form-up order per unit")
+	# Each order carries exactly one unit and a deploy facing, and their slice centres differ.
+	var last_two: Array = b._pending_orders.slice(b._pending_orders.size() - 2)
+	assert_eq(last_two[0]["units"].size(), 1, "each form-up order targets a single unit")
+	assert_true(last_two[0].has("face") and last_two[1].has("face"), "both routed as form-up orders")
+	assert_ne(last_two[0]["x"], last_two[1]["x"], "the two units deploy at distinct slice centres")
+
+
+# --- form-up distribution mode (cycle + settings) -------
+
+func test_form_up_dist_starts_at_the_persisted_default() -> void:
+	Settings.form_up_dist_default = EQUAL_WIDTH
+	var sm := _sm()   # _ready reads the default
+	assert_eq(sm._form_up_dist, EQUAL_WIDTH, "the live mode starts at the persisted default")
+
+
+func test_cycle_form_up_dist_hotkey_flips_the_live_mode() -> void:
+	var sm := _sm()
+	sm._form_up_dist = EQUAL_DEPTH
+	assert_true(sm._dispatch_key(_key_event(SelectionManagerScript.FORM_UP_DIST_CYCLE_KEY)),
+			"the cycle key is a handled hotkey")
+	assert_eq(sm._form_up_dist, EQUAL_WIDTH, "one press advances to the next mode in the cycle")
+	sm._dispatch_key(_key_event(SelectionManagerScript.FORM_UP_DIST_CYCLE_KEY))
+	assert_eq(sm._form_up_dist, EQUAL_DEPTH, "a second press wraps back to the first mode")
+
+
+func test_changing_the_default_snaps_the_live_mode_over() -> void:
+	# A ☰-menu change to the default (Settings.form_up_dist_default) snaps the live mode to it.
+	var sm := _sm()
+	sm._form_up_dist = EQUAL_DEPTH
+	Settings.form_up_dist_default = EQUAL_WIDTH   # fires Settings.changed -> _on_settings_changed
+	assert_eq(sm._form_up_dist, EQUAL_WIDTH, "changing the default in settings updates the live mode")
+
+
+func test_unrelated_setting_change_keeps_an_on_the_fly_cycle() -> void:
+	# Cycling the live mode then toggling an unrelated setting must NOT reset the cycled mode.
+	Settings.form_up_dist_default = EQUAL_DEPTH
+	var sm := _sm()
+	sm._form_up_dist = EQUAL_WIDTH   # cycled away from the default on the fly
+	Settings.edge_scroll = not Settings.edge_scroll   # unrelated Settings.changed
+	assert_eq(sm._form_up_dist, EQUAL_WIDTH, "an unrelated setting change leaves the cycled mode intact")
+	Settings.edge_scroll = not Settings.edge_scroll   # restore
+
+
+func test_form_up_dist_default_clamps_out_of_range() -> void:
+	# A corrupt/hand-edited cfg can't propagate an out-of-range mode: the setter clamps it.
+	Settings.form_up_dist_default = 99
+	assert_eq(Settings.form_up_dist_default, Settings.FORM_UP_DIST_MAX,
+			"an over-range default clamps to the last mode")
+	Settings.form_up_dist_default = -5
+	assert_eq(Settings.form_up_dist_default, 0, "a negative default clamps to the first mode")

@@ -7,9 +7,12 @@ extends CanvasLayer
 
 const BattleRef = preload("res://scripts/Battle.gd")
 const CampaignBattleRef = preload("res://scripts/campaign/CampaignBattle.gd")
+const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
 
-# Stable ids for the Menu popup's items (independent of index / separators).
-enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX, MENU_KEYBINDINGS }
+# Stable ids for the Menu popup's items (independent of index / separators). The two
+# MENU_FORMUP_* ids set the default multi-unit form-up distribution (radio-checked).
+enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
+		MENU_FORMUP_EQUAL_DEPTH, MENU_FORMUP_EQUAL_WIDTH, MENU_KEYBINDINGS }
 
 var _hint: Label
 var _info: Label
@@ -19,6 +22,7 @@ var _menu_button: MenuButton
 var _status: Label
 var _paused_label: Label
 var _order_mode_label: Label
+var _flash_label: Label
 var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
@@ -77,6 +81,18 @@ func _ready() -> void:
 	_order_mode_label.visible = false
 	add_child(_order_mode_label)
 
+	# Transient toast just below the order-mode indicator, for brief one-off feedback
+	# (e.g. the form-up distribution cycle hotkey). Auto-hides after a moment; see flash_message().
+	_flash_label = Label.new()
+	_flash_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_flash_label.position = Vector2(-120, 104)
+	_flash_label.custom_minimum_size = Vector2(240, 0)
+	_flash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_flash_label.add_theme_font_size_override("font_size", 15)
+	_flash_label.add_theme_color_override("font_color", Color(0.55, 0.95, 0.65))
+	_flash_label.visible = false
+	add_child(_flash_label)
+
 	# Menu button (top-right) gathering the global options that used to be
 	# scattered across the HUD — restart, replay loading, and the edge-scroll
 	# toggle. Its popup is PROCESS_MODE_ALWAYS so it stays usable while the
@@ -104,6 +120,11 @@ func _ready() -> void:
 	popup.add_separator()
 	popup.add_check_item("Mouse-edge scroll", MENU_EDGE_SCROLL)
 	popup.add_check_item("Sound effects", MENU_SFX)
+	# Default split for a multi-unit drag-to-form-up (radio: pick one). The live mode can
+	# also be cycled mid-battle with the form-up distribution hotkey.
+	popup.add_separator("Form-up: split a line by…")
+	popup.add_radio_check_item("Equal depth (ranks)", MENU_FORMUP_EQUAL_DEPTH)
+	popup.add_radio_check_item("Equal width (frontage)", MENU_FORMUP_EQUAL_WIDTH)
 	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
 	_sync_setting_toggles()
 	popup.id_pressed.connect(_on_menu_id)
@@ -233,6 +254,12 @@ func _sync_setting_toggles() -> void:
 	var popup := _menu_button.get_popup()
 	popup.set_item_checked(popup.get_item_index(MENU_EDGE_SCROLL), Settings.edge_scroll)
 	popup.set_item_checked(popup.get_item_index(MENU_SFX), Settings.sfx_enabled)
+	# Radio-check the chosen default form-up distribution. Compare each item to the setting
+	# directly (not `not depth`) so adding a third mode later can't leave both unchecked.
+	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_EQUAL_DEPTH),
+			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_DEPTH)
+	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_EQUAL_WIDTH),
+			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_WIDTH)
 
 
 ## Rebuild the controls hint, rendering the order-mode keys from the live Settings
@@ -262,6 +289,11 @@ func _on_menu_id(id: int) -> void:
 			Settings.edge_scroll = not Settings.edge_scroll
 		MENU_SFX:
 			Settings.sfx_enabled = not Settings.sfx_enabled
+		MENU_FORMUP_EQUAL_DEPTH:
+			# Settings.changed -> _sync_setting_toggles re-checks the radios.
+			Settings.form_up_dist_default = SelectionManagerRef.FormUpDist.EQUAL_DEPTH
+		MENU_FORMUP_EQUAL_WIDTH:
+			Settings.form_up_dist_default = SelectionManagerRef.FormUpDist.EQUAL_WIDTH
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 
@@ -330,6 +362,25 @@ func set_order_mode(text: String) -> void:
 	else:
 		_order_mode_label.text = "Order: %s" % text
 		_order_mode_label.visible = true
+
+
+## Briefly show a one-line toast, then auto-hide it. Used for transient feedback like the
+## form-up distribution cycle. A fresh call supersedes any toast still showing (the newer
+## text wins, so the older timer's hide is a no-op).
+const FLASH_SECONDS := 1.3
+func flash_message(text: String) -> void:
+	_flash_label.text = text
+	_flash_label.visible = true
+	# process_always so it ticks while the sim is paused (orders/cycles work paused too).
+	var timer := get_tree().create_timer(FLASH_SECONDS, true)
+	timer.timeout.connect(_hide_flash.bind(text))
+
+
+## Hide the toast unless a newer flash_message() has since replaced its text. Guarded against
+## a freed label so a deferred timer can't touch this HUD after a scene reload.
+func _hide_flash(text: String) -> void:
+	if is_instance_valid(_flash_label) and _flash_label.text == text:
+		_flash_label.visible = false
 
 
 func show_end(text: String) -> void:
