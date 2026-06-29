@@ -31,11 +31,15 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     # "User-visible change" = something that affects what the game looks/plays
     # like. Docs/CI/test-only diffs don't qualify and won't trigger a recording.
+    # `demos/**` is included so editing the demo manifest or a scenario (with no
+    # code change) still re-records the clip — otherwise a demos-only push leaves
+    # the previously-posted clip stale.
     paths:
       - 'scenes/**'
       - 'scripts/**'
       - 'assets/**'
       - 'project.godot'
+      - 'demos/**'
 
 # One recording per PR; a newer push cancels an in-flight one.
 concurrency:
