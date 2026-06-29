@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/reform-before-move.json",
-  "caption": "Reform before move: select the Spearmen and drag a new deployment line. The regiment holds its position for ~0.8 s (ranks settling) before marching south — visible as a brief pause after the order is issued. Toggle this behaviour in ☰ Menu → Reform before move.",
+  "replay": "demos/showcase.json",
+  "caption": "Floating-blade fix: weapon instances are now skipped for prone (knocked-down) soldiers at figure LOD. Before this fix, a front-rank soldier felled in melee would show a detached floating blade at the upright position while the body silhouette lay on its side.",
   "fixed_fps": 30,
-  "max_frames": 200,
+  "max_frames": 300,
   "fps": 12,
   "width": 720
 }
