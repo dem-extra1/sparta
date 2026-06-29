@@ -209,7 +209,7 @@ func test_math_is_deterministic() -> void:
 	assert_eq(w1, w2, "wound is a pure function")
 
 
-# --- mass + knockback impulse (#201 slice A) -------------------
+# --- mass + knockback impulse -----------------------------------
 
 func test_profiles_carry_per_type_mass() -> void:
 	assert_almost_eq(SoldierCombat.profile_for(true, false, false, 0.5)["mass"], 2.5, 1e-6, "cavalry are heavy")
@@ -250,7 +250,7 @@ func test_knockback_impulse_never_negative() -> void:
 	assert_gt(SoldierCombat.knockback_impulse(1.0, 0.0, 0.0, 1.0), 0.0, "zero mass is floored, not a divide-by-zero")
 
 
-# --- prone / knockdown (#201 slice B) -------------------------
+# --- prone / knockdown ------------------------------------------
 
 func test_prone_chance_zero_below_threshold() -> void:
 	assert_eq(SoldierCombat.prone_chance(10.0, 1.0), 0.0, "a small shove never fells a man")

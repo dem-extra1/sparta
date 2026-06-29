@@ -211,7 +211,7 @@ func test_heavier_defender_is_knocked_back_less() -> void:
 	assert_lt(heavy_kb, light_kb, "a heavy (cavalry) defender is knocked back less than a light (archer) one")
 
 
-# --- prone / knockdown (#201 slice B) -------------------------
+# --- prone / knockdown ------------------------------------------
 
 const TICK: float = 1.0 / 60.0
 

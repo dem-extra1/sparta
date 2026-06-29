@@ -65,12 +65,15 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		defender._sim_body_vel[target] += push_dir * impulse_mag
 		if landed:
 			defender._sim_soldier_hp[target] -= SoldierCombat.wound(my_prof["lethality"], c, en_prof["armour"], cond_a)
-		# Going prone (#201 slice B): a big enough impulse fells the defender -- a second seeded
-		# draw per striking attacker (always, after the land roll, in id order, so the draw count
-		# per strike is fixed). A felled body loses active defence and can't strike until it
-		# rises; a fresh blow on a downed man refreshes the timer, keeping him down under assault.
+		# Going prone: a big enough impulse fells the defender. The fall roll is a second seeded
+		# draw per striking attacker, ALWAYS drawn (after the land roll, in id order) so the draw
+		# count per in-reach strike is fixed -- the size guard gates only the assignment, never
+		# the draw, so an out-of-sync array can't silently shift the RNG stream. A felled body
+		# loses active defence and can't strike until it rises; a fresh blow on a downed man
+		# refreshes the timer, keeping him down under assault.
+		var fall_roll: float = Replay.rng.randf()
 		if target < defender._sim_prone.size() \
-				and Replay.rng.randf() < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"]):
+				and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"]):
 			defender._sim_prone[target] = SoldierCombat.PRONE_RISE_TIME
 
 	reap(defender, attacker)
