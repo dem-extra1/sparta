@@ -13,7 +13,7 @@ config_version=5
 config/name="Sparta"
 config/description="Milestone 1: a single 2D tactical battle (grand-strategy x tactics prototype)."
 run/main_scene="res://scenes/MainMenu.tscn"
-config/features=PackedStringArray("4.6")
+config/features=PackedStringArray("4.7")
 config/icon="res://icon.svg"
 
 [autoload]

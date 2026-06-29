@@ -1,6 +1,6 @@
 {
   "replay": "demos/charge_demo.json",
-  "caption": "Prone soldiers now render as dark horizontal marks (or lying silhouettes at high zoom). Watch for darkened flat marks after the cavalry charge bowls infantry over; they stand back up after PRONE_RISE_TIME.",
+  "caption": "Pace modes: units now walk by default, jog when under missile fire, and sprint to full charge speed within 200px of the target. Toggle Walk advance (no jog/sprint) in the Menu for formed stances.",
   "fixed_fps": 30,
   "max_frames": 400,
   "fps": 12,

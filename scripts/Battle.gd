@@ -349,6 +349,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"target": target_uid,
 		"mode": order_mode,
 		"reform": Settings.reform_before_move,
+		"walk_advance": Settings.walk_advance,
 	}
 	_pending_orders.append(cmd)
 	# Apply immediately for zero-latency feedback and paused preview — EXCEPT a
@@ -419,6 +420,7 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"frontage": frontage,
 		"face": face,
 		"reform": Settings.reform_before_move,
+		"walk_advance": Settings.walk_advance,
 	}
 	_pending_orders.append(cmd)
 	_apply_order_cmd(cmd)
@@ -486,6 +488,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 		if not append:
 			u.waypoints.clear()
 			u.order_mode = mode
+			u.walk_advance = bool(cmd.get("walk_advance", false))
 			u.support_target = null
 			# Any fresh order drops a deploy facing a prior form-up parked; the form-up
 			# move branch below re-sets it. So attack / support / relief / plain move all
