@@ -49,6 +49,20 @@ var form_up_dist_default: int = FORM_UP_DIST_EQUAL_DEPTH:
 			_save()
 			changed.emit()
 
+# Reform before move: when true, a fresh move order makes the unit hold its position
+# for REFORM_DURATION before marching, so its ranks settle before it steps off.
+# Default on (the historical default for formed infantry). Baked into each order's
+# "reform" field so replays reproduce the behavior as recorded, regardless of whether
+# the setting is later changed.
+var reform_before_move: bool = true:
+	set(value):
+		if value == reform_before_move:
+			return
+		reform_before_move = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Order-mode selector hotkeys: stable slug -> physical keycode. Slugs (and the
 # menu order) are owned by Battle.ORDER_MODE_HOTKEYS; these are the factory defaults.
 # Physical keycodes keep the bindings layout-independent (like the camera/pause keys).
@@ -126,6 +140,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	edge_scroll = cfg.get_value("camera", "edge_scroll", edge_scroll)
 	sfx_enabled = cfg.get_value("audio", "sfx_enabled", sfx_enabled)
 	form_up_dist_default = int(cfg.get_value("gameplay", "form_up_dist_default", form_up_dist_default))
+	reform_before_move = bool(cfg.get_value("gameplay", "reform_before_move", reform_before_move))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
 	_loading = false
@@ -138,6 +153,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("camera", "edge_scroll", edge_scroll)
 	cfg.set_value("audio", "sfx_enabled", sfx_enabled)
 	cfg.set_value("gameplay", "form_up_dist_default", form_up_dist_default)
+	cfg.set_value("gameplay", "reform_before_move", reform_before_move)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))
 	cfg.save(path)

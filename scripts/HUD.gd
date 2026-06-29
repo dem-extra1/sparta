@@ -12,7 +12,8 @@ const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
 # Stable ids for the Menu popup's items (independent of index / separators). The two
 # MENU_FORMUP_* ids set the default multi-unit form-up distribution (radio-checked).
 enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
-		MENU_FORMUP_EQUAL_DEPTH, MENU_FORMUP_EQUAL_WIDTH, MENU_KEYBINDINGS }
+		MENU_FORMUP_EQUAL_DEPTH, MENU_FORMUP_EQUAL_WIDTH,
+		MENU_REFORM_BEFORE_MOVE, MENU_KEYBINDINGS }
 
 var _hint: Label
 var _info: Label
@@ -125,6 +126,8 @@ func _ready() -> void:
 	popup.add_separator("Form-up: split a line by…")
 	popup.add_radio_check_item("Equal depth (ranks)", MENU_FORMUP_EQUAL_DEPTH)
 	popup.add_radio_check_item("Equal width (frontage)", MENU_FORMUP_EQUAL_WIDTH)
+	popup.add_separator()
+	popup.add_check_item("Reform before move", MENU_REFORM_BEFORE_MOVE)
 	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
 	_sync_setting_toggles()
 	popup.id_pressed.connect(_on_menu_id)
@@ -260,6 +263,8 @@ func _sync_setting_toggles() -> void:
 			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_DEPTH)
 	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_EQUAL_WIDTH),
 			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_WIDTH)
+	popup.set_item_checked(popup.get_item_index(MENU_REFORM_BEFORE_MOVE),
+			Settings.reform_before_move)
 
 
 ## Rebuild the controls hint, rendering the order-mode keys from the live Settings
@@ -294,6 +299,8 @@ func _on_menu_id(id: int) -> void:
 			Settings.form_up_dist_default = SelectionManagerRef.FormUpDist.EQUAL_DEPTH
 		MENU_FORMUP_EQUAL_WIDTH:
 			Settings.form_up_dist_default = SelectionManagerRef.FormUpDist.EQUAL_WIDTH
+		MENU_REFORM_BEFORE_MOVE:
+			Settings.reform_before_move = not Settings.reform_before_move
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 

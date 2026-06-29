@@ -1,0 +1,12 @@
+{
+  "_comment": "Reform-before-move demo: select the Spearmen and issue a form-up drag south. With reform-first on (the default) the regiment holds its ground for ~0.8 s while its ranks settle, then marches to the new line. Hold Space throughout to see the move path and formation preview during the reform pause.",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 390.0, "zoom": 1.4}
+  ],
+  "steps": [
+    {"tick": 2,  "hold_space": true},
+    {"tick": 8,  "click": [500, 300]},
+    {"tick": 24, "rmb_drag": {"from": [420, 570], "to": [580, 570]}}
+  ]
+}

@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/formation-preview.json",
-  "caption": "Formation preview in the orders overlay: select a regiment, right-click to march it south — the ghost dots (faint green) at the endpoint show exactly where each soldier will stand when the regiment arrives. Hold Space in a real battle to see this overlay live.",
+  "input": "demos/inputs/reform-before-move.json",
+  "caption": "Reform before move: select the Spearmen and drag a new deployment line. The regiment holds its position for ~0.8 s (ranks settling) before marching south — visible as a brief pause after the order is issued. Toggle this behaviour in ☰ Menu → Reform before move.",
   "fixed_fps": 30,
-  "max_frames": 150,
+  "max_frames": 200,
   "fps": 12,
   "width": 720
 }
