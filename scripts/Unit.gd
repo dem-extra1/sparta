@@ -1271,7 +1271,7 @@ const WEAPON_SWING_SWORD: float = 0.26    # sword: a modest swing (rad); wider m
 const WEAPON_THRUST_CAV: float = 0.30
 const WEAPON_SWING_CAV: float = 0.32      # sabre: the widest swing
 const WEAPON_COLOR: Color = Color(0.80, 0.82, 0.86)   # steel, untinted by team
-const PRONE_COLOR: Color = Color(0.22, 0.22, 0.22, 0.80)   # dark grey tint for felled soldiers
+const PRONE_COLOR: Color = Color(0.22, 0.22, 0.22, 0.80)   # dark grey, 80% alpha — felled soldiers are slightly translucent; stacks with rout modulate (0.45) to 0.36 for "prone AND routing"
 
 
 
