@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/formation-preview.json",
-  "caption": "Formation preview in the orders overlay: select a regiment, right-click to march it south — the ghost dots (faint green) at the endpoint show exactly where each soldier will stand when the regiment arrives. Hold Space in a real battle to see this overlay live.",
-  "fixed_fps": 30,
-  "max_frames": 150,
-  "fps": 12,
-  "width": 720
+  "skip": true,
+  "reason": "The floating-blade fix only manifests when a soldier is knocked prone during close combat at figure LOD — a probabilistic event (knockdown depends on a random impulse roll) that can't be triggered deterministically from a scripted input."
 }
