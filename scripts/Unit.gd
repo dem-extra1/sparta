@@ -1181,6 +1181,7 @@ const LOD_ZOOM_OUT: float = 1.30
 # The figure-silhouette geometry and its foot-render-kind enum (FOOT_INFANTRY / SPEAR /
 # ARCHER) live in UnitMeshes; _foot_kind maps a unit's type flags onto one of them.
 const EMBLEM_SCALE: float = 0.5         # the per-type sprite, shrunk to a centre emblem
+const FLAG_POLE_BASE_GAP: float = 34.0  # px above the block extent where the pole foot sits
 const FLAG_POLE_HEIGHT: float = 18.0    # pole from above-bar to flag attachment point
 const FLAG_WIDTH: float = 12.0          # horizontal extent of the flag rectangle
 const FLAG_HEIGHT: float = 8.0          # vertical extent of the flag rectangle

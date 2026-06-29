@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Pure performance refactor of the friendly-collision broadphase: each regiment's soldier_block_extent() is now precomputed once per tick instead of recomputed (and reallocated) per regiment pair. Behaviour is byte-identical -- the SoldierSteering tests pin it -- so a recorded battle would look exactly the same."
+  "reason": "Input-affordance change: a unit's raised flag is now a click target for selection/attack, just like its block. The flag already renders the same, and a passive recorded battle can't show the player clicking it, so a clip would look identical to before. Covered by the SelectionManager flag-hit unit tests instead."
 }

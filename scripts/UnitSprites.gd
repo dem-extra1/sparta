@@ -126,6 +126,20 @@ static func cavalry(u: Unit, body: Color, dark: Color, lite: Color) -> void:
 			dark, 1.0)
 
 
+## The local-space bounding box of a unit's raised standard (pole + flag), in the same
+## unrotated screen frame `flag()` draws in (origin = the unit centre). Single-sources the
+## standard's geometry so a hit test (clicking the flag to select the unit) stays in step
+## with what's drawn. `extent` is the unit's render block half-size.
+static func standard_bounds(extent: float) -> Rect2:
+	# Pole foot sits FLAG_POLE_BASE_GAP above the block; the pole rises FLAG_POLE_HEIGHT to
+	# the flag attachment. Width spans the flag rectangle (the pole sits on its left edge).
+	# The flag hangs from the pole tip and FLAG_HEIGHT (8) < FLAG_POLE_HEIGHT (18), so it's
+	# fully nested in the pole span — the height needn't add FLAG_HEIGHT. (If the flag were
+	# ever re-anchored below the pole base, this bound would need to grow to cover it.)
+	var top: float = -extent - Unit.FLAG_POLE_BASE_GAP - Unit.FLAG_POLE_HEIGHT
+	return Rect2(0.0, top, Unit.FLAG_WIDTH, Unit.FLAG_POLE_HEIGHT)
+
+
 ## A regimental standard: a pole rising above the stat bars with a coloured flag bearing a
 ## per-type emblem. Drawn in screen space (called after draw_set_transform reset) so it
 ## always stands upright regardless of the unit's facing direction. Dead units skip it.
@@ -133,7 +147,7 @@ static func flag(u: Unit, body_c: Color, alpha: float, extent: float) -> void:
 	if u.state == Unit.State.DEAD:
 		return
 	# Pole rises from just above the soldier-count text (which sits ~14 px above bar top).
-	var pole_base := Vector2(0.0, -extent - 34.0)
+	var pole_base := Vector2(0.0, -extent - Unit.FLAG_POLE_BASE_GAP)
 	var pole_top  := Vector2(0.0, pole_base.y - Unit.FLAG_POLE_HEIGHT)
 	u.draw_line(pole_base, pole_top, Color(0.85, 0.85, 0.85, alpha), 1.5)
 	# Flag rectangle hangs below the pole tip (positive-Y in screen space = downward).
