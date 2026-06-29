@@ -173,7 +173,7 @@ A blow that lands wounds. We do **not** roll kill-or-not; we subtract damage fro
 the defender's health. Its size is the weapon's lethality, amplified by closing
 momentum, blunted by armour, and scaled by the attacker's own condition:
 
-$$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\,q(h_A),
+$$\Delta h = D_0\,\ell_A\,(1 + c)\,(1 - a_D)\,q(h_A)\,g(\sigma_A),
 \qquad
 h_D \leftarrow h_D - \Delta h.$$
 
@@ -247,8 +247,8 @@ its feet.
 > **Implemented (#201 slice B):** `SoldierCombat.prone_chance` (mass-raised threshold) and
 > a per-soldier `_sim_prone` timer. In `SoldierMelee` a felled defender loses active defence
 > (`φ_D → 0`) and a felled attacker can't strike; `SoldierBodies` decays the timer so a
-> soldier rises after `PRONE_RISE_TIME`. The stamina cost of rising (`κ_p`) and a prone
-> *visual* are not in yet. (Bracing `br_D` wired in slice C.)
+> soldier rises after `PRONE_RISE_TIME`. `κ_p` is wired in slice D. A prone
+> *visual* is not in yet. (Bracing `br_D` wired in slice C.)
 
 ## Bracing and the knockback chain (domino)
 
@@ -314,6 +314,15 @@ front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 > cascade ($J_{i+1} = \tau(J_i - C_i)_+$, surplus toppling rear ranks) is a follow-up. The
 > graded `br` formula above (posture weights $b_{\mathrm{post}}$, $w_f$, $w_d$) is also
 > deferred to the posture slice; `br` is binary here.
+
+> **Implemented (#201 slice D):** `SoldierCombat.stamina_factor` ($g(\sigma)$) and the
+> per-soldier `_sim_soldier_stamina` pool. In `SoldierMelee.resolve`, `cond_a`/`cond_d`
+> are now $q(h)\,g(\sigma)$ — the full two-factor condition. Every strike costs the
+> attacker $\kappa_a$; every met blow costs the defender $\kappa_d\,\phi\,(1+c)$ (zero
+> for prone or flanked defenders). `SoldierBodies.step` regens stamina at $\rho_\sigma$
+> per second and charges $\kappa_p$ on the tick a soldier rises from prone. **Deferred:**
+> posture-dependent regen ($\rho_\sigma(\text{posture})$ table) to the posture slice;
+> stamina HUD to a follow-up.
 
 ## Receiving a charge
 
