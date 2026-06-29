@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Physics slice A makes melee knockback mass- and charge-scaled (heavy cavalry shrug off shoves; a charging hit throws foot back harder). It changes the magnitude of an existing effect, which a standalone clip can't show without a side-by-side before/after. Pinned by the SoldierCombat/SoldierMelee tests instead; a visible knockdown will come with the prone/charge slices."
+  "reason": "Pure performance refactor of the friendly-collision broadphase: each regiment's soldier_block_extent() is now precomputed once per tick instead of recomputed (and reallocated) per regiment pair. Behaviour is byte-identical -- the SoldierSteering tests pin it -- so a recorded battle would look exactly the same."
 }

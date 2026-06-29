@@ -41,6 +41,19 @@ static func accumulate(units: Array, frame: int) -> void:
 			u0._sim_steer.resize(u0._sim_soldier_pos.size())
 		u0._sim_steer.fill(Vector2.ZERO)
 
+	# Precompute each living regiment's block extent once per tick. soldier_block_extent()
+	# allocates a fresh PackedVector2Array (via UnitFormation.slots) and runs
+	# SoldierFlock.compute_extent, so computing it here -- rather than per pair inside the
+	# O(regiments^2) friendly broadphase below -- keeps large stacks (past ~30 friendly
+	# regiments/side) off a recompute-and-allocate-per-pair cliff. Keyed by Unit so the
+	# broadphase looks both endpoints up in O(1).
+	var extents := {}
+	for o in sorted_units:
+		var ue: Unit = o as Unit
+		if ue == null or ue.state == Unit.State.DEAD:
+			continue
+		extents[ue] = ue.soldier_block_extent()
+
 	# Gather steering bodies into parallel arrays, already in global-id order.
 	var spos := PackedVector2Array()
 	var sgids := PackedInt32Array()
@@ -57,7 +70,7 @@ static func accumulate(units: Array, frame: int) -> void:
 			continue
 		var r: float = u.soldier_body_radius()
 		var idxs: PackedInt32Array
-		if _overlaps_friendly(u, sorted_units):
+		if _overlaps_friendly(u, sorted_units, extents):
 			idxs = PackedInt32Array()
 			idxs.resize(nb)
 			for i in range(nb):
@@ -109,14 +122,16 @@ static func accumulate(units: Array, frame: int) -> void:
 
 ## Whether `u`'s block overlaps any living FRIENDLY regiment's block (a cheap deterministic
 ## regiment broadphase over the unit list — there are only dozens of regiments). Gates the
-## friendly-contact tier so an uncrowded line costs the same as before.
-static func _overlaps_friendly(u: Unit, sorted_units: Array) -> bool:
-	var reach_u: float = u.soldier_block_extent()
+## friendly-contact tier so an uncrowded line costs the same as before. `extents` holds each
+## living regiment's `soldier_block_extent()` precomputed once for the tick, so the scan reads
+## both endpoints' reach from the cache instead of recomputing (and reallocating) per pair.
+static func _overlaps_friendly(u: Unit, sorted_units: Array, extents: Dictionary) -> bool:
+	var reach_u: float = extents[u]
 	for o in sorted_units:
 		var v: Unit = o as Unit
 		if v == null or v == u or v.state == Unit.State.DEAD or v.team != u.team:
 			continue
-		if u.position.distance_to(v.position) < reach_u + v.soldier_block_extent():
+		if u.position.distance_to(v.position) < reach_u + extents[v]:
 			return true
 	return false
 
