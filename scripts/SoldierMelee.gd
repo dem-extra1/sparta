@@ -22,6 +22,8 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 	var reach: float = attacker.soldier_reach()
 
 	for ai in attackers:
+		if ai < attacker._sim_prone.size() and attacker._sim_prone[ai] > 0.0:
+			continue   # a felled attacker can't strike (no target search, no RNG — order stays stable)
 		var apos: Vector2 = attacker._sim_soldier_pos[ai]
 		# Nearest LIVING enemy soldier within reach — a longer reach lets us hit foes
 		# who can't hit back (the spear screen).
@@ -44,7 +46,9 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# line; an inline ternary as a call arg can mis-evaluate in GDScript).
 		var closing: float = attacker._approach_velocity.dot(push_dir)
 		var c: float = SoldierCombat.charge_factor(closing)
-		var phi: float = SoldierCombat.facing_gate(defender.facing, apos - dpos)
+		# A prone defender has no active defence (phi -> 0): only its armour saves it.
+		var prone_d: bool = target < defender._sim_prone.size() and defender._sim_prone[target] > 0.0
+		var phi: float = 0.0 if prone_d else SoldierCombat.facing_gate(defender.facing, apos - dpos)
 		var cond_a: float = SoldierCombat.condition(attacker._sim_soldier_hp[ai], my_maxhp)
 		var cond_d: float = SoldierCombat.condition(defender._sim_soldier_hp[target], en_maxhp)
 		var p_land: float = SoldierCombat.land_chance(my_prof["skill"], en_prof["skill"], en_prof["shield"], phi, c, cond_a, cond_d)
@@ -57,10 +61,17 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# off shoves, and a blocked spear wall still pushes a stalled enemy back. The body holds
 		# the push and the slot-spring eases it back. Velocity only -- never a position snap.
 		var eta: float = 1.0 if landed else SoldierCombat.ETA_DEFENDED
-		defender._sim_body_vel[target] += push_dir * SoldierCombat.knockback_impulse(
-				my_prof["lethality"], c, en_prof["mass"], eta)
+		var impulse_mag: float = SoldierCombat.knockback_impulse(my_prof["lethality"], c, en_prof["mass"], eta)
+		defender._sim_body_vel[target] += push_dir * impulse_mag
 		if landed:
 			defender._sim_soldier_hp[target] -= SoldierCombat.wound(my_prof["lethality"], c, en_prof["armour"], cond_a)
+		# Going prone (#201 slice B): a big enough impulse fells the defender -- a second seeded
+		# draw per striking attacker (always, after the land roll, in id order, so the draw count
+		# per strike is fixed). A felled body loses active defence and can't strike until it
+		# rises; a fresh blow on a downed man refreshes the timer, keeping him down under assault.
+		if target < defender._sim_prone.size() \
+				and Replay.rng.randf() < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"]):
+			defender._sim_prone[target] = SoldierCombat.PRONE_RISE_TIME
 
 	reap(defender, attacker)
 
@@ -81,6 +92,8 @@ static func reap(unit: Unit, killer: Unit) -> void:
 			unit._sim_soldier_hp.remove_at(i)
 			if i < unit._sim_steer.size():
 				unit._sim_steer.remove_at(i)   # keep the steering array index-aligned
+			if i < unit._sim_prone.size():
+				unit._sim_prone.remove_at(i)   # and the prone timer
 			dead += 1
 	if dead == 0:
 		return

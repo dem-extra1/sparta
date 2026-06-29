@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Physics slice A makes melee knockback mass- and charge-scaled (heavy cavalry shrug off shoves; a charging hit throws foot back harder). It changes the magnitude of an existing effect, which a standalone clip can't show without a side-by-side before/after. Pinned by the SoldierCombat/SoldierMelee tests instead; a visible knockdown will come with the prone/charge slices."
+  "reason": "Physics slice B adds prone/knockdown as a sim mechanic (a felled soldier loses active defence and can't strike until it rises). Prone soldiers aren't rendered differently yet -- the on-screen effect is just 'charged/flanked troops die faster', not legible standalone -- so the clip is skipped and the behaviour is pinned by tests. A prone visual is a tracked follow-up."
 }
