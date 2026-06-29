@@ -449,6 +449,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#weapon-reach" id="toc-weapon-reach" class="nav-link" data-scroll-target="#weapon-reach">Weapon reach</a></li>
   <li><a href="#movement-speed" id="toc-movement-speed" class="nav-link" data-scroll-target="#movement-speed">Movement speed</a></li>
   <li><a href="#order-stances" id="toc-order-stances" class="nav-link" data-scroll-target="#order-stances">Order stances</a></li>
+  <li><a href="#group-attack-distribution" id="toc-group-attack-distribution" class="nav-link" data-scroll-target="#group-attack-distribution">Group attack distribution</a></li>
   <li><a href="#terrain" id="toc-terrain" class="nav-link" data-scroll-target="#terrain">Terrain</a></li>
   <li><a href="#order-response-delay" id="toc-order-response-delay" class="nav-link" data-scroll-target="#order-response-delay">Order-response delay</a></li>
   <li><a href="#disengaging-a-risky-lever" id="toc-disengaging-a-risky-lever" class="nav-link" data-scroll-target="#disengaging-a-risky-lever">Disengaging — a risky lever</a></li>
@@ -605,6 +606,23 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Skirmish</strong> (<kbd>K</kbd>) — a ranged unit kites: it backs off when a threat closes inside its firing range, trading ground to keep shooting rather than being caught in melee.</li>
 <li><strong>Support</strong> (<kbd>G</kbd>) — the unit guards a chosen ally, shadowing it and intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable horse, or a guard onto your archers.</li>
 </ul>
+</section>
+<section id="group-attack-distribution" class="level2">
+<h2 class="anchored" data-anchor-id="group-attack-distribution">Group attack distribution</h2>
+<p>When you have several units selected and right-click an enemy, press <kbd>X</kbd> to cycle between two attack modes:</p>
+<ul>
+<li><strong>Focused</strong> (default) — every selected unit charges the same target. Use it to overwhelm a single regiment quickly.</li>
+<li><strong>Distributed</strong> — each unit picks a different nearby enemy, sorted by proximity to the clicked target. Extra units cycle through the list if you have more units than enemies. Use it to hold an entire line rather than piling onto one regiment and leaving the rest unengaged.</li>
+</ul>
+<p>The flash message in the top-centre of the screen confirms the active mode. The mode is sticky — it stays set until you press <kbd>X</kbd> again.</p>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/group_attack.jpg">
+    <source src="media/group_attack.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.</figcaption>
+</figure>
 </section>
 <section id="terrain" class="level2">
 <h2 class="anchored" data-anchor-id="terrain">Terrain</h2>
