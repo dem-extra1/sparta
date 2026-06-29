@@ -1428,13 +1428,17 @@ func _refresh_flock_render() -> void:
 	if _mm_body.instance_count != n:
 		_mm_body.instance_count = n
 		_mm_outline.instance_count = n
+	var sim_prone_n: int = _sim_prone.size()
 	for i in range(n):
 		# A prone soldier (knocked down, timer > 0) is drawn flat: the mark is squashed
 		# horizontally to suggest a body on the ground, and tinted dark so it reads as
 		# "down" even at small zoom. At the figure LOD the silhouette is rotated 90° to
 		# show the figure lying on its side. Standing soldiers get the normal transform
 		# and WHITE (which multiplies with _mmi_body.modulate = team color, no change).
-		var prone: bool = i < _sim_prone.size() and _sim_prone[i] > 0.0
+		# The outline stays WHITE even when prone so it stays visible — PRONE_COLOR is
+		# already dark (0.22) and _mmi_outline.modulate is 0.35 of team color; their
+		# product (≈ 0.08) would make the silhouette edge invisible.
+		var prone: bool = i < sim_prone_n and _sim_prone[i] > 0.0
 		var t: Transform2D
 		if prone:
 			if _detailed_lod:
@@ -1447,9 +1451,8 @@ func _refresh_flock_render() -> void:
 			t = Transform2D(0.0, _soldier_pos[i])
 		_mm_body.set_instance_transform_2d(i, t)
 		_mm_outline.set_instance_transform_2d(i, t)
-		var inst_color: Color = PRONE_COLOR if prone else Color.WHITE
-		_mm_body.set_instance_color(i, inst_color)
-		_mm_outline.set_instance_color(i, inst_color)
+		_mm_body.set_instance_color(i, PRONE_COLOR if prone else Color.WHITE)
+		_mm_outline.set_instance_color(i, Color.WHITE)   # outline always WHITE; body carries the dark tint
 	_apply_flock_color()
 
 
