@@ -1,4 +1,4 @@
 {
-  "input": "demos/inputs/group-attack-distributed.json",
-  "caption": "Group attack distribution (X to cycle): three player regiments switch to distributed mode then attack --- each unit targets a different nearby enemy instead of all piling onto one. Closes #305."
+  "skip": true,
+  "reason": "This fix corrects the replay recording system (group_attack mode was never written to the replay log). The bug and fix are invisible during live play; they only surface when watching a saved replay of a distributed-mode attack. A recorded battle clip cannot demonstrate the before/after difference."
 }
