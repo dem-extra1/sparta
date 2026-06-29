@@ -19,8 +19,8 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 	var en_prof: Dictionary = defender.combat_profile()
 	var my_maxhp: float = my_prof["max_health"]
 	var en_maxhp: float = en_prof["max_health"]
-	var my_max_stamina: float = my_prof["max_stamina"]
-	var en_max_stamina: float = en_prof["max_stamina"]
+	var my_maxstam: float = my_prof["max_stamina"]
+	var en_maxstam: float = en_prof["max_stamina"]
 	var reach: float = attacker.soldier_reach()
 
 	for ai in attackers:
@@ -51,12 +51,14 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# A prone defender has no active defence (phi -> 0): only its armour saves it.
 		var prone_d: bool = target < defender._sim_prone.size() and defender._sim_prone[target] > 0.0
 		var phi: float = 0.0 if prone_d else SoldierCombat.facing_gate(defender.facing, apos - dpos)
-		var st_a: float = attacker._sim_soldier_stamina[ai] if ai < attacker._sim_soldier_stamina.size() else my_max_stamina
-		var st_d: float = defender._sim_soldier_stamina[target] if target < defender._sim_soldier_stamina.size() else en_max_stamina
+		var stam_a: float = attacker._sim_soldier_stamina[ai] \
+				if ai < attacker._sim_soldier_stamina.size() else my_maxstam
+		var stam_d: float = defender._sim_soldier_stamina[target] \
+				if target < defender._sim_soldier_stamina.size() else en_maxstam
 		var cond_a: float = SoldierCombat.condition(attacker._sim_soldier_hp[ai], my_maxhp) \
-				* SoldierCombat.stamina_factor(st_a, my_max_stamina)
+				* SoldierCombat.stamina_factor(stam_a, my_maxstam)
 		var cond_d: float = SoldierCombat.condition(defender._sim_soldier_hp[target], en_maxhp) \
-				* SoldierCombat.stamina_factor(st_d, en_max_stamina)
+				* SoldierCombat.stamina_factor(stam_d, en_maxstam)
 		var p_land: float = SoldierCombat.land_chance(my_prof["skill"], en_prof["skill"], en_prof["shield"], phi, c, cond_a, cond_d)
 		# One seeded draw per striking attacker, in id order, after the target is fixed.
 		var landed: bool = Replay.rng.randf() < p_land
@@ -101,15 +103,15 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		if target < defender._sim_prone.size() \
 				and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"], brace_d):
 			defender._sim_prone[target] = SoldierCombat.PRONE_RISE_TIME
-		# Stamina drain: attacker pays κ_a per strike thrown; defender pays κ_d
+		# Stamina drain: attacker pays KAPPA_A per strike thrown; defender pays KAPPA_D
 		# scaled by how much of the blow it had to meet (phi*(1+c) — zero for prone/flanked).
 		if ai < attacker._sim_soldier_stamina.size():
 			attacker._sim_soldier_stamina[ai] = maxf(0.0,
-				attacker._sim_soldier_stamina[ai] - SoldierCombat.STAMINA_COST_STRIKE)
+				attacker._sim_soldier_stamina[ai] - SoldierCombat.KAPPA_A)
 		if target < defender._sim_soldier_stamina.size():
 			defender._sim_soldier_stamina[target] = maxf(0.0,
 				defender._sim_soldier_stamina[target]
-					- SoldierCombat.STAMINA_COST_DEFEND * phi * (1.0 + maxf(0.0, c)))
+					- SoldierCombat.KAPPA_D * phi * (1.0 + maxf(0.0, c)))
 
 	reap(defender, attacker)
 

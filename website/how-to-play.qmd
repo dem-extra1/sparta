@@ -29,6 +29,7 @@ left fighting --- every remaining unit is dead or routing.
 | Form up | **Right-click and drag** open ground (left flank → right flank); with several units selected, the line is split among them |
 | Form up in selection order | **Shift + right-click and drag** (instead of the default left-to-right field order) |
 | Form-up split mode | <kbd>Y</kbd> cycles equal-depth ↔ equal-width (set the default in ☰ Menu) |
+| Reform before move | **☰ Menu → Reform before move** toggles whether units pause to settle their ranks before marching (on by default) |
 | Attack | **Right-click** an enemy unit |
 | Add waypoint | **Shift + Right-click** (chain several move points) |
 | Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear |
@@ -42,6 +43,13 @@ left fighting --- every remaining unit is dead or routing.
 A right-click on empty ground is a **move** order; a right-click on an enemy is an
 **attack** order. Selection and camera stay live even while paused, so you can plan
 under pressure.
+
+**Reform before move (default on).** By default, a fresh move order makes a unit hold
+its position briefly (~0.8 s) while its ranks settle into formation before it steps
+off. This means troops arrive at their destination in order rather than marching while
+still adjusting their files. To make units move immediately without the pause, uncheck
+**☰ Menu → Reform before move**. The setting is baked into each recorded order, so
+replays reproduce whichever mode was active when you issued them.
 
 **Zoom in to see the soldiers.** From the usual overview each regiment is a block of
 small marks. Zoom in far enough and those marks become individual figures, and each

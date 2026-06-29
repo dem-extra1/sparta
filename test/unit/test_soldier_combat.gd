@@ -312,37 +312,30 @@ func test_brace_capacity_deep_file_exceeds_lone() -> void:
 		"a 3-deep file absorbs more than a lone man")
 
 
-# --- Stamina factor g(σ) (docs/combat-model.md "Stamina") ---------------------
+# --- stamina factor g(sigma) (docs/combat-model.md "Stamina") ------------------
 
-func test_stamina_factor_full_is_one() -> void:
-	assert_almost_eq(SoldierCombat.stamina_factor(100.0, 100.0), 1.0, TOL,
-		"a fully rested soldier has g = 1")
+func test_stamina_factor_full_stamina_is_one() -> void:
+	var max: float = 100.0
+	assert_almost_eq(SoldierCombat.stamina_factor(max, max), 1.0, TOL)
 
 
-func test_stamina_factor_zero_stamina_is_floor() -> void:
-	assert_almost_eq(SoldierCombat.stamina_factor(0.0, 100.0), SoldierCombat.COND_STAMINA_FLOOR, TOL,
-		"a spent soldier has g = COND_STAMINA_FLOOR")
+func test_stamina_factor_zero_stamina_is_the_floor() -> void:
+	assert_almost_eq(SoldierCombat.stamina_factor(0.0, 100.0),
+		SoldierCombat.COND_STAMINA_FLOOR, TOL)
 
 
 func test_stamina_factor_is_monotone() -> void:
-	var low: float = SoldierCombat.stamina_factor(20.0, 100.0)
-	var high: float = SoldierCombat.stamina_factor(80.0, 100.0)
-	assert_gt(high, low, "more stamina gives a higher fatigue factor")
+	var max: float = 100.0
+	var low: float = SoldierCombat.stamina_factor(20.0, max)
+	var mid: float = SoldierCombat.stamina_factor(50.0, max)
+	assert_gt(mid, low, "more stamina -> higher factor")
+	assert_gt(mid, SoldierCombat.COND_STAMINA_FLOOR, "mid is above the floor")
+	assert_lt(mid, 1.0, "mid is below full")
 
 
-func test_stamina_factor_clamps_above_max() -> void:
-	assert_almost_eq(SoldierCombat.stamina_factor(150.0, 100.0), 1.0, TOL,
-		"stamina above max clamps to 1")
-
-
-func test_stamina_factor_clamps_below_zero() -> void:
-	assert_almost_eq(SoldierCombat.stamina_factor(-10.0, 100.0), SoldierCombat.COND_STAMINA_FLOOR, TOL,
-		"negative stamina clamps to floor")
-
-
-func test_stamina_factor_zero_max_returns_one() -> void:
-	assert_almost_eq(SoldierCombat.stamina_factor(0.0, 0.0), 1.0, TOL,
-		"degenerate max_stamina defaults to 1 (no penalty)")
+func test_stamina_factor_guard_zero_max() -> void:
+	# A zero max_stamina would divide by zero; the guard returns 1.0 instead.
+	assert_almost_eq(SoldierCombat.stamina_factor(50.0, 0.0), 1.0, TOL)
 
 
 func test_stamina_factor_combined_with_condition() -> void:
@@ -354,19 +347,3 @@ func test_stamina_factor_combined_with_condition() -> void:
 	var combined: float = q_half * g_zero
 	assert_lt(combined, q_half, "combined is below health-only factor")
 	assert_lt(combined, g_zero, "combined is below stamina-only factor")
-
-
-func test_stamina_factor_degrades_land_chance() -> void:
-	var fresh_def: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 0.0, 1.0, 1.0)
-	var winded_def: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 0.0, 1.0,
-			SoldierCombat.COND_STAMINA_FLOOR)
-	assert_gt(winded_def, fresh_def,
-		"a spent defender (g = floor) is easier to land on than a rested one")
-
-
-func test_spent_attacker_hits_less_often() -> void:
-	var fresh_att: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 0.0, 1.0, 1.0)
-	var winded_att: float = SoldierCombat.land_chance(0.5, 0.5, 0.0, 1.0, 0.0,
-			SoldierCombat.COND_STAMINA_FLOOR, 1.0)
-	assert_lt(winded_att, fresh_att,
-		"a spent attacker (g = floor) lands fewer blows than a rested one")

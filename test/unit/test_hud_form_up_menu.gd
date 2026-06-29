@@ -7,14 +7,17 @@ const HUDScript = preload("res://scripts/HUD.gd")
 const SelectionManagerScript = preload("res://scripts/SelectionManager.gd")
 
 var _orig_default: int
+var _orig_reform: bool
 
 
 func before_each() -> void:
 	_orig_default = Settings.form_up_dist_default
+	_orig_reform = Settings.reform_before_move
 
 
 func after_each() -> void:
 	Settings.form_up_dist_default = _orig_default
+	Settings.reform_before_move = _orig_reform
 
 
 func _hud() -> CanvasLayer:
@@ -56,3 +59,31 @@ func test_picking_a_radio_sets_and_persists_the_default() -> void:
 	var popup := _popup(hud)
 	assert_true(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FORMUP_EQUAL_WIDTH)),
 			"and the radio re-syncs to the new default")
+
+
+# --- reform-before-move menu item ---
+
+func test_reform_menu_item_present() -> void:
+	var hud := _hud()
+	var popup := _popup(hud)
+	assert_gte(popup.get_item_index(HUDScript.MENU_REFORM_BEFORE_MOVE), 0,
+			"the reform-before-move check item is present in the menu")
+
+
+func test_reform_menu_check_reflects_setting() -> void:
+	Settings.reform_before_move = false
+	var hud := _hud()
+	var popup := _popup(hud)
+	assert_false(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_REFORM_BEFORE_MOVE)),
+			"item is unchecked when setting is false")
+
+
+func test_reform_menu_toggle_flips_setting() -> void:
+	Settings.reform_before_move = true
+	var hud := _hud()
+	hud._on_menu_id(HUDScript.MENU_REFORM_BEFORE_MOVE)
+	assert_false(Settings.reform_before_move,
+			"toggling the menu item turns reform off when it was on")
+	hud._on_menu_id(HUDScript.MENU_REFORM_BEFORE_MOVE)
+	assert_true(Settings.reform_before_move,
+			"toggling again turns it back on")

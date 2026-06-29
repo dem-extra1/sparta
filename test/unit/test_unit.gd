@@ -2114,3 +2114,51 @@ func test_no_deploy_facing_keeps_march_facing() -> void:
 	u._think(0.1)
 	assert_almost_eq(u.facing.angle(), Vector2.DOWN.angle(), 0.001,
 			"a plain arrival keeps the march facing")
+
+
+# --- reform-before-move ------------------------------------------------
+
+func test_reform_timer_holds_unit_idle() -> void:
+	var u := _make_unit()
+	u._reform_target = Vector2(200, 0)
+	u._reform_timer = Unit.REFORM_DURATION
+	u._think(0.01)   # small delta — timer still running after this tick
+	assert_false(u.has_move_target,
+		"while the reform timer is running the unit does not start moving")
+	assert_eq(u.state, Unit.State.IDLE, "and holds idle")
+
+
+func test_reform_timer_commits_on_expiry() -> void:
+	var u := _make_unit()
+	u._reform_target = Vector2(200, 0)
+	u._reform_timer = 0.05   # almost expired
+	u._think(0.1)            # delta > remaining: timer hits 0, commit fires
+	assert_true(u.has_move_target,
+		"when the reform timer expires the pending move is committed")
+	assert_eq(u.move_target, Vector2(200, 0), "the stored target becomes the live move target")
+	assert_eq(u._reform_timer, 0.0, "and the timer is cleared")
+
+
+func test_fighting_unit_commits_reform_immediately() -> void:
+	# A unit already engaged in combat bypasses the reform hold.
+	var u := _make_unit()
+	u.state = Unit.State.FIGHTING
+	u._reform_target = Vector2(200, 0)
+	u._reform_timer = Unit.REFORM_DURATION
+	u._think(0.1)
+	assert_true(u.has_move_target,
+		"a fighting unit commits a pending reform immediately without holding")
+	assert_eq(u.move_target, Vector2(200, 0))
+
+
+func test_reform_timer_decrements_during_response_delay() -> void:
+	# Both timers run in parallel so the effective delay is max(response, reform).
+	var u := _make_unit()
+	u.order_response_delay = 0.5
+	u._order_response_timer = 0.5
+	u._reform_target = Vector2(200, 0)
+	u._reform_timer = Unit.REFORM_DURATION
+	var before_reform: float = u._reform_timer
+	u._think(0.1)
+	assert_lt(u._reform_timer, before_reform,
+		"the reform timer counts down even while the order-response delay is still running")

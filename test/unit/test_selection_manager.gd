@@ -13,19 +13,20 @@ const BattleScript = preload("res://scripts/Battle.gd")
 # Snapshot/restore the global Settings hotkeys around tests that rebind them,
 # so a rebinding test can't leak into others or the real user://settings.cfg.
 var _orig_bindings: Dictionary
-
-
 var _orig_form_up_default: int
+var _orig_reform_before_move: bool
 
 
 func before_each() -> void:
 	_orig_bindings = Settings.order_bindings.duplicate()
 	_orig_form_up_default = Settings.form_up_dist_default
+	_orig_reform_before_move = Settings.reform_before_move
 
 
 func after_each() -> void:
 	Settings.order_bindings = _orig_bindings.duplicate()
 	Settings.form_up_dist_default = _orig_form_up_default
+	Settings.reform_before_move = _orig_reform_before_move
 
 
 func _sm() -> Node2D:
@@ -374,7 +375,7 @@ func test_issue_form_up_routes_a_recorded_order() -> void:
 	b._by_uid[11] = u
 	sm._select(u)
 	sm._issue_form_up(Vector2(400, 500), Vector2(540, 500))   # 140 px wide line
-	assert_eq(u.move_target, Vector2(470, 500), "deploys at the flank-line midpoint")
+	assert_eq(u._reform_target, Vector2(470, 500), "deploys at the flank-line midpoint")
 	assert_true(b._pending_orders[-1].has("face"), "routed as a recorded form-up order")
 
 
