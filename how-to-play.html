@@ -580,6 +580,14 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Skirmish</strong> (<kbd>K</kbd>) — a ranged unit keeps its distance, backing off when a threat closes instead of standing to fire.</li>
 <li><strong>Support</strong> (<kbd>G</kbd>) — right-click a friendly to guard it: the unit shadows that ally and engages anything that threatens it.</li>
 </ul>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/support.jpg">
+    <source src="media/support.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Support stance: a unit guards an ally, shadowing it and engaging any threat.</figcaption>
+</figure>
 <p>Press <kbd>T</kbd> to cycle a selected unit’s <strong>formation</strong> — <em>Tight</em> closes ranks for better missile and charge defence, <em>Loose</em> spreads out, <em>Normal</em> is the default.</p>
 <p><strong>Resize the line.</strong> A regiment normally forms up at a sensible width, but you can reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more men fighting at the front) or <kbd>[</kbd> to narrow it (deeper, fewer up front but more staying power). With a single unit selected, two small grips appear on its flanks — <strong>drag</strong> a grip in or out to set the width directly, with a live preview of the new file count. The width holds as the unit takes casualties, and shows in the info panel.</p>
 <p><strong>Deploy with a drag (form up).</strong> With a single unit selected, <strong>right-click and drag across open ground</strong> to lay out where it should stand: the start of the drag is the unit’s <strong>left flank</strong>, the end is its <strong>right flank</strong>. The unit marches over and wheels to face the line — the drag sets its position, width, and facing in one gesture, with a live preview of the front line and a forward arrow. A short right-click (no drag) is still a plain move.</p>
@@ -588,6 +596,15 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="the-battle-loop" class="level2">
 <h2 class="anchored" data-anchor-id="the-battle-loop">The battle loop</h2>
+<p>Here is the cycle in practice, shown with a cavalry charge:</p>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/charge.jpg">
+    <source src="media/charge.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.</figcaption>
+</figure>
 <ol type="1">
 <li><strong>Select</strong> — left-click a unit, or drag a box to grab several at once. The info panel fills with the selected unit’s stats.</li>
 <li><strong>Order</strong> — right-click to send them. Move them onto an enemy’s flank, or right-click the enemy directly to attack. There is a brief <strong>reaction delay</strong> (~0.5 s, faster for cavalry) before units execute — orders aren’t instant.</li>
