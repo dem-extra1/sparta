@@ -13,16 +13,16 @@ from where bodies are and the dice each strike rolls. This page lays out those d
 ::: {.callout-note}
 This model is rolling out in phases. **Live now:** combat resolves per soldier --
 the opposed hit contest, facing (flank and rear), per-soldier health and death,
-weapon reach (the spear-vs-sword standoff), and **knockback** (every committed strike
+weapon reach (the spear-vs-sword standoff), **knockback** (every committed strike
 shoves the struck soldier back -- harder on a clean landing or at charge speed, and less
-against a heavy soldier like cavalry -- so spacing emerges from the press vs the recoil
-rather than a separation rule), and **knockdown** (a hard enough hit -- a charge, a heavy
-blow -- can knock a soldier flat: while down it has no active defence and can't strike until
-it scrambles up, so a charge that bowls men over leaves them for the follow-up rank). Heavier
-soldiers (cavalry) are far harder to fell. **Coming:** stamina and exhaustion, the
-posture/stance system, and bracing -- the domino chain where a knocked-back man is buttressed
-by set comrades behind him. The sections below describe the whole model; where a piece isn't
-live yet, it soon will be.
+against a heavy soldier like cavalry), **knockdown** (a hard enough hit can knock a soldier
+flat: while down it has no active defence and can't strike until it scrambles up), and
+**bracing** (an engaged, set file buttresses the front man with the whole column's footing --
+a deep phalanx absorbs a shove that would throw a lone man back, and is far harder to fell).
+**Coming:** stamina and exhaustion, the posture/stance system (graded brace from sprinting to
+set), and the rearward domino cascade (a blow that punches through the front rank
+topples men rearward until the impulse is spent). The sections below describe the whole model;
+where a piece isn't live yet, it soon will be.
 :::
 
 ## What each soldier carries

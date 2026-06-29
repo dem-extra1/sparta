@@ -854,6 +854,15 @@ func is_engaged() -> bool:
 	return _engaged_linger > 0.0
 
 
+## How braced (set to receive) this regiment's soldiers are, in [0, 1] (#201 bracing): a
+## regiment engaged and not skirmishing is set and buttresses knockback/knockdown; a loose
+## skirmish line, or one not engaged, is not. Binary for now -- graded postures (advancing /
+## sprinting / braced) come with the posture slice. Front-facing is enforced at the call site.
+const BRACE_SET: float = 1.0
+func soldier_brace() -> float:
+	return BRACE_SET if (is_engaged() and order_mode != ORDER_SKIRMISH) else 0.0
+
+
 ## Indices of the engaged soldiers: the front ENGAGED_RANKS ranks of an engaged
 ## regiment, or none when it isn't engaged. `UnitFormation.slots` is rank-major
 ## (rank = index / files, rank 0 = front), so the front ranks are exactly the
