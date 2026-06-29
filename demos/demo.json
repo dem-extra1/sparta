@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Physics slice C adds depth-buttressed bracing: a set file absorbs knockback up to its column's capacity and resists knockdown more. The effect (a deep phalanx moving less after a charge than a lone man) requires a before/after comparison to see and isn't legible standalone. Behaviour is pinned by GUT tests. Prone has no visual yet (#300), so a clip would still look like 'charged troops die differently' with no clear signal."
+  "reason": "Physics slice D adds per-soldier stamina: a fatigued soldier lands fewer blows and is easier to hit. The fatigue effect is statistical and invisible -- soldiers look and move the same; only hit rates and wound rates change over sustained melee. A clip would not show this effect without a side-by-side comparison on a controlled seed, which a single battle recording cannot produce. Behaviour is pinned by GUT tests."
 }
