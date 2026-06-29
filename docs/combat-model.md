@@ -315,6 +315,15 @@ front-facing shield wall has $\mathrm{br}\to 1$ and holds.
 > graded `br` formula above (posture weights $b_{\mathrm{post}}$, $w_f$, $w_d$) is also
 > deferred to the posture slice; `br` is binary here.
 
+> **Implemented (#201 slice D):** `SoldierCombat.stamina_factor` ($g(\sigma)$) and the
+> per-soldier `_sim_soldier_stamina` pool. In `SoldierMelee.resolve`, `cond_a`/`cond_d`
+> are now $q(h)\,g(\sigma)$ — the full two-factor condition. Every strike costs the
+> attacker $\kappa_a$; every met blow costs the defender $\kappa_d\,\phi\,(1+c)$ (zero
+> for prone or flanked defenders). `SoldierBodies.step` regens stamina at $\rho_\sigma$
+> per second and charges $\kappa_p$ on the tick a soldier rises from prone. **Deferred:**
+> posture-dependent regen ($\rho_\sigma(\text{posture})$ table) to the posture slice;
+> stamina HUD to a follow-up.
+
 ## Receiving a charge
 
 A charge is the **same** mechanism on the receiving end, with the charger's large
