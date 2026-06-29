@@ -758,6 +758,13 @@ var _sim_soldier_hp: PackedFloat32Array = PackedFloat32Array()
 # (SoldierBodies.step decrements it). Seeded to 0 (everyone standing).
 var _sim_prone: PackedFloat32Array = PackedFloat32Array()
 
+# Per-soldier stamina pool (slice D), index-aligned with _sim_soldier_pos: current stamina
+# in [0, max_stamina] where max_stamina is the per-type value from combat_profile(). Drained
+# by every strike thrown (KAPPA_A), by every blow met (KAPPA_D*phi*(1+c)), and by rising from
+# prone (KAPPA_P); restored at RHO_STAMINA per second in SoldierBodies.step. Low stamina
+# reduces both offence and active defence through SoldierCombat.stamina_factor (g(sigma)).
+var _sim_soldier_stamina: PackedFloat32Array = PackedFloat32Array()
+
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
 ## reproduces exactly on replay. Keys off `uid`, not `get_instance_id()`, for the

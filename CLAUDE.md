@@ -40,10 +40,15 @@ When your change is **user-visible** — it affects how the game looks or plays
 (`scenes/`, `scripts/`, `assets/`, `project.godot`) — help reviewers *see* it:
 commit a **`demos/demo.json`** so CI records a short clip and posts it on the PR.
 
-- Point `replay` at a replay that exercises your change. Record one by playing the
-  game and copying the saved file from `user://replays/` into `demos/`, or — for
-  changes visible in any battle (unit art, HUD, balance) — reuse the bundled
-  `demos/showcase.json`. Write a `caption` describing what changed.
+- **Author demos as a scripted-input recording — not a hand-authored replay.** Write a
+  deterministic input script (`demos/inputs/*.json`: a list of mouse clicks/drags and
+  keystrokes stamped with the tick they fire on) and point `demos/demo.json` at it with
+  the `input` field. The recorder drives a live battle through the *real* controls, so the
+  clip exercises the actual code and the script stays editable as text. See the
+  **Scripted-input demos** section of `demos/README.md`.
+- The older `replay` field (play-and-save, or hand-authored scenario JSON) still works and
+  is fine for a quick reuse of `demos/showcase.json`, but prefer `input` for anything that
+  shows a specific interaction. Always write a `caption` describing what changed.
 - See `demos/README.md` for the full contract and `demos/demo.example.json` for a
   template.
 - If you skip this, CI still posts a *generic* build demo, but it won't show your

@@ -34,7 +34,8 @@ Add a `demos/demo.json` on your PR branch:
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `replay` | yes | Repo-relative path to a replay JSON to play back — **no `res://` prefix** (the workflow adds it). See below. |
+| `input` | preferred | Repo-relative path to a **scripted-input** demo (`demos/inputs/*.json`) — **no `res://` prefix**. Recorded live through the real controls. The standard way to author a demo; see [Scripted-input demos](#scripted-input-demos). Wins over `replay` when both are present. |
+| `replay` | alt | Repo-relative path to a saved replay JSON to play back — **no `res://` prefix**. The older path; prefer `input`. See [Getting a replay](#getting-a-replay-that-shows-your-change). |
 | `caption` | recommended | Explains the change; shown above the GIF. |
 | `fixed_fps` | no (30) | Sim/record framerate Movie Maker runs at. |
 | `max_frames` | no (300) | Recording length in frames (`300 / fixed_fps` ≈ seconds). |
@@ -46,6 +47,47 @@ Add a `demos/demo.json` on your PR branch:
 `demo.example.json` is a copy-paste starting point. Any **other** keys are
 ignored by the workflow (its `jq` only reads the fields above), so a leading
 `"_comment"` note — as used in `demo.example.json` itself — is safe to include.
+
+## Scripted-input demos
+
+**The standard way to author a demo.** Instead of a recorded or hand-authored
+replay, write a deterministic **input script** — a list of mouse clicks/drags and
+keystrokes stamped with the physics tick they fire on. The recorder
+(`tools/demo/DemoInputRecorder.gd`) drives a live battle by injecting those as real
+`InputEvent`s through the same `SelectionManager` code a player's mouse drives, while
+Movie Maker records. So the clip is produced by the actual controls (a demo doubles
+as an input smoke test), and the script is editable text you can tune without replaying
+the game.
+
+Point `demos/demo.json` at it with the `input` field, and put the script under
+`demos/inputs/`:
+
+```json
+{
+  "seed": "12345",
+  "camera": [ { "tick": 0, "x": 510.0, "y": 380.0, "zoom": 1.9 } ],
+  "steps": [
+    { "tick": 8,  "click": [500, 300] },
+    { "tick": 24, "rmb_drag": { "from": [620, 460], "to": [385, 460] } }
+  ]
+}
+```
+
+- `seed` — the battle seed (string). Use `"12345"` for the documented standard 5v5
+  layout (the unit table below); spawn **positions** are seed-independent, so clicks
+  land regardless — the seed only fixes combat RNG for reproducibility.
+- `camera` (optional) — a single keyframe `{tick,x,y,zoom}` that statically frames the
+  clip (world coordinates). Omit for the default whole-field camera.
+- `steps` — each stamped with a `tick` (physics ticks, 60/s). Coordinates are world-space:
+  - `click [x,y]` / `shift_click [x,y]` / `rmb_click [x,y]` — a press+release at a point.
+  - `box { "from": [x,y], "to": [x,y] }` — a left-drag box-select.
+  - `rmb_drag { "from": [x,y], "to": [x,y], "shift": false }` — a right-drag (move / form-up;
+    `shift` toggles the form-up ordering variant). Drags animate over a few ticks so the
+    live preview renders.
+  - `key "Y"` — a gameplay hotkey press (formation cycle, order stance, etc.).
+
+The standard 5v5 (`seed "12345"`) unit positions are in [Hand-authoring a scenario](#hand-authoring-a-scenario)
+below — clicks target those world coordinates.
 
 ## Getting a replay that shows your change
 
@@ -267,9 +309,10 @@ The inline preview is a GIF (it plays once and freezes on the final frame), and
 workflow also encodes an **MP4 with sound** (Godot's Movie Maker captures the game's
 audio into the recording; the GIF step just drops it) and links it under the GIF as
 *"watch with sound"*. Click it to play the clip with audio, pause, and scrub. SFX
-are off by default in-game, so the recorder turns them on for the recording (see
-[`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd)) — that's how the MP4
-ends up with the battle's sound.
+are off by default in-game, so whichever recorder runs turns them on for the recording
+([`../tools/demo/DemoInputRecorder.gd`](../tools/demo/DemoInputRecorder.gd) for scripted
+input, [`../tools/demo/DemoRunner.gd`](../tools/demo/DemoRunner.gd) for a replay) — that's
+how the MP4 ends up with the battle's sound.
 
 Why a GIF plus a link, and not an inline player: GitHub renders an inline, playable
 `<video>` **only** for files uploaded through its browser-only attachment CDN

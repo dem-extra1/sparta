@@ -1,0 +1,11 @@
+{
+  "_comment": "Scripted-input demo: click-select the Spearmen (uid 0, spawned at ~500,300 on seed 12345), then right-drag a flank line to deploy them. Driven through the real SelectionManager by tools/demo/DemoInputRecorder.gd. Coordinates are world-space; ticks are physics ticks (60/s).",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 510.0, "y": 380.0, "zoom": 1.9}
+  ],
+  "steps": [
+    {"tick": 8, "click": [500, 300]},
+    {"tick": 24, "rmb_drag": {"from": [620, 460], "to": [385, 460]}}
+  ]
+}

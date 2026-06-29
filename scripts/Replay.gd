@@ -42,6 +42,11 @@ var mode: int = Mode.IDLE
 var rng := RandomNumberGenerator.new()
 var seed_value: int = 0
 
+# When >= 0, start_recording() uses this exact seed instead of a random one. The scripted-
+# input demo recorder (tools/demo/DemoInputRecorder.gd) sets it so a live recording is
+# reproducible. Never set in normal play (a fresh battle stays randomly seeded).
+var forced_seed: int = -1
+
 # Orders for the battle being recorded or played back.
 # Each entry: { "tick": int, "units": Array[int] (uids), "x": float, "y": float,
 #               "target": int (enemy uid, -1 move, -3 formation-only, -4 frontage-only),
@@ -112,9 +117,14 @@ var last_saved_path: String = ""
 ## Begin capturing a fresh live battle. Picks a random seed and clears history.
 func start_recording() -> void:
 	mode = Mode.RECORD
-	var picker := RandomNumberGenerator.new()
-	picker.randomize()
-	seed_value = picker.seed
+	if forced_seed >= 0:
+		# Deterministic seed for a scripted demo recording (see `forced_seed`).
+		seed_value = forced_seed
+		forced_seed = -1   # consumed; a later start_recording() randomises normally
+	else:
+		var picker := RandomNumberGenerator.new()
+		picker.randomize()
+		seed_value = picker.seed
 	rng.seed = seed_value
 	_orders.clear()
 	_camera_track.clear()

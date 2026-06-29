@@ -16,13 +16,16 @@ the opposed hit contest, facing (flank and rear), per-soldier health and death,
 weapon reach (the spear-vs-sword standoff), **knockback** (every committed strike
 shoves the struck soldier back -- harder on a clean landing or at charge speed, and less
 against a heavy soldier like cavalry), **knockdown** (a hard enough hit can knock a soldier
-flat: while down it has no active defence and can't strike until it scrambles up), and
+flat: while down it has no active defence and can't strike until it scrambles up),
 **bracing** (an engaged, set file buttresses the front man with the whole column's footing --
-a deep phalanx absorbs a shove that would throw a lone man back, and is far harder to fell).
-**Coming:** stamina and exhaustion, the posture/stance system (graded brace from sprinting to
-set), and the rearward domino cascade (a blow that punches through the front rank
-topples men rearward until the impulse is spent). The sections below describe the whole model;
-where a piece isn't live yet, it soon will be.
+a deep phalanx absorbs a shove that would throw a lone man back, and is far harder to fell),
+and **stamina and exhaustion** (every strike thrown and every blow met drains stamina;
+a soldier under sustained pressure tires, their defence collapses, and then blows land
+freely -- surround and exhaust is real, not a modifier).
+**Coming:** the posture/stance system (graded brace from sprinting to set) and the rearward
+domino cascade (a blow that punches through the front rank topples men rearward until the
+impulse is spent). The sections below describe the whole model; where a piece isn't live yet,
+it soon will be.
 :::
 
 ## What each soldier carries

@@ -1,6 +1,6 @@
 {
-  "replay": "demos/scenarios/multi-unit-form-up.json",
-  "caption": "Multi-unit drag-to-form-up: three regiments (Spearmen 140, Infantry 120, Archers 90) deploy along one dragged line. The line is split to equal depth — every regiment ends up two ranks deep, so the bigger units simply take a wider slice and the whole front is one uniform line.",
+  "input": "demos/inputs/multi-unit-form-up.json",
+  "caption": "Multi-unit drag-to-form-up (scripted input): box-select three regiments (Spearmen 140, Infantry 120, Archers 90), then one right-drag deploys them along a line — split to equal depth, so every regiment ends up two ranks deep and the bigger units simply take a wider slice. Driven live through the real controls.",
   "fixed_fps": 30,
   "max_frames": 150,
   "fps": 15,

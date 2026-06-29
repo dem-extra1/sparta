@@ -31,11 +31,18 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     # "User-visible change" = something that affects what the game looks/plays
     # like. Docs/CI/test-only diffs don't qualify and won't trigger a recording.
+    # The demo manifest + scenarios are included so a demos-only push (with no code
+    # change) still re-records the clip — otherwise it leaves the previously-posted
+    # clip stale. Scoped to what actually drives a recording (not README/shots/), to
+    # avoid wasted runs on docs-only demo edits.
     paths:
       - 'scenes/**'
       - 'scripts/**'
       - 'assets/**'
       - 'project.godot'
+      - 'demos/*.json'
+      - 'demos/scenarios/**'
+      - 'demos/inputs/**'
 
 # One recording per PR; a newer push cancels an in-flight one.
 concurrency:
@@ -92,23 +99,32 @@ jobs:
               } >> "$GITHUB_OUTPUT"
               exit 0
             fi
-            REPLAY=$(jq -r '.replay // "demos/showcase.json"' "$M")
             CAPTION=$(jq -r '.caption // "Gameplay demo for this PR."' "$M")
             FIXED_FPS=$(jq -r '.fixed_fps // 30' "$M")
             MAX_FRAMES=$(jq -r '.max_frames // 300' "$M")
             GIF_FPS=$(jq -r '.fps // 12' "$M")
             WIDTH=$(jq -r '.width // 640' "$M")
-            # Be forgiving if an author included a res:// prefix; the runner adds it.
-            REPLAY="${REPLAY#res://}"
-            echo "Using demos/demo.json (replay: $REPLAY)"
+            # A demo is either a scripted-input recording ("input": a tools/demo input
+            # script driven live through the real controls) or a saved-replay playback
+            # ("replay"). Input wins when present; each picks its own recorder scene + env.
+            # res:// prefixes are stripped (the runner re-adds them).
+            INPUT=$(jq -r '.input // empty' "$M")
+            if [ -n "$INPUT" ]; then
+              SOURCE="${INPUT#res://}"; SCENE=DemoInputRecorder.tscn; ENVVAR=SPARTA_DEMO_INPUT
+              echo "Using demos/demo.json (scripted input: $SOURCE)"
+            else
+              REPLAY=$(jq -r '.replay // "demos/showcase.json"' "$M")
+              SOURCE="${REPLAY#res://}"; SCENE=DemoRunner.tscn; ENVVAR=SPARTA_DEMO_REPLAY
+              echo "Using demos/demo.json (replay: $SOURCE)"
+            fi
           else
             echo "No demos/demo.json — recording the default showcase battle. Add one to tailor the demo (see demos/README.md)."
-            REPLAY=demos/showcase.json
+            SOURCE=demos/showcase.json; SCENE=DemoRunner.tscn; ENVVAR=SPARTA_DEMO_REPLAY
             CAPTION='⚙️ Generic build demo — no PR-specific demo was provided. To show what this PR changes, commit a `demos/demo.json` pointing at a replay that exercises it (see `demos/README.md`).'
             FIXED_FPS=30; MAX_FRAMES=300; GIF_FPS=12; WIDTH=640
           fi
-          if [ ! -f "$REPLAY" ]; then
-            echo "Replay file '$REPLAY' not found; skipping demo."
+          if [ ! -f "$SOURCE" ]; then
+            echo "Demo source '$SOURCE' not found; skipping demo."
             echo "record=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -119,7 +135,9 @@ jobs:
           DELIM="caption_eof_$(openssl rand -hex 8)"
           {
             echo "record=true"
-            echo "replay=$REPLAY"
+            echo "source=$SOURCE"
+            echo "scene=$SCENE"
+            echo "envvar=$ENVVAR"
             echo "fixed_fps=$FIXED_FPS"
             echo "max_frames=$MAX_FRAMES"
             echo "gif_fps=$GIF_FPS"
@@ -173,18 +191,22 @@ jobs:
         env:
           # From the resolve step; passed via env (not ${{ }} interpolation) so
           # author-controlled values can't inject shell.
-          REPLAY: ${{ steps.demo.outputs.replay }}
+          SOURCE: ${{ steps.demo.outputs.source }}
+          SCENE: ${{ steps.demo.outputs.scene }}
+          ENVVAR: ${{ steps.demo.outputs.envvar }}
           FIXED_FPS: ${{ steps.demo.outputs.fixed_fps }}
           MAX_FRAMES: ${{ steps.demo.outputs.max_frames }}
           GIF_FPS: ${{ steps.demo.outputs.gif_fps }}
           WIDTH: ${{ steps.demo.outputs.width }}
         run: |
           set -euo pipefail
-          echo "Recording $MAX_FRAMES frames of res://$REPLAY"
-          export SPARTA_DEMO_REPLAY="res://$REPLAY"
+          echo "Recording $MAX_FRAMES frames of res://$SOURCE via $SCENE"
+          # ENVVAR is one of SPARTA_DEMO_REPLAY / SPARTA_DEMO_INPUT (from a fixed set in
+          # the resolve step, not author free-text), so the dynamic export is safe.
+          export "${ENVVAR}=res://$SOURCE"
           xvfb-run -a godot --rendering-driver opengl3 \
             --write-movie /tmp/demo.avi --fixed-fps "$FIXED_FPS" \
-            --quit-after "$MAX_FRAMES" res://tools/demo/DemoRunner.tscn
+            --quit-after "$MAX_FRAMES" "res://tools/demo/$SCENE"
           [ -s /tmp/demo.avi ] || { echo "::error::Movie Maker produced no output"; exit 1; }
 
           # Two-pass palette gives a sharp, small GIF (the inline preview). `-loop -1`
@@ -228,7 +250,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           # Author-controlled; via env so they can't inject the publish script.
           CAPTION: ${{ steps.demo.outputs.caption }}
-          REPLAY: ${{ steps.demo.outputs.replay }}
+          SOURCE: ${{ steps.demo.outputs.source }}
         run: |
           set -euo pipefail
           PR=${{ github.event.pull_request.number }}
@@ -302,7 +324,7 @@ jobs:
             BODY="$BODY"$(printf '\n\n🔊 The GIF above plays once and is silent — [watch with sound, pause and scrub (MP4)](%s).' "$RAW_MP4_URL")
           fi
           BODY="$BODY"$(printf '\n\n<sub>Recorded from `%s` at `%s`. Updated automatically on each push.</sub>' \
-            "$REPLAY" "$SHA")
+            "$SOURCE" "$SHA")
 
           # Update the existing demo comment in place if present, else create one
           # (shared upsert helper — see the 'no clip applies' step, which reuses it).
