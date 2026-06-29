@@ -94,8 +94,9 @@ architecture, and CI changes are exempt.
   visual that isn't visible in any existing replay scenario, add an entry:
   record a new replay (play the battle, copy from `user://replays/` into
   `demos/`, give it a descriptive name), then append a row to `DEMOS` and a
-  matching `<video>` embed on the appropriate `.qmd` page. See
-  `website/README.md` for the full pipeline.
+  matching `<video>` embed on the page that covers that mechanic — follow the
+  pattern in `website/how-to-play.qmd` or `website/index.qmd`, which already
+  have `<video>` embeds. See `website/README.md` for the full pipeline.
 
 **Where to look for site layout:** `website/README.md` describes the page
 structure, build instructions, and how demo clips are recorded. Each `.qmd` page
@@ -115,10 +116,12 @@ state of the game and confirm nothing has drifted, including:
   fresh at deploy time from the fixed replay scenarios in
   `website/tools/record-demos.sh`. That means they track *code* changes
   automatically (new art, HUD tweaks, balance), but only for features that
-  appear in those scenarios. A new mechanic that requires specific orders or a
-  new scenario won't show up unless you added an entry to `DEMOS` (and a
-  matching `<video>` embed) on this PR. If you didn't, and the feature is
-  worth showing, file a follow-up issue.
+  appear in those scenarios **and** at the scenario's default camera position.
+  Features that only appear at a non-default pan or zoom won't be captured even
+  if a scenario covers them. A new mechanic that requires specific orders, a
+  new scenario, or a camera move won't show up unless you added an entry to
+  `DEMOS` (and a matching `<video>` embed) on this PR. If you didn't, and the
+  feature is worth showing, file a follow-up issue.
 - **Screenshots / images** — any committed image embedded in a page must still
   match what the game looks like now; a visual change can make an existing
   screenshot stale even when no prose changed. Recapture it on the PR branch.
