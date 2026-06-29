@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Issue #307 adds menu checkboxes for configuring which modes Y cycles through. Menu interactions cannot be captured by the scripted-input recorder, and the underlying form-up behaviour is already shown in existing demos."
+  "reason": "Menu interactions cannot be captured by the scripted-input recorder, and the underlying form-up behaviour is already shown in existing demos."
 }

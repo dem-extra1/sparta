@@ -154,8 +154,9 @@ func _load(path: String = SAVE_PATH) -> void:
 	edge_scroll = cfg.get_value("camera", "edge_scroll", edge_scroll)
 	sfx_enabled = cfg.get_value("audio", "sfx_enabled", sfx_enabled)
 	form_up_dist_default = int(cfg.get_value("gameplay", "form_up_dist_default", form_up_dist_default))
-	var raw_cycle: Array = cfg.get_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
-	form_up_dist_cycle = raw_cycle.filter(func(v) -> bool: return v is int and v >= 0 and v <= FORM_UP_DIST_MAX)
+	var raw_cycle = cfg.get_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
+	if raw_cycle is Array:
+		form_up_dist_cycle = raw_cycle.filter(func(v) -> bool: return v is int and v >= 0 and v <= FORM_UP_DIST_MAX)
 	reform_before_move = bool(cfg.get_value("gameplay", "reform_before_move", reform_before_move))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))

@@ -96,7 +96,7 @@ var _rmb_shift: bool = false   # Shift state captured at right-button press
 # the persisted default so a menu change to it snaps the live mode over (see _on_settings_changed).
 var _form_up_dist: int = FormUpDist.EQUAL_DEPTH
 var _form_up_dist_default: int = FormUpDist.EQUAL_DEPTH
-# Live cycle list: the subset (and order) of FORM_UP_DIST_CYCLE the Y-key steps through.
+# Live cycle list: the enabled subset of modes the Y-key steps through, in canonical order.
 # Derived from Settings.form_up_dist_cycle; rebuilt whenever that setting changes.
 var _form_up_dist_cycle: Array = FORM_UP_DIST_CYCLE.duplicate()
 var _group_attack_mode: int = BattleRef.GroupAttackMode.FOCUSED
@@ -165,9 +165,9 @@ func _on_settings_changed() -> void:
 
 
 ## Return a validated cycle array from Settings: only known FormUpDist values, no
-## duplicates, in the order the player chose. Falls back to the full canonical cycle
-## when the setting is empty (all modes disabled), so Y never becomes a total no-op
-## by accident.
+## duplicates, in canonical order (HUD rebuilds in canonical order on toggle). Falls
+## back to the full canonical cycle when the setting is empty, so Y never becomes a
+## total no-op by accident.
 func _cycle_from_settings() -> Array:
 	var result: Array = []
 	for v in Settings.form_up_dist_cycle:
