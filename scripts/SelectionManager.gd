@@ -13,6 +13,9 @@ const BattleRef = preload("res://scripts/Battle.gd")  # for the waypoint-append 
 const CLICK_THRESHOLD: float = 6.0
 const DOUBLE_CLICK_MS: int = 350
 const CURSOR_SIZE: int = 24   # generated order-mode cursor
+# How far past a unit's RADIUS a click still lands on its block (world px). The body-pick
+# radius is RADIUS + this; a flag click only resolves outside that range (see _unit_at).
+const BODY_PICK_PAD: float = 6.0
 # Click tolerance (world px) grown around a unit's raised standard so the flag and its thin
 # pole are comfortably clickable, not just their exact drawn pixels.
 const FLAG_HIT_PAD: float = 4.0
@@ -460,7 +463,7 @@ func _unit_at(world_pos: Vector2, team: int) -> UnitRef:
 	# Nearest unit on `team` under the cursor (callers pass whichever team they
 	# want — the player's own for selection, the enemy's for attack orders).
 	var best = null
-	var best_d: float = UnitRef.RADIUS + 6.0
+	var best_d: float = UnitRef.RADIUS + BODY_PICK_PAD
 	# Fallback: the unit whose raised standard (flag + pole) is under the cursor, so the
 	# flag is clickable just like the body. A body hit always wins; the standard only
 	# resolves the click when no block is under the cursor. Nearest flag breaks ties.
@@ -496,6 +499,7 @@ func _flag_pick_distance(u, world_pos: Vector2) -> float:
 	var local: Vector2 = world_pos - u.global_position
 	var box: Rect2 = UnitSprites.standard_bounds(u.render_block_extent()).grow(FLAG_HIT_PAD)
 	if box.has_point(local):
+		# grow() preserves the centre, so this tiebreak distance is independent of FLAG_HIT_PAD.
 		return local.distance_to(box.get_center())
 	return -1.0
 

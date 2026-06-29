@@ -133,6 +133,9 @@ static func cavalry(u: Unit, body: Color, dark: Color, lite: Color) -> void:
 static func standard_bounds(extent: float) -> Rect2:
 	# Pole foot sits FLAG_POLE_BASE_GAP above the block; the pole rises FLAG_POLE_HEIGHT to
 	# the flag attachment. Width spans the flag rectangle (the pole sits on its left edge).
+	# The flag hangs from the pole tip and FLAG_HEIGHT (8) < FLAG_POLE_HEIGHT (18), so it's
+	# fully nested in the pole span — the height needn't add FLAG_HEIGHT. (If the flag were
+	# ever re-anchored below the pole base, this bound would need to grow to cover it.)
 	var top: float = -extent - Unit.FLAG_POLE_BASE_GAP - Unit.FLAG_POLE_HEIGHT
 	return Rect2(0.0, top, Unit.FLAG_WIDTH, Unit.FLAG_POLE_HEIGHT)
 

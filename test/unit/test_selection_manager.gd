@@ -304,7 +304,9 @@ func test_unit_at_selects_a_unit_by_its_flag() -> void:
 	var flag_world: Vector2 = u.global_position \
 			+ UnitSprites.standard_bounds(u.render_block_extent()).get_center()
 	# The flag floats above the block, out of body-click range, yet resolves to the unit.
-	assert_gt(flag_world.distance_to(u.global_position), UnitScript.RADIUS + 6.0,
+	# Read the body-pick pad from SelectionManager so this stays true if the threshold moves.
+	var body_pick: float = UnitScript.RADIUS + SelectionManagerScript.BODY_PICK_PAD
+	assert_gt(flag_world.distance_to(u.global_position), body_pick,
 			"the flag sits beyond the body-click radius")
 	assert_eq(sm._unit_at(flag_world, 0), u, "clicking the raised flag selects the unit")
 
