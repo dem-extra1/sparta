@@ -1,8 +1,4 @@
 {
-  "replay": "demos/showcase.json",
-  "caption": "Floating-blade fix: weapon instances are now skipped for prone (knocked-down) soldiers at figure LOD. Before this fix, a front-rank soldier felled in melee would show a detached floating blade at the upright position while the body silhouette lay on its side.",
-  "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 12,
-  "width": 720
+  "skip": true,
+  "reason": "The fix only manifests when a front-rank soldier is knocked prone during melee at figure LOD — a probabilistic event that cannot be reliably triggered in a fixed-length replay. A generic battle clip would not show the bug or its absence."
 }
