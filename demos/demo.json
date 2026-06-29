@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Input-affordance change: a unit's raised flag is now a click target for selection/attack, just like its block. The flag already renders the same, and a passive recorded battle can't show the player clicking it, so a clip would look identical to before. Covered by the SelectionManager flag-hit unit tests instead."
+  "reason": "Physics slice B adds prone/knockdown as a sim mechanic (a felled soldier loses active defence and can't strike until it rises). Prone soldiers aren't rendered differently yet -- the on-screen effect is just 'charged/flanked troops die faster', not legible standalone -- so the clip is skipped and the behaviour is pinned by tests. A prone visual is a tracked follow-up."
 }

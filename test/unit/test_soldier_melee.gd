@@ -100,6 +100,7 @@ func test_death_compacts_the_body_arrays() -> void:
 	assert_eq(b._sim_soldier_pos.size(), b.soldiers, "positions track the live count")
 	assert_eq(b._sim_soldier_hp.size(), b.soldiers, "health pool tracks it too")
 	assert_eq(b._sim_body_vel.size(), b.soldiers, "velocities track it too")
+	assert_eq(b._sim_prone.size(), b.soldiers, "prone timers track it too")
 
 
 # --- determinism --------------------------------------------------------------
@@ -208,3 +209,53 @@ func test_heavier_defender_is_knocked_back_less() -> void:
 	atk2.resolve_soldier_melee(cav)
 	var heavy_kb: float = cav._sim_body_vel[0].length()
 	assert_lt(heavy_kb, light_kb, "a heavy (cavalry) defender is knocked back less than a light (archer) one")
+
+
+# --- prone / knockdown ------------------------------------------
+
+const TICK: float = 1.0 / 60.0
+
+
+func test_prone_defender_is_hit_far_more() -> void:
+	# Same attacker and seed. A standing defender facing the attacker parries (phi ~ 1); a
+	# prone one has no active defence (phi 0), so it loses far more health over the same blows.
+	# Both pinned high so neither dies (which would reap the body before we measure).
+	Replay.rng.seed = SEED
+	var a1 := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var standing := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	standing._sim_soldier_hp[0] = 99999.0
+	var sfull: float = standing._sim_soldier_hp[0]
+	for _k in range(30):
+		a1.resolve_soldier_melee(standing)
+	var standing_loss: float = sfull - standing._sim_soldier_hp[0]
+
+	Replay.rng.seed = SEED
+	var a2 := _unit(3, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	var prone := _unit(4, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	prone._sim_soldier_hp[0] = 99999.0
+	prone._sim_prone[0] = 999.0   # held down for the whole test
+	var pfull: float = prone._sim_soldier_hp[0]
+	for _k in range(30):
+		a2.resolve_soldier_melee(prone)
+	var prone_loss: float = pfull - prone._sim_soldier_hp[0]
+	assert_gt(prone_loss, standing_loss, "a prone defender (no active defence) is wounded far more")
+
+
+func test_prone_attacker_does_not_strike() -> void:
+	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	a._sim_prone[0] = 999.0   # felled: can't strike
+	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	b._sim_soldier_hp[0] = 9999.0
+	var hp: float = b._sim_soldier_hp[0]
+	a.resolve_soldier_melee(b)
+	assert_almost_eq(b._sim_body_vel[0].length(), 0.0, 1e-3, "a felled attacker deals no knockback")
+	assert_almost_eq(b._sim_soldier_hp[0], hp, 1e-3, "and lands no wound")
+
+
+func test_prone_timer_decays_and_soldier_rises() -> void:
+	var u := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	u._sim_prone[0] = SoldierCombat.PRONE_RISE_TIME
+	var steps: int = int(ceil(SoldierCombat.PRONE_RISE_TIME / TICK)) + 2
+	for _i in range(steps):
+		SoldierBodies.step(u, TICK)
+	assert_eq(u._sim_prone[0], 0.0, "a felled soldier rises on its own after PRONE_RISE_TIME")

@@ -45,6 +45,17 @@ const COND_HEALTH_FLOOR: float = 0.5
 const KNOCKBACK_IMPULSE_SCALE: float = 40.0   # J0
 const ETA_DEFENDED: float = 0.35              # eta for a defended (not landed) blow
 
+# Going prone (docs/combat-model.md "Going prone and getting up"): a knockback impulse J
+# large enough to clear a mass- and bracing-raised threshold can fell the defender.
+#   p_prone = clip((J - J_fall * (1 + br_D) * m_D) / J_scale, 0, p_prone_max)
+# A felled soldier loses active defence, can't strike, and rises after PRONE_RISE_TIME.
+# Tuned so a normal melee shove (J ~ 14..40) almost never fells, but a charge impulse (well
+# above the threshold) often does, and a heavy/braced defender resists.
+const PRONE_FALL_THRESHOLD: float = 55.0   # J_fall: impulse below this never fells a man
+const PRONE_SCALE: float = 90.0            # J_scale: how fast the fall chance climbs with surplus J
+const PRONE_CHANCE_MAX: float = 0.6        # p_prone_max: no single blow is a sure knockdown
+const PRONE_RISE_TIME: float = 1.2         # T_up (seconds) a felled soldier needs to stand
+
 
 ## Per-type combat profile (docs/combat-model.md "Soldier attributes"): skill is the
 ## unit's training; armour, shield, lethality, and the health/stamina pools are per
@@ -108,6 +119,14 @@ static func knockback_impulse(lethality_a: float, c: float, defender_mass: float
 	# numerator term, not part of the denominator.
 	var force: float = KNOCKBACK_IMPULSE_SCALE * maxf(0.0, lethality_a) * (1.0 + maxf(0.0, c)) * maxf(0.0, eta)
 	return force / maxf(0.01, defender_mass)
+
+
+## Probability that a knockback impulse `impulse_j` fells the defender (docs/combat-model.md
+## "Going prone"): surplus impulse over a mass- and bracing-raised threshold, scaled and
+## capped. `brace_d` is 0 until bracing lands. Pure; clamped to [0, PRONE_CHANCE_MAX].
+static func prone_chance(impulse_j: float, defender_mass: float, brace_d: float = 0.0) -> float:
+	var threshold: float = PRONE_FALL_THRESHOLD * (1.0 + maxf(0.0, brace_d)) * maxf(0.01, defender_mass)
+	return clampf((impulse_j - threshold) / PRONE_SCALE, 0.0, PRONE_CHANCE_MAX)
 
 
 ## The health condition factor q(h) in [COND_HEALTH_FLOOR, 1] for a soldier at `hp`

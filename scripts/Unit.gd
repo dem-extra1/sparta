@@ -752,6 +752,12 @@ var _sim_steer: PackedVector2Array = PackedVector2Array()
 # soldier also fights worse, via SoldierCombat.condition, so wounds compound.
 var _sim_soldier_hp: PackedFloat32Array = PackedFloat32Array()
 
+# Per-soldier prone timer (phase 4b), index-aligned with _sim_soldier_pos: seconds-to-rise
+# remaining (0 = standing). A knockback impulse can fell a soldier (SoldierCombat.prone_chance);
+# a prone soldier loses active defence and can't strike until the timer decays to 0
+# (SoldierBodies.step decrements it). Seeded to 0 (everyone standing).
+var _sim_prone: PackedFloat32Array = PackedFloat32Array()
+
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
 ## reproduces exactly on replay. Keys off `uid`, not `get_instance_id()`, for the

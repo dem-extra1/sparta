@@ -209,7 +209,7 @@ func test_math_is_deterministic() -> void:
 	assert_eq(w1, w2, "wound is a pure function")
 
 
-# --- mass + knockback impulse (#201 slice A) -------------------
+# --- mass + knockback impulse -----------------------------------
 
 func test_profiles_carry_per_type_mass() -> void:
 	assert_almost_eq(SoldierCombat.profile_for(true, false, false, 0.5)["mass"], 2.5, 1e-6, "cavalry are heavy")
@@ -248,3 +248,31 @@ func test_defended_impulse_is_a_fraction_of_a_landed_one() -> void:
 func test_knockback_impulse_never_negative() -> void:
 	assert_eq(SoldierCombat.knockback_impulse(-1.0, 0.0, 1.0, 1.0), 0.0, "negative lethality clamps to no impulse")
 	assert_gt(SoldierCombat.knockback_impulse(1.0, 0.0, 0.0, 1.0), 0.0, "zero mass is floored, not a divide-by-zero")
+
+
+# --- prone / knockdown ------------------------------------------
+
+func test_prone_chance_zero_below_threshold() -> void:
+	assert_eq(SoldierCombat.prone_chance(10.0, 1.0), 0.0, "a small shove never fells a man")
+	assert_eq(SoldierCombat.prone_chance(0.0, 1.0), 0.0, "no impulse, no fall")
+
+
+func test_prone_chance_climbs_with_surplus_impulse() -> void:
+	var small: float = SoldierCombat.prone_chance(70.0, 1.0)
+	var big: float = SoldierCombat.prone_chance(110.0, 1.0)
+	assert_gt(small, 0.0, "above the threshold the chance is positive")
+	assert_gt(big, small, "a bigger impulse fells more often")
+
+
+func test_prone_chance_is_capped() -> void:
+	assert_almost_eq(SoldierCombat.prone_chance(99999.0, 1.0), SoldierCombat.PRONE_CHANCE_MAX, 1e-6,
+			"no single blow is a certain knockdown")
+
+
+func test_heavier_and_braced_defenders_resist_going_prone() -> void:
+	var light: float = SoldierCombat.prone_chance(120.0, 1.0)
+	var heavy: float = SoldierCombat.prone_chance(120.0, 2.5)
+	assert_lt(heavy, light, "a heavy (cavalry) body is far harder to fell")
+	var unbraced: float = SoldierCombat.prone_chance(120.0, 1.0, 0.0)
+	var braced: float = SoldierCombat.prone_chance(120.0, 1.0, 1.0)
+	assert_lt(braced, unbraced, "bracing raises the knockdown threshold")

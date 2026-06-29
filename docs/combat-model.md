@@ -222,8 +222,8 @@ wound it.
 > **Implemented (#201 slice A):** `SoldierCombat.knockback_impulse` and the per-type
 > `mass` in `profile_for`, wired into `SoldierMelee` as one mass-scaled impulse per
 > in-reach strike (η = 1 landed, `ETA_DEFENDED` otherwise). Velocity-only — the body
-> integrates it, never a position snap. The prone/knockdown and bracing pieces below
-> are not implemented yet.
+> integrates it, never a position snap. (Prone/knockdown landed in slice B, below;
+> bracing and the domino chain are not implemented yet.)
 
 ## Going prone and getting up
 
@@ -243,6 +243,12 @@ charge that bowls men over does not just push them — it lays them down defence
 and tires them out as they scramble up, which is when the follow-up rank kills them.
 A **braced**, heavy, set line clears the prone threshold far less often and stays on
 its feet.
+
+> **Implemented (#201 slice B):** `SoldierCombat.prone_chance` (mass-raised threshold;
+> bracing `br_D` is 0 until slice C) and a per-soldier `_sim_prone` timer. In
+> `SoldierMelee` a felled defender loses active defence (`φ_D → 0`) and a felled attacker
+> can't strike; `SoldierBodies` decays the timer so a soldier rises after `PRONE_RISE_TIME`.
+> The stamina cost of rising (`κ_p`) and a prone *visual* are not in yet.
 
 ## Bracing and the knockback chain (domino)
 
