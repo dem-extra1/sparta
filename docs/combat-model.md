@@ -247,8 +247,8 @@ its feet.
 > **Implemented (#201 slice B):** `SoldierCombat.prone_chance` (mass-raised threshold) and
 > a per-soldier `_sim_prone` timer. In `SoldierMelee` a felled defender loses active defence
 > (`φ_D → 0`) and a felled attacker can't strike; `SoldierBodies` decays the timer so a
-> soldier rises after `PRONE_RISE_TIME`. The stamina cost of rising (`κ_p`) and a prone
-> *visual* are not in yet. (Bracing `br_D` wired in slice C.)
+> soldier rises after `PRONE_RISE_TIME`. `κ_p` is wired in slice D. A prone
+> *visual* is not in yet. (Bracing `br_D` wired in slice C.)
 
 ## Bracing and the knockback chain (domino)
 
