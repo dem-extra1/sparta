@@ -1264,6 +1264,7 @@ const WEAPON_SWING_SWORD: float = 0.26    # sword: a modest swing (rad); wider m
 const WEAPON_THRUST_CAV: float = 0.30
 const WEAPON_SWING_CAV: float = 0.32      # sabre: the widest swing
 const WEAPON_COLOR: Color = Color(0.80, 0.82, 0.86)   # steel, untinted by team
+const PRONE_COLOR: Color = Color(0.22, 0.22, 0.22, 0.80)   # dark grey tint for felled soldiers
 
 
 
@@ -1294,6 +1295,7 @@ func _setup_flock_renderer() -> void:
 
 	_mm_outline = MultiMesh.new()
 	_mm_outline.transform_format = MultiMesh.TRANSFORM_2D
+	_mm_outline.use_colors = true   # per-instance tint for prone soldiers
 	_mm_outline.mesh = _mark_outline_mesh
 	_mmi_outline = MultiMeshInstance2D.new()
 	_mmi_outline.multimesh = _mm_outline
@@ -1302,6 +1304,7 @@ func _setup_flock_renderer() -> void:
 
 	_mm_body = MultiMesh.new()
 	_mm_body.transform_format = MultiMesh.TRANSFORM_2D
+	_mm_body.use_colors = true     # per-instance tint for prone soldiers
 	_mm_body.mesh = _mark_body_mesh
 	_mmi_body = MultiMeshInstance2D.new()
 	_mmi_body.multimesh = _mm_body
@@ -1426,9 +1429,27 @@ func _refresh_flock_render() -> void:
 		_mm_body.instance_count = n
 		_mm_outline.instance_count = n
 	for i in range(n):
-		var t := Transform2D(0.0, _soldier_pos[i])
+		# A prone soldier (knocked down, timer > 0) is drawn flat: the mark is squashed
+		# horizontally to suggest a body on the ground, and tinted dark so it reads as
+		# "down" even at small zoom. At the figure LOD the silhouette is rotated 90° to
+		# show the figure lying on its side. Standing soldiers get the normal transform
+		# and WHITE (which multiplies with _mmi_body.modulate = team color, no change).
+		var prone: bool = i < _sim_prone.size() and _sim_prone[i] > 0.0
+		var t: Transform2D
+		if prone:
+			if _detailed_lod:
+				# Figure LOD: rotate 90° so the silhouette lies on its side.
+				t = Transform2D(PI * 0.5, _soldier_pos[i])
+			else:
+				# Mark LOD: squash to a horizontal sliver (wide x, flat y).
+				t = Transform2D(Vector2(1.3, 0.0), Vector2(0.0, 0.3), _soldier_pos[i])
+		else:
+			t = Transform2D(0.0, _soldier_pos[i])
 		_mm_body.set_instance_transform_2d(i, t)
 		_mm_outline.set_instance_transform_2d(i, t)
+		var inst_color: Color = PRONE_COLOR if prone else Color.WHITE
+		_mm_body.set_instance_color(i, inst_color)
+		_mm_outline.set_instance_color(i, inst_color)
 	_apply_flock_color()
 
 

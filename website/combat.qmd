@@ -116,7 +116,9 @@ backward.
 
 A hard enough shove **knocks a soldier prone**. Bracing and mass make you harder to
 topple; once down, you defend nothing, can't strike, and must spend time *and*
-stamina scrambling up --- which is exactly when the next blow kills you.
+stamina scrambling up --- which is exactly when the next blow kills you. Prone
+soldiers appear as dark horizontal marks (or a lying silhouette at high zoom), so
+a charge that bowls men over is visible at a glance.
 
 A shoved soldier also collides with whoever is behind them. Bracing soaks only so
 much --- but the men behind help. **Braced comrades in a tight file back up the man

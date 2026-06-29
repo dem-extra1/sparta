@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Physics slice C adds depth-buttressed bracing: a set file absorbs knockback up to its column's capacity and resists knockdown more. The effect (a deep phalanx moving less after a charge than a lone man) requires a before/after comparison to see and isn't legible standalone. Behaviour is pinned by GUT tests. Prone has no visual yet (#300), so a clip would still look like 'charged troops die differently' with no clear signal."
+  "replay": "demos/charge_demo.json",
+  "caption": "Prone soldiers now render as dark horizontal marks (or lying silhouettes at high zoom). Watch for darkened flat marks after the cavalry charge bowls infantry over; they stand back up after PRONE_RISE_TIME.",
+  "fixed_fps": 30,
+  "max_frames": 400,
+  "fps": 12,
+  "width": 640
 }
