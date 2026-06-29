@@ -1,8 +1,5 @@
 {
-  "input": "demos/inputs/reform-before-move.json",
-  "caption": "Reform before move: select the Spearmen and drag a new deployment line. The regiment holds its position for ~0.8 s (ranks settling) before marching south — visible as a brief pause after the order is issued. Toggle this behaviour in ☰ Menu → Reform before move.",
-  "fixed_fps": 30,
-  "max_frames": 200,
-  "fps": 12,
-  "width": 720
+  "input": "demos/inputs/orderly-frontage.json",
+  "caption": "Spearmen widen their frontage six times. Each reshape moves soldiers to their new slots at a jog (REFORM_JOG_SPEED cap) rather than snapping or sprinting — orderly reshaping from issue #288.",
+  "max_frames": 300
 }
