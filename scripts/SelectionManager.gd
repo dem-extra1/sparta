@@ -800,6 +800,16 @@ func arm_order_mode(mode: int) -> void:
 	_set_armed_mode(mode)
 
 
+## Return the currently armed order mode (used by HUD to sync the ctrl bar on selection).
+func get_armed_mode() -> int:
+	return _armed_mode
+
+
+## Return the current group-attack mode (used by HUD to sync the ctrl bar on selection).
+func get_group_attack_mode() -> int:
+	return _group_attack_mode
+
+
 ## Cycle the group-attack distribution mode (called from the control bar).
 func toggle_group_attack_mode() -> void:
 	_cycle_group_attack_mode()

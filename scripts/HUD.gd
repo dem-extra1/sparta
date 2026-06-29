@@ -370,8 +370,8 @@ func show_unit(u, group_count: int) -> void:
 	if _ctrl_bar != null:
 		_ctrl_bar.visible = true
 		_ctrl_bar_update_formation(u)
-		_ctrl_bar_update_stance(_sel_mgr._armed_mode if _sel_mgr != null else 0)
-		update_group_attack_mode(_sel_mgr._group_attack_mode if _sel_mgr != null else 0)
+		_ctrl_bar_update_stance(_sel_mgr.get_armed_mode() if _sel_mgr != null else 0)
+		update_group_attack_mode(_sel_mgr.get_group_attack_mode() if _sel_mgr != null else 0)
 
 
 func clear_unit() -> void:
@@ -435,14 +435,15 @@ func _ctrl_bar_update_formation(unit) -> void:
 
 
 func _ctrl_bar_update_stance(mode: int) -> void:
-	if _ctrl_stance_btns.has(mode):
-		_ctrl_stance_btns[mode].button_pressed = true
+	var key: int = mode if _ctrl_stance_btns.has(mode) else BattleRef.OrderMode.NORMAL
+	if _ctrl_stance_btns.has(key):
+		_ctrl_stance_btns[key].button_pressed = true
 
 
 ## Build the bottom control bar: formation, stance, and per-order options.
 func _build_ctrl_bar() -> void:
 	_ctrl_bar = PanelContainer.new()
-	_ctrl_bar.set_anchors_preset(Control.PRESET_BOTTOM_CENTER)
+	_ctrl_bar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_ctrl_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_ctrl_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_ctrl_bar.position = Vector2(0, -10)
