@@ -305,7 +305,9 @@ static func update(unit: Unit, delta: float) -> void:
 		# Front-rank weapon: build one blade instance per fighting front-rank mark. The basis
 		# columns set the blade's length (along facing+swing) and thickness; the origin is the
 		# mark's leading edge so the blade reaches out from the body, not the centre.
-		if show_weapons and slots[slot_i].y - front_y <= Unit.WEAPON_FRONT_DEPTH:
+		# _sim_prone is empty when INDIVIDUAL_COLLISION is off, so the size-check gates use_sim implicitly.
+		var is_prone: bool = slot_i < unit._sim_prone.size() and unit._sim_prone[slot_i] > 0.0
+		if show_weapons and not is_prone and slots[slot_i].y - front_y <= Unit.WEAPON_FRONT_DEPTH:
 			var stroke := weapon_stroke(unit._combat_clock, float(i) * 1.7,
 					reach_px, thrust_frac, swing_amp)
 			var w_dir: Vector2 = fwd_axis.rotated(stroke[1])
