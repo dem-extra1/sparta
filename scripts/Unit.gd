@@ -583,7 +583,7 @@ func _move_to(point: Vector2, delta: float) -> void:
 	if walk_advance:
 		pace_frac = WALK_SPEED_FRACTION
 	elif position.distance_to(point) <= SPRINT_START_DISTANCE:
-		pace_frac = 1.0
+		pace_frac = 1.0  # sprint distance beats under-fire: charge through the kill zone at full speed
 	elif _under_fire:
 		pace_frac = JOG_SPEED_FRACTION
 	else:
