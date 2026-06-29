@@ -51,7 +51,7 @@ one of equal numbers, because the green unit tires and wavers first.
 ## Stamina
 
 Every soldier carries a **stamina pool** that drains through combat and refills at rest.
-Each blow thrown costs stamina; each blow received costs more. Rising from the ground after
+Each blow thrown costs stamina; throwing blows costs more than absorbing them. Rising from the ground after
 being knocked down costs a burst extra. Low stamina lowers the soldier's **condition
 factor**, which scales both attack output and defence --- a tired soldier hits softer and
 is easier to hit.
