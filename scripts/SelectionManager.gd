@@ -1,9 +1,9 @@
 extends Node2D
 class_name SelectionManager
 ## Mouse control for the player's army (team 0):
-##   Left click        — select one friendly unit
+##   Left click        — select one friendly unit (its block or its raised flag)
 ##   Left click + drag — box-select friendly units
-##   Right click       — move there, or attack the enemy unit clicked
+##   Right click       — move there, or attack the enemy unit clicked (block or flag)
 ##   Drag a flank grip — resize a single selected unit's frontage (line width)
 ##   [ / ]             — narrow / widen the selected units by one file
 
@@ -13,6 +13,12 @@ const BattleRef = preload("res://scripts/Battle.gd")  # for the waypoint-append 
 const CLICK_THRESHOLD: float = 6.0
 const DOUBLE_CLICK_MS: int = 350
 const CURSOR_SIZE: int = 24   # generated order-mode cursor
+# How far past a unit's RADIUS a click still lands on its block (world px). The body-pick
+# radius is RADIUS + this; a flag click only resolves outside that range (see _unit_at).
+const BODY_PICK_PAD: float = 6.0
+# Click tolerance (world px) grown around a unit's raised standard so the flag and its thin
+# pole are comfortably clickable, not just their exact drawn pixels.
+const FLAG_HIT_PAD: float = 4.0
 
 # Frontage resize grips: small squares on a singly-selected unit's flanks. Drag one
 # to widen/narrow the line; the bracket keys do the same in single-file steps.
@@ -457,13 +463,18 @@ func _unit_at(world_pos: Vector2, team: int) -> UnitRef:
 	# Nearest unit on `team` under the cursor (callers pass whichever team they
 	# want — the player's own for selection, the enemy's for attack orders).
 	var best = null
-	var best_d: float = UnitRef.RADIUS + 6.0
+	var best_d: float = UnitRef.RADIUS + BODY_PICK_PAD
+	# Fallback: the unit whose raised standard (flag + pole) is under the cursor, so the
+	# flag is clickable just like the body. A body hit always wins; the standard only
+	# resolves the click when no block is under the cursor. Nearest flag breaks ties.
+	var flag_best = null
+	var flag_best_d: float = INF
 	for node in get_tree().get_nodes_in_group("units"):
 		var unit = node as UnitRef
 		# A unit that died this frame is still valid and in the group until
 		# queue_free() prunes it; skip it so a click on its last position can't
 		# select/target a dead node — matching box-select, type-select and the
-		# control-group recall guards.
+		# control-group recall guards. (A dead unit also draws no flag.)
 		if unit == null or unit.state == UnitRef.State.DEAD:
 			continue
 		if unit.team != team:
@@ -472,7 +483,25 @@ func _unit_at(world_pos: Vector2, team: int) -> UnitRef:
 		if d < best_d:
 			best_d = d
 			best = unit
-	return best
+		var fd: float = _flag_pick_distance(unit, world_pos)
+		if fd >= 0.0 and fd < flag_best_d:
+			flag_best_d = fd
+			flag_best = unit
+	return best if best != null else flag_best
+
+
+## Distance from `world_pos` to the centre of `u`'s raised standard when the cursor falls
+## within its (padded) bounds, else -1.0 for "not on the flag". Used as the flag-click
+## fallback in `_unit_at`; the standard's geometry comes from UnitSprites so the hit region
+## tracks what's drawn. The standard is drawn in an unrotated screen frame about the unit
+## centre, so the cursor maps in by a plain translation (no facing rotation).
+func _flag_pick_distance(u, world_pos: Vector2) -> float:
+	var local: Vector2 = world_pos - u.global_position
+	var box: Rect2 = UnitSprites.standard_bounds(u.render_block_extent()).grow(FLAG_HIT_PAD)
+	if box.has_point(local):
+		# grow() preserves the centre, so this tiebreak distance is independent of FLAG_HIT_PAD.
+		return local.distance_to(box.get_center())
+	return -1.0
 
 
 func _select(u) -> void:

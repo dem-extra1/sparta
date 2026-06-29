@@ -279,6 +279,67 @@ func test_can_form_up_requires_single_selection_and_width() -> void:
 			"a multi-selection falls back to plain move (multi-unit deferred)")
 
 
+# --- clickable flags ------------------------------------
+
+func test_flag_pick_distance_hits_the_standard_and_misses_the_body_and_empty_space() -> void:
+	var sm := _sm()
+	var u := _unit()
+	u.position = Vector2(500, 500)
+	# The standard's local centre, from the same geometry UnitSprites draws.
+	var center: Vector2 = UnitSprites.standard_bounds(u.render_block_extent()).get_center()
+	var flag_world: Vector2 = u.global_position + center
+	assert_almost_eq(sm._flag_pick_distance(u, flag_world), 0.0, 0.001,
+			"a cursor on the standard's centre is zero distance from it")
+	assert_eq(sm._flag_pick_distance(u, u.global_position), -1.0,
+			"the body centre is well below the raised standard, so not a flag hit")
+	assert_eq(sm._flag_pick_distance(u, u.global_position + Vector2(9999, 0)), -1.0,
+			"empty space far from the standard is not a flag hit")
+
+
+func test_unit_at_selects_a_unit_by_its_flag() -> void:
+	var sm := _sm()
+	var u := _unit()
+	u.team = 0
+	u.position = Vector2(500, 500)
+	var flag_world: Vector2 = u.global_position \
+			+ UnitSprites.standard_bounds(u.render_block_extent()).get_center()
+	# The flag floats above the block, out of body-click range, yet resolves to the unit.
+	# Read the body-pick pad from SelectionManager so this stays true if the threshold moves.
+	var body_pick: float = UnitScript.RADIUS + SelectionManagerScript.BODY_PICK_PAD
+	assert_gt(flag_world.distance_to(u.global_position), body_pick,
+			"the flag sits beyond the body-click radius")
+	assert_eq(sm._unit_at(flag_world, 0), u, "clicking the raised flag selects the unit")
+
+
+func test_unit_at_prefers_a_body_hit_over_an_overlapping_flag() -> void:
+	# A body click always wins: place unit B's flag exactly over unit A's body, then click
+	# there — A (the body) is selected, not B (the flag floating onto the same spot).
+	var sm := _sm()
+	var a := _unit()
+	a.team = 0
+	a.position = Vector2(300, 300)
+	var b := _unit()
+	b.team = 0
+	# Put B's standard centre on A's body centre.
+	var center: Vector2 = UnitSprites.standard_bounds(b.render_block_extent()).get_center()
+	b.position = a.global_position - center
+	assert_eq(sm._unit_at(a.global_position, 0), a,
+			"the body under the cursor wins over another unit's overlapping flag")
+
+
+func test_unit_at_flag_click_respects_team() -> void:
+	var sm := _sm()
+	var enemy := _unit()
+	enemy.team = 1
+	enemy.position = Vector2(700, 200)
+	var flag_world: Vector2 = enemy.global_position \
+			+ UnitSprites.standard_bounds(enemy.render_block_extent()).get_center()
+	assert_null(sm._unit_at(flag_world, 0),
+			"a team-0 query ignores an enemy's flag (team filter still applies)")
+	assert_eq(sm._unit_at(flag_world, 1), enemy,
+			"a team-1 query resolves the same flag to the enemy")
+
+
 func test_issue_form_up_routes_a_recorded_order() -> void:
 	var sm := _sm()
 	var b = BattleScript.new()

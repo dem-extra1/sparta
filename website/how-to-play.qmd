@@ -23,7 +23,7 @@ left fighting --- every remaining unit is dead or routing.
 
 | Action | Control |
 | --- | --- |
-| Select a unit | **Left-click** |
+| Select a unit | **Left-click** its block or its raised flag |
 | Select multiple | **Left-click and drag** a box |
 | Move | **Right-click** the ground |
 | Form up | **Right-click and drag** open ground (left flank → right flank) |
@@ -90,8 +90,9 @@ still a plain move.
    right-click the enemy directly to attack. There is a brief **reaction delay**
    (~0.5 s, faster for cavalry) before units execute --- orders aren't instant.
 3. **Watch the bars** --- each unit flies a small **regimental flag** in its team
-   colour and shows a strength bar that drops as it takes casualties. Morale matters
-   as much as numbers (see [Tactics](tactics.qmd)).
+   colour and shows a strength bar that drops as it takes casualties. The flag is a
+   click target too: clicking it selects the unit, just like clicking the block.
+   Morale matters as much as numbers (see [Tactics](tactics.qmd)).
 4. **Navigate terrain** --- the field has two terrain patches: a **dark-green forest**
    (slows movement to 60%) on the left flank, and a **tan hill** (impassable) on the
    right. Units route around the hill automatically. See [Tactics → Terrain](tactics.qmd#terrain).
