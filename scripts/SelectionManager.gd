@@ -142,15 +142,16 @@ func _ready() -> void:
 	_cursor_sprite.centered = true
 	_cursor_sprite.visible = false
 	_cursor_canvas.add_child(_cursor_sprite)
-	# Start the live form-up distribution at the persisted default, and follow later
-	# changes to that default (made from the ☰ menu) without clobbering an on-the-fly cycle.
+	# Start the live form-up distribution at the persisted default. A ☰ menu change
+	# to the default also snaps the live mode (see _on_settings_changed).
 	_form_up_dist = Settings.form_up_dist_default
 	_form_up_dist_default = _form_up_dist
 	_form_up_dist_cycle = _cycle_from_settings()
 	Settings.changed.connect(_on_settings_changed)
 
 
-## Rebuild the live cycle from Settings and snap the live default when it changes.
+## Rebuild the live cycle from Settings; snap the live mode to the new default when
+## the default itself changes (a deliberate ☰ menu pick overrides an in-flight Y-cycle).
 func _on_settings_changed() -> void:
 	var new_cycle: Array = _cycle_from_settings()
 	if new_cycle != _form_up_dist_cycle:

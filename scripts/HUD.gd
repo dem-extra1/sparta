@@ -319,12 +319,15 @@ func _on_menu_id(id: int) -> void:
 
 
 func _toggle_form_up_cycle(mode: int) -> void:
-	var cycle: Array = Settings.form_up_dist_cycle.duplicate()
-	if cycle.has(mode):
-		cycle.erase(mode)
+	var enabled: Array = Settings.form_up_dist_cycle.duplicate()
+	if enabled.has(mode):
+		enabled.erase(mode)
 	else:
-		cycle.append(mode)
-	Settings.form_up_dist_cycle = cycle
+		enabled.append(mode)
+	# Rebuild in canonical order so the Y-key sequence is predictable regardless of
+	# the order modes were checked/unchecked.
+	Settings.form_up_dist_cycle = SelectionManagerRef.FORM_UP_DIST_CYCLE.filter(
+			func(m) -> bool: return enabled.has(m))
 
 
 func _unhandled_input(event: InputEvent) -> void:
