@@ -129,6 +129,34 @@ static func prone_chance(impulse_j: float, defender_mass: float, brace_d: float 
 	return clampf((impulse_j - threshold) / PRONE_SCALE, 0.0, PRONE_CHANCE_MAX)
 
 
+# Bracing (docs/combat-model.md "Bracing and the knockback chain"): a set, deep, front-facing
+# file resists a shove with the whole column's footing, not one man's. The struck man's
+# capacity is its own brace plus an attenuated sum of the braced ranks behind him:
+#   C_i = BRACE_CAPACITY * (br_i + sum_{k>=1} ZETA^k * br_{i+k})
+# A knockback below C_i is absorbed (the charge breaks on the braced depth); only the surplus
+# moves the front man. The depth-brace sum also raises his prone threshold.
+const ZETA: float = 0.5             # per-rank support-transmission efficiency (0..1]
+const BRACE_CAPACITY: float = 50.0  # J_cap: impulse a fully-set man (br = 1) absorbs
+
+
+## Depth-buttressed brace sum down a file: file_braces[0] is the struck man's brace, [1..] the
+## braced ranks directly behind him IN ORDER, truncated by the caller at the first dead/missing
+## rank (the T -> 0 break for loose or unfacing men is a follow-up — per-soldier truncation is
+## not yet in the melee resolver). Returns sum_k ZETA^k * br_k (the bracketed term).
+static func brace_depth(file_braces: PackedFloat32Array) -> float:
+	var total: float = 0.0
+	var z: float = 1.0
+	for br in file_braces:
+		total += z * maxf(0.0, br)
+		z *= ZETA
+	return total
+
+
+## Impulse the struck man's set file can absorb: J_cap times the depth-brace sum.
+static func brace_capacity(file_braces: PackedFloat32Array) -> float:
+	return BRACE_CAPACITY * brace_depth(file_braces)
+
+
 ## The health condition factor q(h) in [COND_HEALTH_FLOOR, 1] for a soldier at `hp`
 ## out of `maxhp`: a wounded soldier fights worse — q scales both its offence and its
 ## active defence in the land contest — so wounds compound. See docs/combat-model.md.

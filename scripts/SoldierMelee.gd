@@ -62,7 +62,26 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# the push and the slot-spring eases it back. Velocity only -- never a position snap.
 		var eta: float = 1.0 if landed else SoldierCombat.ETA_DEFENDED
 		var impulse_mag: float = SoldierCombat.knockback_impulse(my_prof["lethality"], c, en_prof["mass"], eta)
-		defender._sim_body_vel[target] += push_dir * impulse_mag
+		# Bracing: a front-facing, set, deep file resists a shove with the whole column's
+		# footing (docs/combat-model.md "Bracing"). Walk the target's file rearward (phi > 0 only:
+		# a flank/rear blow gets no buttress), stopping at the first dead/missing rank. A
+		# sub-capacity shove dies on the depth; only the surplus moves the front man. The depth
+		# sum also raises the prone threshold so a set phalanx is harder to fell.
+		var file_braces: PackedFloat32Array
+		if phi > 0.0:
+			var frontage: int = UnitFormation.frontage(defender)
+			var n_def: int = defender._sim_soldier_pos.size()
+			var br: float = defender.soldier_brace()
+			var rank_idx: int = target
+			while rank_idx < n_def:
+				if defender._sim_soldier_hp[rank_idx] <= 0.0:
+					break
+				file_braces.append(br)
+				rank_idx += frontage
+		var brace_d: float = SoldierCombat.brace_depth(file_braces)
+		var cap: float = SoldierCombat.BRACE_CAPACITY * brace_d   # avoids a second walk of file_braces
+		var received: float = maxf(0.0, impulse_mag - cap)
+		defender._sim_body_vel[target] += push_dir * received
 		if landed:
 			defender._sim_soldier_hp[target] -= SoldierCombat.wound(my_prof["lethality"], c, en_prof["armour"], cond_a)
 		# Going prone: a big enough impulse fells the defender. The fall roll is a second seeded
@@ -70,10 +89,11 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# count per in-reach strike is fixed -- the size guard gates only the assignment, never
 		# the draw, so an out-of-sync array can't silently shift the RNG stream. A felled body
 		# loses active defence and can't strike until it rises; a fresh blow on a downed man
-		# refreshes the timer, keeping him down under assault.
+		# refreshes the timer, keeping him down under assault. Prone rolls on the full impulse;
+		# the depth brace raises the threshold so a set phalanx resists going down.
 		var fall_roll: float = Replay.rng.randf()
 		if target < defender._sim_prone.size() \
-				and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"]):
+				and fall_roll < SoldierCombat.prone_chance(impulse_mag, en_prof["mass"], brace_d):
 			defender._sim_prone[target] = SoldierCombat.PRONE_RISE_TIME
 
 	reap(defender, attacker)

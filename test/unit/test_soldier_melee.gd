@@ -124,12 +124,14 @@ func test_melee_is_deterministic() -> void:
 # --- knockback: the enemy collision response ----------------------------------
 
 func test_in_reach_strike_shoves_the_defender_away() -> void:
-	# Attacker at the origin facing down; defender just ahead, in reach. Every in-reach
-	# strike adds at least the defended-blow impulse (eta_def) to the defender's body
-	# velocity, pointed away from the attacker (here: +y). Health is pinned high so the one
-	# strike can't kill and reap the body before we read it.
+	# Attacker at the origin facing down; unbraced defender just ahead, in reach. Every
+	# in-reach strike adds at least the defended-blow impulse to the defender's body
+	# velocity, pointed away from the attacker (here: +y). The defender is set to skirmish
+	# so it isn't braced (a braced lone infantry man absorbs normal blows below J_cap). Health
+	# is pinned high so the one strike can't kill and reap the body before we read it.
 	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var b := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	b.order_mode = Unit.ORDER_SKIRMISH   # unbraced: pure knockback with no absorption
 	b._sim_soldier_hp[0] = 9999.0
 	a.resolve_soldier_melee(b)
 	# Infantry attacker (lethality 1) vs infantry defender (mass 1), no charge: the minimum
@@ -142,8 +144,10 @@ func test_in_reach_strike_shoves_the_defender_away() -> void:
 
 func test_knockback_points_away_from_the_attacker() -> void:
 	# Off-axis geometry: the impulse follows the attacker->defender line, not a fixed axis.
+	# Defender is in skirmish (unbraced) so the impulse is never absorbed by brace capacity.
 	var a := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var b := _unit(2, 1, 1, Vector2(5, 5), Vector2.UP, false)
+	b.order_mode = Unit.ORDER_SKIRMISH
 	b._sim_soldier_hp[0] = 9999.0
 	a.resolve_soldier_melee(b)
 	assert_gt(b._sim_body_vel[0].x, 0.0, "knocked back along +x, away from the attacker")
@@ -194,18 +198,21 @@ func _typed_defender(uid: int, pos: Vector2, face: Vector2, cavalry: bool, range
 
 func test_heavier_defender_is_knocked_back_less() -> void:
 	# Same infantry attacker and the same seed, striking a light archer (mass 0.9) vs a heavy
-	# cavalry body (mass 2.5): the heavy body takes a smaller impulse (J ~ 1/mass). The eta
-	# can't flip in cavalry's favour -- cavalry's shield (0.25) > archer's (0.05) means its
-	# p_land is strictly <= the archer's, so "cavalry lands" implies "archer lands"; the mass
-	# ratio then dominates in every reachable land/defend outcome.
+	# cavalry body (mass 2.5): the heavy body takes a smaller impulse (J ~ 1/mass). Both
+	# defenders are set to skirmish so brace capacity doesn't absorb the blow — this tests
+	# mass alone. The eta can't flip in cavalry's favour: cavalry's shield (0.25) > archer's
+	# (0.05) means its p_land is strictly <= the archer's, so "cavalry lands" implies "archer
+	# lands"; the mass ratio then dominates in every reachable land/defend outcome.
 	Replay.rng.seed = SEED
 	var atk1 := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var archer := _typed_defender(2, Vector2(0, 6), Vector2.UP, false, true)
+	archer.order_mode = Unit.ORDER_SKIRMISH   # unbraced — test mass, not bracing
 	atk1.resolve_soldier_melee(archer)
 	var light_kb: float = archer._sim_body_vel[0].length()
 	Replay.rng.seed = SEED
 	var atk2 := _unit(3, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
 	var cav := _typed_defender(4, Vector2(0, 6), Vector2.UP, true, false)
+	cav.order_mode = Unit.ORDER_SKIRMISH
 	atk2.resolve_soldier_melee(cav)
 	var heavy_kb: float = cav._sim_body_vel[0].length()
 	assert_lt(heavy_kb, light_kb, "a heavy (cavalry) defender is knocked back less than a light (archer) one")
@@ -259,3 +266,75 @@ func test_prone_timer_decays_and_soldier_rises() -> void:
 	for _i in range(steps):
 		SoldierBodies.step(u, TICK)
 	assert_eq(u._sim_prone[0], 0.0, "a felled soldier rises on its own after PRONE_RISE_TIME")
+
+
+# --- bracing (docs/combat-model.md "Bracing") ---------------------------------
+
+# Build a single-file set defender with n soldiers, all health-pinned at 9999.
+# frontage_override=1 puts every rank in one column so the file walk runs deep.
+func _deep_unit(uid: int, n: int, pos: Vector2, face: Vector2) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = n
+	add_child_autofree(u)
+	u.frontage_override = 1   # single column; must be set before seed_sim_soldiers()
+	u.uid = uid
+	u.team = 1
+	u.position = pos
+	u.facing = face
+	u.training = 0.5
+	u.attack_range = 26.0
+	u.state = Unit.State.FIGHTING
+	u.tick_engaged(0.1)
+	u.seed_sim_soldiers()
+	for i in range(n):
+		u._sim_soldier_hp[i] = 9999.0
+	return u
+
+
+func test_deep_set_file_is_knocked_back_less_than_a_lone_man() -> void:
+	# A 3-deep single-file engaged phalanx buttresses the front man's footing with the
+	# whole column (docs/combat-model.md "Bracing"). The attacker's approach velocity is
+	# set high so even a defended blow generates an impulse that clears the lone man's
+	# brace capacity — proving the depth absorbs surplus the lone man can't.
+	Replay.rng.seed = SEED
+	var atk1 := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	atk1._approach_velocity = Vector2(0, 500.0)   # large charge — impulse clears lone brace
+	var lone := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)
+	lone._sim_soldier_hp[0] = 9999.0
+	SoldierMelee.resolve(atk1, lone)
+	var lone_kb: float = lone._sim_body_vel[0].length()
+
+	Replay.rng.seed = SEED
+	var atk2 := _unit(3, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	atk2._approach_velocity = Vector2(0, 500.0)
+	var deep := _deep_unit(4, 3, Vector2(0, 6), Vector2.UP)
+	SoldierMelee.resolve(atk2, deep)
+	var deep_kb: float = deep._sim_body_vel[0].length()
+
+	assert_gt(lone_kb, 0.0, "the lone set man is knocked back (shove clears his lone brace capacity)")
+	assert_lt(deep_kb, lone_kb, "the 3-deep set file is knocked back less — depth buttresses the front")
+
+
+func test_flank_blow_gets_no_bracing() -> void:
+	# phi = 0 for a lateral blow: the file column is never gathered, so a set lone defender
+	# takes the full impulse from a flank blow (cap = 0), while the same defender hit from the
+	# front absorbs part of it (phi > 0, brace capacity applied). A flank_kb > front_kb shows
+	# that bracing only fires for front blows and not for flanks.
+	Replay.rng.seed = SEED
+	var atk_front := _unit(1, 0, 1, Vector2(0, 0), Vector2.DOWN, false)
+	atk_front._approach_velocity = Vector2(0.0, 500.0)   # charge — same magnitude as the flank
+	var def_front := _unit(2, 1, 1, Vector2(0, 6), Vector2.UP, false)   # faces the attacker: phi > 0
+	def_front._sim_soldier_hp[0] = 9999.0
+	SoldierMelee.resolve(atk_front, def_front)
+	var front_kb: float = def_front._sim_body_vel[0].length()
+
+	Replay.rng.seed = SEED
+	var atk_flank := _unit(3, 0, 1, Vector2(-6, 0), Vector2.RIGHT, false)
+	atk_flank._approach_velocity = Vector2(500.0, 0.0)   # same charge magnitude, lateral
+	var def_flank := _unit(4, 1, 1, Vector2(0, 0), Vector2.DOWN, false)   # faces down: phi = 0
+	def_flank._sim_soldier_hp[0] = 9999.0
+	SoldierMelee.resolve(atk_flank, def_flank)
+	var flank_kb: float = def_flank._sim_body_vel[0].length()
+
+	assert_gt(flank_kb, front_kb,
+		"a flank blow (phi=0) gets no bracing: full impulse vs. a front blow absorbed by brace capacity")

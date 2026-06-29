@@ -276,3 +276,35 @@ func test_heavier_and_braced_defenders_resist_going_prone() -> void:
 	var unbraced: float = SoldierCombat.prone_chance(120.0, 1.0, 0.0)
 	var braced: float = SoldierCombat.prone_chance(120.0, 1.0, 1.0)
 	assert_lt(braced, unbraced, "bracing raises the knockdown threshold")
+
+
+# --- bracing depth and capacity (docs/combat-model.md "Bracing") ---------------
+
+func test_brace_depth_lone_man_is_one() -> void:
+	var lone: PackedFloat32Array = PackedFloat32Array([1.0])
+	assert_almost_eq(SoldierCombat.brace_depth(lone), 1.0, TOL, "a lone fully-set man contributes depth 1")
+
+
+func test_brace_depth_accumulates_with_zeta_attenuation() -> void:
+	var two: PackedFloat32Array = PackedFloat32Array([1.0, 1.0])
+	assert_almost_eq(SoldierCombat.brace_depth(two), 1.0 + SoldierCombat.ZETA, TOL, "2-deep: 1 + ζ")
+	var three: PackedFloat32Array = PackedFloat32Array([1.0, 1.0, 1.0])
+	var expected: float = 1.0 + SoldierCombat.ZETA + SoldierCombat.ZETA * SoldierCombat.ZETA
+	assert_almost_eq(SoldierCombat.brace_depth(three), expected, TOL, "3-deep: 1 + ζ + ζ²")
+
+
+func test_brace_depth_empty_file_is_zero() -> void:
+	assert_almost_eq(SoldierCombat.brace_depth(PackedFloat32Array()), 0.0, TOL, "no file, no depth")
+
+
+func test_brace_capacity_lone_set_man_is_j_cap() -> void:
+	var lone: PackedFloat32Array = PackedFloat32Array([1.0])
+	assert_almost_eq(SoldierCombat.brace_capacity(lone), SoldierCombat.BRACE_CAPACITY, TOL,
+		"a lone set man absorbs exactly J_cap")
+
+
+func test_brace_capacity_deep_file_exceeds_lone() -> void:
+	var lone: PackedFloat32Array = PackedFloat32Array([1.0])
+	var three: PackedFloat32Array = PackedFloat32Array([1.0, 1.0, 1.0])
+	assert_gt(SoldierCombat.brace_capacity(three), SoldierCombat.brace_capacity(lone),
+		"a 3-deep file absorbs more than a lone man")

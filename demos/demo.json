@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Physics slice B adds prone/knockdown as a sim mechanic (a felled soldier loses active defence and can't strike until it rises). Prone soldiers aren't rendered differently yet -- the on-screen effect is just 'charged/flanked troops die faster', not legible standalone -- so the clip is skipped and the behaviour is pinned by tests. A prone visual is a tracked follow-up."
+  "reason": "Physics slice C adds depth-buttressed bracing: a set file absorbs knockback up to its column's capacity and resists knockdown more. The effect (a deep phalanx moving less after a charge than a lone man) requires a before/after comparison to see and isn't legible standalone. Behaviour is pinned by GUT tests. Prone has no visual yet (#300), so a clip would still look like 'charged troops die differently' with no clear signal."
 }

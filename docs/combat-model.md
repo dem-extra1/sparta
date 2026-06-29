@@ -222,8 +222,8 @@ wound it.
 > **Implemented (#201 slice A):** `SoldierCombat.knockback_impulse` and the per-type
 > `mass` in `profile_for`, wired into `SoldierMelee` as one mass-scaled impulse per
 > in-reach strike (η = 1 landed, `ETA_DEFENDED` otherwise). Velocity-only — the body
-> integrates it, never a position snap. (Prone/knockdown landed in slice B, below;
-> bracing and the domino chain are not implemented yet.)
+> integrates it, never a position snap. (Prone/knockdown in slice B; depth-buttressed
+> bracing in slice C; the rearward domino cascade is a follow-up.)
 
 ## Going prone and getting up
 
@@ -244,11 +244,11 @@ and tires them out as they scramble up, which is when the follow-up rank kills t
 A **braced**, heavy, set line clears the prone threshold far less often and stays on
 its feet.
 
-> **Implemented (#201 slice B):** `SoldierCombat.prone_chance` (mass-raised threshold;
-> bracing `br_D` is 0 until slice C) and a per-soldier `_sim_prone` timer. In
-> `SoldierMelee` a felled defender loses active defence (`φ_D → 0`) and a felled attacker
-> can't strike; `SoldierBodies` decays the timer so a soldier rises after `PRONE_RISE_TIME`.
-> The stamina cost of rising (`κ_p`) and a prone *visual* are not in yet.
+> **Implemented (#201 slice B):** `SoldierCombat.prone_chance` (mass-raised threshold) and
+> a per-soldier `_sim_prone` timer. In `SoldierMelee` a felled defender loses active defence
+> (`φ_D → 0`) and a felled attacker can't strike; `SoldierBodies` decays the timer so a
+> soldier rises after `PRONE_RISE_TIME`. The stamina cost of rising (`κ_p`) and a prone
+> *visual* are not in yet. (Bracing `br_D` wired in slice C.)
 
 ## Bracing and the knockback chain (domino)
 
@@ -303,6 +303,17 @@ term — the facing $\hat{n}$ dotted with the incoming direction, clamped
 non-negative — the *same* facing that gates active defence). A loose, flanked, sprinting, or routing
 file has $\mathrm{br}\to 0$, dominoes, and goes down; a *braced*, tight,
 front-facing shield wall has $\mathrm{br}\to 1$ and holds.
+
+> **Implemented (#201 slice C):** `SoldierCombat.brace_depth` and `brace_capacity` compute
+> the depth-buttressed column capacity $C_i$. `Unit.soldier_brace()` returns `BRACE_SET` (1)
+> when the regiment is engaged and not a skirmish line, 0 otherwise (binary; graded posture
+> is the posture slice). In `SoldierMelee.resolve` the struck soldier's file column is walked
+> rearward (front-facing blows only — $\phi = 0$ gives no buttress), and the sub-capacity
+> shove is absorbed before applying velocity; `brace_depth` is also passed to `prone_chance`
+> to raise the knockdown threshold for a set phalanx. **Deferred:** the rearward domino
+> cascade ($J_{i+1} = \tau(J_i - C_i)_+$, surplus toppling rear ranks) is a follow-up. The
+> graded `br` formula above (posture weights $b_{\mathrm{post}}$, $w_f$, $w_d$) is also
+> deferred to the posture slice; `br` is binary here.
 
 ## Receiving a charge
 
