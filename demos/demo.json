@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Physics slice C adds depth-buttressed bracing: a set file absorbs knockback up to its column's capacity and resists knockdown more. The effect (a deep phalanx moving less after a charge than a lone man) requires a before/after comparison to see and isn't legible standalone. Behaviour is pinned by GUT tests. Prone has no visual yet (#300), so a clip would still look like 'charged troops die differently' with no clear signal."
+  "input": "demos/inputs/single-unit-form-up.json",
+  "caption": "Scripted-input demo (this PR's new recorder): a click selects the Spearmen, then a right-drag deploys them into a line — driven live through the real controls, not a hand-authored replay. See demos/inputs/single-unit-form-up.json.",
+  "fixed_fps": 30,
+  "max_frames": 140,
+  "fps": 15,
+  "width": 720
 }
