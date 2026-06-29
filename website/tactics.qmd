@@ -174,7 +174,7 @@ your advantage when committing cavalry or an assault infantry charge.
     Your browser can't play this clip --- see the
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
-  <figcaption>Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target — all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.</figcaption>
+  <figcaption>Pace modes: regiments walk on approach, jog when enemy archers open fire, then sprint at full charge speed within ~200 px of the target &mdash; all three AUTO phases in one advance. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout.</figcaption>
 </figure>
 ```
 
