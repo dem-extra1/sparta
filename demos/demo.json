@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "This fix suppresses a floating weapon blade on prone soldiers — the bug only appears when a soldier is knocked down during melee, which is not reliably triggerable in a scripted demo clip."
+  "replay": "demos/charge_demo.json",
+  "caption": "Prone soldiers now render as dark horizontal marks (or lying silhouettes at high zoom). Watch for darkened flat marks after the cavalry charge bowls infantry over; they stand back up after PRONE_RISE_TIME.",
+  "fixed_fps": 30,
+  "max_frames": 400,
+  "fps": 12,
+  "width": 640
 }
