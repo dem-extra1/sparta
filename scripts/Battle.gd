@@ -348,6 +348,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"y": world_pos.y,
 		"target": target_uid,
 		"mode": order_mode,
+		"reform": Settings.reform_before_move,
 	}
 	_pending_orders.append(cmd)
 	# Apply immediately for zero-latency feedback and paused preview — EXCEPT a
@@ -417,6 +418,7 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"mode": order_mode,
 		"frontage": frontage,
 		"face": face,
+		"reform": Settings.reform_before_move,
 	}
 	_pending_orders.append(cmd)
 	_apply_order_cmd(cmd)
@@ -489,6 +491,8 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			# move branch below re-sets it. So attack / support / relief / plain move all
 			# clear it, and a unit can't wheel to a stale heading on arrival.
 			u.deploy_facing = Vector2.ZERO
+			# A new order always cancels any in-progress reform from the previous one.
+			u._reform_timer = 0.0
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
 			u.target_enemy = target_unit   # attack an enemy
 			u.has_move_target = false
@@ -523,14 +527,23 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					u.move_target = u.waypoints.pop_front()
 					u.has_move_target = true
 			else:
-				u.move_target = point
-				u.has_move_target = true
-				# Drag-to-form-up rides a plain move: deploy at the player-set facing
-				# (applied when the unit reaches the spot) and width.
+				# Drag-to-form-up: apply frontage/facing immediately so soldiers begin
+				# adjusting during the reform phase rather than after the march starts.
 				if cmd.has("face"):
 					u.deploy_facing = Vector2.from_angle(float(cmd["face"]))
 					if cmd.has("frontage"):
 						u.set_frontage(int(cmd["frontage"]))
+				# Reform-before-move: store the destination and let the reform timer
+				# (in Unit._think) commit it once the unit's ranks have had time to
+				# settle. Baked into the command so replays reproduce this as recorded.
+				# Fighting units bypass the hold in _think and commit immediately.
+				if bool(cmd.get("reform", false)):
+					u._reform_target = point
+					u._reform_timer = UnitRef.REFORM_DURATION
+					u.has_move_target = false   # stop any prior march while reforming
+				else:
+					u.move_target = point
+					u.has_move_target = true
 		if not append:
 			u.start_order_response()
 

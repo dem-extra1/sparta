@@ -136,6 +136,14 @@ const DETECTION_RANGE: float = 190.0
 # soldier layer; see docs/individual-collision-design.md.)
 const ATTACK_INTERVAL: float = 0.6
 const ROUT_TIME: float = 6.0
+# How long a non-fighting unit holds position to reform its ranks after a fresh move
+# order is issued with reform_before_move on. Runs concurrently with order_response_delay
+# (both count from zero); the effective delay before the march is max(order_response_delay,
+# REFORM_DURATION). Deterministic (a plain counter, no RNG), so replays stay exact.
+const REFORM_DURATION: float = 0.8
+# Speed cap (world units/s) applied to each individual soldier body while the reform
+# hold is active — soldiers jog to their new slots rather than sprinting there.
+const REFORM_JOG_SPEED: float = 150.0
 # Radius over which a rout shakes friendly morale. Shared by the morale-spread
 # loop and the cosmetic shockwave so the visual matches the actual area of effect.
 const ROUT_SHOCK_RADIUS: float = 140.0
@@ -234,6 +242,12 @@ var _rout_timer: float = 0.0
 # (it keeps executing _think() — retargets, disengages, and support orders all
 # take effect immediately regardless of the timer).
 var _order_response_timer: float = 0.0
+# Reform-before-move: when a fresh move order arrives with "reform":true, the
+# destination is stored here and _reform_timer counts down. Until it expires the
+# unit holds position (IDLE); on expiry _commit_pending_reform() sets has_move_target.
+# A subsequent order clears the timer, cancelling the pending reform.
+var _reform_target: Vector2 = Vector2.ZERO
+var _reform_timer: float = 0.0
 var _moved_last_frame: bool = false
 # Velocity the unit carried into its last move; the cavalry charge bonus reads it
 # at contact. Spent by _strike (so only the contact strike charges, not the grinding
@@ -366,8 +380,28 @@ func _think(delta: float) -> void:
 	# extra frame.
 	if _order_response_timer > 0.0:
 		_order_response_timer = maxf(0.0, _order_response_timer - delta)
+		# Also drain the reform timer concurrently so both run in parallel; the
+		# effective delay before the march is max(order_response_delay, REFORM_DURATION).
+		# Guard on the order timer still being positive: if it expires this very frame
+		# (just hit 0 above), fall through so the reform block below ticks it once —
+		# not twice.
+		if _reform_timer > 0.0 and _order_response_timer > 0.0:
+			_reform_timer = maxf(0.0, _reform_timer - delta)
 		if _order_response_timer > 0.0 and state != State.FIGHTING:
 			return
+
+	# Reform phase: unit holds position after the order-response delay expires until
+	# reform timer runs out, then commits the pending move. A fighting unit skips the
+	# hold and commits immediately so combat orders are never gated by a reform pause.
+	if _reform_timer > 0.0:
+		if state == State.FIGHTING:
+			_commit_pending_reform()
+		else:
+			_reform_timer = maxf(0.0, _reform_timer - delta)
+			if _reform_timer > 0.0:
+				state = State.IDLE
+				return
+			_commit_pending_reform()
 
 	# Support stance: guard a friendly ward — engage threats near it, else
 	# shadow it. Handled up front so it overrides the normal target/move logic. If
@@ -1055,6 +1089,15 @@ func start_order_response() -> void:
 	_order_response_timer = order_response_delay
 
 
+## Commit a pending reform-before-move: hand off the stored destination to the
+## normal move machinery. Called when the reform timer expires or a fighting unit
+## receives a move order with reform=true (fights can't be made to hold for reform).
+func _commit_pending_reform() -> void:
+	move_target = _reform_target
+	has_move_target = true
+	_reform_timer = 0.0
+
+
 ## Fold another friendly regiment into this one: pool soldiers, blend the
 ## combat stats weighted by strength, and start with a cohesion debuff that
 ## decays. The absorbed unit is removed. Caller guarantees same team.
@@ -1112,6 +1155,7 @@ func _rout() -> void:
 	selected = false
 	target_enemy = null
 	has_move_target = false
+	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_rout_timer = ROUT_TIME
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
