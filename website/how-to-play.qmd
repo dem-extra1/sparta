@@ -123,6 +123,10 @@ line, a **ghost formation** (faint green dots) shows exactly where each individu
 soldier will stand when the regiment finishes its march --- so you can check whether
 units will fit, overlap, or leave a gap before they arrive.
 
+## The battle loop
+
+Here is the cycle in practice, shown with a cavalry charge:
+
 ```{=html}
 <figure class="demo">
   <video class="demo-video" controls muted loop playsinline preload="metadata"
@@ -131,11 +135,9 @@ units will fit, overlap, or leave a gap before they arrive.
     Your browser can't play this clip --- see the
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
-  <figcaption>Cavalry charge: two horse units attack an enemy regiment, accelerating to full speed on contact.</figcaption>
+  <figcaption>Cavalry charge: two horse units receive an attack order and accelerate to full speed on contact.</figcaption>
 </figure>
 ```
-
-## The battle loop
 
 1. **Select** --- left-click a unit, or drag a box to grab several at once. The info
    panel fills with the selected unit's stats.
