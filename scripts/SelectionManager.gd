@@ -51,6 +51,12 @@ const FORM_UP_DIST_CYCLE := [FormUpDist.EQUAL_DEPTH, FormUpDist.EQUAL_WIDTH]
 const FORM_UP_DIST_CYCLE_KEY := KEY_Y   # cycles the live distribution mode
 const DEMO_FORMUP_WINDOW: int = 90   # ticks a replayed deploy line lingers (spans the march)
 
+# Group attack distribution: when multiple units issue an attack order, Focused sends
+# every unit at the same target; Distributed spreads them across nearby enemies.
+# The enum lives in Battle (so the cmd dict uses the same ints) and is aliased here.
+const GROUP_ATTACK_MODE_CYCLE := [BattleRef.GroupAttackMode.FOCUSED, BattleRef.GroupAttackMode.DISTRIBUTED]
+const GROUP_ATTACK_CYCLE_KEY := KEY_X   # cycles the live group-attack distribution mode
+
 # Order-overlay colours (common RTS convention: green = move, red = attack). Teal marks
 # a SUPPORT link — same hue as the SUPPORT order cursor (_order_mode_color).
 const ORDER_MOVE_COLOR: Color = Color(0.45, 0.95, 0.55, 0.9)
@@ -89,6 +95,7 @@ var _rmb_shift: bool = false   # Shift state captured at right-button press
 # the persisted default so a menu change to it snaps the live mode over (see _on_settings_changed).
 var _form_up_dist: int = FormUpDist.EQUAL_DEPTH
 var _form_up_dist_default: int = FormUpDist.EQUAL_DEPTH
+var _group_attack_mode: int = BattleRef.GroupAttackMode.FOCUSED
 # Gameplay-hotkey labels pressed since the last sim tick; Battle drains this each tick
 # (take_keys_this_tick) into the replay's keystroke track for the demo overlay.
 var _keys_this_tick: Array = []
@@ -215,6 +222,9 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == FORM_UP_DIST_CYCLE_KEY:
 		_cycle_form_up_dist()   # switch how a multi-unit form-up splits the line
 		return true
+	elif event.keycode == GROUP_ATTACK_CYCLE_KEY:
+		_cycle_group_attack_mode()   # switch focused / distributed attack for multi-unit orders
+		return true
 	return _handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall
 
 
@@ -229,6 +239,17 @@ func _cycle_form_up_dist() -> void:
 		_hud.flash_message("Form-up: " + str(FORM_UP_DIST_NAMES.get(_form_up_dist, "")))
 	Sfx.play(&"order")
 	queue_redraw()
+
+
+## Cycle the live group-attack distribution mode and flash the new name.
+## Affects only multi-unit attack orders (single unit or non-attack orders always use focused).
+func _cycle_group_attack_mode() -> void:
+	var idx: int = GROUP_ATTACK_MODE_CYCLE.find(_group_attack_mode)
+	_group_attack_mode = GROUP_ATTACK_MODE_CYCLE[(idx + 1) % GROUP_ATTACK_MODE_CYCLE.size()] if idx >= 0 \
+			else GROUP_ATTACK_MODE_CYCLE[0]
+	if _hud != null:
+		_hud.flash_message(BattleRef.GROUP_ATTACK_MODE_NAMES.get(_group_attack_mode, ""))
+	Sfx.play(&"order")
 
 
 func _finish_selection() -> void:
@@ -320,7 +341,12 @@ func _issue_order(world_pos: Vector2, append: bool = false) -> void:
 			uids.append(unit.uid)
 	if uids.is_empty():
 		return
-	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode)
+	# Apply group-attack distribution only for multi-unit attacks on enemy units;
+	# friendly targets (support, relief) and ground moves always use focused.
+	var group_attack: int = BattleRef.GroupAttackMode.FOCUSED
+	if uids.size() > 1 and enemy != null:
+		group_attack = _group_attack_mode
+	_battle.enqueue_order(uids, world_pos, target_uid, _armed_mode, group_attack)
 	Sfx.play(&"order")
 
 
