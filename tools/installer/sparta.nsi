@@ -1,5 +1,5 @@
 ; Sparta Windows installer script (NSIS)
-; Produces an unsigned setup.exe. Code-signing is tracked separately (#251).
+; Produces an unsigned setup.exe. Code-signing is not yet applied.
 ;
 ; Build with:
 ;   makensis -DVERSION=0.1.0 -DEXE_PATH=sparta.exe sparta.nsi
