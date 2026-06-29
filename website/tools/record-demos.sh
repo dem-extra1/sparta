@@ -24,11 +24,13 @@ OUT_DIR="${1:-$PROJECT_ROOT/website/media}"
 GODOT_BIN="${GODOT_BIN:-godot}"
 
 # Each demo: name | replay (res://-relative) | fixed_fps | max_frames | width(px).
-# Replays are seed-only auto-battles (no orders); add hand-played replays under
-# demos/ and a row here to feature a specific tactic.
+# Replays may be seed-only auto-battles or scripted scenarios with hand-authored
+# orders; add scenario replays under demos/ and a row here to feature a specific tactic.
 DEMOS=(
   "showcase|demos/showcase.json|30|360|800"
   "clash|demos/clash.json|30|240|640"
+  "charge|demos/charge_demo.json|30|240|640"
+  "support|demos/support_demo.json|30|240|640"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a
