@@ -186,6 +186,15 @@ facing-gated contest.
 
 ### 3. Stamina: attacking, defending, and rising all cost
 
+> **Implemented (#310 slice D):** `SoldierCombat.stamina_factor` (g(σ) in
+> [COND_STAMINA_FLOOR, 1]) and per-soldier `_sim_soldier_stamina` arrays in `Unit`.
+> `SoldierBodies.seed` seeds stamina at `max_stamina`; `SoldierBodies.step` regens all
+> soldiers at `RHO_STAMINA`/sec (engaged included; their net change is offset by melee drain)
+> and drains `κ_p` the tick a prone soldier rises.
+> `SoldierMelee.resolve` multiplies `q(h) * g(σ)` into `cond_a` / `cond_d`, drains
+> `κ_a` per strike thrown, and drains `κ_d·φ·(1+c)` per blow met.
+> Posture-dependent regen rates deferred to the posture slice.
+
 Every action spends stamina; rest restores it. In one tick:
 
 $$\sigma_A \mathrel{-}= \kappa_a \qquad\text{(each strike thrown)},$$
@@ -244,11 +253,13 @@ and tires them out as they scramble up, which is when the follow-up rank kills t
 A **braced**, heavy, set line clears the prone threshold far less often and stays on
 its feet.
 
-> **Implemented (#201 slice B):** `SoldierCombat.prone_chance` (mass-raised threshold) and
-> a per-soldier `_sim_prone` timer. In `SoldierMelee` a felled defender loses active defence
-> (`φ_D → 0`) and a felled attacker can't strike; `SoldierBodies` decays the timer so a
-> soldier rises after `PRONE_RISE_TIME`. `κ_p` is wired in slice D. A prone
-> *visual* is not in yet. (Bracing `br_D` wired in slice C.)
+> **Implemented (#201 slice B, visual in #300):** `SoldierCombat.prone_chance`
+> (mass-raised threshold) and a per-soldier `_sim_prone` timer. In `SoldierMelee` a felled
+> defender loses active defence (`φ_D → 0`) and a felled attacker can't strike;
+> `SoldierBodies` decays the timer so a soldier rises after `PRONE_RISE_TIME`. Prone
+> soldiers are rendered as dark horizontal slivers (mark LOD) or lying-on-side silhouettes
+> (figure LOD) via per-instance MultiMesh transforms and tinting. The stamina cost of rising
+> (`κ_p`) is in slice D. (Bracing `br_D` wired in slice C.)
 
 ## Bracing and the knockback chain (domino)
 

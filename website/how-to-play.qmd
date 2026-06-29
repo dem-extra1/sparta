@@ -31,6 +31,7 @@ left fighting --- every remaining unit is dead or routing.
 | Form-up split mode | <kbd>Y</kbd> cycles equal-depth ↔ equal-width (set the default in ☰ Menu) |
 | Reform before move | **☰ Menu → Reform before move** toggles whether units pause to settle their ranks before marching (on by default) |
 | Attack | **Right-click** an enemy unit |
+| Group attack mode | <kbd>X</kbd> cycles focused ↔ distributed (distributed spreads multiple selected units across nearby enemies) |
 | Add waypoint | **Shift + Right-click** (chain several move points) |
 | Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear |
 | Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose) |

@@ -41,6 +41,17 @@ const ORDER_FRONTAGE_ONLY := -4
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
 enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT }
 
+## How a multi-unit attack order distributes its target among the ordered units.
+## Focused (default): every unit attacks the same enemy.
+## Distributed: units spread across nearby enemies sorted by proximity to the
+## clicked target; extra units cycle through the list.
+enum GroupAttackMode { FOCUSED = 0, DISTRIBUTED = 1 }
+
+const GROUP_ATTACK_MODE_NAMES := {
+	GroupAttackMode.FOCUSED: "Attack: focused",
+	GroupAttackMode.DISTRIBUTED: "Attack: distributed",
+}
+
 ## Human-readable mode names for the HUD / cursor indicator.
 const ORDER_MODE_NAMES := {
 	OrderMode.NORMAL: "Normal",
@@ -339,7 +350,8 @@ func _on_soldier_tick() -> void:
 ## tick's re-application is idempotent (same cmd, same _apply_order_cmd), so live
 ## and replayed orders stay on the same deterministic code path.
 func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
-		order_mode: int = OrderMode.NORMAL) -> void:
+		order_mode: int = OrderMode.NORMAL,
+		group_attack: int = GroupAttackMode.FOCUSED) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	var cmd := {
@@ -349,6 +361,7 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"target": target_uid,
 		"mode": order_mode,
 		"reform": Settings.reform_before_move,
+		"group_attack": group_attack,
 	}
 	_pending_orders.append(cmd)
 	# Apply immediately for zero-latency feedback and paused preview — EXCEPT a
@@ -473,6 +486,24 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 	var centroid := Vector2.ZERO
 	if is_move:
 		centroid = _centroid_of_uids(cmd["units"])
+	# In distributed attack mode, pre-sort all live enemies by proximity to the clicked
+	# target so each ordered unit gets its own assignment. Ties broken by uid for replay
+	# determinism. Falls back to focused (all share target_unit) when the list is empty.
+	var attack_targets: Array = []
+	if cmd.get("group_attack", GroupAttackMode.FOCUSED) == GroupAttackMode.DISTRIBUTED \
+			and target_unit != null and not is_move:
+		for node in get_tree().get_nodes_in_group("units"):
+			var candidate: Unit = node as Unit
+			if candidate == null or candidate.team != target_unit.team \
+					or candidate.state == Unit.State.DEAD \
+					or candidate.state == Unit.State.ROUTING:
+				continue
+			attack_targets.append(candidate)
+		var ref_pos: Vector2 = target_unit.position
+		attack_targets.sort_custom(func(a: Unit, b: Unit) -> bool:
+			var da: float = a.position.distance_to(ref_pos)
+			var db: float = b.position.distance_to(ref_pos)
+			return da < db if da != db else a.uid < b.uid)
 	var relieved: bool = false
 	var relief_foe: Unit = null
 	for uid in cmd["units"]:
@@ -494,7 +525,11 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			# A new order always cancels any in-progress reform from the previous one.
 			u._reform_timer = 0.0
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
-			u.target_enemy = target_unit   # attack an enemy
+			if attack_targets.is_empty():
+				u.target_enemy = target_unit
+			else:
+				var slot: int = cmd["units"].find(uid)
+				u.target_enemy = attack_targets[slot % attack_targets.size()]
 			u.has_move_target = false
 		elif target_unit != null and target_unit != u and target_unit.team == u.team:
 			if mode == OrderMode.SUPPORT:

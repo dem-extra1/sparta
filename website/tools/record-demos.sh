@@ -23,14 +23,15 @@ PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 OUT_DIR="${1:-$PROJECT_ROOT/website/media}"
 GODOT_BIN="${GODOT_BIN:-godot}"
 
-# Each demo: name | replay (res://-relative) | fixed_fps | max_frames | width(px).
-# Replays may be seed-only auto-battles or scripted scenarios with hand-authored
-# orders; add scenario replays under demos/ and a row here to feature a specific tactic.
+# Each demo: name | source (res://-relative) | fixed_fps | max_frames | width(px) | type.
+# type is "replay" (default, DemoRunner.tscn) or "input" (DemoInputRecorder.tscn).
+# Replays may be seed-only auto-battles or scripted scenarios with hand-authored orders.
 DEMOS=(
-  "showcase|demos/showcase.json|30|360|800"
-  "clash|demos/clash.json|30|240|640"
-  "charge|demos/charge_demo.json|30|240|640"
-  "support|demos/support_demo.json|30|240|640"
+  "showcase|demos/showcase.json|30|360|800|replay"
+  "clash|demos/clash.json|30|240|640|replay"
+  "charge|demos/charge_demo.json|30|240|640|replay"
+  "support|demos/support_demo.json|30|240|640|replay"
+  "group_attack|demos/inputs/group-attack-distributed.json|30|240|640|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a
@@ -56,14 +57,22 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 "$GODOT_BIN" --headless --import || true
 
 for spec in "${DEMOS[@]}"; do
-  IFS='|' read -r NAME REPLAY FIXED_FPS MAX_FRAMES WIDTH <<<"$spec"
-  echo "== Recording '$NAME' from res://$REPLAY ($MAX_FRAMES frames @ ${FIXED_FPS}fps, ${WIDTH}px) =="
+  IFS='|' read -r NAME SOURCE FIXED_FPS MAX_FRAMES WIDTH TYPE <<<"$spec"
+  TYPE="${TYPE:-replay}"
+  if [ "$TYPE" = "input" ]; then
+    SCENE=res://tools/demo/DemoInputRecorder.tscn
+    ENV_KEY=SPARTA_DEMO_INPUT
+  else
+    SCENE=res://tools/demo/DemoRunner.tscn
+    ENV_KEY=SPARTA_DEMO_REPLAY
+  fi
+  echo "== Recording '$NAME' ($TYPE: res://$SOURCE, $MAX_FRAMES frames @ ${FIXED_FPS}fps, ${WIDTH}px) =="
 
   AVI="$WORK_DIR/$NAME.avi"
-  SPARTA_DEMO_REPLAY="res://$REPLAY" "${GODOT_RUN[@]}" \
+  env "${ENV_KEY}=res://${SOURCE}" "${GODOT_RUN[@]}" \
     --rendering-driver opengl3 \
     --write-movie "$AVI" --fixed-fps "$FIXED_FPS" \
-    --quit-after "$MAX_FRAMES" res://tools/demo/DemoRunner.tscn
+    --quit-after "$MAX_FRAMES" "$SCENE"
   [ -s "$AVI" ] || { echo "::error::Movie Maker produced no output for '$NAME'"; exit 1; }
 
   # MP4 with sound: H.264 + AAC in yuv420p with +faststart is the most widely

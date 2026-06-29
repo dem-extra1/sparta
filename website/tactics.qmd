@@ -166,6 +166,33 @@ into different tools:
   intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable
   horse, or a guard onto your archers.
 
+## Group attack distribution
+
+When you have several units selected and right-click an enemy, press <kbd>X</kbd> to
+cycle between two attack modes:
+
+- **Focused** (default) --- every selected unit charges the same target.
+  Use it to overwhelm a single regiment quickly.
+- **Distributed** --- each unit picks a different nearby enemy, sorted by proximity
+  to the clicked target. Extra units cycle through the list if you have more units
+  than enemies. Use it to hold an entire line rather than piling onto one regiment
+  and leaving the rest unengaged.
+
+The flash message in the top-centre of the screen confirms the active mode. The mode
+is sticky --- it stays set until you press <kbd>X</kbd> again.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/group_attack.jpg">
+    <source src="media/group_attack.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Group attack distribution: three regiments in distributed mode each target a different nearby enemy instead of all piling onto one.</figcaption>
+</figure>
+```
+
 ## Terrain
 
 Two types of terrain patch appear on the battle field:
