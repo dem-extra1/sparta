@@ -322,6 +322,11 @@ func _toggle_form_up_cycle(mode: int) -> void:
 	var enabled: Array = Settings.form_up_dist_cycle.duplicate()
 	if enabled.has(mode):
 		enabled.erase(mode)
+		# Keep at least one mode so the UI and Y-key behavior stay consistent.
+		# (An empty cycle falls back silently to all modes in SelectionManager,
+		# which would leave the checkboxes unchecked while Y still cycles both.)
+		if enabled.is_empty():
+			return
 	else:
 		enabled.append(mode)
 	# Rebuild in canonical order so the Y-key sequence is predictable regardless of
