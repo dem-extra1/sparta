@@ -96,12 +96,22 @@ architecture, and CI changes are exempt.
   milestone-level.
 - `website/tools/record-demos.sh` — the `DEMOS` list controls which website
   video clips get recorded at deploy time. When your PR adds a mechanic or
-  visual that isn't visible in any existing replay scenario, add an entry:
-  record a new replay (play the battle, copy from `user://replays/` into
-  `demos/`, give it a descriptive name), then append a row to `DEMOS` and a
-  matching `<video>` embed on the page that covers that mechanic — follow the
-  pattern in `website/how-to-play.qmd` or `website/index.qmd`, which already
-  have `<video>` embeds. See `website/README.md` for the full pipeline.
+  visual that isn't visible in any existing scenario, append a row to `DEMOS`
+  and a matching `<video>` embed on the page that covers that mechanic (follow
+  the pattern in `website/how-to-play.qmd` or `website/index.qmd`).
+  Each row has six pipe-separated fields: `"name|source|fps|max_frames|width|type"`.
+  - **`type=replay`** (default): plays a hand-authored or recorded replay file
+    (`demos/*.json`) via `DemoRunner.tscn`. Record a new replay by playing the
+    battle and copying it from `user://replays/` into `demos/`.
+  - **`type=input`**: drives the game from a scripted-input file
+    (`demos/inputs/*.json`) via `DemoInputRecorder.tscn` — preferred for
+    mechanics that need specific player gestures (a key toggle, a multi-unit
+    drag). Reuse the file you wrote for `demos/demo.json`.
+  See `website/README.md` for the full pipeline.
+
+  **`demos/demo.json` conflict:** every PR updates this file to point to its
+  own demo clip. When you merge `main` after another PR also changed it, you
+  get a conflict. Keep YOUR version (it describes the change being merged).
 
 **Where to look for site layout:** `website/README.md` describes the page
 structure, build instructions, and how demo clips are recorded. Each `.qmd` page

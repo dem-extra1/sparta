@@ -240,6 +240,19 @@ func test_record_order_round_trips_the_deploy_facing() -> void:
 	assert_false(orders[1].has("face"), "a plain move carries no facing")
 
 
+func test_record_order_round_trips_group_attack_mode() -> void:
+	var r := _fresh()
+	r.start_recording()
+	r.record_order(5, [1, 2], Vector2(400, 400), 7, 0, 0, 0, INF, 1)   # distributed (1)
+	r.record_order(6, [3], Vector2(50, 0), 8, 0, 0, 0, INF, 0)         # focused (0) -> omitted
+	var path: String = r.save("Test", 6)
+	var loaded := _fresh()
+	assert_true(loaded.start_playback(path), "the saved replay loads")
+	var orders: Array = loaded._orders
+	assert_eq(int(orders[0]["group_attack"]), 1, "a distributed attack order round-trips its mode")
+	assert_false(orders[1].has("group_attack"), "a focused attack omits the field (back-compat)")
+
+
 func test_form_ups_for_tick_returns_recent_deploys() -> void:
 	var r := _fresh()
 	r.start_recording()

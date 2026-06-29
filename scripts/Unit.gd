@@ -418,6 +418,18 @@ func _think(delta: float) -> void:
 				return
 			_commit_pending_reform()
 
+	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit is
+	# within RANGED_RANGE of this unit (i.e. could be shooting at us this frame).
+	# Must run before the ORDER_SUPPORT early return so _support_tick's _move_to
+	# calls see the correct value.
+	_under_fire = false
+	for u in get_tree().get_nodes_in_group("units"):
+		if u is Unit and u.team != team and u.is_ranged and u.state != State.DEAD \
+				and u.state != State.ROUTING \
+				and position.distance_to(u.position) <= RANGED_RANGE:
+			_under_fire = true
+			break
+
 	# Support stance: guard a friendly ward — engage threats near it, else
 	# shadow it. Handled up front so it overrides the normal target/move logic. If
 	# the ward is gone (dead, routed, or cleared) the order is spent, so drop it and
@@ -428,16 +440,6 @@ func _think(delta: float) -> void:
 			return
 		support_target = null
 		order_mode = 0   # ward gone: revert to NORMAL
-
-	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit is
-	# within RANGED_RANGE of this unit (i.e. could be shooting at us this frame).
-	_under_fire = false
-	for u in get_tree().get_nodes_in_group("units"):
-		if u is Unit and u.team != team and u.is_ranged and u.state != State.DEAD \
-				and u.state != State.ROUTING \
-				and position.distance_to(u.position) <= RANGED_RANGE:
-			_under_fire = true
-			break
 
 	var enemy: Unit = UnitTargeting.current_target(self)
 	if enemy != null:

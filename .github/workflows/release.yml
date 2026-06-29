@@ -86,17 +86,36 @@ jobs:
           done
           ls -la build/windows build/linux build/macos
 
+      - name: Install NSIS
+        # NSIS 3.x (currently 3.08 on ubuntu-latest). No exact pin needed — the
+        # script uses only stable NSIS 3 features; a future 3.x bump is safe.
+        run: sudo apt-get update && sudo apt-get install -y nsis
+
+      - name: Build Windows installer
+        run: |
+          set -euo pipefail
+          # Sanitise slashes so branch-name runs (workflow_dispatch from
+          # feat/windows-installer) produce a valid filename, not a missing-parent
+          # directory error. Version tags (v0.1.0) contain no slashes, so this
+          # is a no-op for real releases.
+          V="${GITHUB_REF_NAME//\//-}"
+          makensis \
+            -DVERSION="${V}" \
+            -DEXE_PATH="$(pwd)/build/windows/sparta.exe" \
+            tools/installer/sparta.nsi
+          mv "sparta-${V}-windows-setup.exe" build/
+
       - name: Package
         run: |
           set -euo pipefail
-          V="${GITHUB_REF_NAME}"
+          V="${GITHUB_REF_NAME//\//-}"
           cd build
           chmod +x linux/sparta.x86_64
           zip -j "sparta-${V}-windows-x86_64.zip" windows/sparta.exe
           zip -j "sparta-${V}-linux-x86_64.zip"   linux/sparta.x86_64
           # macOS export is already a zipped .app bundle — just give it the release name.
           cp macos/sparta.zip "sparta-${V}-macos-universal.zip"
-          ls -la sparta-*.zip
+          ls -la sparta-*.zip sparta-*-windows-setup.exe
 
       - name: Upload workflow artifacts
         # Always available (incl. manual runs) so a build can be downloaded and
@@ -104,7 +123,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sparta-builds
-          path: build/sparta-*.zip
+          path: |
+            build/sparta-*.zip
+            build/sparta-*-windows-setup.exe
 
       - name: Publish to the GitHub Release
         # Only on a version tag: create the release (with auto-generated notes) and
@@ -115,5 +136,6 @@ jobs:
         run: |
           set -euo pipefail
           V="${GITHUB_REF_NAME}"
-          gh release create "$V" --title "Sparta $V" --generate-notes build/sparta-*.zip \
-            || gh release upload "$V" build/sparta-*.zip --clobber
+          ASSETS=(build/sparta-*.zip build/sparta-*-windows-setup.exe)
+          gh release create "$V" --title "Sparta $V" --generate-notes "${ASSETS[@]}" \
+            || gh release upload "$V" "${ASSETS[@]}" --clobber
