@@ -253,11 +253,13 @@ and tires them out as they scramble up, which is when the follow-up rank kills t
 A **braced**, heavy, set line clears the prone threshold far less often and stays on
 its feet.
 
-> **Implemented (#201 slice B):** `SoldierCombat.prone_chance` (mass-raised threshold) and
-> a per-soldier `_sim_prone` timer. In `SoldierMelee` a felled defender loses active defence
-> (`φ_D → 0`) and a felled attacker can't strike; `SoldierBodies` decays the timer so a
-> soldier rises after `PRONE_RISE_TIME`. `κ_p` is wired in slice D. A prone
-> *visual* is not in yet. (Bracing `br_D` wired in slice C.)
+> **Implemented (#201 slice B, visual in #300):** `SoldierCombat.prone_chance`
+> (mass-raised threshold) and a per-soldier `_sim_prone` timer. In `SoldierMelee` a felled
+> defender loses active defence (`φ_D → 0`) and a felled attacker can't strike;
+> `SoldierBodies` decays the timer so a soldier rises after `PRONE_RISE_TIME`. Prone
+> soldiers are rendered as dark horizontal slivers (mark LOD) or lying-on-side silhouettes
+> (figure LOD) via per-instance MultiMesh transforms and tinting. The stamina cost of rising
+> (`κ_p`) is in slice D. (Bracing `br_D` wired in slice C.)
 
 ## Bracing and the knockback chain (domino)
 

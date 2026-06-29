@@ -1,4 +1,4 @@
 {
   "input": "demos/inputs/group-attack-distributed.json",
-  "caption": "Group attack distribution (X to cycle): three player regiments switch to distributed mode then attack — each unit targets a different nearby enemy instead of all piling onto one. Closes #305."
+  "caption": "Group attack distribution (X to cycle): three player regiments switch to distributed mode then attack --- each unit targets a different nearby enemy instead of all piling onto one. Closes #305."
 }
