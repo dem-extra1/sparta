@@ -222,8 +222,8 @@ wound it.
 > **Implemented (#201 slice A):** `SoldierCombat.knockback_impulse` and the per-type
 > `mass` in `profile_for`, wired into `SoldierMelee` as one mass-scaled impulse per
 > in-reach strike (η = 1 landed, `ETA_DEFENDED` otherwise). Velocity-only — the body
-> integrates it, never a position snap. The prone/knockdown and bracing pieces below
-> are not implemented yet.
+> integrates it, never a position snap. (Prone/knockdown landed in slice B, below;
+> bracing and the domino chain are not implemented yet.)
 
 ## Going prone and getting up
 

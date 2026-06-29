@@ -3,10 +3,10 @@ class_name SoldierMelee
 ## front-rank soldier of the attacker strikes the nearest enemy soldier within its
 ## weapon reach, rolling the model's opposed land contest (SoldierCombat); a hit
 ## wounds the enemy soldier's health pool, and a soldier whose health reaches 0 dies
-## and is removed, re-packing the formation. Flanking (facing), the spear-vs-sword
-## reach standoff (#240), the charge, and compounding wounds all emerge here, not from
-## modifiers. Replay-deterministic: attackers in soldier-id order, one Replay.rng draw
-## per striking attacker, and no RNG in the death-reaping.
+## and is removed, re-packing the formation. Flanking (facing), the spear-vs-sword reach
+## standoff, the charge, and compounding wounds all emerge here, not from modifiers.
+## Replay-deterministic: attackers in soldier-id order, a fixed TWO Replay.rng draws per
+## in-reach strike (the land roll, then the fall roll), and no RNG in the death-reaping.
 
 ## Resolve one melee cadence of `attacker`'s engaged front rank striking `defender`.
 static func resolve(attacker: Unit, defender: Unit) -> void:
