@@ -1,0 +1,5 @@
+{
+  "_comment": "Dogfooding the new per-PR manifest naming (#416): this file proves the CI resolver picks an ADDED demos/demo.<slug>.json over the pre-existing bare demos/demo.json. Workflow + docs only -- no gameplay change.",
+  "skip": true,
+  "reason": "CI workflow + docs change (per-PR demo manifest naming, #416) -- no gameplay/visual change for a recorded battle to show."
+}

@@ -71,24 +71,44 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so "Resolve demo source" can diff against the PR's base commit
+          # to find a per-PR demo manifest (demos/demo.<slug>.json) added in this PR.
+          fetch-depth: 0
 
       - name: Resolve demo source
         id: demo
-        # Pick what to record: the PR's own demos/demo.json if present (tailored to
-        # the change), else the default showcase battle (generic, honestly labelled).
+        # Pick what to record, preferring the most specific manifest available:
+        #   1. A per-PR manifest (demos/demo.<slug>.json) ADDED in this PR's diff --
+        #      a uniquely-named file, so two PRs in flight never conflict on it (#416).
+        #   2. The legacy shared demos/demo.json, if present (still supported).
+        #   3. The default showcase battle (generic, honestly labelled).
         # Records as long as some replay file resolves; only skips if even the
         # fallback is missing.
         run: |
           set -euo pipefail
-          if [ -f demos/demo.json ]; then
+          M=""
+          ADDED=$(git diff --name-only --diff-filter=A \
+              "${{ github.event.pull_request.base.sha }}"...HEAD -- 'demos/demo.*.json' \
+              2>/dev/null | sort || true)
+          if [ -n "$ADDED" ]; then
+            M=$(echo "$ADDED" | head -n1)
+            if [ "$(echo "$ADDED" | wc -l)" -gt 1 ]; then
+              echo "::warning::Multiple demos/demo.*.json manifests added in this PR; using $M (first alphabetically)."
+            fi
+            echo "Using per-PR demo manifest: $M"
+          elif [ -f demos/demo.json ]; then
             M=demos/demo.json
+            echo "Using demos/demo.json (legacy shared pointer)"
+          fi
+          if [ -n "$M" ]; then
             # A change the recorded-battle pipeline can't capture (a paused-overlay
             # interaction, an editor-only tool, a non-visual refactor) can set
             # "skip": true to suppress an unrelated generic clip. CI then posts a
             # short note explaining the absence instead of a misleading GIF (#75).
             if [ "$(jq -r '.skip // false' "$M")" = "true" ]; then
               REASON=$(jq -r '.reason // .caption // "This change cannot be shown by a recorded battle clip."' "$M")
-              echo "demos/demo.json sets skip=true — posting a note instead of a clip."
+              echo "$M sets skip=true — posting a note instead of a clip."
               DELIM="reason_eof_$(openssl rand -hex 8)"
               {
                 echo "record=false"
@@ -111,16 +131,16 @@ jobs:
             INPUT=$(jq -r '.input // empty' "$M")
             if [ -n "$INPUT" ]; then
               SOURCE="${INPUT#res://}"; SCENE=DemoInputRecorder.tscn; ENVVAR=SPARTA_DEMO_INPUT
-              echo "Using demos/demo.json (scripted input: $SOURCE)"
+              echo "Using $M (scripted input: $SOURCE)"
             else
               REPLAY=$(jq -r '.replay // "demos/showcase.json"' "$M")
               SOURCE="${REPLAY#res://}"; SCENE=DemoRunner.tscn; ENVVAR=SPARTA_DEMO_REPLAY
-              echo "Using demos/demo.json (replay: $SOURCE)"
+              echo "Using $M (replay: $SOURCE)"
             fi
           else
-            echo "No demos/demo.json — recording the default showcase battle. Add one to tailor the demo (see demos/README.md)."
+            echo "No demo manifest (demos/demo.<slug>.json or demos/demo.json) — recording the default showcase battle. Add one to tailor the demo (see demos/README.md)."
             SOURCE=demos/showcase.json; SCENE=DemoRunner.tscn; ENVVAR=SPARTA_DEMO_REPLAY
-            CAPTION='⚙️ Generic build demo — no PR-specific demo was provided. To show what this PR changes, commit a `demos/demo.json` pointing at a replay that exercises it (see `demos/README.md`).'
+            CAPTION='⚙️ Generic build demo — no PR-specific demo was provided. To show what this PR changes, commit a `demos/demo.<slug>.json` pointing at a replay that exercises it (see `demos/README.md`).'
             FIXED_FPS=30; MAX_FRAMES=300; GIF_FPS=12; WIDTH=640
           fi
           if [ ! -f "$SOURCE" ]; then

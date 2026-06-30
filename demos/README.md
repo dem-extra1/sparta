@@ -12,14 +12,19 @@ because GitHub's blob-view video player doesn't work on the mobile site or app,
 while a GIF renders inline everywhere.
 
 CI can't infer what a diff changed, so to make the clip *demonstrate your change*
-you **declare what to show**: commit a small **manifest** (`demos/demo.json`)
-pointing at a **replay** that exercises it. If you don't, CI still posts a demo —
-the default `showcase.json` battle, labelled as a generic build demo — but a
-tailored one is far more useful, so prefer to add a manifest.
+you **declare what to show**: commit a small **manifest** pointing at a **replay**
+that exercises it. If you don't, CI still posts a demo — the default
+`showcase.json` battle, labelled as a generic build demo — but a tailored one is
+far more useful, so prefer to add a manifest.
 
 ## The contract
 
-Add a `demos/demo.json` on your PR branch:
+Add a manifest on your PR branch, named **`demos/demo.<slug>.json`** — `<slug>`
+is your issue or PR number (e.g. `demos/demo.371.json`). Each PR's manifest gets
+its own unique filename, so two PRs in flight never conflict editing the same
+file (the older shared `demos/demo.json` pointer still works as a fallback, but
+a uniquely-named manifest is preferred for exactly this reason — see
+[Resolution order](#resolution-order)):
 
 ```json
 {
@@ -44,9 +49,25 @@ Add a `demos/demo.json` on your PR branch:
 | `skip` | no (false) | Set `true` when the change **can't** be shown by a recorded battle (a paused-overlay interaction, an editor-only tool, a non-visual refactor). CI then records nothing and posts a short note instead of an unrelated clip. See [No clip applies](#no-clip-applies). |
 | `reason` | no | Used only with `skip` — the explanation shown in the note (falls back to `caption`). |
 
-`demo.example.json` is a copy-paste starting point. Any **other** keys are
+`demo.example.json` is a copy-paste starting point — copy it to
+`demos/demo.<slug>.json` rather than `demos/demo.json`. Any **other** keys are
 ignored by the workflow (its `jq` only reads the fields above), so a leading
 `"_comment"` note — as used in `demo.example.json` itself — is safe to include.
+
+### Resolution order
+
+CI's "Resolve demo source" step picks the most specific manifest available:
+
+1. A **per-PR manifest** (`demos/demo.*.json`, e.g. `demos/demo.371.json`) that
+   was **added** in your PR's diff against the base branch. Preferred — see above.
+2. The legacy shared `demos/demo.json`, if present. Still works, but every PR
+   that uses it is editing the same file, so two such PRs in flight will conflict
+   on merge (`demos/demo.json` is a perennial source of merge conflicts for
+   exactly this reason — prefer the per-PR filename to avoid it).
+3. The default `showcase.json` battle (generic, honestly labelled).
+
+If your PR adds more than one `demos/demo.*.json` file, CI warns and picks the
+first alphabetically — stick to one manifest per PR.
 
 ## Scripted-input demos
 
@@ -59,8 +80,8 @@ Movie Maker records. So the clip is produced by the actual controls (a demo doub
 as an input smoke test), and the script is editable text you can tune without replaying
 the game.
 
-Point `demos/demo.json` at it with the `input` field, and put the script under
-`demos/inputs/`:
+Point your `demos/demo.<slug>.json` at it with the `input` field, and put the
+script under `demos/inputs/`:
 
 ```json
 {
@@ -129,7 +150,7 @@ nothing here changes existing demos.
 slowly. A panning/zooming camera looks choppy at 12 fps, so for a camera-motion
 demo bump the manifest — e.g. `"fixed_fps": 60, "max_frames": 600, "fps": 30` —
 to record at the full physics-tick rate and output a smooth 30 fps GIF (at the
-cost of a larger file). `demos/demo.json` here uses those values.
+cost of a larger file). The manifest here uses those values.
 
 ### Order markers (what was commanded)
 
@@ -212,12 +233,13 @@ ticks: at the default 30 fps, 480 frames ≈ 16 s and 600 ≈ 20 s.
   `project.godot` (a "user-visible change"). Docs/CI/test-only PRs don't trigger it.
   Fork PRs are excluded because CI needs write access to push the clip to the
   `demo-media` branch.
-- **A demo is always posted on those PRs.** With a `demos/demo.json`, it records the
-  replay you named (tailored to your change). Without one, it falls back to the
-  default `demos/showcase.json` battle, posted with an honest "generic build demo"
-  caption that nudges you to add a manifest. So the manifest is how you make the
-  demo *demonstrate your change* — skipping it gives a generic clip, not nothing.
-- **Unless you opt out.** A `demos/demo.json` with `"skip": true` posts a short note
+- **A demo is always posted on those PRs.** With a manifest (`demos/demo.<slug>.json`
+  or the legacy `demos/demo.json`), it records the replay you named (tailored to
+  your change). Without one, it falls back to the default `demos/showcase.json`
+  battle, posted with an honest "generic build demo" caption that nudges you to
+  add a manifest. So the manifest is how you make the demo *demonstrate your
+  change* — skipping it gives a generic clip, not nothing.
+- **Unless you opt out.** A manifest with `"skip": true` posts a short note
   instead of a clip — see below.
 
 ## No clip applies
@@ -229,7 +251,7 @@ replay format doesn't capture. In those cases a generic showcase clip is worse t
 nothing — it shows an unrelated battle and implies it's a demo of your change (see
 issue #75).
 
-To say so, commit a `demos/demo.json` that opts out:
+To say so, commit a `demos/demo.<slug>.json` that opts out:
 
 ```json
 {
