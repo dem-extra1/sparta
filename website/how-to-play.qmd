@@ -28,7 +28,7 @@ left fighting --- every remaining unit is dead or routing.
 | Move | **Right-click** the ground |
 | Form up | **Right-click and drag** open ground (left flank → right flank); with several units selected, the line is split among them |
 | Form up in selection order | **Shift + right-click and drag** (instead of the default left-to-right field order) |
-| Form-up split mode | <kbd>Y</kbd> cycles equal-depth ↔ equal-width (set the default in ☰ Menu) |
+| Form-up split mode | <kbd>Y</kbd> cycles through enabled modes (equal-depth / equal-width); configure which modes cycle and which is the battle default in **☰ Menu** |
 | Reform before move | **☰ Menu** or **control bar** toggles whether units pause to settle their ranks before marching (on by default) |
 | Walk advance | **☰ Menu → Walk advance** keeps units at walk speed throughout --- no jog or sprint phase. Required for formed stances (shield wall, pike phalanx) that break on a run |
 | Attack | **Right-click** an enemy unit |
@@ -64,10 +64,17 @@ out the troops on the march. Toggle **☰ Menu → Walk advance** to lock units 
 pace throughout; this is required for formed stances like shield wall or pike phalanx
 that break if the unit breaks into a run.
 
+**Move order sequence.** When you right-click a destination, the regiment turns to
+face it and marches there in good order: it **wheels** onto the new heading --- pivoting
+before it advances on a sharp turn --- marches, and settles back into formation on
+arrival. The next two sections cover the special cases: a small sideways shift
+(**side-step**) and a larger turn (**wheel / about-face**).
+
 **Reform before move (default on).** By default, a fresh move order makes a unit hold
 its position briefly (~0.8 s) while its ranks settle into formation before it steps
-off. This means troops arrive at their destination in order rather than marching while
-still adjusting their files. To make units move immediately without the pause, uncheck
+off. The unit spends this hold **wheeling in place** toward the destination, so its
+ranks are already coming onto the new heading before the first step.
+To make units move immediately without the pause, uncheck
 **☰ Menu → Reform before move** or click **Reform** in the control bar. The setting is
 baked into each recorded order, so replays reproduce whichever mode was active when
 you issued them.

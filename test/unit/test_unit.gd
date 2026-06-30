@@ -630,6 +630,22 @@ func test_orderly_sharp_turn_pivots_before_advancing() -> void:
 	assert_lt(u.facing.x, 1.0, "and has begun turning toward the rear destination")
 
 
+func test_unit_wheels_in_place_during_the_reform_hold() -> void:
+	# With reform-before-move, the unit spends the hold turning toward its pending
+	# destination, so it sets off already coming onto its heading -- without advancing.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._reform_target = Vector2(0, 1000)            # destination straight down
+	u._reform_timer = Unit.REFORM_DURATION
+	u._think(0.1)
+	assert_gt(u.facing.y, 0.0, "the unit begins wheeling toward the destination during the hold")
+	assert_lt(u.facing.y, 0.95, "...gradually, not snapping")
+	assert_eq(u.state, Unit.State.IDLE, "it holds position during the reform")
+	assert_almost_eq(u.position.x, 0.0, 0.001, "no advance during the hold (x)")
+	assert_almost_eq(u.position.y, 0.0, 0.001, "no advance during the hold (y)")
+
+
 func test_orderly_about_face_marches_to_a_rear_destination() -> void:
 	# End to end through _think: ordered to a point behind it, the unit about-faces
 	# then marches there, ending up facing the destination -- not reversing into it.

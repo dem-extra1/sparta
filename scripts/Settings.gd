@@ -36,6 +36,7 @@ var sfx_enabled: bool = false:
 # dependency on that script. This is the DEFAULT a battle starts with; an on-the-fly hotkey
 # cycles the live mode without rewriting this. Bump FORM_UP_DIST_MAX when a mode is added.
 const FORM_UP_DIST_EQUAL_DEPTH := 0
+const FORM_UP_DIST_EQUAL_WIDTH := 1
 const FORM_UP_DIST_MAX := 1
 # The setter clamps to the valid range so a corrupt/hand-edited cfg (or a stale value after
 # the modes change) can't propagate an out-of-range mode into the game.
@@ -45,6 +46,19 @@ var form_up_dist_default: int = FORM_UP_DIST_EQUAL_DEPTH:
 		if clamped == form_up_dist_default:
 			return
 		form_up_dist_default = clamped
+		if not _loading:
+			_save()
+			changed.emit()
+
+# Which distribution modes the Y-key cycles through, in cycle order. An int array of
+# FORM_UP_DIST_* values; modes absent from the list are skipped when cycling. Persisted
+# so players can remove a mode they never use. Default: all modes in canonical order.
+# Filter out-of-range values on load (see _load) so a stale cfg doesn't break the cycle.
+var form_up_dist_cycle: Array = [FORM_UP_DIST_EQUAL_DEPTH, FORM_UP_DIST_EQUAL_WIDTH]:
+	set(value):
+		if value == form_up_dist_cycle:
+			return
+		form_up_dist_cycle = value
 		if not _loading:
 			_save()
 			changed.emit()
@@ -154,6 +168,9 @@ func _load(path: String = SAVE_PATH) -> void:
 	edge_scroll = cfg.get_value("camera", "edge_scroll", edge_scroll)
 	sfx_enabled = cfg.get_value("audio", "sfx_enabled", sfx_enabled)
 	form_up_dist_default = int(cfg.get_value("gameplay", "form_up_dist_default", form_up_dist_default))
+	var raw_cycle = cfg.get_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
+	if raw_cycle is Array:
+		form_up_dist_cycle = raw_cycle.filter(func(v) -> bool: return v is int and v >= 0 and v <= FORM_UP_DIST_MAX)
 	walk_advance = bool(cfg.get_value("gameplay", "walk_advance", walk_advance))
 	reform_before_move = bool(cfg.get_value("gameplay", "reform_before_move", reform_before_move))
 	for slug in DEFAULT_ORDER_BINDINGS:
@@ -168,6 +185,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("camera", "edge_scroll", edge_scroll)
 	cfg.set_value("audio", "sfx_enabled", sfx_enabled)
 	cfg.set_value("gameplay", "form_up_dist_default", form_up_dist_default)
+	cfg.set_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
 	cfg.set_value("gameplay", "walk_advance", walk_advance)
 	cfg.set_value("gameplay", "reform_before_move", reform_before_move)
 	for slug in order_bindings:

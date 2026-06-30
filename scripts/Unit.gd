@@ -427,6 +427,11 @@ func _think(delta: float) -> void:
 			_reform_timer = maxf(0.0, _reform_timer - delta)
 			if _reform_timer > 0.0:
 				state = State.IDLE
+				# Use the hold to wheel in place toward the pending destination, so the
+				# ranks are already coming onto their heading before the first step. A
+				# side-step holds its facing (ordered_facing set), so it doesn't wheel.
+				if ordered_facing == Vector2.ZERO:
+					_wheel_toward(_reform_target - position, delta)
 				return
 			_commit_pending_reform()
 

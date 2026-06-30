@@ -589,6 +589,10 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					u.deploy_facing = Vector2.from_angle(float(cmd["face"]))
 					if cmd.has("frontage"):
 						u.set_frontage(int(cmd["frontage"]))
+				# Facing is not snapped here: an orderly move wheels gradually toward its
+				# heading in Unit (turning in place during the reform hold and as it
+				# marches), so the ranks come onto the new bearing in good order rather
+				# than the whole line flipping its facing at order time.
 				# Reform-before-move: store the destination and let the reform timer
 				# (in Unit._think) commit it once the unit's ranks have had time to
 				# settle. Baked into the command so replays reproduce this as recorded.
