@@ -231,6 +231,36 @@ func test_quarter_turn_zero_dir_is_a_noop() -> void:
 	assert_true(u._quarter_target.is_zero_approx(), "a zero direction does nothing")
 
 
+func test_quarter_turn_ignored_while_already_turning() -> void:
+	# Re-arming mid-turn would reset _quarter_start_facing to the partial heading and corrupt
+	# the settled offset, so a second press while a turn runs is a no-op.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.quarter_turn(1)                       # right
+	var first_target: Vector2 = u._quarter_target
+	u.quarter_turn(-1)                      # try to flip mid-turn
+	assert_true(u._quarter_target.is_equal_approx(first_target),
+		"a second quarter-turn while one is running is ignored")
+
+
+func test_quarter_turn_ignored_during_conversio() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.conversio()
+	u.quarter_turn(1)
+	assert_true(u._quarter_target.is_zero_approx(),
+		"no quarter-turn while a conversio is in progress")
+
+
+func test_conversio_ignored_during_quarter_turn() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.quarter_turn(1)
+	u.conversio()
+	assert_true(u._conversio_target.is_zero_approx(),
+		"no conversio while a quarter-turn is in progress")
+
+
 func test_quarter_turn_keeps_every_body_exactly_in_place() -> void:
 	# The grid does NOT reorganize: completing a quarter-turn turns the men's facing but moves
 	# nobody. _formation_angle absorbs the 90° so soldier_world_slots reproduces the men's

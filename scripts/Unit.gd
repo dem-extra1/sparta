@@ -1014,21 +1014,26 @@ func release_soldier_facing() -> void:
 ## facing (shield side, etc.). SoldierBodies.step zeroes the spring restoring force while
 ## it turns, so bodies stay at their grid positions instead of drifting to intermediate
 ## slot targets. If interrupted by combat or a move order, unit.facing stays at its current
-## angle — the partial rotation is preserved. Blocked while already fighting.
+## angle — the partial rotation is preserved. Blocked while fighting, before seeding, or
+## while another in-place turn (conversio or quarter-turn) is already running.
 func conversio() -> void:
-	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
+	if state == State.FIGHTING or _sim_soldier_facing.is_empty() \
+			or _conversio_target != Vector2.ZERO or _quarter_target != Vector2.ZERO:
 		return
 	_conversio_target = Vector2(-facing.x, -facing.y)
 
 
 ## Quarter-turn (90° in-place turn, Aelian/Asclepiodotus): every soldier pivots a quarter
 ## turn to the left (`dir` = -1) or right (`dir` = +1); the unit's frontage and depth swap
-## relative to the field, but the men do not march and the internal grid is preserved. Same
-## freeze-and-relabel machinery as the conversio: facing rotates toward the target, the
-## spring is frozen so bodies hold their ground, and on arrival the grid transposes and the
-## bodies are relabelled onto the transposed slots. Blocked while fighting / before seeding.
+## relative to the field, but the men do not march and the internal grid is NOT reorganized —
+## each man just turns where they stand. facing rotates toward the target with the spring frozen so
+## the bodies hold their ground; on arrival _formation_angle absorbs the rotation so
+## soldier_world_slots reproduces the men's positions (no transpose, no relabel). Blocked while
+## fighting, before seeding, or while another in-place turn (conversio or quarter-turn) runs —
+## re-arming mid-turn would reset the start heading and corrupt the settled offset.
 func quarter_turn(dir: int) -> void:
-	if state == State.FIGHTING or _sim_soldier_facing.is_empty() or dir == 0:
+	if state == State.FIGHTING or _sim_soldier_facing.is_empty() or dir == 0 \
+			or _quarter_target != Vector2.ZERO or _conversio_target != Vector2.ZERO:
 		return
 	_quarter_start_facing = facing
 	_quarter_target = facing.rotated(signf(dir) * PI * 0.5)
@@ -1044,8 +1049,9 @@ func _settle_formation_angle() -> void:
 
 
 ## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
-## report whether it arrived this tick (snapping exactly onto the target so the relabel runs
-## on an exact heading). Shared by the conversio and the quarter-turn.
+## report whether it arrived this tick (snapping exactly onto the target so the completion step
+## runs on an exact heading — the conversio's body reverse, the quarter-turn's offset settle).
+## Shared by the conversio and the quarter-turn.
 func _advance_turn(target: Vector2, delta: float) -> bool:
 	_rotate_facing_toward(target, delta, CONVERSIO_TURN_RATE)
 	if facing.dot(target) > 1.0 - 0.0001:
