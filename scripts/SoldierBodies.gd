@@ -79,11 +79,14 @@ static func step(unit: Unit, delta: float) -> void:
 		for j in range(stam_old, n):
 			unit._sim_soldier_stamina[j] = maxs
 	if unit._sim_soldier_facing.size() != n:
-		# Keep per-soldier facing index-aligned; a fresh tail body faces the unit heading.
 		var face_old: int = unit._sim_soldier_facing.size()
 		unit._sim_soldier_facing.resize(n)
-		for j in range(face_old, n):
-			unit._sim_soldier_facing[j] = unit.facing
+		# During an owned maneuver, seed a fresh tail body at the unit heading (the
+		# default sync below is skipped, so it wouldn't otherwise be set). When not
+		# owned, the fill() below covers every body, so seeding here would be redundant.
+		if unit._per_soldier_facing:
+			for j in range(face_old, n):
+				unit._sim_soldier_facing[j] = unit.facing
 	# Default: bodies track the unit heading. A maneuver that owns the facings
 	# (_per_soldier_facing) keeps its own values until it releases them.
 	if not unit._per_soldier_facing:

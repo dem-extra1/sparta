@@ -932,7 +932,9 @@ func soldier_world_slots(count: int) -> PackedVector2Array:
 ## Point every body at `dir` and take maneuver ownership (the per-tick re-sync to
 ## the unit heading stops until release_soldier_facing()). No-op for a zero dir.
 func set_all_soldier_facing(dir: Vector2) -> void:
-	if dir.length() < 0.01:
+	# No bodies yet (pre-seed): take no ownership, so a later seed/step doesn't
+	# leave the flag set with the bodies silently facing the unit heading.
+	if dir.length() < 0.01 or _sim_soldier_facing.is_empty():
 		return
 	_per_soldier_facing = true
 	var d: Vector2 = dir.normalized()

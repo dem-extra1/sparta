@@ -82,6 +82,34 @@ func test_facing_survives_casualties_index_aligned() -> void:
 	_all_face(u, Vector2.UP, "the surviving bodies keep their owned facing")
 
 
+func test_growth_during_an_owned_maneuver_keeps_alignment() -> void:
+	# Bodies added back (e.g. reinforcement) during an owned maneuver: the array
+	# stays index-aligned, existing bodies keep their owned facing, and fresh tail
+	# bodies join at the unit heading.
+	var u := _make_unit(1, 40)
+	u.soldiers = 12
+	u.seed_sim_soldiers()
+	u.set_all_soldier_facing(Vector2.UP)
+	u.soldiers = 30                    # grow back
+	u.step_sim_soldiers(0.1)
+	assert_eq(u._sim_soldier_facing.size(), u._sim_soldier_pos.size(),
+		"facing stays index-aligned with the bodies after growth")
+	assert_true(u.soldier_facing(0).is_equal_approx(Vector2.UP),
+		"an existing body keeps its owned facing")
+	assert_true(u.soldier_facing(25).is_equal_approx(Vector2.DOWN),
+		"a fresh tail body joins at the unit heading")
+
+
+func test_set_all_before_seed_takes_no_ownership() -> void:
+	# Calling the setter before bodies exist must not silently arm the flag (the
+	# bodies would otherwise emerge facing the unit heading, not the command).
+	var u := _make_unit()
+	u.set_all_soldier_facing(Vector2.UP)   # no bodies seeded yet
+	assert_false(u._per_soldier_facing, "no ownership is taken with no bodies to orient")
+	u.seed_sim_soldiers()
+	_all_face(u, Vector2.DOWN, "seeded bodies face the unit heading, not a lost command")
+
+
 func test_accessor_and_setters_guard_bad_input() -> void:
 	var u := _make_unit()
 	u.seed_sim_soldiers()
