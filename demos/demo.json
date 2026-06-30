@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/quarter-turn.json",
-  "caption": "Quarter-turn (drill mode): the infantry block pivots 90° right (E) — every soldier turns where they stand, nobody marches, the grid does not reorganize — holds the new orientation, then pivots back (Q). Shown solo with no enemy via the new drill mode.",
-  "fixed_fps": 30,
-  "max_frames": 150,
-  "fps": 12,
-  "width": 640
+  "skip": true,
+  "reason": "Documentation-only follow-up (#341): adds the previously-deferred Walk advance menu screenshot. No code change, nothing new for a battle clip to show."
 }
