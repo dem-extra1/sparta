@@ -1,11 +1,11 @@
 {
-  "_comment": "Quarter-turn demo: zoom on the lone Spearmen (seed 12345, ~500,300, facing south), select it, then press E. Every soldier pivots 90° in place — nobody marches and the grid of men does not reorganize; they simply face the new direction, so the block now presents its short edge as its frontage (frontage and depth swap relative to the facing). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "_comment": "Quarter-turn demo: zoom on the lone Infantry (seed 12345, uid 1 at ~650,300, facing south), select it, then press E. Every soldier pivots 90° in place — nobody marches and the grid of men does not reorganize; they simply face the new direction, so the block now presents its short edge as its frontage (frontage and depth swap relative to the facing). Infantry carry directional pointer marks that rotate to show the new facing clearly at this zoom (mark LOD). Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 500.0, "y": 300.0, "zoom": 1.2}
+    {"tick": 0, "x": 650.0, "y": 300.0, "zoom": 1.2}
   ],
   "steps": [
-    {"tick": 10, "click": [500, 300]},
+    {"tick": 10, "click": [650, 300]},
     {"tick": 30, "key": "E"}
   ]
 }
