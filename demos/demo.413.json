@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/order-distance.json",
+  "caption": "Order overlay now labels each order line with the metric distance to its target (#413). Hold Space, select the Spearmen, march them south — the green move line carries a '13 m' label at its midpoint that counts down as they close. Toggle it off under ☰ Menu → Order distance labels.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

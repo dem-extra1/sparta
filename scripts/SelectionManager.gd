@@ -1233,17 +1233,23 @@ func _draw_orders() -> void:
 			var tp: Vector2 = tgt.global_position
 			draw_dashed_line(origin, tp, ORDER_ATTACK_COLOR, 2.0, 9.0)
 			_draw_attack_marker(tp, ORDER_ATTACK_COLOR)
+			_draw_order_distance(origin, tp, origin.distance_to(tp), ORDER_ATTACK_COLOR)
 		elif ward != null:
 			# A SUPPORT unit holds no target_enemy/move_target of its own, so draw
 			# its guard duty instead: a teal link to the ward it's shadowing.
 			var wp: Vector2 = ward.global_position
 			draw_dashed_line(origin, wp, ORDER_SUPPORT_COLOR, 2.0, 9.0)
 			_draw_support_marker(wp, ORDER_SUPPORT_COLOR)
+			_draw_order_distance(origin, wp, origin.distance_to(wp), ORDER_SUPPORT_COLOR)
 		else:
 			var route := _move_route_for(u)
 			if not route.is_empty():
 				_draw_move_path(origin, route[0], route.slice(1))
 				_draw_formation_preview(route.back(), u)
+				# Label the remaining travel: the full polyline length, not the
+				# straight line, so a multi-waypoint route reports the real march.
+				var dest: Vector2 = route.back()
+				_draw_order_distance(origin, dest, _route_length(origin, route), ORDER_MOVE_COLOR)
 
 
 ## The friendly a SUPPORT unit is guarding, if it's still a valid overlay
@@ -1321,3 +1327,36 @@ func _draw_attack_marker(p: Vector2, color: Color) -> void:
 	draw_arc(p, r, 0.0, TAU, 22, color, 2.0)
 	draw_line(p + Vector2(-r - 3.0, 0.0), p + Vector2(r + 3.0, 0.0), color, 2.0)
 	draw_line(p + Vector2(0.0, -r - 3.0), p + Vector2(0.0, r + 3.0), color, 2.0)
+
+
+## Total length of the polyline origin -> route[0] -> route[1] -> ... in world units.
+## A unit's true remaining march, which a straight origin-to-destination line understates
+## once the route has waypoints.
+func _route_length(origin: Vector2, route: Array[Vector2]) -> float:
+	var total: float = 0.0
+	var prev: Vector2 = origin
+	for point in route:
+		total += prev.distance_to(point)
+		prev = point
+	return total
+
+
+## Label an order line with the metric distance to its target, drawn beside the line's
+## midpoint (offset perpendicular so it clears the dashes). `world_dist` is the world-space
+## distance the label reports; it's converted to metres via Battle.WORLD_UNITS_PER_METER so
+## it reads in the same units as the map-scale legend. Opt-out via Settings.show_order_distance.
+func _draw_order_distance(a: Vector2, b: Vector2, world_dist: float, color: Color) -> void:
+	if not Settings.show_order_distance:
+		return
+	var metres: float = DistanceLegend.metres_for_world(world_dist, BattleRef.WORLD_UNITS_PER_METER)
+	var text: String = DistanceLegend.label_text(metres)
+	var font := ThemeDB.fallback_font
+	var tw: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var mid: Vector2 = (a + b) * 0.5
+	var seg: Vector2 = b - a
+	# Perpendicular to the line, pointing "up-screen" so the label sits clear of the dashes.
+	var perp: Vector2 = Vector2(-seg.y, seg.x).normalized() if seg.length() > 0.01 else Vector2.UP
+	if perp.y > 0.0:
+		perp = -perp
+	draw_string(font, mid + perp * 12.0 + Vector2(-tw * 0.5, 0.0), text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, color)

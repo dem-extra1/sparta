@@ -54,6 +54,30 @@ func test_support_ward_resolves_a_valid_ward() -> void:
 	assert_eq(sm._support_ward_of(u), ward, "a live ward is returned for the overlay link")
 
 
+# --- order-overlay distance label: route length (#413) -----------------------
+
+func test_route_length_single_leg_is_the_straight_distance() -> void:
+	var sm := _sm()
+	var route: Array[Vector2] = [Vector2(300, 0)]
+	assert_almost_eq(sm._route_length(Vector2.ZERO, route), 300.0, 0.0001,
+		"a single-destination move is the straight origin->target distance")
+
+
+func test_route_length_sums_each_leg_of_a_waypoint_route() -> void:
+	var sm := _sm()
+	# Origin (0,0) -> (300,0) -> (300,400): legs of 300 and 400 -> 700, not the 500
+	# straight-line origin->destination. The label must report the real march.
+	var route: Array[Vector2] = [Vector2(300, 0), Vector2(300, 400)]
+	assert_almost_eq(sm._route_length(Vector2.ZERO, route), 700.0, 0.0001,
+		"a multi-waypoint route sums its legs, exceeding the straight-line distance")
+
+
+func test_route_length_of_an_empty_route_is_zero() -> void:
+	var sm := _sm()
+	var route: Array[Vector2] = []
+	assert_eq(sm._route_length(Vector2.ZERO, route), 0.0, "no points -> no distance")
+
+
 func test_support_ward_is_null_without_a_ward() -> void:
 	var sm := _sm()
 	var u := _unit()

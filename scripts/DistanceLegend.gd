@@ -21,6 +21,16 @@ static func metres_per_pixel(zoom: float, world_units_per_metre: float) -> float
 	return 1.0 / (zoom * world_units_per_metre)
 
 
+## Real metres spanned by a `world_units` world-space distance, via `world_units_per_metre`
+## (Battle.WORLD_UNITS_PER_METER). The inverse of the metres->world conversion the loadouts
+## use. 0 for a non-positive scale. Lets the order overlay label a route in the same metric
+## units the scale bar uses.
+static func metres_for_world(world_units: float, world_units_per_metre: float) -> float:
+	if world_units_per_metre <= 0.0:
+		return 0.0
+	return world_units / world_units_per_metre
+
+
 ## The "nice" round distance (the classic 1-2-5 ladder: 1, 2, 5, 10, 20, 50, 100, 200, …,
 ## scaled by powers of ten in both directions) whose on-screen width is the largest that
 ## still fits at or under `max_px`. Width grows monotonically with the ladder, so the first
