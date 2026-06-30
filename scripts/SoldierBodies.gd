@@ -126,7 +126,12 @@ static func step(unit: Unit, delta: float) -> void:
 		# reduces to the plain march for the uncrowded bulk.
 		var feed_forward: Vector2 = unit._sim_steer[i] if engaged.has(i) \
 				else unit._approach_velocity + unit._sim_steer[i]
-		var to_slot: Vector2 = slots[i] - unit._sim_soldier_pos[i]
+		# During a conversio the slot targets rotate with unit.facing, which would drag
+		# bodies to intermediate positions and back. Zero the restoring force so bodies
+		# stay at their current positions; the damping term still bleeds off any existing
+		# velocity, so they settle exactly in place.
+		var to_slot: Vector2 = Vector2.ZERO if unit._conversio_target != Vector2.ZERO \
+				else slots[i] - unit._sim_soldier_pos[i]
 		var accel: Vector2 = to_slot * SPRING_STIFFNESS - (unit._sim_body_vel[i] - feed_forward) * SPRING_DAMPING
 		unit._sim_body_vel[i] += accel * delta
 		# Cap individual soldier speed to a jog while the unit is stationary: during the

@@ -123,19 +123,19 @@ func test_accessor_and_setters_guard_bad_input() -> void:
 
 # --- Conversio (about-face, #370) -------------------------------------------
 
-func test_conversio_takes_ownership_and_reverses_all_facings() -> void:
+func test_conversio_sets_target_and_starts_wheeling() -> void:
 	var u := _make_unit()
 	u.seed_sim_soldiers()
 	u.conversio()
-	assert_true(u._per_soldier_facing, "conversio takes per-soldier ownership")
-	_all_face(u, Vector2.UP, "every soldier faces the reversed heading immediately")
+	# The target is set; the wheel starts on the first _think() tick, not immediately.
 	assert_true(u._conversio_target.is_equal_approx(Vector2.UP),
 		"conversio target is the reversed heading")
-	assert_almost_eq(u._conversio_timer, Unit.CONVERSIO_DURATION, 0.001,
-		"conversio starts the animation timer")
-	# unit.facing does NOT change immediately — soldiers stay in place until the timer expires
 	assert_true(u.facing.is_equal_approx(Vector2.DOWN),
-		"unit.facing is unchanged until the timer expires (no slot drift during the pivot)")
+		"unit.facing has not moved yet (wheel starts on the first tick)")
+	# Per-soldier ownership is not used — all soldiers rotate together via unit.facing,
+	# which SoldierBodies.step auto-syncs each tick when _per_soldier_facing is false.
+	assert_false(u._per_soldier_facing,
+		"conversio does not take per-soldier ownership (uniform rotation tracks unit.facing)")
 
 
 func test_conversio_blocked_while_fighting() -> void:
@@ -143,7 +143,6 @@ func test_conversio_blocked_while_fighting() -> void:
 	u.seed_sim_soldiers()
 	u.state = Unit.State.FIGHTING
 	u.conversio()
-	assert_false(u._per_soldier_facing, "conversio is blocked while fighting")
 	assert_true(u._conversio_target.is_zero_approx(),
 		"no conversio target set when blocked by combat")
 
@@ -152,7 +151,6 @@ func test_conversio_blocked_before_bodies_are_seeded() -> void:
 	var u := _make_unit()
 	# no seed_sim_soldiers() call
 	u.conversio()
-	assert_false(u._per_soldier_facing, "conversio is a no-op with no soldiers seeded")
 	assert_true(u._conversio_target.is_zero_approx(),
 		"no conversio target when no bodies exist")
 
@@ -163,6 +161,7 @@ func test_conversio_reverses_any_starting_heading() -> void:
 	u.facing = Vector2.RIGHT
 	u.step_sim_soldiers(0.1)   # sync bodies to the new heading
 	u.conversio()
-	_all_face(u, Vector2.LEFT, "soldiers reverse from RIGHT to LEFT")
 	assert_true(u._conversio_target.is_equal_approx(Vector2.LEFT),
 		"conversio target is LEFT when starting from RIGHT")
+	assert_true(u.facing.is_equal_approx(Vector2.RIGHT),
+		"unit.facing is unchanged at call time; the wheel starts on the next tick")

@@ -127,10 +127,11 @@ const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed 
 # about-face takes ~PI / TURN_RATE seconds. Combat chases still snap (they pass
 # orderly = false to _move_to).
 const TURN_RATE: float = PI
-# Conversio (drill about-face): unit.facing snaps to the reversed heading after this many
-# seconds. Soldiers stay in their grid positions during this pause — only their per-soldier
-# facing data changes immediately; the unit heading (and mesh-swap) resolves on expiry.
-const CONVERSIO_DURATION: float = 0.5
+# Conversio (drill about-face): unit.facing wheels toward the reversed heading at this rate
+# (rad/s), taking ~0.5 s for a full 180°. The spring restoring force in SoldierBodies.step
+# is zeroed during the wheel, so soldiers stay at their grid positions despite the facing
+# change — they rotate without drifting.
+const CONVERSIO_TURN_RATE: float = PI * 2.0
 
 const MELEE_PRESS_FRACTION: float = 0.6
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
@@ -444,15 +445,14 @@ func _think(delta: float) -> void:
 	# unit.facing arrives at the reversed heading.
 	if _conversio_target != Vector2.ZERO:
 		if state == State.FIGHTING or has_move_target:
+			# Interrupt: unit.facing stays wherever it got to — that is the soldiers' current
+			# facing, which the sim should preserve (shield side, threat awareness, etc.).
 			_conversio_target = Vector2.ZERO
-			_conversio_timer = 0.0
-			release_soldier_facing()
 		else:
-			_conversio_timer = maxf(0.0, _conversio_timer - delta)
-			if _conversio_timer <= 0.0:
+			_wheel_toward(_conversio_target, delta, CONVERSIO_TURN_RATE)
+			if facing.dot(_conversio_target) > 1.0 - 0.0001:
 				facing = _conversio_target
 				_conversio_target = Vector2.ZERO
-				release_soldier_facing()
 			state = State.IDLE
 			return
 
@@ -922,11 +922,11 @@ var _sim_soldier_facing: PackedVector2Array = PackedVector2Array()
 # While true, _sim_soldier_facing is owned by a maneuver and NOT re-synced to the
 # unit heading each tick. False = bodies track unit.facing (the default).
 var _per_soldier_facing: bool = false
-# Non-zero while a conversio pivot is in progress: the target (reversed) facing direction.
-# Cleared on arrival or when interrupted by combat, a move order, or routing.
+# Non-zero while a conversio wheel is in progress: the target (reversed) facing direction.
+# unit.facing rotates toward this each tick; SoldierBodies.step zeroes the spring restoring
+# force during the wheel so bodies don't drift to intermediate slot positions. Cleared on
+# arrival or when interrupted by combat, a move order, or routing.
 var _conversio_target: Vector2 = Vector2.ZERO
-# Countdown timer for the conversio animation; unit.facing snaps to _conversio_target on expiry.
-var _conversio_timer: float = 0.0
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -985,19 +985,17 @@ func release_soldier_facing() -> void:
 		_sim_soldier_facing.fill(facing)
 
 
-## Conversio (about-face, Vegetius III): every soldier reverses 180° in place; the
-## file/rank grid is unchanged (front rank becomes rear rank man-for-man). Each body's
-## per-soldier facing is set to the reversed heading immediately; unit.facing snaps to
-## the reversed heading after CONVERSIO_DURATION seconds. Soldier positions don't move
-## during this pause — only the facing data and, on snap, the unit heading.
-## Blocked while fighting; a move order issued mid-pivot cancels it.
+## Conversio (about-face, Vegetius III): the unit wheels 180° in place at
+## CONVERSIO_TURN_RATE rad/s (~0.5 s for a full reversal). unit.facing tracks the wheel
+## each tick so the sim always knows the soldiers' current facing (shield side, etc.).
+## SoldierBodies.step zeroes the spring restoring force while the wheel runs, so bodies
+## stay at their grid positions instead of drifting to intermediate slot targets.
+## If interrupted by combat or a move order, unit.facing stays at its current angle —
+## the partial rotation is preserved. Blocked while already fighting.
 func conversio() -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
 		return
-	var target := Vector2(-facing.x, -facing.y)
-	set_all_soldier_facing(target)
-	_conversio_target = target
-	_conversio_timer = CONVERSIO_DURATION
+	_conversio_target = Vector2(-facing.x, -facing.y)
 
 
 ## The facing of body `index`; the unit heading for an out-of-range index (so
@@ -1342,10 +1340,7 @@ func _rout() -> void:
 	target_enemy = null
 	has_move_target = false
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
-	if _conversio_target != Vector2.ZERO:
-		_conversio_target = Vector2.ZERO
-		_conversio_timer = 0.0
-		release_soldier_facing()
+	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
 	_rout_timer = ROUT_TIME
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit
