@@ -468,7 +468,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">Last updated: 2026-06-29</p>
+      <p class="date">Last updated: 2026-06-30</p>
     </div>
   </div>
   
@@ -529,7 +529,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="odd">
 <td>Reform before move</td>
-<td><strong>☰ Menu → Reform before move</strong> toggles whether units pause to settle their ranks before marching (on by default)</td>
+<td><strong>☰ Menu</strong> or <strong>control bar</strong> toggles whether units pause to settle their ranks before marching (on by default)</td>
 </tr>
 <tr class="even">
 <td>Attack</td>
@@ -537,7 +537,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="odd">
 <td>Group attack mode</td>
-<td><kbd>X</kbd> cycles focused ↔︎ distributed (distributed spreads multiple selected units across nearby enemies)</td>
+<td><kbd>X</kbd> cycles focused ↔︎ distributed · or <strong>control bar</strong></td>
 </tr>
 <tr class="even">
 <td>Add waypoint</td>
@@ -549,7 +549,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td>Formation</td>
-<td><kbd>T</kbd> (cycles Normal / Tight / Loose)</td>
+<td><kbd>T</kbd> (cycles Normal / Tight / Loose) · or <strong>control bar</strong></td>
 </tr>
 <tr class="odd">
 <td>Line width</td>
@@ -574,7 +574,15 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>A right-click on empty ground is a <strong>move</strong> order; a right-click on an enemy is an <strong>attack</strong> order. Selection and camera stay live even while paused, so you can plan under pressure.</p>
-<p><strong>Reform before move (default on).</strong> By default, a fresh move order makes a unit hold its position briefly (~0.8 s) while its ranks settle into formation before it steps off. This means troops arrive at their destination in order rather than marching while still adjusting their files. To make units move immediately without the pause, uncheck <strong>☰ Menu → Reform before move</strong>. The setting is baked into each recorded order, so replays reproduce whichever mode was active when you issued them.</p>
+<p><strong>Control bar.</strong> When you have units selected, a control bar appears at the bottom of the screen with clickable buttons for the most-used unit toggles. Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking to typing.</p>
+<ul>
+<li><strong>Formation</strong> — click Normal, Tight, or Loose directly (same as <kbd>T</kbd>).</li>
+<li><strong>Stance</strong> — click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).</li>
+<li><strong>Reform</strong> — toggle Reform before move (same as ☰ Menu → Reform before move).</li>
+<li><strong>Focused atk / Spread atk</strong> — cycle the group-attack mode (same as <kbd>X</kbd>).</li>
+</ul>
+<p>The bar updates immediately when you select a different unit or change a setting elsewhere.</p>
+<p><strong>Reform before move (default on).</strong> By default, a fresh move order makes a unit hold its position briefly (~0.8 s) while its ranks settle into formation before it steps off. This means troops arrive at their destination in order rather than marching while still adjusting their files. To make units move immediately without the pause, uncheck <strong>☰ Menu → Reform before move</strong> or click <strong>Reform</strong> in the control bar. The setting is baked into each recorded order, so replays reproduce whichever mode was active when you issued them.</p>
 <p><strong>Zoom in to see the soldiers.</strong> From the usual overview each regiment is a block of small marks. Zoom in far enough and those marks become individual figures, and each type carries its own gear — spearmen shoulder a spear, archers carry a bow, other foot raise a shield, and cavalry ride a mount that faces the regiment’s march. So you can watch the ranks as people, not dots, and still read who is who. Zoom back out and they collapse to the legible marks again.</p>
 <p>Zoom in on a melee and the front-rank fighters <strong>work their weapons</strong> — thrusting and swinging their blades at the enemy on the attack cadence. The blade length tracks each unit’s reach, so a spear line visibly out-thrusts a sword line: the longest weapons reach furthest toward the foe (see <a href="./tactics.html#weapon-reach">Weapon reach</a>).</p>
 <p><strong>Order stances.</strong> Beyond plain move/attack you can arm a <em>stance</em> with a hotkey before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> clears it.</p>
