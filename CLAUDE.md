@@ -173,12 +173,16 @@ comments or docstrings.
   fails with a parse error when `arr` has no type annotation. Use an explicit type:
   `var x: MyType = arr[i]`.
 
-- **Godot generates `.import` sidecar files — gitignore them.** Add `*.import`
-  to `.gitignore` so Godot's per-resource import manifests never get tracked.
+- **Godot generates `.import` sidecar files — don't add new ones to git.**
+  `.gitignore` already has `*.import`. Several legacy ones in `assets/sfx/` and
+  `demos/shots/` are still committed and tracked; don't add new `.import` files
+  without intent.
 
 - **Movie Maker mode: drop `--headless`, use `xvfb-run` alone.** Running
-  `godot --headless --write-movie` crashes with `ERROR: Parameter "t" is null`
-  (dummy texture renderer). Use `xvfb-run -a godot --write-movie` instead.
+  `godot --headless --write-movie` crashes with a null-texture error (dummy
+  renderer). Use `xvfb-run -a godot --rendering-driver opengl3 --write-movie`
+  instead — Godot's default Vulkan renderer doesn't work under Xvfb's software
+  framebuffer, so `--rendering-driver opengl3` is required.
   Pass the input script path via the `SPARTA_DEMO_INPUT` env var — CLI `--`
   args are not forwarded to `DemoInputRecorder`.
 
