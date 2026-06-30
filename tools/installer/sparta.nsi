@@ -3,7 +3,12 @@
 ;
 ; Build with:
 ;   makensis -DVERSION=0.1.0 -DEXE_PATH=sparta.exe sparta.nsi
-; or let the release workflow set VERSION and EXE_PATH.
+; or let the release workflow set VERSION, EXE_PATH and OUTFILE.
+;
+; OUTFILE is where the setup.exe is written. A relative OutFile resolves
+; against this script's directory (tools/installer/), not the caller's working
+; directory, so the workflow passes an absolute OUTFILE to land it in build/.
+; It defaults to a name in the script dir for a plain local build.
 
 !define APPNAME    "Sparta"
 !define PUBLISHER  "Lacaedemon"
@@ -12,7 +17,10 @@
 
 ; --- Metadata ---
 Name              "${APPNAME} ${VERSION}"
-OutFile           "sparta-${VERSION}-windows-setup.exe"
+!ifndef OUTFILE
+  !define OUTFILE "sparta-${VERSION}-windows-setup.exe"
+!endif
+OutFile           "${OUTFILE}"
 InstallDir        "$PROGRAMFILES64\${APPNAME}"
 InstallDirRegKey  HKLM "${REGKEY}" "InstallDir"
 RequestExecutionLevel admin
