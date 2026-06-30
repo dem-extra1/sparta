@@ -559,6 +559,28 @@ func test_move_to_records_approach_velocity() -> void:
 	assert_almost_eq(u._approach_velocity.y, 0.0, 0.001, "in the direction of travel")
 
 
+func test_move_to_holds_ordered_facing_and_walks() -> void:
+	# A side-step move: ordered_facing pins the heading so the unit shuffles toward a
+	# lateral target without turning to face travel, at a measured walk.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u.ordered_facing = Vector2.RIGHT
+	u._move_to(Vector2(0, 100), 0.1)   # destination straight down -- lateral to facing
+	assert_almost_eq(u.facing.x, 1.0, 0.001, "the held facing is kept, not turned toward travel")
+	assert_almost_eq(u.facing.y, 0.0, 0.001, "...so the unit faces the same way while side-stepping")
+	assert_almost_eq(u._approach_velocity.length(), u.move_speed * Unit.WALK_SPEED_FRACTION, 0.001,
+		"a side-step moves at the measured walk pace")
+
+
+func test_move_to_without_ordered_facing_turns_to_travel() -> void:
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._move_to(Vector2(0, 100), 0.1)   # straight down
+	assert_almost_eq(u.facing.y, 1.0, 0.001, "with no held facing the unit turns to face travel")
+
+
 func test_approach_velocity_clears_after_a_stationary_frame() -> void:
 	# A stationary, non-fighting unit carries no momentum: the impact velocity is dropped
 	# so a later standing strike can't charge off stale motion.
