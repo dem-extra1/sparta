@@ -23,9 +23,7 @@ func before_each() -> void:
 	_orig_form_up_default = Settings.form_up_dist_default
 	_orig_form_up_cycle = Settings.form_up_dist_cycle.duplicate()
 	_orig_reform_before_move = Settings.reform_before_move
-	# Pin the canonical 2-mode cycle so the cycle tests don't depend on a developer's
-	# persisted settings.cfg — a custom cycle (e.g. [EQUAL_WIDTH]) made them fail locally
-	# while CI passed on a fresh default. Restored in after_each.
+	# Pin the default cycle; a developer's persisted cfg can deviate and break these tests locally.
 	Settings.form_up_dist_cycle = [EQUAL_DEPTH, EQUAL_WIDTH]
 
 
