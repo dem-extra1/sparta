@@ -1580,17 +1580,19 @@ func _setup_flock_renderer() -> void:
 
 ## Flat geometric mark meshes (zoomed-out LOD). Per-type shapes so soldiers read
 ## differently at a glance: spearmen = tall thin rectangle (shaft), archers =
-## diamond (arrow), cavalry/infantry = directional pointer (semicircle + triangle tip).
-## The outline is a slightly larger copy. All mark-LOD instances are rotated per-instance
-## in _refresh_flock_render() by each soldier's facing angle — directional shapes read as
-## facing arrows; symmetric shapes (rect, diamond) also benefit from rotation alignment.
+## All three are now compact *directional* glyphs so that rotating each instance by its
+## soldier's facing reads as an arrow at any angle: spearmen = a flat-backed dart, archers
+## = a directional kite, cavalry/infantry = the standard pointer (semicircle + triangle
+## tip). All three reach about as far forward as the pointer and stay no longer along the
+## facing axis, so a rotated rank can't merge into a bar. The earlier spearmen rect and
+## archer diamond were elongated/symmetric and, laid flat across a rank, striped.
 func _build_mark_meshes(mark_r: float) -> void:
 	if anti_cavalry:
-		_mark_body_mesh    = UnitMeshes.rect_mesh(mark_r * 0.65, mark_r * 1.7)
-		_mark_outline_mesh = UnitMeshes.rect_mesh(mark_r * 0.65 + 1.2, mark_r * 1.7 + 1.2)
+		_mark_body_mesh    = UnitMeshes.dart_mesh(mark_r * 1.15)
+		_mark_outline_mesh = UnitMeshes.dart_mesh(mark_r * 1.15 + 0.6)
 	elif is_ranged:
-		_mark_body_mesh    = UnitMeshes.diamond_mesh(mark_r * 1.15)
-		_mark_outline_mesh = UnitMeshes.diamond_mesh(mark_r * 1.15 + 0.6)
+		_mark_body_mesh    = UnitMeshes.kite_mesh(mark_r * 1.15)
+		_mark_outline_mesh = UnitMeshes.kite_mesh(mark_r * 1.15 + 0.6)
 	else:
 		_mark_body_mesh    = UnitMeshes.pointer_mesh(mark_r)
 		_mark_outline_mesh = UnitMeshes.pointer_mesh(mark_r + 0.6)
