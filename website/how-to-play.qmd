@@ -72,6 +72,25 @@ still adjusting their files. To make units move immediately without the pause, u
 baked into each recorded order, so replays reproduce whichever mode was active when
 you issued them.
 
+**Side-step (small lateral moves).** A move order that only shifts a unit a short way
+to the side --- less than about its own width --- is carried out as a **side-step**: the
+unit shuffles sideways at a walk while holding its current facing, instead of wheeling
+the whole line round to face the move and then wheeling back. So a small dressing of the
+line keeps every soldier looking the same way and keeps the ranks in order. A longer move,
+or one that heads forward, still turns to face the destination and marches normally.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/sidestep.jpg">
+    <source src="media/sidestep.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Side-step: a short lateral move shuffles the regiment sideways while it holds its facing, rather than wheeling.</figcaption>
+</figure>
+```
+
 **Zoom in to see the soldiers.** From the usual overview each regiment is a block of
 small marks. Zoom in far enough and those marks become individual figures, and each
 type carries its own gear --- spearmen shoulder a spear, archers carry a bow, other
