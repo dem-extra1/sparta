@@ -1,11 +1,11 @@
 {
-  "_comment": "Conversio demo: select the friendly Spearmen (uid 0, facing south at ~200,300), press V, and watch every soldier execute an in-place about-face (conversio) — each reverses 180° to face north while the file/rank grid stays put. Camera is zoomed in at the figure LOD so the silhouette flip is visible. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd.",
+  "_comment": "Conversio demo: zoom in on the Spearmen (seed 12345, at ~500,300, facing south), select it, press V, and watch every soldier execute an in-place about-face (conversio) — each reverses 180° to face north while the file/rank grid stays put. Camera is zoomed in at figure LOD so the silhouette flip is visible.",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 200.0, "y": 300.0, "zoom": 2.5}
+    {"tick": 0, "x": 500.0, "y": 215.0, "zoom": 2.2}
   ],
   "steps": [
-    {"tick": 10, "click": [200, 300]},
+    {"tick": 10, "click": [500, 300]},
     {"tick": 50, "key": "V"}
   ]
 }
