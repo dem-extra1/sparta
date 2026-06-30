@@ -45,8 +45,9 @@ const FORM_UP_DIST_NAMES := {
 	FormUpDist.EQUAL_DEPTH: "Equal depth",
 	FormUpDist.EQUAL_WIDTH: "Equal width",
 }
-# Order the on-the-fly hotkey cycles through. A follow-up will let players reorder this in
-# settings; today (two modes) the order is degenerate, but the list keeps the cycle extensible.
+# Canonical mode list — the full set in preferred order. Used as the fallback when
+# Settings.form_up_dist_cycle is empty (all modes disabled), and as the reference for
+# validating cycle entries loaded from disk. Players configure a subset in ☰ Menu.
 const FORM_UP_DIST_CYCLE := [FormUpDist.EQUAL_DEPTH, FormUpDist.EQUAL_WIDTH]
 const FORM_UP_DIST_CYCLE_KEY := KEY_Y   # cycles the live distribution mode
 const DEMO_FORMUP_WINDOW: int = 90   # ticks a replayed deploy line lingers (spans the march)
@@ -95,6 +96,9 @@ var _rmb_shift: bool = false   # Shift state captured at right-button press
 # the persisted default so a menu change to it snaps the live mode over (see _on_settings_changed).
 var _form_up_dist: int = FormUpDist.EQUAL_DEPTH
 var _form_up_dist_default: int = FormUpDist.EQUAL_DEPTH
+# Live cycle list: the enabled subset of modes the Y-key steps through, in canonical order.
+# Derived from Settings.form_up_dist_cycle; rebuilt whenever that setting changes.
+var _form_up_dist_cycle: Array = FORM_UP_DIST_CYCLE.duplicate()
 var _group_attack_mode: int = BattleRef.GroupAttackMode.FOCUSED
 # Gameplay-hotkey labels pressed since the last sim tick; Battle drains this each tick
 # (take_keys_this_tick) into the replay's keystroke track for the demo overlay.
@@ -138,19 +142,38 @@ func _ready() -> void:
 	_cursor_sprite.centered = true
 	_cursor_sprite.visible = false
 	_cursor_canvas.add_child(_cursor_sprite)
-	# Start the live form-up distribution at the persisted default, and follow later
-	# changes to that default (made from the ☰ menu) without clobbering an on-the-fly cycle.
+	# Start the live form-up distribution at the persisted default. A ☰ menu change
+	# to the default also snaps the live mode (see _on_settings_changed).
 	_form_up_dist = Settings.form_up_dist_default
 	_form_up_dist_default = _form_up_dist
+	_form_up_dist_cycle = _cycle_from_settings()
 	Settings.changed.connect(_on_settings_changed)
 
 
-## Snap the live form-up distribution to the default when the default itself changes (a ☰
-## menu pick); other settings changes leave an on-the-fly cycle untouched.
+## Rebuild the live cycle from Settings; snap the live mode to the new default when
+## the default itself changes (a deliberate ☰ menu pick overrides an in-flight Y-cycle).
 func _on_settings_changed() -> void:
+	var new_cycle: Array = _cycle_from_settings()
+	if new_cycle != _form_up_dist_cycle:
+		_form_up_dist_cycle = new_cycle
+		# If the current mode is no longer in the cycle, snap to the cycle's first entry.
+		if not _form_up_dist_cycle.has(_form_up_dist) and not _form_up_dist_cycle.is_empty():
+			_form_up_dist = _form_up_dist_cycle[0]
 	if Settings.form_up_dist_default != _form_up_dist_default:
 		_form_up_dist_default = Settings.form_up_dist_default
 		_form_up_dist = Settings.form_up_dist_default
+
+
+## Return the enabled subset of FORM_UP_DIST_CYCLE in canonical order. Iterating
+## the canonical list (rather than the stored array) guarantees order and validity
+## regardless of what is in settings.cfg. Falls back to the full canonical cycle
+## when no enabled mode matches, so Y never becomes a total no-op by accident.
+func _cycle_from_settings() -> Array:
+	var result: Array = []
+	for v in FORM_UP_DIST_CYCLE:
+		if Settings.form_up_dist_cycle.has(v):
+			result.append(v)
+	return result if not result.is_empty() else FORM_UP_DIST_CYCLE.duplicate()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -228,13 +251,13 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	return _handle_group_key(event)   # Ctrl+<0-9> bind / <0-9> recall
 
 
-## Cycle the live multi-unit form-up distribution mode through FORM_UP_DIST_CYCLE and flash
+## Cycle the live multi-unit form-up distribution mode through _form_up_dist_cycle and flash
 ## the new mode. Affects only how the dragged line is split among units (not the persisted
 ## default); an open form-up preview redraws to show the new split.
 func _cycle_form_up_dist() -> void:
-	var idx: int = FORM_UP_DIST_CYCLE.find(_form_up_dist)
-	_form_up_dist = FORM_UP_DIST_CYCLE[(idx + 1) % FORM_UP_DIST_CYCLE.size()] if idx >= 0 \
-			else FORM_UP_DIST_CYCLE[0]
+	var idx: int = _form_up_dist_cycle.find(_form_up_dist)
+	_form_up_dist = _form_up_dist_cycle[(idx + 1) % _form_up_dist_cycle.size()] if idx >= 0 \
+			else _form_up_dist_cycle[0]
 	if _hud != null:
 		_hud.flash_message("Form-up: " + str(FORM_UP_DIST_NAMES.get(_form_up_dist, "")))
 	Sfx.play(&"order")
