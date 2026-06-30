@@ -181,6 +181,13 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	# physics_frame lives on the SceneTree, which outlives this node across a
+	# reload_current_scene(). Without disconnecting, this freed-but-not-yet-gone
+	# Battle gets one more _on_soldier_tick after it leaves the tree, where
+	# get_tree() is null — "Invalid access to property 'paused' on a null instance".
+	if get_tree().physics_frame.is_connected(_on_soldier_tick):
+		get_tree().physics_frame.disconnect(_on_soldier_tick)
+
 	# Don't let this battle's pathfinding grid outlive it (e.g. across a scene
 	# reload or a future return-to-map flow). The next Battle._ready() republishes.
 	PathField.active = null
