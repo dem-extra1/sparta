@@ -4,14 +4,14 @@
 # mobile-safe choice: a poster->MP4 link opens GitHub's blob-view video player, which
 # doesn't play on the mobile site or app, whereas a GIF renders inline everywhere.
 #
-# What it records: if the PR commits a demos/demo.json it records the replay that
-# names (chosen by the author to show the PR's change); otherwise it falls back to
-# the default demos/showcase.json battle, posted with an honest "generic build
-# demo" caption. Either way a demo appears — unless demos/demo.json sets
-# "skip": true (a change a recorded battle can't show, e.g. a paused-overlay
-# interaction): then no clip is recorded and a short note explaining the absence is
-# posted instead of an unrelated generic GIF. See demos/README.md for the author
-# contract.
+# What it records: if the PR commits a demo manifest (demos/demo.<slug>.json, or the
+# legacy shared demos/demo.json) it records the replay that names (chosen by the
+# author to show the PR's change); otherwise it falls back to the default
+# demos/showcase.json battle, posted with an honest "generic build demo" caption.
+# Either way a demo appears — unless the manifest sets "skip": true (a change a
+# recorded battle can't show, e.g. a paused-overlay interaction): then no clip is
+# recorded and a short note explaining the absence is posted instead of an unrelated
+# generic GIF. See demos/README.md for the author contract.
 #
 # Why a separate workflow (not claude.yml): claude.yml only *calls* an external
 # reusable workflow (d-morrison/gha), so recording steps can't be added there.
@@ -113,6 +113,7 @@ jobs:
               {
                 echo "record=false"
                 echo "skip=true"
+                echo "manifest=$M"
                 echo "reason<<$DELIM"
                 printf '%s\n' "$REASON"
                 echo "$DELIM"
@@ -353,23 +354,24 @@ jobs:
 
       - name: Post 'no clip applies' note
         # The author marked this change as not demonstrable by a recorded battle
-        # ("skip": true in demos/demo.json). Rather than post an unrelated generic
-        # clip — the #75 anti-pattern — upsert the same demo comment slot with a
-        # short note explaining why there's no GIF, so reviewers get an honest,
-        # relevant signal instead of a misleading one.
+        # ("skip": true in the resolved manifest — a per-PR demos/demo.<slug>.json or
+        # the legacy demos/demo.json). Rather than post an unrelated generic clip —
+        # the #75 anti-pattern — upsert the same demo comment slot with a short note
+        # explaining why there's no GIF, so reviewers get an honest, relevant signal.
         if: steps.demo.outputs.skip == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           # Author-controlled free text; accessed as "$REASON" (quoted) in the script,
           # so shell metacharacters in it cannot inject commands.
           REASON: ${{ steps.demo.outputs.reason }}
+          MANIFEST: ${{ steps.demo.outputs.manifest }}
         run: |
           set -euo pipefail
           PR=${{ github.event.pull_request.number }}
           MARKER="<!-- sparta-demo -->"
           # Reuses the demo comment marker, so if a generic clip was posted on an
           # earlier push it gets replaced in place by this note (no duplicate slot).
-          BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n🚫 **No gameplay clip for this PR** — %s\n\n<sub>The author marked this change as not demonstrable by a recorded battle (`"skip": true` in `demos/demo.json`); see `demos/README.md`.</sub>' \
-            "$MARKER" "$REASON")
+          BODY=$(printf '%s\n### 🎬 Gameplay demo\n\n🚫 **No gameplay clip for this PR** — %s\n\n<sub>The author marked this change as not demonstrable by a recorded battle (`"skip": true` in `%s`); see `demos/README.md`.</sub>' \
+            "$MARKER" "$REASON" "$MANIFEST")
           tools/ci/upsert-pr-comment.sh \
             "${{ github.repository }}" "$PR" "$MARKER" "$BODY" "'no clip' note"
