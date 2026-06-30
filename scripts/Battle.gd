@@ -534,6 +534,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			# move branch below re-sets it. So attack / support / relief / plain move all
 			# clear it, and a unit can't wheel to a stale heading on arrival.
 			u.deploy_facing = Vector2.ZERO
+			# Drop any side-step hold from a prior order; the plain-move branch below
+			# re-sets it when this order is itself a small lateral shift.
+			u.ordered_facing = Vector2.ZERO
 			# A new order always cancels any in-progress reform from the previous one.
 			u._reform_timer = 0.0
 		if target_unit != null and target_unit != u and target_unit.team != u.team:
@@ -574,6 +577,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					u.move_target = u.waypoints.pop_front()
 					u.has_move_target = true
 			else:
+				# Choose the drill maneuver for a plain move (a form-up commands its own
+				# facing, so it never side-steps). A small lateral shift holds facing and
+				# shuffles sideways instead of wheeling to face travel and back.
+				if not cmd.has("face") \
+						and UnitManeuver.is_sidestep(u.facing, point - u.position):
+					u.ordered_facing = u.facing
 				# Drag-to-form-up: apply frontage/facing immediately so soldiers begin
 				# adjusting during the reform phase rather than after the march starts.
 				if cmd.has("face"):

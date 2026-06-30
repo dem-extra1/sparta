@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Non-visual refactor: consolidates the three stance-mode lists in HUD.gd into one _STANCE_ENTRIES source of truth. The control-bar dropup looks and behaves exactly as before, so a recorded battle would show no change --- the win is internal (a one-place update instead of three) and is covered by test_hud_stance.gd."
+  "input": "demos/inputs/sidestep.json",
+  "caption": "Side-step: a short lateral move order shuffles the regiment sideways at a walk while it holds its south-facing line, instead of wheeling to face the move and wheeling back. Watch the soldiers keep facing the enemy as the block slides right.",
+  "fixed_fps": 30,
+  "max_frames": 150,
+  "fps": 15,
+  "width": 640
 }

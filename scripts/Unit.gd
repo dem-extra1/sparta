@@ -72,6 +72,13 @@ var frontage_override: int = 0
 # drag-to-form-up order so the unit deploys facing the dragged line rather than its
 # march direction. Vector2.ZERO means "keep the march facing" (no deploy turn).
 var deploy_facing: Vector2 = Vector2.ZERO
+# A commanded heading held throughout a move order so the unit translates toward
+# its target WITHOUT turning to face travel -- the side-step maneuver (a small
+# lateral shift shuffles sideways instead of wheeling). The unit also moves at a
+# measured walk while this is set, to keep its ranks orderly. Vector2.ZERO means
+# "face the travel direction" (the default turn-and-march), set per order in
+# Battle._apply_order_cmd via UnitManeuver.
+var ordered_facing: Vector2 = Vector2.ZERO
 # Stance values from Battle.OrderMode that Unit's own behaviour reacts to, mirrored
 # as plain ints to avoid a Unit<->Battle preload cycle (kept in sync with the enum;
 # Battle._ready asserts they match). NORMAL is 0 (Unit's default order_mode).
@@ -507,10 +514,16 @@ func _think(delta: float) -> void:
 		if position.distance_to(move_target) > 5.0:
 			_move_to(move_target, delta)
 		elif not waypoints.is_empty():
+			# Each queued leg marches on its own terms: drop any side-step hold from
+			# the leg just finished so the next leg turns to face its own travel.
+			ordered_facing = Vector2.ZERO
 			move_target = waypoints.pop_front()   # advance along the queued route
 		else:
 			has_move_target = false
 			state = State.IDLE
+			# The side-step maneuver is spent on arrival; the held facing stays (it is
+			# already the unit's facing), so just drop the maneuver flag.
+			ordered_facing = Vector2.ZERO
 			# A drag-to-form-up order parks a deploy facing here; wheel to it on
 			# arrival (the soldier bodies then ease into the rotated formation).
 			if deploy_facing != Vector2.ZERO:
@@ -579,10 +592,19 @@ func _move_to(point: Vector2, delta: float) -> void:
 	if to.length() < 1.0:
 		return
 	var dir: Vector2 = to.normalized()
-	# Pace: walk advance holds walk speed throughout. AUTO walks by default, jogs
-	# under missile fire, and sprints at full speed once close to the target.
+	# Facing: a drill maneuver (side-step) holds its commanded heading and shuffles
+	# at a measured walk to keep ranks orderly; otherwise the unit turns to face its
+	# travel direction and uses the AUTO pace ladder below.
+	var maneuvering: bool = ordered_facing != Vector2.ZERO
+	if maneuvering:
+		_face_dir(ordered_facing)
+	else:
+		_face_dir(dir)
+	# Pace: a maneuver or walk-advance holds walk speed throughout. AUTO otherwise
+	# walks by default, jogs under missile fire, and sprints at full speed once
+	# close to the target.
 	var pace_frac: float
-	if walk_advance:
+	if maneuvering or walk_advance:
 		pace_frac = WALK_SPEED_FRACTION
 	elif position.distance_to(point) <= SPRINT_START_DISTANCE:
 		pace_frac = 1.0  # sprint distance beats under-fire: charge through the kill zone at full speed
@@ -591,7 +613,6 @@ func _move_to(point: Vector2, delta: float) -> void:
 	else:
 		pace_frac = WALK_SPEED_FRACTION
 	var effective_speed: float = move_speed * terrain_speed * pace_frac
-	_face_dir(dir)
 	position += dir * effective_speed * delta
 	state = State.MOVING
 	_moved_last_frame = true
