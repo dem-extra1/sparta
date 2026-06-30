@@ -343,6 +343,7 @@ func _toggle_form_up_cycle(mode: int) -> void:
 		# (An empty cycle falls back silently to all modes in SelectionManager,
 		# which would leave the checkboxes unchecked while Y still cycles both.)
 		if enabled.is_empty():
+			_sync_setting_toggles()   # Godot already auto-toggled before id_pressed; restore the checkbox
 			return
 	else:
 		enabled.append(mode)

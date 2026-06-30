@@ -164,14 +164,14 @@ func _on_settings_changed() -> void:
 		_form_up_dist = Settings.form_up_dist_default
 
 
-## Return a validated cycle array from Settings: only known FormUpDist values, no
-## duplicates, in canonical order (HUD rebuilds in canonical order on toggle). Falls
-## back to the full canonical cycle when the setting is empty, so Y never becomes a
-## total no-op by accident.
+## Return the enabled subset of FORM_UP_DIST_CYCLE in canonical order. Iterating
+## the canonical list (rather than the stored array) guarantees order and validity
+## regardless of what is in settings.cfg. Falls back to the full canonical cycle
+## when no enabled mode matches, so Y never becomes a total no-op by accident.
 func _cycle_from_settings() -> Array:
 	var result: Array = []
-	for v in Settings.form_up_dist_cycle:
-		if v is int and FORM_UP_DIST_NAMES.has(v) and not result.has(v):
+	for v in FORM_UP_DIST_CYCLE:
+		if Settings.form_up_dist_cycle.has(v):
 			result.append(v)
 	return result if not result.is_empty() else FORM_UP_DIST_CYCLE.duplicate()
 
