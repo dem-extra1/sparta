@@ -213,6 +213,22 @@ your advantage when committing cavalry or an assault infantry charge.
 </figure>
 ```
 
+## Side-stepping the line
+
+A small lateral move order is carried out as a **side-step**: the unit shuffles
+sideways while holding its facing, instead of wheeling to face the move and
+wheeling back. That matters when you are dressing a line just before contact.
+Wheeling a regiment turns it away from the enemy for the length of the turn ---
+its front momentarily points sideways, and the ranks lose their dressing while
+the soldiers reshuffle. A side-step keeps every soldier looking at the enemy and
+keeps the line aligned, so you can nudge a unit a few paces to close a gap or
+overlap an enemy flank without ever presenting your own flank in the process.
+
+The cut-off is roughly a unit's own width: shifts wider than that, or moves that
+head forward, turn and march normally. So to reposition laterally in good order,
+make the adjustment small --- a short step keeps the line intact, a long one
+commits the unit to a march.
+
 ## Order stances
 
 Each order can carry a *stance*, armed with a hotkey before you click (a coloured
