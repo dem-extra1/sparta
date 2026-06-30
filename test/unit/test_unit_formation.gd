@@ -96,3 +96,34 @@ func test_narrowed_files_halves_the_frontage() -> void:
 
 func test_narrowed_files_floors_at_one() -> void:
 	assert_eq(UnitFormation.narrowed_files(1), 1, "never narrower than a single column")
+
+
+# --- casualty adaptation (recompute from the LIVE count) --------------------
+# A unit can take casualties mid-maneuver, so a maneuver recomputes its target shape from
+# the live soldier count every tick rather than caching it. These pin the property the
+# grid-ops give it: every helper is a pure function of the count passed in, and the layout
+# thins from the rear (frontage held) as men fall -- so passing the live count Just Works.
+
+func test_block_slots_thins_from_the_rear_when_men_fall() -> void:
+	# Hold the file count and drop the soldier count: the front ranks are untouched and the
+	# rear rank thins -- the line keeps its width and loses depth, never reflowing the front.
+	var full := UnitFormation.block_slots(40, 8, 3.4)     # 8 x 5, full
+	var after := UnitFormation.block_slots(36, 8, 3.4)    # 8 x 5 with a 4-man last rank
+	assert_eq(after.size(), 36, "the slot count follows the live soldier count")
+	for i in range(32):                                   # the four full front ranks
+		assert_true(after[i].is_equal_approx(full[i]),
+			"front-rank slot %d is unchanged when the rear thins" % i)
+
+
+func test_transposed_files_tracks_the_live_count() -> void:
+	# The 90° turn's target frontage is the live rank count, so heavy casualties shrink it:
+	# a maneuver that recomputes each tick narrows its turned frontage as men fall.
+	assert_eq(UnitFormation.transposed_files(40, 8), 5, "full strength: 5 ranks -> 5 files")
+	assert_eq(UnitFormation.transposed_files(24, 8), 3, "after losses: 3 ranks -> 3 files")
+
+
+func test_widened_files_tracks_the_live_count() -> void:
+	# Explicatio's cap is the live count, so a depleted unit can't be told to widen past a
+	# single rank -- the target adapts to however many men remain.
+	assert_eq(UnitFormation.widened_files(40, 8), 16, "full strength widens to 16 files")
+	assert_eq(UnitFormation.widened_files(12, 8), 12, "depleted: capped at the live count")
