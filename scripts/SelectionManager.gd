@@ -1248,8 +1248,9 @@ func _draw_orders() -> void:
 				_draw_formation_preview(route.back(), u)
 				# Label the remaining travel: the full polyline length, not the
 				# straight line, so a multi-waypoint route reports the real march.
-				var dest: Vector2 = route.back()
-				_draw_order_distance(origin, dest, _route_length(origin, route), ORDER_MOVE_COLOR)
+				# Anchor the label to the first (always-drawn) leg so it stays on the
+				# route rather than floating across a sharply bent path.
+				_draw_order_distance(origin, route[0], _route_length(origin, route), ORDER_MOVE_COLOR)
 
 
 ## The friendly a SUPPORT unit is guarding, if it's still a valid overlay
@@ -1355,7 +1356,7 @@ func _draw_order_distance(a: Vector2, b: Vector2, world_dist: float, color: Colo
 	var mid: Vector2 = (a + b) * 0.5
 	var seg: Vector2 = b - a
 	# Perpendicular to the line, pointing "up-screen" so the label sits clear of the dashes.
-	var perp: Vector2 = Vector2(-seg.y, seg.x).normalized() if seg.length() > 0.01 else Vector2.UP
+	var perp: Vector2 = Vector2(-seg.y, seg.x).normalized() if seg.length_squared() > 0.0001 else Vector2.UP
 	if perp.y > 0.0:
 		perp = -perp
 	draw_string(font, mid + perp * 12.0 + Vector2(-tw * 0.5, 0.0), text,

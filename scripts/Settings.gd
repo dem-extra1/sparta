@@ -196,7 +196,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	walk_advance = bool(cfg.get_value("gameplay", "walk_advance", walk_advance))
 	reform_before_move = bool(cfg.get_value("gameplay", "reform_before_move", reform_before_move))
 	show_distance_legend = bool(cfg.get_value("camera", "show_distance_legend", show_distance_legend))
-	show_order_distance = bool(cfg.get_value("gameplay", "show_order_distance", show_order_distance))
+	show_order_distance = bool(cfg.get_value("camera", "show_order_distance", show_order_distance))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
 	_loading = false
@@ -213,7 +213,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("gameplay", "walk_advance", walk_advance)
 	cfg.set_value("gameplay", "reform_before_move", reform_before_move)
 	cfg.set_value("camera", "show_distance_legend", show_distance_legend)
-	cfg.set_value("gameplay", "show_order_distance", show_order_distance)
+	cfg.set_value("camera", "show_order_distance", show_order_distance)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))
 	cfg.save(path)
