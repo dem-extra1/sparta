@@ -178,11 +178,11 @@ comments or docstrings.
   `demos/shots/` are still committed and tracked; don't add new `.import` files
   without intent.
 
-- **GUT's `assert_almost_eq` is scalar-only.** Passing a `Vector2` (e.g.
-  `assert_almost_eq(u.facing, Vector2.DOWN, 0.01, ...)`) fails or behaves
-  unexpectedly. For an *exact* Vector2 comparison use `assert_eq`; to check
-  individual components approximately, split into `assert_almost_eq(v.x, …)`
-  and `assert_almost_eq(v.y, …)`.
+- **GUT's `assert_almost_eq` does not support `Vector2` operands — it silently
+  passes regardless of the actual difference.** The `diff > margin` check reduces
+  to `Vector2 > float`, which GDScript always evaluates as `false`. For an *exact*
+  Vector2 comparison use `assert_eq`; for approximate component checks, split into
+  `assert_almost_eq(v.x, …)` and `assert_almost_eq(v.y, …)`.
 
 - **When testing a normalized Vector2, always assert both `x` and `y`.** Checking
   only one component misses bugs where the vector is `(1.0, epsilon)` instead of
