@@ -1,0 +1,10 @@
+{
+  "_comment": "Control bar screenshot: box-select all three blue regiments so the bottom control bar appears with Formation, Stance, Reform, and group-attack buttons.",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 640.0, "y": 500.0, "zoom": 0.9}
+  ],
+  "steps": [
+    {"tick": 6, "box": {"from": [300, 240], "to": [980, 360]}}
+  ]
+}

@@ -249,6 +249,7 @@ func _cycle_group_attack_mode() -> void:
 			else GROUP_ATTACK_MODE_CYCLE[0]
 	if _hud != null:
 		_hud.flash_message(BattleRef.GROUP_ATTACK_MODE_NAMES.get(_group_attack_mode, ""))
+		_hud.update_group_attack_mode(_group_attack_mode)
 	Sfx.play(&"order")
 
 
@@ -779,6 +780,41 @@ func _recall_group(n: int) -> void:
 
 # --- order modes -----------------------------------------------------
 
+## Set all selected units to a specific formation mode (called from the control bar).
+func set_formation_to(mode: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit):
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_formation(uids, mode)
+	_refresh_hud()
+	Sfx.play(&"order")
+
+
+## Arm a specific order-mode stance (called from the control bar).
+func arm_order_mode(mode: int) -> void:
+	_set_armed_mode(mode)
+
+
+## Return the currently armed order mode (used by HUD to sync the ctrl bar on selection).
+func get_armed_mode() -> int:
+	return _armed_mode
+
+
+## Return the current group-attack mode (used by HUD to sync the ctrl bar on selection).
+func get_group_attack_mode() -> int:
+	return _group_attack_mode
+
+
+## Cycle the group-attack distribution mode (called from the control bar).
+func toggle_group_attack_mode() -> void:
+	_cycle_group_attack_mode()
+
+
 func _exit_tree() -> void:
 	# Hide the sprite and restore the OS cursor so armed mode doesn't leak
 	# across scenes (e.g. after reload_current_scene).
@@ -810,10 +846,9 @@ func _set_armed_mode(mode: int) -> void:
 	_armed_mode = mode
 	_update_order_cursor()
 	if _hud != null:
-		# Empty label hides the indicator for the default stance.
 		var label: String = "" if mode == BattleRef.OrderMode.NORMAL \
 				else str(BattleRef.ORDER_MODE_NAMES.get(mode, ""))
-		_hud.set_order_mode(label)
+		_hud.set_order_mode(label, mode)
 
 
 ## Reflect the armed mode in the mouse cursor: a coloured disc (in-scene Sprite2D)

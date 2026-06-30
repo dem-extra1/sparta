@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "This fix corrects the replay recording system (group_attack mode was never written to the replay log). The bug and fix are invisible during live play; they only surface when watching a saved replay of a distributed-mode attack. A recorded battle clip cannot demonstrate the before/after difference."
+  "reason": "This adds a bottom control bar (HUD panel) that appears when units are selected. A static screenshot shows it more clearly than a recorded battle clip. See the PR description for the screenshot follow-up note."
 }

@@ -8,6 +8,7 @@ extends CanvasLayer
 const BattleRef = preload("res://scripts/Battle.gd")
 const CampaignBattleRef = preload("res://scripts/campaign/CampaignBattle.gd")
 const SelectionManagerRef = preload("res://scripts/SelectionManager.gd")
+const UnitRef = preload("res://scripts/Unit.gd")
 
 # Stable ids for the Menu popup's items (independent of index / separators). The two
 # MENU_FORMUP_* ids set the default multi-unit form-up distribution (radio-checked).
@@ -28,6 +29,16 @@ var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
 var _keybindings_dialog: AcceptDialog
+const PANEL_MIN := Vector2(240, 90)
+const PANEL_BOTTOM_GAP := 20.0   # clearance between info panel and screen edge
+
+var _ctrl_bar: PanelContainer
+var _ctrl_formation_btn: MenuButton
+var _ctrl_stance_btn: MenuButton
+var _ctrl_reform_btn: Button
+var _ctrl_group_attack_btn: Button
+var _sel_mgr = null
+var _info_panel: PanelContainer
 
 
 func _ready() -> void:
@@ -138,6 +149,8 @@ func _ready() -> void:
 	Settings.changed.connect(_sync_setting_toggles)
 	# Same lifetime concern: keep the hint's order-mode keys in sync after a rebind.
 	Settings.changed.connect(_refresh_hint)
+	# Keep the stance dropup labels in sync after a rebind (see _ctrl_bar_refresh_stance_popup).
+	Settings.changed.connect(_ctrl_bar_refresh_stance_popup)
 
 	# File picker for choosing a saved replay, plus an error popup for bad files.
 	# Both stay responsive while the tree is paused (end-of-battle overlay).
@@ -167,25 +180,26 @@ func _ready() -> void:
 	# hand-tuned magic number), and grow_vertical = BEGIN lets it expand UPWARD
 	# if a content row or a larger font is added — so it never clips past the
 	# screen's bottom edge.
-	var panel := PanelContainer.new()
-	var panel_min := Vector2(240, 90)
-	var panel_bottom_gap := 20.0   # clearance between the panel and the screen edge
-	panel.custom_minimum_size = panel_min
-	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.position = Vector2(14.0, -(panel_min.y + panel_bottom_gap))
-	add_child(panel)
+	_info_panel = PanelContainer.new()
+	_info_panel.custom_minimum_size = PANEL_MIN
+	_info_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_info_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_info_panel.position = Vector2(14.0, -(PANEL_MIN.y + PANEL_BOTTOM_GAP))
+	add_child(_info_panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 10)
 	margin.add_theme_constant_override("margin_right", 10)
 	margin.add_theme_constant_override("margin_top", 8)
 	margin.add_theme_constant_override("margin_bottom", 8)
-	panel.add_child(margin)
+	_info_panel.add_child(margin)
 
 	_info = Label.new()
 	_info.text = "No unit selected"
 	margin.add_child(_info)
+
+	_sel_mgr = get_node_or_null("../SelectionManager")
+	_build_ctrl_bar()
 
 	# End-of-battle overlay.
 	_overlay = ColorRect.new()
@@ -251,6 +265,8 @@ func _exit_tree() -> void:
 		Settings.changed.disconnect(_sync_setting_toggles)
 	if Settings.changed.is_connected(_refresh_hint):
 		Settings.changed.disconnect(_refresh_hint)
+	if Settings.changed.is_connected(_ctrl_bar_refresh_stance_popup):
+		Settings.changed.disconnect(_ctrl_bar_refresh_stance_popup)
 
 
 func _sync_setting_toggles() -> void:
@@ -265,6 +281,7 @@ func _sync_setting_toggles() -> void:
 			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_WIDTH)
 	popup.set_item_checked(popup.get_item_index(MENU_REFORM_BEFORE_MOVE),
 			Settings.reform_before_move)
+	_ctrl_bar_sync_settings()
 
 
 ## Rebuild the controls hint, rendering the order-mode keys from the live Settings
@@ -356,19 +373,29 @@ func show_unit(u, group_count: int) -> void:
 		cohesion_text, training_text, u.formation_summary(), UnitFormation.files_label(UnitFormation.frontage(u)),
 		u.order_summary()
 	]
+	if _ctrl_bar != null:
+		_ctrl_bar.visible = true
+		_info_panel_raise()
+		_ctrl_bar_update_formation(u)
+		_ctrl_bar_update_stance(_sel_mgr.get_armed_mode() if _sel_mgr != null else 0)
+		update_group_attack_mode(_sel_mgr.get_group_attack_mode() if _sel_mgr != null else 0)
 
 
 func clear_unit() -> void:
 	_info.text = "No unit selected"
+	if _ctrl_bar != null:
+		_ctrl_bar.visible = false
+		_info_panel_lower()
 
 
 ## Show the armed order mode. Empty text hides the indicator (default stance).
-func set_order_mode(text: String) -> void:
+func set_order_mode(text: String, mode: int = BattleRef.OrderMode.NORMAL) -> void:
 	if text == "":
 		_order_mode_label.visible = false
 	else:
 		_order_mode_label.text = "Order: %s" % text
 		_order_mode_label.visible = true
+	_ctrl_bar_update_stance(mode)
 
 
 ## Briefly show a one-line toast, then auto-hide it. Used for transient feedback like the
@@ -388,6 +415,220 @@ func flash_message(text: String) -> void:
 func _hide_flash(text: String) -> void:
 	if is_instance_valid(_flash_label) and _flash_label.text == text:
 		_flash_label.visible = false
+
+
+## Reflect the current group-attack distribution mode on the ctrl bar button.
+func update_group_attack_mode(mode: int) -> void:
+	if _ctrl_group_attack_btn == null:
+		return
+	var labels := {
+		BattleRef.GroupAttackMode.FOCUSED: "Focused atk",
+		BattleRef.GroupAttackMode.DISTRIBUTED: "Spread atk",
+	}
+	_ctrl_group_attack_btn.text = labels.get(mode, "Atk mode")
+
+
+func _ctrl_bar_sync_settings() -> void:
+	if _ctrl_reform_btn == null:
+		return
+	_ctrl_reform_btn.button_pressed = Settings.reform_before_move
+
+
+func _ctrl_bar_refresh_stance_popup() -> void:
+	if _ctrl_stance_btn == null:
+		return
+	var popup := _ctrl_stance_btn.get_popup()
+	var hotkey_entries := [
+		{"slug": "hold", "label": "Hold"},
+		{"slug": "attack_flank", "label": "Flank"},
+		{"slug": "attack_rear", "label": "Rear"},
+		{"slug": "skirmish", "label": "Skirmish"},
+		{"slug": "support", "label": "Support"},
+	]
+	for i in hotkey_entries.size():
+		var entry: Dictionary = hotkey_entries[i]
+		var key_str := OS.get_keycode_string(Settings.order_binding(entry["slug"]))
+		var item_id: int = i + 1
+		popup.set_item_text(popup.get_item_index(item_id), "%s  (%s)" % [entry["label"], key_str])
+
+
+func _ctrl_bar_update_formation(unit) -> void:
+	if _ctrl_formation_btn == null or unit == null or not is_instance_valid(unit):
+		return
+	var names := {
+		UnitRef.FORMATION_NORMAL: "Normal",
+		UnitRef.FORMATION_TIGHT: "Tight",
+		UnitRef.FORMATION_LOOSE: "Loose",
+	}
+	_ctrl_formation_btn.text = names.get(unit.formation_mode, "Formation") + " ▾"
+
+
+func _ctrl_bar_update_stance(mode: int) -> void:
+	if _ctrl_stance_btn == null:
+		return
+	var names := {
+		BattleRef.OrderMode.NORMAL: "Normal",
+		BattleRef.OrderMode.HOLD: "Hold",
+		BattleRef.OrderMode.ATTACK_FLANK: "Flank",
+		BattleRef.OrderMode.ATTACK_REAR: "Rear",
+		BattleRef.OrderMode.SKIRMISH: "Skirmish",
+		BattleRef.OrderMode.SUPPORT: "Support",
+	}
+	_ctrl_stance_btn.text = names.get(mode, "Normal") + " ▾"
+
+
+## Build the bottom control bar: formation, stance, and per-order options.
+func _build_ctrl_bar() -> void:
+	_ctrl_bar = PanelContainer.new()
+	_ctrl_bar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_ctrl_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_ctrl_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_ctrl_bar.position = Vector2(0, -10)
+	_ctrl_bar.visible = false
+	add_child(_ctrl_bar)
+
+	var outer := MarginContainer.new()
+	outer.add_theme_constant_override("margin_left", 8)
+	outer.add_theme_constant_override("margin_right", 8)
+	outer.add_theme_constant_override("margin_top", 6)
+	outer.add_theme_constant_override("margin_bottom", 6)
+	_ctrl_bar.add_child(outer)
+
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 16)
+	outer.add_child(hbox)
+
+	hbox.add_child(_build_ctrl_section("Formation", _build_ctrl_formation_menu()))
+	hbox.add_child(VSeparator.new())
+	hbox.add_child(_build_ctrl_section("Stance", _build_ctrl_stance_menu()))
+	hbox.add_child(VSeparator.new())
+	hbox.add_child(_build_ctrl_section("Options", _build_ctrl_option_buttons()))
+
+	_ctrl_bar_sync_settings()
+	update_group_attack_mode(BattleRef.GroupAttackMode.FOCUSED)
+
+
+func _build_ctrl_section(label_text: String, content: Control) -> Control:
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	var lbl := Label.new()
+	lbl.text = label_text
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+	vbox.add_child(lbl)
+	vbox.add_child(content)
+	return vbox
+
+
+func _build_ctrl_formation_menu() -> Control:
+	_ctrl_formation_btn = MenuButton.new()
+	_ctrl_formation_btn.text = "Normal ▾"
+	_ctrl_formation_btn.custom_minimum_size = Vector2(90, 28)
+	_ctrl_formation_btn.add_theme_font_size_override("font_size", 13)
+	var popup := _ctrl_formation_btn.get_popup()
+	var entries := [
+		{"mode": UnitRef.FORMATION_NORMAL, "label": "Normal"},
+		{"mode": UnitRef.FORMATION_TIGHT, "label": "Tight"},
+		{"mode": UnitRef.FORMATION_LOOSE, "label": "Loose"},
+	]
+	for entry: Dictionary in entries:
+		var mode: int = entry["mode"]
+		popup.add_item(entry["label"], mode)
+		popup.set_item_metadata(popup.get_item_index(mode), mode)
+	popup.about_to_popup.connect(_reposition_dropup.bind(popup, _ctrl_formation_btn))
+	popup.id_pressed.connect(_on_formation_popup_id)
+	return _ctrl_formation_btn
+
+
+func _build_ctrl_stance_menu() -> Control:
+	_ctrl_stance_btn = MenuButton.new()
+	_ctrl_stance_btn.text = "Normal ▾"
+	_ctrl_stance_btn.custom_minimum_size = Vector2(110, 28)
+	_ctrl_stance_btn.add_theme_font_size_override("font_size", 13)
+	var popup := _ctrl_stance_btn.get_popup()
+	# NORMAL (Esc) is fixed and not in ORDER_MODE_HOTKEYS, so add it first with its key.
+	popup.add_item("Normal  (Esc)", 0)
+	popup.set_item_metadata(popup.get_item_index(0), BattleRef.OrderMode.NORMAL)
+	var hotkey_entries := [
+		{"mode": BattleRef.OrderMode.HOLD, "label": "Hold", "slug": "hold"},
+		{"mode": BattleRef.OrderMode.ATTACK_FLANK, "label": "Flank", "slug": "attack_flank"},
+		{"mode": BattleRef.OrderMode.ATTACK_REAR, "label": "Rear", "slug": "attack_rear"},
+		{"mode": BattleRef.OrderMode.SKIRMISH, "label": "Skirmish", "slug": "skirmish"},
+		{"mode": BattleRef.OrderMode.SUPPORT, "label": "Support", "slug": "support"},
+	]
+	for i in hotkey_entries.size():
+		var entry: Dictionary = hotkey_entries[i]
+		var key_str := OS.get_keycode_string(Settings.order_binding(entry["slug"]))
+		var item_id: int = i + 1
+		popup.add_item("%s  (%s)" % [entry["label"], key_str], item_id)
+		popup.set_item_metadata(popup.get_item_index(item_id), entry["mode"])
+	popup.about_to_popup.connect(_reposition_dropup.bind(popup, _ctrl_stance_btn))
+	popup.id_pressed.connect(_on_stance_popup_id)
+	return _ctrl_stance_btn
+
+
+func _reposition_dropup(popup: PopupMenu, btn: Control) -> void:
+	# Defer so Godot finishes its first layout pass before we read popup.size.
+	(func():
+		popup.position = Vector2i(
+			int(btn.global_position.x),
+			int(btn.global_position.y) - popup.size.y
+		)).call_deferred()
+
+
+func _on_formation_popup_id(id: int) -> void:
+	if _sel_mgr != null:
+		_sel_mgr.set_formation_to(id)
+	var names := {
+		UnitRef.FORMATION_NORMAL: "Normal",
+		UnitRef.FORMATION_TIGHT: "Tight",
+		UnitRef.FORMATION_LOOSE: "Loose",
+	}
+	_ctrl_formation_btn.text = names.get(id, "Formation") + " ▾"
+
+
+func _on_stance_popup_id(id: int) -> void:
+	var popup := _ctrl_stance_btn.get_popup()
+	var mode: int = popup.get_item_metadata(popup.get_item_index(id))
+	if _sel_mgr != null:
+		_sel_mgr.arm_order_mode(mode)
+
+
+func _info_panel_raise() -> void:
+	if _info_panel == null or _ctrl_bar == null:
+		return
+	var bar_h := _ctrl_bar.get_combined_minimum_size().y
+	_info_panel.position.y = -(PANEL_MIN.y + PANEL_BOTTOM_GAP + bar_h + 8.0)
+
+
+func _info_panel_lower() -> void:
+	if _info_panel == null:
+		return
+	_info_panel.position.y = -(PANEL_MIN.y + PANEL_BOTTOM_GAP)
+
+
+func _build_ctrl_option_buttons() -> Control:
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 6)
+
+	_ctrl_reform_btn = Button.new()
+	_ctrl_reform_btn.text = "Reform"
+	_ctrl_reform_btn.toggle_mode = true
+	_ctrl_reform_btn.custom_minimum_size = Vector2(68, 28)
+	_ctrl_reform_btn.add_theme_font_size_override("font_size", 13)
+	_ctrl_reform_btn.pressed.connect(func():
+		Settings.reform_before_move = not Settings.reform_before_move)
+	hbox.add_child(_ctrl_reform_btn)
+
+	_ctrl_group_attack_btn = Button.new()
+	_ctrl_group_attack_btn.custom_minimum_size = Vector2(100, 28)
+	_ctrl_group_attack_btn.add_theme_font_size_override("font_size", 13)
+	_ctrl_group_attack_btn.pressed.connect(func():
+		if _sel_mgr != null:
+			_sel_mgr.toggle_group_attack_mode())
+	hbox.add_child(_ctrl_group_attack_btn)
+
+	return hbox
 
 
 func show_end(text: String) -> void:
