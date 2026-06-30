@@ -66,6 +66,12 @@ var formation_mode: int = FORMATION_NORMAL
 # change rides the replay command stream so playback reproduces it. Honoured and
 # clamped to [1, max_soldiers] in UnitFormation.frontage.
 var frontage_override: int = 0
+# Extra rotation (radians) applied to the formation slot grid, on top of the unit heading.
+# A quarter-turn turns every soldier in place WITHOUT reorganising the grid: each man
+# faces a new way but stands where he stood. unit.facing rotates 90°, and this offset cancels
+# that rotation in soldier_world_slots so the slots stay put -- the men don't drift. 0 = the
+# grid is square to the heading (the default). A fresh move order / rout reforms it to 0.
+var _formation_angle: float = 0.0
 # Facing to pivot to once a move order's destination is reached, set by a
 # drag-to-form-up order so the unit deploys facing the dragged line rather than its
 # march direction. Vector2.ZERO means "keep the march facing" (no deploy turn).
@@ -429,20 +435,37 @@ func _think(delta: float) -> void:
 				return
 			_commit_pending_reform()
 
-	# Conversio (in-place about-face): pivot soldiers 180° without advancing.
-	# Cancelled by engaging in combat or receiving a move order; completes when
-	# unit.facing arrives at the reversed heading.
+	# In-place drill turns: every soldier turns where they stand, the block does not advance
+	# or pivot as a body. Cancelled by engaging in combat or receiving a move order (the
+	# partial rotation is preserved). On arrival each path runs its own completion step so the
+	# re-engaged spring sees ~zero error: the conversio reverses body ordering; the quarter-turn
+	# absorbs the rotation into _formation_angle.
+	#
+	# Conversio (about-face, 180°): the grid keeps its shape; bodies just reverse.
 	if _conversio_target != Vector2.ZERO:
 		if state == State.FIGHTING or has_move_target:
-			# Interrupt: unit.facing stays wherever it got to — that is the soldiers' current
-			# facing, which the sim should preserve (shield side, threat awareness, etc.).
 			_conversio_target = Vector2.ZERO
 		else:
-			_rotate_facing_toward(_conversio_target, delta, CONVERSIO_TURN_RATE)
-			if facing.dot(_conversio_target) > 1.0 - 0.0001:
-				facing = _conversio_target
+			if _advance_turn(_conversio_target, delta):
 				_conversio_target = Vector2.ZERO
 				_reverse_soldier_bodies()
+			state = State.IDLE
+			return
+
+	# Quarter-turn (90°): every soldier turns in place; the grid does NOT reorganize (the
+	# men keep their exact positions). unit.facing rotates 90° while the spring is frozen, and
+	# when it stops _formation_angle absorbs however far it turned so soldier_world_slots holds
+	# the slots still — no surge, for any grid shape including a depleted partial one. Frontage
+	# and depth swap relative to the field, but no man takes a step. An interrupt leaves the
+	# offset matching the partial turn, so the bodies don't surge there either.
+	if _quarter_target != Vector2.ZERO:
+		if state == State.FIGHTING or has_move_target:
+			_settle_formation_angle()   # cancel the partial turn so the bodies don't surge
+			_quarter_target = Vector2.ZERO
+		else:
+			if _advance_turn(_quarter_target, delta):
+				_settle_formation_angle()
+				_quarter_target = Vector2.ZERO
 			state = State.IDLE
 			return
 
@@ -918,6 +941,12 @@ var _per_soldier_facing: bool = false
 # spring restoring force while it turns so bodies don't drift to intermediate slot positions.
 # Cleared on arrival or when interrupted by combat, a move order, or routing.
 var _conversio_target: Vector2 = Vector2.ZERO
+# Non-zero while a quarter-turn (90° in-place turn) is in progress: the target facing, 90°
+# to the left or right of the start. Same spring-freeze as the conversio; the heading the
+# turn started from is kept so _formation_angle can absorb exactly how far it turned when it
+# stops (full turn or an interrupt), leaving the slots — and the men — exactly where they were.
+var _quarter_target: Vector2 = Vector2.ZERO
+var _quarter_start_facing: Vector2 = Vector2.ZERO
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -936,7 +965,9 @@ func soldier_id(index: int) -> int:
 func soldier_world_slots(count: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	var slots := UnitFormation.slots(self, count)
-	var ang: float = facing.angle() + PI * 0.5
+	# _formation_angle lets a quarter-turn rotate every soldier's facing without moving the
+	# grid: it cancels the heading rotation here, so the slots (and the men) stay put.
+	var ang: float = facing.angle() + PI * 0.5 + _formation_angle
 	for i in range(slots.size()):
 		out.push_back(position + slots[i].rotated(ang))
 	return out
@@ -984,11 +1015,50 @@ func release_soldier_facing() -> void:
 ## facing (shield side, etc.). SoldierBodies.step zeroes the spring restoring force while
 ## it turns, so bodies stay at their grid positions instead of drifting to intermediate
 ## slot targets. If interrupted by combat or a move order, unit.facing stays at its current
-## angle — the partial rotation is preserved. Blocked while already fighting.
+## angle — the partial rotation is preserved. Blocked while fighting, before seeding, or
+## while another in-place turn (conversio or quarter-turn) is already running.
 func conversio() -> void:
-	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
+	if state == State.FIGHTING or _sim_soldier_facing.is_empty() \
+			or _conversio_target != Vector2.ZERO or _quarter_target != Vector2.ZERO:
 		return
 	_conversio_target = Vector2(-facing.x, -facing.y)
+
+
+## Quarter-turn (90° in-place turn, Aelian/Asclepiodotus): every soldier pivots a quarter
+## turn to the left (`dir` = -1) or right (`dir` = +1); the unit's frontage and depth swap
+## relative to the field, but the men do not march and the internal grid is NOT reorganized —
+## each man just turns where they stand. facing rotates toward the target with the spring frozen so
+## the bodies hold their ground; on arrival _formation_angle absorbs the rotation so
+## soldier_world_slots reproduces the men's positions (no transpose, no relabel). Blocked while
+## fighting, before seeding, or while another in-place turn (conversio or quarter-turn) runs —
+## re-arming mid-turn would reset the start heading and corrupt the settled offset.
+func quarter_turn(dir: int) -> void:
+	if state == State.FIGHTING or _sim_soldier_facing.is_empty() or dir == 0 \
+			or _quarter_target != Vector2.ZERO or _conversio_target != Vector2.ZERO:
+		return
+	_quarter_start_facing = facing
+	_quarter_target = facing.rotated(signf(dir) * PI * 0.5)
+
+
+## Fold the rotation the quarter-turn just applied (start heading -> current heading) into
+## _formation_angle, so soldier_world_slots reproduces the men's pre-turn slot positions and
+## the arrival spring sees ~zero error. Works for a full 90° turn or an interrupted partial.
+func _settle_formation_angle() -> void:
+	var turned: float = angle_difference(_quarter_start_facing.angle(), facing.angle())
+	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
+	_render_dirty = true
+
+
+## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
+## report whether it arrived this tick (snapping exactly onto the target so the completion step
+## runs on an exact heading — the conversio's body reverse, the quarter-turn's offset settle).
+## Shared by the conversio and the quarter-turn.
+func _advance_turn(target: Vector2, delta: float) -> bool:
+	_rotate_facing_toward(target, delta, CONVERSIO_TURN_RATE)
+	if facing.dot(target) > 1.0 - 0.0001:
+		facing = target
+		return true
+	return false
 
 
 ## Relabel the bodies for a completed about-face. The men keep their world positions, but
@@ -1283,6 +1353,11 @@ func resolve_soldier_melee(enemy: Unit) -> void:
 ## order_response_delay seconds before executing the new order.
 func start_order_response() -> void:
 	_order_response_timer = order_response_delay
+	# A move/attack order reforms a quarter-turned unit back square to its heading, so it
+	# marches as a proper line rather than crabbing sideways. The bodies ease onto the
+	# reformed slots via the spring (a future turn-and-widen move maneuver will make this a
+	# deliberate reshape; until then a clean reform is the safe default).
+	_formation_angle = 0.0
 
 
 ## Commit a pending reform-before-move: hand off the stored destination to the
@@ -1353,6 +1428,8 @@ func _rout() -> void:
 	has_move_target = false
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
+	_quarter_target = Vector2.ZERO     # cancel any quarter-turn likewise
+	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_rout_timer = ROUT_TIME
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit

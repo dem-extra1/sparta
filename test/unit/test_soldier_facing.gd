@@ -196,3 +196,172 @@ func test_about_face_leaves_bodies_on_their_slots() -> void:
 	for i in range(u._sim_soldier_pos.size()):
 		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
 			"body %d sits on its reversed-facing slot (no post-turn spring)" % i)
+
+
+# --- Quarter-turn (90° in place) --------------------------------------------
+
+func test_quarter_turn_sets_perpendicular_target() -> void:
+	var u := _make_unit()                  # facing DOWN
+	u.seed_sim_soldiers()
+	u.quarter_turn(1)                      # right
+	assert_true(u._quarter_target.is_equal_approx(Vector2.DOWN.rotated(PI * 0.5)),
+		"the target is 90° to the right of the start heading")
+	assert_true(u.facing.is_equal_approx(Vector2.DOWN),
+		"unit.facing is unchanged at call time; the turn starts next tick")
+
+
+func test_quarter_turn_blocked_while_fighting() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.quarter_turn(1)
+	assert_true(u._quarter_target.is_zero_approx(), "no quarter-turn while fighting")
+
+
+func test_quarter_turn_blocked_before_bodies_are_seeded() -> void:
+	var u := _make_unit()
+	u.quarter_turn(1)
+	assert_true(u._quarter_target.is_zero_approx(), "no quarter-turn before the bodies exist")
+
+
+func test_quarter_turn_zero_dir_is_a_noop() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.quarter_turn(0)
+	assert_true(u._quarter_target.is_zero_approx(), "a zero direction does nothing")
+
+
+func test_quarter_turn_ignored_while_already_turning() -> void:
+	# Re-arming mid-turn would reset _quarter_start_facing to the partial heading and corrupt
+	# the settled offset, so a second press while a turn runs is a no-op.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.quarter_turn(1)                       # right
+	var first_target: Vector2 = u._quarter_target
+	u.quarter_turn(-1)                      # try to flip mid-turn
+	assert_true(u._quarter_target.is_equal_approx(first_target),
+		"a second quarter-turn while one is running is ignored")
+
+
+func test_quarter_turn_ignored_during_conversio() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.conversio()
+	u.quarter_turn(1)
+	assert_true(u._quarter_target.is_zero_approx(),
+		"no quarter-turn while a conversio is in progress")
+
+
+func test_conversio_ignored_during_quarter_turn() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.quarter_turn(1)
+	u.conversio()
+	assert_true(u._conversio_target.is_zero_approx(),
+		"no conversio while a quarter-turn is in progress")
+
+
+func test_quarter_turn_keeps_every_body_exactly_in_place() -> void:
+	# The grid does NOT reorganize: completing a quarter-turn turns the men's facing but moves
+	# nobody. _formation_angle absorbs the 90° so soldier_world_slots reproduces the men's
+	# pre-turn positions exactly -- the arrival spring sees ~zero error, no surge.
+	var u := _make_unit()
+	u.frontage_override = 8                 # 8 x 5 full grid (mechanism is shape-independent)
+	u.seed_sim_soldiers()
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	# Simulate the arrival the _think loop performs on completion:
+	u._quarter_start_facing = u.facing
+	u.facing = u.facing.rotated(PI * 0.5)
+	u._settle_formation_angle()
+	# No man took a step.
+	for i in range(before.size()):
+		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
+			"body %d stayed exactly where it stood" % i)
+	# And every body still sits on its slot under the new heading (zero spring error).
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(slots.size()):
+		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
+			"body %d sits on its slot after the turn (no surge)" % i)
+
+
+func test_quarter_turn_no_surge_on_a_partial_grid() -> void:
+	# The bug the formation-angle approach fixes: a depleted (partial last rank) unit must not
+	# surge either. With the default frontage (a partial grid) the men still stay put and on
+	# their slots -- the offset doesn't depend on the grid shape.
+	var u := _make_unit()                   # 40 men, default frontage -> partial last rank
+	u.seed_sim_soldiers()
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	u._quarter_start_facing = u.facing
+	u.facing = u.facing.rotated(-PI * 0.5)  # left turn this time
+	u._settle_formation_angle()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(before.size()):
+		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
+			"partial-grid body %d stayed put" % i)
+		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
+			"partial-grid body %d sits on its slot (no surge)" % i)
+
+
+func test_quarter_turn_interrupt_settles_partial_rotation() -> void:
+	# An interrupt mid-turn (facing only part way) still settles the offset to the partial
+	# angle, so the bodies don't surge when the spring re-engages.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	u._quarter_start_facing = u.facing
+	u.facing = u.facing.rotated(PI * 0.25)  # only halfway through the 90°
+	u._settle_formation_angle()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(before.size()):
+		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
+			"body %d sits on its slot even after a partial (interrupted) turn" % i)
+
+
+func _max_step(a: PackedVector2Array, b: PackedVector2Array) -> float:
+	var m: float = 0.0
+	for i in range(mini(a.size(), b.size())):
+		m = maxf(m, a[i].distance_to(b[i]))
+	return m
+
+
+func test_quarter_turn_steps_with_no_per_tick_surge() -> void:
+	# Drive the WHOLE maneuver tick by tick through the real _think + body step, exactly as the
+	# game does, and watch every body each tick. No body may ever jump (the freeze holds them
+	# through the turn; the offset lands the slots on them at completion), and the block must
+	# end exactly where it started -- nobody marches. This is the surge guard the render frames
+	# couldn't resolve.
+	var dt: float = 1.0 / 60.0
+	var u := _make_unit()                   # default (partial) grid -- the case that surged
+	u.seed_sim_soldiers()
+	u.step_sim_soldiers(dt)                 # let the bodies settle exactly onto their slots
+	var start: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	u.quarter_turn(1)
+	var prev: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	var worst_step: float = 0.0
+	for _t in range(40):                    # 0.25 s turn + settle, comfortably
+		u._think(dt)
+		u.step_sim_soldiers(dt)
+		worst_step = maxf(worst_step, _max_step(prev, u._sim_soldier_pos))
+		prev = u._sim_soldier_pos.duplicate()
+	assert_lt(worst_step, 0.5,
+		"no body jumps more than a hair on any tick (no surge) — worst was %.3f px" % worst_step)
+	assert_true(u._quarter_target.is_zero_approx(), "the turn completed")
+	assert_true(u.facing.is_equal_approx(Vector2.DOWN.rotated(PI * 0.5)),
+		"the unit ended on the perpendicular heading")
+	assert_lt(_max_step(start, u._sim_soldier_pos), 0.01,
+		"every body ended exactly where it started — nobody marched")
+
+
+func test_move_order_reforms_a_quarter_turned_unit() -> void:
+	# A quarter-turned unit must not crab sideways: a fresh move/attack order (which calls
+	# start_order_response) reforms the grid square to the heading by clearing the offset.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u._quarter_start_facing = u.facing
+	u.facing = u.facing.rotated(PI * 0.5)
+	u._settle_formation_angle()
+	assert_false(is_equal_approx(u._formation_angle, 0.0),
+		"the quarter-turn left a formation-angle offset")
+	u.start_order_response()
+	assert_almost_eq(u._formation_angle, 0.0, 0.0001,
+		"a new order reforms the grid square to the heading")
