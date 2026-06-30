@@ -23,10 +23,10 @@
 #   tools/check.sh -h | --help     # this help
 #
 # Environment:
-#   GODOT_BIN    Godot 4.6 binary (default: godot). On macOS, e.g.
+#   GODOT_BIN    Godot 4.7 binary (default: godot). On macOS, e.g.
 #                /Applications/Godot.app/Contents/MacOS/Godot
 #   GUT_VERSION  GUT release vendored into addons/gut when it's missing
-#                (default: v9.6.0). Keep in sync with godot-ci.yml and
+#                (default: v9.7.0). Keep in sync with godot-ci.yml and
 #                test/README.md.
 #
 # Exit status is non-zero if any selected check fails, so it drops straight into
@@ -37,7 +37,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 GODOT_BIN="${GODOT_BIN:-godot}"
 # Keep in sync with .github/workflows/godot-ci.yml and test/README.md.
-GUT_VERSION="${GUT_VERSION:-v9.6.0}"
+GUT_VERSION="${GUT_VERSION:-v9.7.0}"
 
 DEFAULT_CHECKS=(validate test chars)
 ALL_CHECKS=(validate test chars links)
@@ -110,7 +110,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 require_godot() {
   if ! have "$GODOT_BIN"; then
-    err "Godot binary '$GODOT_BIN' not found. Install Godot 4.6 (Standard) or set GODOT_BIN."
+    err "Godot binary '$GODOT_BIN' not found. Install Godot 4.7 (Standard) or set GODOT_BIN."
     err "See README.md ('Running Godot headlessly') for the download snippet."
     return 1
   fi

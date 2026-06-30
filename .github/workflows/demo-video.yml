@@ -54,8 +54,8 @@ permissions:
   pull-requests: write   # post / update the demo comment
 
 env:
-  GODOT_VERSION: 4.6.0
-  GUT_VERSION: v9.6.0
+  GODOT_VERSION: 4.7.0
+  GUT_VERSION: v9.7.0
   MEDIA_BRANCH: demo-media
 
 jobs:

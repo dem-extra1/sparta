@@ -37,8 +37,8 @@ concurrency:
 
 env:
   # Pinned versions — keep in sync with .github/workflows/godot-ci.yml.
-  GODOT_VERSION: 4.6.0
-  GUT_VERSION: v9.6.0
+  GODOT_VERSION: 4.7.0
+  GUT_VERSION: v9.7.0
 
 jobs:
   # Best-effort: record the demo clips and hand them to the publish job as an

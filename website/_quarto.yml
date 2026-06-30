@@ -19,7 +19,7 @@ website:
   site-url: https://lacaedemon.github.io/sparta/
   description: >-
     A prototype fusing dynastic grand strategy with real-time tactical
-    battles, built in Godot 4.6.
+    battles, built in Godot 4.7.
   favicon: /favicon.svg
   back-to-top-navigation: true
   page-navigation: true

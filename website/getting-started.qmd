@@ -3,7 +3,7 @@ title: "Getting Started"
 description: "Install Godot, import the project, and run your first battle."
 ---
 
-Sparta is a **Godot 4.6** project. It needs no environment variables, no build
+Sparta is a **Godot 4.7** project. It needs no environment variables, no build
 step, and --- crucially --- **no downloaded art**: units draw themselves as colored
 placeholder tokens, so the battle is playable the moment you press play.
 
@@ -23,9 +23,9 @@ The builds are **unsigned**, so the first launch needs one extra step:
 
 To build from source or work on the game instead, follow the developer setup below.
 
-## 1. Install Godot 4.6 (Standard build)
+## 1. Install Godot 4.7 (Standard build)
 
-Download **Godot 4.6.x --- Standard build** (GDScript, *not* the .NET/C# build) from
+Download **Godot 4.7.x --- Standard build** (GDScript, *not* the .NET/C# build) from
 the [official downloads page](https://godotengine.org/download/).
 
 ::: {.callout-important}
@@ -69,10 +69,10 @@ Most Linux CI (and remote/cloud editors) can run Godot headlessly once it's
 installed. Add this to a setup script (matches the project's Godot version):
 
 ```bash
-wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O /tmp/godot.zip
+wget -q https://github.com/godotengine/godot/releases/download/4.7-stable/Godot_v4.7-stable_linux.x86_64.zip -O /tmp/godot.zip
 mkdir -p "$HOME/.local/bin/"
 unzip -q /tmp/godot.zip -d "$HOME/.local/bin/"
-mv "$HOME/.local/bin/Godot_v4.6-stable_linux.x86_64" "$HOME/.local/bin/godot"
+mv "$HOME/.local/bin/Godot_v4.7-stable_linux.x86_64" "$HOME/.local/bin/godot"
 chmod +x "$HOME/.local/bin/godot"
 rm /tmp/godot.zip
 export PATH="$HOME/.local/bin:$PATH"

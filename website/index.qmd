@@ -10,7 +10,7 @@ page-layout: full
 
 ::: {.tagline}
 A prototype that fuses **dynastic grand strategy** with **real-time
-tactical battles** --- built in **Godot 4.6** with GDScript.
+tactical battles** --- built in **Godot 4.7** with GDScript.
 :::
 
 [Get started →](getting-started.qmd){.btn .btn-sparta .btn-lg role="button"}

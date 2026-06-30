@@ -35,7 +35,7 @@ tools/check.sh && git push
 
 - **Bash 3.2+** — works with the system Bash that ships on macOS (no Homebrew
   Bash needed); uses only POSIX/BSD-compatible tool flags.
-- **Godot 4.6 (Standard build)** on `PATH`, or point `GODOT_BIN` at it
+- **Godot 4.7 (Standard build)** on `PATH`, or point `GODOT_BIN` at it
   (e.g. `/Applications/Godot.app/Contents/MacOS/Godot` on macOS). See the README's
   "Running Godot headlessly" snippet for a Linux download.
 - **GUT** is vendored on demand into `addons/gut/` the first time `validate`/`test`
@@ -46,8 +46,8 @@ tools/check.sh && git push
 
 | Var | Default | Purpose |
 |---|---|---|
-| `GODOT_BIN` | `godot` | Godot 4.6 binary to invoke. |
-| `GUT_VERSION` | `v9.6.0` | GUT release to vendor when `addons/gut/` is missing. Keep in sync with `godot-ci.yml` and `test/README.md`. |
+| `GODOT_BIN` | `godot` | Godot 4.7 binary to invoke. |
+| `GUT_VERSION` | `v9.7.0` | GUT release to vendor when `addons/gut/` is missing. Keep in sync with `godot-ci.yml` and `test/README.md`. |
 | `NO_COLOR` | _(unset)_ | Set to disable coloured output. |
 
 ## `demo/`

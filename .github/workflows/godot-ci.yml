@@ -13,8 +13,8 @@ on:
 # GDScript build — gl_compatibility, no C#/.NET).
 # GUT_VERSION:   pinned GUT release matching the Godot version.
 env:
-  GODOT_VERSION: 4.6.0
-  GUT_VERSION: v9.6.0
+  GODOT_VERSION: 4.7.0
+  GUT_VERSION: v9.7.0
 
 jobs:
   test:

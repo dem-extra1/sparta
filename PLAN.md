@@ -10,7 +10,7 @@ tactical battles**. Built solo by a developer **new to gamedev**, so the strateg
 then grow outward.
 
 ## Locked decisions
-- **Engine:** Godot **4.6.x Standard build** (GDScript, *not* the C#/.NET build).
+- **Engine:** Godot **4.7.x Standard build** (GDScript, *not* the C#/.NET build).
 - **Battles:** 2D top-down sprite tokens (not 3D).
 - **Art:** **CC0 only** — Kenney, OpenGameArt (Toen's Medieval Strategy pack). See `ASSETS.md`.
   - ⚠️ **Not** commercial-game mod assets — they are copyrighted, not public domain.

@@ -9,11 +9,11 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
 
-# Pinned to a GUT release matching the project's Godot 4.6 setup. Keep in sync
+# Pinned to a GUT release matching the project's Godot 4.7 setup. Keep in sync
 # with .github/workflows/godot-ci.yml and test/README.md.
-GUT_VERSION="v9.6.0"
+GUT_VERSION="v9.7.0"
 
-# Pin gdtoolkit to a version validated against this project's Godot 4.6 GDScript
+# Pin gdtoolkit to a version validated against this project's Godot 4.7 GDScript
 # so a future breaking release can't silently break all web sessions.
 echo "[session-start] Installing gdtoolkit (gdlint/gdformat)..."
 python3 -m pip install --quiet --disable-pip-version-check --break-system-packages "gdtoolkit==4.5.0"

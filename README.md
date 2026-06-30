@@ -1,7 +1,7 @@
 # Sparta
 
 A prototype that fuses grand strategy with real-time tactical battles. 
-Built in **Godot 4.6** with GDScript.
+Built in **Godot 4.7** with GDScript.
 
 This repo currently contains **Milestone 1: a single, self-contained tactical battle** —
 the hardest and most differentiating piece, built first as a vertical slice. The campaign
@@ -13,7 +13,7 @@ controls, tactics, the replay system, architecture, and roadmap, with gameplay c
 
 ## Run it
 
-1. Install **Godot 4.6.x — Standard build** (not the .NET/C# build) from
+1. Install **Godot 4.7.x — Standard build** (not the .NET/C# build) from
    <https://godotengine.org/download/windows/>.
 2. Open Godot, click **Import**, and select this folder's `project.godot`.
 3. Press **F5** (Play). A title menu opens with two modes — no art download required:
@@ -92,13 +92,13 @@ The repo works well with Claude Code's cloud environment for editing GDScript an
 
 **No setup needed for code editing.** The environment requires no environment variables and no build step — just open a session and start editing.
 
-**Running Godot headlessly is possible** but requires installing it in the setup script. Add this to your environment's setup script (use Godot 4.6.x, or whatever version matches the project):
+**Running Godot headlessly is possible** but requires installing it in the setup script. Add this to your environment's setup script (use Godot 4.7.x, or whatever version matches the project):
 
 ```bash
-wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O /tmp/godot.zip
+wget -q https://github.com/godotengine/godot/releases/download/4.7-stable/Godot_v4.7-stable_linux.x86_64.zip -O /tmp/godot.zip
 mkdir -p "$HOME/.local/bin/"
 unzip -q /tmp/godot.zip -d "$HOME/.local/bin/"
-mv "$HOME/.local/bin/Godot_v4.6-stable_linux.x86_64" "$HOME/.local/bin/godot"
+mv "$HOME/.local/bin/Godot_v4.7-stable_linux.x86_64" "$HOME/.local/bin/godot"
 chmod +x "$HOME/.local/bin/godot"
 rm /tmp/godot.zip
 export PATH="$HOME/.local/bin:$PATH"
@@ -107,9 +107,9 @@ export PATH="$HOME/.local/bin:$PATH"
 Once installed, `godot --headless` validates the project and runs the unit-test
 suite ([GUT](https://github.com/bitwes/Gut)) — see [`test/README.md`](test/README.md).
 
-> **Note:** The snippet above targets Godot 4.6 to match the project. If the engine version changes, update both the download URL and the binary filename.
+> **Note:** The snippet above targets Godot 4.7 to match the project. If the engine version changes, update both the download URL and the binary filename.
 
-**To actually play the game**, pull the branch locally and open it in the Godot 4.6 desktop editor — the cloud environment has no display.
+**To actually play the game**, pull the branch locally and open it in the Godot 4.7 desktop editor — the cloud environment has no display.
 
 ## Local checks (reproduce CI before pushing)
 
@@ -124,7 +124,7 @@ tools/check.sh --list     # list the available checks
 ```
 
 It vendors GUT on demand (it isn't committed), so a fresh checkout needs no
-setup beyond a Godot 4.6 binary on `PATH` (or set `GODOT_BIN`). See
+setup beyond a Godot 4.7 binary on `PATH` (or set `GODOT_BIN`). See
 [`tools/README.md`](tools/README.md) for details.
 
 ## Roadmap

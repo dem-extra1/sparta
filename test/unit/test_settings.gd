@@ -72,21 +72,34 @@ func test_bindings_round_trip_through_disk() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 
 
+# A spy subclass of Settings that counts _save() calls instead of writing to disk.
+# Used in place of GUT's partial_double(): GUT's generated double of SettingsScript
+# fails to parse under Godot 4.7 (its void-method wrappers emit a `return` statement,
+# which 4.7's stricter return-type checking now rejects -- see
+# https://github.com/bitwes/Gut/issues/816). A plain GDScript subclass sidesteps the
+# doubler entirely; _save() is still called virtually through the base class's setters.
+class _SaveCountingSettings:
+	extends SettingsScript
+	var save_calls := 0
+	func _save(path: String = SAVE_PATH) -> void:
+		save_calls += 1
+
+
 func test_set_sfx_enabled_session_flips_value_without_persisting() -> void:
 	# The demo recorder turns SFX on so recordings carry sound, but must not rewrite a
 	# developer's saved preference: the session setter flips the in-memory flag while
-	# suppressing both the disk write and the `changed` signal. A partial double (real
-	# code, but calls recorded) lets us assert _save() is never called — pinning the
-	# persistence guarantee directly, not just via the coupled signal, and without
-	# touching the real settings.cfg. A fresh, NOT-loading instance proves the
-	# suppression is the method's own doing (not the test harness's _loading=true).
-	var s = partial_double(SettingsScript).new()
+	# suppressing both the disk write and the `changed` signal. Counting _save() calls
+	# directly (via _SaveCountingSettings above) pins the persistence guarantee
+	# directly, not just via the coupled signal, and without touching the real
+	# settings.cfg. A fresh, NOT-loading instance proves the suppression is the
+	# method's own doing (not the test harness's _loading=true).
+	var s := _SaveCountingSettings.new()
 	autofree(s)
 	watch_signals(s)
 	assert_false(s.sfx_enabled, "sfx default off")
 	s.set_sfx_enabled_session(true)
 	assert_true(s.sfx_enabled, "session setter flips the in-memory value")
-	assert_not_called(s, "_save")
+	assert_eq(s.save_calls, 0, "...and never calls _save()")
 	assert_signal_not_emitted(s, "changed", "...and emits no `changed`")
 	assert_false(s._loading, "_loading restored to its prior value (false) after the call")
 

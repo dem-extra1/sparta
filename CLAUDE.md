@@ -1,7 +1,7 @@
 # CLAUDE.md — AI working instructions for Sparta
 
 Orientation and standing policies for any AI session working in this repo.
-Sparta is a **Godot 4.6** (GDScript, Standard build — not .NET/C#) prototype
+Sparta is a **Godot 4.7** (GDScript, Standard build — not .NET/C#) prototype
 fusing dynastic grand strategy with real-time tactical battles. See
 `README.md` for layout and `PLAN.md` for project vision, roadmap, architecture,
 and verification steps — read `PLAN.md` first.
@@ -24,14 +24,14 @@ Memories live in `.ai-config/memories/` (e.g. `@.ai-config/memories/preferences.
 Skills live in `.ai-config/skills/`.
 
 ## Project at a glance
-- Godot **4.6.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.
+- Godot **4.7.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.
 - Main scene: `scenes/Battle.tscn`. Core scripts live in `scripts/`.
 - Issues are tracked on this repo with `P0`–`P3` labels; `PLAN.md` mirrors the roadmap.
 
 ## Verify before you push
 Run `tools/check.sh` to reproduce CI's gating checks locally (Godot import
 validation + GUT unit suite + the docs char-check; `tools/check.sh all` adds the
-lychee link-check). It vendors GUT on demand and needs only a Godot 4.6 binary on
+lychee link-check). It vendors GUT on demand and needs only a Godot 4.7 binary on
 `PATH` (or `GODOT_BIN`). See `tools/README.md`. Prefer it over invoking the
 individual checks by hand so local and CI results stay in sync.
 

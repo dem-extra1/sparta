@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Engine version bump (Godot 4.6.x -> 4.7-stable) plus a test-only fix for an upstream GUT doubler bug. No gameplay, visual, or control change for a recorded battle to show."
+}

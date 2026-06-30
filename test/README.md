@@ -1,13 +1,13 @@
 # Tests
 
 Unit tests use [GUT](https://github.com/bitwes/Gut) (Godot Unit Test), pinned to
-**v9.6.0** (the Godot 4.6 release).
+**v9.7.0** (the Godot 4.7 release).
 
 GUT itself is **not committed** to this repo — CI vendors it at run time and you
 install it locally the same way:
 
 ```sh
-git clone --depth 1 --branch v9.6.0 https://github.com/bitwes/Gut.git /tmp/gut
+git clone --depth 1 --branch v9.7.0 https://github.com/bitwes/Gut.git /tmp/gut
 mkdir -p addons && cp -r /tmp/gut/addons/gut addons/gut
 ```
 

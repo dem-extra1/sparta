@@ -10,11 +10,11 @@
 #   website/tools/record-demos.sh [OUTPUT_DIR]
 #
 # Environment:
-#   GODOT_BIN     Godot 4.6 binary (default: godot). On macOS, e.g.
+#   GODOT_BIN     Godot 4.7 binary (default: godot). On macOS, e.g.
 #                 /Applications/Godot.app/Contents/MacOS/Godot
 #   PROJECT_ROOT  Repo root (default: inferred from this script's location)
 #
-# Requirements: a Godot 4.6 binary, ffmpeg, and (on a headless Linux host) xvfb —
+# Requirements: a Godot 4.7 binary, ffmpeg, and (on a headless Linux host) xvfb —
 # the script auto-wraps Godot in `xvfb-run` when no DISPLAY is set and it's available.
 set -euo pipefail
 

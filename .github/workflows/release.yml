@@ -24,7 +24,7 @@ permissions:
 env:
   # Keep in sync with godot-ci.yml / config/features in project.godot. The export
   # templates downloaded below must match this exact version.
-  GODOT_VERSION: 4.6.0
+  GODOT_VERSION: 4.7.0
 
 jobs:
   export:
@@ -43,14 +43,14 @@ jobs:
         # setup-godot installs the editor but not the export templates; fetch the
         # matching .tpz and drop the platform templates where Godot looks for them.
         # Derive the version from the editor itself rather than GODOT_VERSION: Godot's
-        # first stable of a minor reports "4.6.stable" (no ".0") and is tagged
-        # "4.6-stable", while a patch is "4.6.3.stable" / "4.6.3-stable". Parsing
+        # first stable of a minor reports "4.7.stable" (no ".0") and is tagged
+        # "4.7-stable", while a patch is "4.7.1.stable" / "4.7.1-stable". Parsing
         # `godot --version` keeps the template tag and install dir matched to whatever
-        # setup-godot resolved, instead of a hard-coded (and 404-prone) "4.6.0-stable".
+        # setup-godot resolved, instead of a hard-coded (and 404-prone) "4.7.0-stable".
         run: |
           set -euo pipefail
-          VER="$(godot --version | sed 's/\.official.*//')"   # e.g. 4.6.stable or 4.6.3.stable
-          TAG="${VER%.stable}-stable"                          # e.g. 4.6-stable or 4.6.3-stable
+          VER="$(godot --version | sed 's/\.official.*//')"   # e.g. 4.7.stable or 4.7.1.stable
+          TAG="${VER%.stable}-stable"                          # e.g. 4.7-stable or 4.7.1-stable
           TPZ="Godot_v${TAG}_export_templates.tpz"
           echo "Installing export templates for $VER (tag $TAG)"
           curl -fsSL -o "$TPZ" \

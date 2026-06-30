@@ -32,7 +32,7 @@ website/tools/record-demos.sh website/media
 
 That plays deterministic replays back headlessly via Godot's Movie Maker and encodes
 them with ffmpeg (the same pipeline as `demo-video.yml`). To record them locally you
-need a Godot 4.6 binary and ffmpeg:
+need a Godot 4.7 binary and ffmpeg:
 
 ```bash
 # macOS example:
