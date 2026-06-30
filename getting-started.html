@@ -475,7 +475,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#just-want-to-play-download-a-build" id="toc-just-want-to-play-download-a-build" class="nav-link active" data-scroll-target="#just-want-to-play-download-a-build">Just want to play? Download a build</a></li>
-  <li><a href="#install-godot-4.6-standard-build" id="toc-install-godot-4.6-standard-build" class="nav-link" data-scroll-target="#install-godot-4.6-standard-build">1. Install Godot 4.6 (Standard build)</a></li>
+  <li><a href="#install-godot-4.7-standard-build" id="toc-install-godot-4.7-standard-build" class="nav-link" data-scroll-target="#install-godot-4.7-standard-build">1. Install Godot 4.7 (Standard build)</a></li>
   <li><a href="#import-the-project" id="toc-import-the-project" class="nav-link" data-scroll-target="#import-the-project">2. Import the project</a></li>
   <li><a href="#play" id="toc-play" class="nav-link" data-scroll-target="#play">3. Play</a></li>
   <li><a href="#running-headlessly-optional" id="toc-running-headlessly-optional" class="nav-link" data-scroll-target="#running-headlessly-optional">Running headlessly (optional)</a>
@@ -520,7 +520,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Sparta is a <strong>Godot 4.6</strong> project. It needs no environment variables, no build step, and — crucially — <strong>no downloaded art</strong>: units draw themselves as colored placeholder tokens, so the battle is playable the moment you press play.</p>
+<p>Sparta is a <strong>Godot 4.7</strong> project. It needs no environment variables, no build step, and — crucially — <strong>no downloaded art</strong>: units draw themselves as colored placeholder tokens, so the battle is playable the moment you press play.</p>
 <section id="just-want-to-play-download-a-build" class="level2">
 <h2 class="anchored" data-anchor-id="just-want-to-play-download-a-build">Just want to play? Download a build</h2>
 <p>Pre-built binaries for <strong>Windows, macOS, and Linux</strong> are attached to each <a href="https://github.com/Lacaedemon/sparta/releases">GitHub Release</a>. Grab the zip for your platform, unzip it, and run — no Godot install needed.</p>
@@ -532,9 +532,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <p>To build from source or work on the game instead, follow the developer setup below.</p>
 </section>
-<section id="install-godot-4.6-standard-build" class="level2">
-<h2 class="anchored" data-anchor-id="install-godot-4.6-standard-build">1. Install Godot 4.6 (Standard build)</h2>
-<p>Download <strong>Godot 4.6.x — Standard build</strong> (GDScript, <em>not</em> the .NET/C# build) from the <a href="https://godotengine.org/download/">official downloads page</a>.</p>
+<section id="install-godot-4.7-standard-build" class="level2">
+<h2 class="anchored" data-anchor-id="install-godot-4.7-standard-build">1. Install Godot 4.7 (Standard build)</h2>
+<p>Download <strong>Godot 4.7.x — Standard build</strong> (GDScript, <em>not</em> the .NET/C# build) from the <a href="https://godotengine.org/download/">official downloads page</a>.</p>
 <div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -575,10 +575,10 @@ Important
 <section id="installing-godot-in-a-headless-linux-environment" class="level3">
 <h3 class="anchored" data-anchor-id="installing-godot-in-a-headless-linux-environment">Installing Godot in a headless Linux environment</h3>
 <p>Most Linux CI (and remote/cloud editors) can run Godot headlessly once it’s installed. Add this to a setup script (matches the project’s Godot version):</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-q</span> https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip <span class="at">-O</span> /tmp/godot.zip</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-q</span> https://github.com/godotengine/godot/releases/download/4.7-stable/Godot_v4.7-stable_linux.x86_64.zip <span class="at">-O</span> /tmp/godot.zip</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="st">"</span><span class="va">$HOME</span><span class="st">/.local/bin/"</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">unzip</span> <span class="at">-q</span> /tmp/godot.zip <span class="at">-d</span> <span class="st">"</span><span class="va">$HOME</span><span class="st">/.local/bin/"</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">mv</span> <span class="st">"</span><span class="va">$HOME</span><span class="st">/.local/bin/Godot_v4.6-stable_linux.x86_64"</span> <span class="st">"</span><span class="va">$HOME</span><span class="st">/.local/bin/godot"</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">mv</span> <span class="st">"</span><span class="va">$HOME</span><span class="st">/.local/bin/Godot_v4.7-stable_linux.x86_64"</span> <span class="st">"</span><span class="va">$HOME</span><span class="st">/.local/bin/godot"</span></span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">chmod</span> +x <span class="st">"</span><span class="va">$HOME</span><span class="st">/.local/bin/godot"</span></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span> /tmp/godot.zip</span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">PATH</span><span class="op">=</span><span class="st">"</span><span class="va">$HOME</span><span class="st">/.local/bin:</span><span class="va">$PATH</span><span class="st">"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>

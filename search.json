@@ -562,7 +562,7 @@
     "href": "getting-started.html",
     "title": "Getting Started",
     "section": "",
-    "text": "Sparta is a Godot 4.6 project. It needs no environment variables, no build step, and — crucially — no downloaded art: units draw themselves as colored placeholder tokens, so the battle is playable the moment you press play.",
+    "text": "Sparta is a Godot 4.7 project. It needs no environment variables, no build step, and — crucially — no downloaded art: units draw themselves as colored placeholder tokens, so the battle is playable the moment you press play.",
     "crumbs": [
       "Home",
       "Play",
@@ -582,11 +582,11 @@
     ]
   },
   {
-    "objectID": "getting-started.html#install-godot-4.6-standard-build",
-    "href": "getting-started.html#install-godot-4.6-standard-build",
+    "objectID": "getting-started.html#install-godot-4.7-standard-build",
+    "href": "getting-started.html#install-godot-4.7-standard-build",
     "title": "Getting Started",
-    "section": "1. Install Godot 4.6 (Standard build)",
-    "text": "1. Install Godot 4.6 (Standard build)\nDownload Godot 4.6.x — Standard build (GDScript, not the .NET/C# build) from the official downloads page.\n\n\n\n\n\n\nImportant\n\n\n\nUse the Standard build, not .NET. Sparta is pure GDScript; the .NET build is for C# projects and is not what this project targets.",
+    "section": "1. Install Godot 4.7 (Standard build)",
+    "text": "1. Install Godot 4.7 (Standard build)\nDownload Godot 4.7.x — Standard build (GDScript, not the .NET/C# build) from the official downloads page.\n\n\n\n\n\n\nImportant\n\n\n\nUse the Standard build, not .NET. Sparta is pure GDScript; the .NET build is for C# projects and is not what this project targets.",
     "crumbs": [
       "Home",
       "Play",
@@ -622,7 +622,7 @@
     "href": "getting-started.html#running-headlessly-optional",
     "title": "Getting Started",
     "section": "Running headlessly (optional)",
-    "text": "Running headlessly (optional)\nYou don’t need a display to validate the project — handy for CI or a cloud editor. From the project root:\n# Catch parse/load errors without opening the editor:\ngodot --headless --path . --quit\nTo actually play, though, you need the desktop editor with a display — a headless environment has no window to render the battle into.\n\nInstalling Godot in a headless Linux environment\nMost Linux CI (and remote/cloud editors) can run Godot headlessly once it’s installed. Add this to a setup script (matches the project’s Godot version):\nwget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O /tmp/godot.zip\nmkdir -p \"$HOME/.local/bin/\"\nunzip -q /tmp/godot.zip -d \"$HOME/.local/bin/\"\nmv \"$HOME/.local/bin/Godot_v4.6-stable_linux.x86_64\" \"$HOME/.local/bin/godot\"\nchmod +x \"$HOME/.local/bin/godot\"\nrm /tmp/godot.zip\nexport PATH=\"$HOME/.local/bin:$PATH\"\n\n\n\n\n\n\nNote\n\n\n\nIf the engine version changes, update both the download URL and the binary filename in the snippet above.",
+    "text": "Running headlessly (optional)\nYou don’t need a display to validate the project — handy for CI or a cloud editor. From the project root:\n# Catch parse/load errors without opening the editor:\ngodot --headless --path . --quit\nTo actually play, though, you need the desktop editor with a display — a headless environment has no window to render the battle into.\n\nInstalling Godot in a headless Linux environment\nMost Linux CI (and remote/cloud editors) can run Godot headlessly once it’s installed. Add this to a setup script (matches the project’s Godot version):\nwget -q https://github.com/godotengine/godot/releases/download/4.7-stable/Godot_v4.7-stable_linux.x86_64.zip -O /tmp/godot.zip\nmkdir -p \"$HOME/.local/bin/\"\nunzip -q /tmp/godot.zip -d \"$HOME/.local/bin/\"\nmv \"$HOME/.local/bin/Godot_v4.7-stable_linux.x86_64\" \"$HOME/.local/bin/godot\"\nchmod +x \"$HOME/.local/bin/godot\"\nrm /tmp/godot.zip\nexport PATH=\"$HOME/.local/bin:$PATH\"\n\n\n\n\n\n\nNote\n\n\n\nIf the engine version changes, update both the download URL and the binary filename in the snippet above.",
     "crumbs": [
       "Home",
       "Play",
@@ -646,7 +646,7 @@
     "href": "index.html",
     "title": "Sparta",
     "section": "",
-    "text": "A prototype that fuses dynastic grand strategy with real-time tactical battles — built in Godot 4.6 with GDScript.\n\nGet started → How to play View on GitHub",
+    "text": "A prototype that fuses dynastic grand strategy with real-time tactical battles — built in Godot 4.7 with GDScript.\n\nGet started → How to play View on GitHub",
     "crumbs": [
       "Home"
     ]
