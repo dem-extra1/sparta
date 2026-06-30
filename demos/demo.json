@@ -1,8 +1,8 @@
 {
   "input": "demos/inputs/quarter-turn.json",
-  "caption": "Quarter-turn (E): every soldier in this infantry block pivots 90° where they stand — nobody marches and the grid does not reorganize; their directional marks just rotate to the new facing (frontage and depth swap relative to the facing). Q turns left, E turns right.",
+  "caption": "Quarter-turn (E): every soldier in this infantry block pivots 90° where they stand — nobody marches and the grid does not reorganize; their directional marks just rotate to the new facing. The unit then holds its new orientation, now presenting its short edge as its frontage. Q turns left, E turns right.",
   "fixed_fps": 30,
-  "max_frames": 300,
+  "max_frames": 110,
   "fps": 12,
   "width": 640
 }
