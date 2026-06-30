@@ -436,7 +436,7 @@ func test_enqueue_form_up_sets_destination_facing_and_width() -> void:
 
 func test_plain_move_clears_a_stale_deploy_facing() -> void:
 	# A form-up parks a deploy facing; a superseding plain move must clear it so the
-	# unit doesn't wheel to the old heading at the new destination.
+	# unit doesn't pivot to the old heading at the new destination.
 	var u := _unit(1, Vector2(0, 100))
 	var b := _battle([u])
 	b.enqueue_form_up([1], Vector2(500, 500), 1.0, 20)
@@ -459,9 +459,9 @@ func test_attack_order_clears_a_stale_deploy_facing() -> void:
 
 
 # --- move orders do not snap facing at order time ----------------------------
-# An orderly move wheels gradually toward its heading in Unit (during the reform
-# hold and as it marches); _apply_order_cmd must NOT flip the unit's facing when
-# the order lands, or the gradual wheel (and the side-step's held facing) is lost.
+# An orderly move centre-pivots gradually toward its heading in Unit (during the
+# reform hold and as it marches); _apply_order_cmd must NOT flip the unit's facing
+# when the order lands, or the gradual pivot (and the side-step's held facing) is lost.
 
 func test_plain_move_does_not_snap_facing_at_order_time() -> void:
 	var u := _unit(1, Vector2.ZERO)
@@ -469,7 +469,7 @@ func test_plain_move_does_not_snap_facing_at_order_time() -> void:
 	var b := _battle([u])
 	b._apply_order_cmd({"units": [1], "x": 100.0, "y": 0.0, "target": -1})
 	assert_eq(u.facing, Vector2.DOWN,
-		"facing is left for the orderly wheel in _move_to, not snapped at order time")
+		"facing is left for the orderly centre pivot in _move_to, not snapped at order time")
 
 
 func test_reform_move_does_not_snap_facing_at_order_time() -> void:
@@ -478,7 +478,7 @@ func test_reform_move_does_not_snap_facing_at_order_time() -> void:
 	var b := _battle([u])
 	b._apply_order_cmd({"units": [1], "x": 100.0, "y": 0.0, "target": -1, "reform": true})
 	assert_eq(u.facing, Vector2.DOWN,
-		"the unit wheels in place during the reform hold (in _think), not at order time")
+		"the unit pivots in place during the reform hold (in _think), not at order time")
 
 
 # --- Side-step maneuver (the small-lateral-shift classification) --------------

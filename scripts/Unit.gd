@@ -39,8 +39,6 @@ var uid: int = -1
 @export var training: float = 0.0:
 	set(v):
 		training = clampf(v, 0.0, 1.0)
-		_rank_cycle_timer = RANK_CYCLE_INTERVAL if training <= 0.0 \
-				else RANK_CYCLE_INTERVAL / training
 
 # --- Runtime state ---
 var soldiers: int
@@ -68,13 +66,13 @@ var formation_mode: int = FORMATION_NORMAL
 # change rides the replay command stream so playback reproduces it. Honoured and
 # clamped to [1, max_soldiers] in UnitFormation.frontage.
 var frontage_override: int = 0
-# Facing to wheel to once a move order's destination is reached, set by a
+# Facing to pivot to once a move order's destination is reached, set by a
 # drag-to-form-up order so the unit deploys facing the dragged line rather than its
 # march direction. Vector2.ZERO means "keep the march facing" (no deploy turn).
 var deploy_facing: Vector2 = Vector2.ZERO
 # A commanded heading held throughout a move order so the unit translates toward
 # its target WITHOUT turning to face travel -- the side-step maneuver (a small
-# lateral shift shuffles sideways instead of wheeling). The unit also moves at a
+# lateral shift shuffles sideways instead of pivoting). The unit also moves at a
 # measured walk while this is set, to keep its ranks orderly. Vector2.ZERO means
 # "face the travel direction" (the default turn-and-march), set per order in
 # Battle._apply_order_cmd via UnitManeuver.
@@ -122,15 +120,17 @@ const MELEE_INTERMIX_MAX: float = 0.85
 const WALK_SPEED_FRACTION: float = 0.5
 const JOG_SPEED_FRACTION: float = 0.75
 const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed charge
-# Orderly move orders wheel toward their travel direction at this angular rate
-# (rad/s) rather than snapping, so the ranks turn in good order. A half-circle
-# about-face takes ~PI / TURN_RATE seconds. Combat chases still snap (they pass
-# orderly = false to _move_to).
+# Orderly move orders pivot the block about its centre toward their travel direction at
+# this angular rate (rad/s) rather than snapping, so the ranks turn in good order. A
+# half-circle (180°) centre pivot takes ~PI / TURN_RATE seconds. Combat chases still snap
+# (they pass orderly = false to _move_to).
 const TURN_RATE: float = PI
-# Conversio (drill about-face): unit.facing wheels toward the reversed heading at this rate
-# (rad/s), taking ~0.5 s for a full 180°. The spring restoring force in SoldierBodies.step
-# is zeroed during the wheel, so soldiers stay at their grid positions despite the facing
-# change — they rotate without drifting.
+# Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
+# rotates toward the opposite heading at this rate (rad/s), taking ~0.5 s for a full 180°.
+# This is NOT a pivot of the block — neither a centre pivot (move orders) nor a flank wheel
+# (circumductio); each man simply turns where they stand. The spring restoring force in
+# SoldierBodies.step is zeroed while the turn runs, so soldiers stay at their grid positions
+# despite the facing change — they rotate without drifting.
 const CONVERSIO_TURN_RATE: float = PI * 2.0
 
 const MELEE_PRESS_FRACTION: float = 0.6
@@ -305,32 +305,21 @@ var _base_separation_radius: float = SEPARATION_RADIUS_INFANTRY
 # Scales down the separation push vs. matched enemies so units gradually intermix.
 var _combat_intermixing: float = 0.0
 
-# --- Soldier flocking render state (Stage B) ---------------------------
-# Per-mark render positions/velocities in the unit's (unrotated) local frame. Render
-# only — never read by the sim. _soldier_pos[i] is where mark i is drawn; it chases
-# its rotated, jittered formation slot via SoldierFlock.step(), plus — while the soldier
-# layer is on (phase 3) — that slot's simulated collision push (see SoldierFlock.update),
-# so the rendered soldier reflects the per-soldier separation.
-var _soldier_pos: PackedVector2Array = PackedVector2Array()
-var _soldier_vel: PackedVector2Array = PackedVector2Array()
-var _flock_settled: bool = false        # true once every mark is on its slot and at rest
-var _combat_clock: float = 0.0          # render-time clock driving the melee churn (Stage C)
-var _rank_cycle_timer: float = 0.0      # counts down to the next rank-cycle signal (Stage D)
-var _rank_cycle_slot_offset: int = 0    # accumulated slot rotation; mark i targets slot (i+offset)%n
-var _rank_cycle_anim: float = 1.0       # 0.0 = signal just fired, rises to 1.0 as animation settles
-var _flock_last_pos: Vector2 = Vector2.ZERO     # unit position last flock frame (for trail shove)
-var _flock_last_facing: Vector2 = Vector2.DOWN  # unit facing last flock frame (for wheel detection)
 var _flock_color: Color = Color(0, 0, 0, 0)     # last body modulate applied to the marks
 var _block_extent: float = RADIUS       # block half-size; sizes the ring/halo/bars/shadow
+# Render fast-path bookkeeping. _render_dirty is raised by SoldierBodies.step whenever a
+# body actually moves (and by seed / about-face relabel); _process consumes it so the
+# MultiMeshes are only rewritten when something visible changed, not every idle frame.
+# The extent inputs (soldier count, frontage) are cached so the shadow/chrome recompute —
+# and its PackedVector2Array alloc — only runs when the formation footprint changes.
+var _render_dirty: bool = true
+var _render_last_facing: Vector2 = Vector2.DOWN
+var _render_extent_n: int = -1
+var _render_extent_frontage: int = -1
 var _mm_body: MultiMesh = null
 var _mm_outline: MultiMesh = null
 var _mmi_body: MultiMeshInstance2D = null
 var _mmi_outline: MultiMeshInstance2D = null
-# Weapon blades (Stage F): one MultiMesh of thrusting/swinging blades, one instance per
-# fighting front-rank mark (empty when not engaged / zoomed out). See _set_weapon_instances.
-var _mm_weapon: MultiMesh = null
-var _mmi_weapon: MultiMeshInstance2D = null
-var _weapon_mesh: ArrayMesh = null
 var _shadow: Polygon2D = null
 # Both level-of-detail variants of the body/outline meshes, built once in
 # _setup_flock_renderer and swapped on the MultiMeshes as the camera zooms.
@@ -432,11 +421,11 @@ func _think(delta: float) -> void:
 			_reform_timer = maxf(0.0, _reform_timer - delta)
 			if _reform_timer > 0.0:
 				state = State.IDLE
-				# Use the hold to wheel in place toward the pending destination, so the
-				# ranks are already coming onto their heading before the first step. A
-				# side-step holds its facing (ordered_facing set), so it doesn't wheel.
+				# Use the hold to centre-pivot in place toward the pending destination, so
+				# the ranks are already coming onto their heading before the first step. A
+				# side-step holds its facing (ordered_facing set), so it doesn't pivot.
 				if ordered_facing == Vector2.ZERO:
-					_wheel_toward(_reform_target - position, delta)
+					_rotate_facing_toward(_reform_target - position, delta)
 				return
 			_commit_pending_reform()
 
@@ -449,10 +438,11 @@ func _think(delta: float) -> void:
 			# facing, which the sim should preserve (shield side, threat awareness, etc.).
 			_conversio_target = Vector2.ZERO
 		else:
-			_wheel_toward(_conversio_target, delta, CONVERSIO_TURN_RATE)
+			_rotate_facing_toward(_conversio_target, delta, CONVERSIO_TURN_RATE)
 			if facing.dot(_conversio_target) > 1.0 - 0.0001:
 				facing = _conversio_target
 				_conversio_target = Vector2.ZERO
+				_reverse_soldier_bodies()
 			state = State.IDLE
 			return
 
@@ -541,8 +531,8 @@ func _think(delta: float) -> void:
 			return
 
 	# Obey a move order (disengaging if needed), else auto-advance on a near enemy.
-	# A player move order marches orderly -- it wheels gradually toward its heading
-	# and pivots before advancing; combat chases above stay snappy (orderly = false).
+	# A player move order marches orderly -- it centre-pivots gradually toward its heading
+	# before advancing; combat chases above stay snappy (orderly = false).
 	if has_move_target:
 		if position.distance_to(move_target) > 5.0:
 			_move_to(move_target, delta, true)
@@ -557,7 +547,7 @@ func _think(delta: float) -> void:
 			# The side-step maneuver is spent on arrival; the held facing stays (it is
 			# already the unit's facing), so just drop the maneuver flag.
 			ordered_facing = Vector2.ZERO
-			# A drag-to-form-up order parks a deploy facing here; wheel to it on
+			# A drag-to-form-up order parks a deploy facing here; pivot to it on
 			# arrival (the soldier bodies then ease into the rotated formation).
 			if deploy_facing != Vector2.ZERO:
 				facing = deploy_facing
@@ -626,13 +616,13 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		return
 	var dir: Vector2 = to.normalized()
 	# Facing. A side-step holds its commanded heading and shuffles sideways. An
-	# orderly move order wheels gradually toward its travel direction (the ranks turn
-	# in good order). A combat chase faces travel instantly (it must stay responsive).
+	# orderly move order centre-pivots gradually toward its travel direction (the ranks
+	# turn in good order). A combat chase faces travel instantly (it must stay responsive).
 	var maneuvering: bool = ordered_facing != Vector2.ZERO
 	if maneuvering:
 		_face_dir(ordered_facing)
 	elif orderly:
-		_wheel_toward(dir, delta)
+		_rotate_facing_toward(dir, delta)
 	else:
 		_face_dir(dir)
 	# Pace: a maneuver or walk-advance holds walk speed throughout. AUTO otherwise
@@ -648,8 +638,8 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	else:
 		pace_frac = WALK_SPEED_FRACTION
 	var effective_speed: float = move_speed * terrain_speed * pace_frac
-	# Turn-before-march: while wheeling an orderly move, scale the advance by how far
-	# the unit has come onto its heading. A sharp turn (e.g. an about-face to a rear
+	# Turn-before-march: while centre-pivoting an orderly move, scale the advance by how
+	# far the unit has come onto its heading. A sharp turn (e.g. a 180° pivot to a rear
 	# destination) nearly halts and pivots, then accelerates as it aligns -- so it
 	# never slides backwards/sideways at speed. Full speed once within ~60 deg of the
 	# heading; side-steps are exempt (they march at a fixed walk perpendicular).
@@ -684,10 +674,11 @@ func _face_dir(dir: Vector2) -> void:
 		facing = dir.normalized()
 
 
-## Rotate `facing` toward `target_dir` by at most `rate` * delta this frame —
-## the gradual wheel an orderly move order uses instead of snapping. Takes the
-## shortest arc, so an about-face turns through the nearer side.
-func _wheel_toward(target_dir: Vector2, delta: float, rate: float = TURN_RATE) -> void:
+## Rotate `facing` toward `target_dir` by at most `rate` * delta this frame — the
+## gradual turn primitive shared by the orderly move order's centre pivot and the
+## conversio about-face, instead of snapping. Takes the shortest arc, so a 180°
+## reversal turns through the nearer side.
+func _rotate_facing_toward(target_dir: Vector2, delta: float, rate: float = TURN_RATE) -> void:
 	if target_dir.length() < 0.01:
 		return
 	var cur: float = facing.angle()
@@ -856,8 +847,8 @@ func _is_melee_intermixing_with(other: Unit) -> bool:
 # regiment's persistent world-space `_sim_soldier_pos` at velocity (SoldierBodies): a
 # body springs toward its formation slot, feeds the friendly-avoidance steering velocity
 # forward (SoldierSteering), and holds any knockback the melee dealt it (SoldierMelee) —
-# no body teleports, and there is no position-correction separation pass. The flock
-# render (`SoldierFlock.update`) follows those positions, so the cross-regiment per-soldier
+# no body teleports, and there is no position-correction separation pass. The render
+# loop reads `_sim_soldier_pos` directly, so the cross-regiment per-soldier
 # spacing is visible. The engaged positions are AUTHORITATIVE for per-soldier melee (who
 # is in reach of whom), but movement, morale, and `_separate()` still read the regiment
 # circle, so those OUTCOMES come from the circle. Full plan in
@@ -876,7 +867,7 @@ const INDIVIDUAL_COLLISION: bool = true
 const SOLDIER_ID_STRIDE: int = 1024
 
 # World-space positions of this regiment's simulated soldiers, index-aligned
-# with their ids. Distinct from the cosmetic, local-space `_soldier_pos`.
+# with their ids.
 var _sim_soldier_pos: PackedVector2Array = PackedVector2Array()
 
 # Persistent per-body velocity (world space), index-aligned with _sim_soldier_pos.
@@ -922,10 +913,10 @@ var _sim_soldier_facing: PackedVector2Array = PackedVector2Array()
 # While true, _sim_soldier_facing is owned by a maneuver and NOT re-synced to the
 # unit heading each tick. False = bodies track unit.facing (the default).
 var _per_soldier_facing: bool = false
-# Non-zero while a conversio wheel is in progress: the target (reversed) facing direction.
-# unit.facing rotates toward this each tick; SoldierBodies.step zeroes the spring restoring
-# force during the wheel so bodies don't drift to intermediate slot positions. Cleared on
-# arrival or when interrupted by combat, a move order, or routing.
+# Non-zero while a conversio (in-place about-face) is in progress: the target (reversed)
+# facing direction. unit.facing rotates toward this each tick; SoldierBodies.step zeroes the
+# spring restoring force while it turns so bodies don't drift to intermediate slot positions.
+# Cleared on arrival or when interrupted by combat, a move order, or routing.
 var _conversio_target: Vector2 = Vector2.ZERO
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
@@ -985,17 +976,38 @@ func release_soldier_facing() -> void:
 		_sim_soldier_facing.fill(facing)
 
 
-## Conversio (about-face, Vegetius III): the unit wheels 180° in place at
-## CONVERSIO_TURN_RATE rad/s (~0.5 s for a full reversal). unit.facing tracks the wheel
-## each tick so the sim always knows the soldiers' current facing (shield side, etc.).
-## SoldierBodies.step zeroes the spring restoring force while the wheel runs, so bodies
-## stay at their grid positions instead of drifting to intermediate slot targets.
-## If interrupted by combat or a move order, unit.facing stays at its current angle —
-## the partial rotation is preserved. Blocked while already fighting.
+## Conversio (about-face, Vegetius III): every soldier turns in place to reverse 180° at
+## CONVERSIO_TURN_RATE rad/s (~0.5 s for a full reversal). The grid keeps its footprint —
+## the block does not pivot, neither about its centre (a move order) nor on a flank
+## (a wheel / circumductio); each man just turns where they stand.
+## unit.facing tracks the turn each tick so the sim always knows the soldiers' current
+## facing (shield side, etc.). SoldierBodies.step zeroes the spring restoring force while
+## it turns, so bodies stay at their grid positions instead of drifting to intermediate
+## slot targets. If interrupted by combat or a move order, unit.facing stays at its current
+## angle — the partial rotation is preserved. Blocked while already fighting.
 func conversio() -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
 		return
 	_conversio_target = Vector2(-facing.x, -facing.y)
+
+
+## Relabel the bodies for a completed about-face. The men keep their world positions, but
+## facing has flipped 180°, so every formation slot rotates to its point-reflected spot —
+## front rank and rear rank swap sides. Reversing the index-aligned body arrays maps each
+## body onto the slot it now physically occupies, so SoldierBodies.step's arrival spring
+## sees ~zero error and the block doesn't surge across itself. A centrosymmetric grid
+## cancels exactly; a partial rear rank leaves a small residual the spring eases. Pure
+## index permutation — no positions change — so it's replay-deterministic.
+func _reverse_soldier_bodies() -> void:
+	_sim_soldier_pos.reverse()
+	_sim_body_vel.reverse()
+	_sim_soldier_hp.reverse()
+	_sim_prone.reverse()
+	_sim_soldier_stamina.reverse()
+	_sim_soldier_facing.reverse()
+	if _sim_steer.size() == _sim_soldier_pos.size():
+		_sim_steer.reverse()
+	_render_dirty = true   # positions were relabelled — redraw next frame
 
 
 ## The facing of body `index`; the unit heading for an out-of-range index (so
@@ -1013,7 +1025,7 @@ func soldier_block_extent() -> float:
 	return SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
 
 
-## The render block's current half-size: the cached extent SoldierFlock.update maintains as
+## The render block's current half-size: the cached extent _process maintains as
 ## the block forms and takes casualties (what _draw sizes the state ring / selection halo /
 ## bars to). Unlike soldier_block_extent(), this returns the maintained field rather than a
 ## fresh recompute, so the demo-pointer overlay's selection halo matches the drawn block.
@@ -1419,7 +1431,6 @@ const FORMATION_SPACING: float = 3.4    # px between soldier marks
 const FORMATION_ASPECT: float = 1.7     # files-to-ranks ratio (> 1 = wider than deep)
 const MARK_RADIUS: float = 1.7          # foot soldier mark
 const CAV_MARK_RADIUS: float = 2.6      # cavalry marks are larger (horses)
-const MARK_JITTER: float = 1.3          # stable per-mark wobble so it's not a rigid grid
 
 # Zoom level-of-detail. Zoomed out, each soldier is a flat geometric mark (a
 # disc / rect / diamond) — cheap and legible at a glance. Zoomed in past
@@ -1437,77 +1448,13 @@ const FLAG_POLE_HEIGHT: float = 18.0    # pole from above-bar to flag attachment
 const FLAG_WIDTH: float = 12.0          # horizontal extent of the flag rectangle
 const FLAG_HEIGHT: float = 8.0          # vertical extent of the flag rectangle
 
-# Soldier flocking (Stage B). The marks no longer snap to their formation slot:
-# each soldier eases toward its slot (an arrival spring) while pushing off its
-# neighbours (separation), so the block visibly deforms and trails when the regiment
-# advances or wheels, then reforms when it halts. Purely COSMETIC — these positions are
-# never read by the simulation (combat, morale, movement and collisions all use the
-# unit's single point), so determinism and replays are untouched. The marks render
-# through two MultiMeshes (body + outline), giving 2 draw calls per unit regardless of
-# soldier count — replacing Stage A's draw_circle pair per soldier (240/unit at full
-# strength). Integration runs in _process (render time), decoupled from the fixed-step
-# sim, and sleeps entirely once the block has settled.
-const FLOCK_STIFFNESS: float = 90.0     # arrival spring pulling a soldier to its slot
-const FLOCK_DAMPING: float = 19.0       # ~critical (2*sqrt(stiffness)): settles without ringing
-const FLOCK_SEPARATION: float = 140.0   # push accel keeping marks from piling up
-const FLOCK_MAX_SPEED: float = 320.0    # cap on a mark's catch-up speed (bounds integration)
-# A mark never trails its slot by more than this, keeping the block tight at speed.
-const FLOCK_MAX_LAG: float = 26.0
-const FLOCK_SETTLE_POS: float = 0.30    # within this of its slot and...
-const FLOCK_SETTLE_VEL: float = 1.5     # ...slower than this -> the block sleeps
-const FLOCK_DT_MAX: float = 1.0 / 30.0  # clamp render dt so a hitch can't blow up integration
 
-# Melee churn (Stage C). While a regiment is FIGHTING, its front-rank soldier marks
-# press into and recoil from the contact line and jitter sideways, so the engaged edge of
-# the block visibly fights instead of two blocks merely touching. The churn fades to
-# nothing a couple of ranks back (COMBAT_REACH), so only the fighting edge moves while the
-# body of the block holds formation. Purely cosmetic — these offsets are layered onto the
-# render-only mark targets and never read by the sim, so determinism and replays are
-# untouched (the clock is render time, not the fixed sim tick).
-const COMBAT_LUNGE: float = 3.2         # max forward press toward the enemy (px)
-const COMBAT_LATERAL: float = 1.5       # sideways churn amplitude (px)
-const COMBAT_REACH: float = 8.0         # depth behind front rank over which churn fades to 0 (px)
-const COMBAT_FREQ: float = 9.0          # churn oscillation rate (rad/s)
-
-# Rank cycling (Stage D). A periodic signal (whistle) causes well-trained
-# melee units to rotate their ranks: front-rank marks slide backward while
-# rear-rank marks advance to the front. At the signal, the back ranks briefly
-# widen laterally to open a corridor for the retiring front rank to pass through,
-# then close back up. Purely cosmetic -- never read by the sim -- render-only.
-const RANK_CYCLE_INTERVAL: float = 12.0   # seconds between signals at training=1.0
-const RANK_CYCLE_ANIM_DURATION: float = 0.7  # seconds for the widen-and-close animation
-const RANK_CYCLE_WIDEN: float = 3.5       # max lateral spread for rear marks (px)
-
-# Relief corridor (Stage E). When a unit has a relief partner swapping through it,
-# marks spread laterally away from the approach axis by this factor (applied to each
-# mark's perpendicular distance from that axis) when the partner is fully overlapping.
-const RELIEF_SPREAD_MAX: float = 0.45
-
-# Weapon animation (Stage F). Front-rank marks of a fighting melee block (figure LOD only)
-# animate a blade thrusting/swinging toward the enemy. The blade's peak length is the unit's
-# attack_range * WEAPON_REACH_SCALE, so the spear's longer reach (48 px) reads visibly longer
-# than a sword's (26 px) without drawing a literal full-reach pike across the tiny marks.
-# Per-type motion: spears thrust (long, little swing), swords/sabres swing (shorter, wider).
-# Purely cosmetic -- driven by the render-time combat clock, never read by the sim.
-const WEAPON_FREQ: float = 7.5            # thrust/swing cadence (rad/s)
-const WEAPON_REACH_SCALE: float = 0.20    # peak blade length as a fraction of attack_range (px)
-const WEAPON_WIDTH: float = 0.28          # blade half-width as a fraction of the mark radius
-const WEAPON_FRONT_DEPTH: float = 2.0     # only marks within this depth of the front rank arm (px)
-const WEAPON_THRUST_SPEAR: float = 0.55   # spear: blade pulses ~half its length on the thrust
-const WEAPON_SWING_SPEAR: float = 0.07    # spear: barely swings (rad) -- a steady hedge of points
-const WEAPON_THRUST_SWORD: float = 0.35
-const WEAPON_SWING_SWORD: float = 0.26    # sword: a modest swing (rad); wider merges into a band
-const WEAPON_THRUST_CAV: float = 0.30
-const WEAPON_SWING_CAV: float = 0.32      # sabre: the widest swing
-const WEAPON_COLOR: Color = Color(0.80, 0.82, 0.86)   # steel, untinted by team
 const PRONE_COLOR: Color = Color(0.22, 0.22, 0.22, 0.80)   # dark grey, 80% alpha — felled soldiers are slightly translucent; stacks with rout modulate (0.45) to 0.36 for "prone AND routing"
 
 
-
-
-# --- Soldier flocking (Stage B) ------------------------------------------
-# Render-time only: the cosmetic mark layer eases toward the formation and trails the
-# unit's motion. None of this writes back into the simulation.
+# --- Soldier mark rendering ----------------------------------------------
+# Render-time only: each living soldier draws as a mark at its simulated body position
+# (_sim_soldier_pos). The render reads the sim; it never writes back into it.
 
 
 ## Build the cosmetic render layer: a ground shadow (Polygon2D) and two MultiMeshes
@@ -1547,20 +1494,11 @@ func _setup_flock_renderer() -> void:
 	_mmi_body.z_index = -1   # eff 2, added after the outline -> drawn in front of it
 	add_child(_mmi_body)
 
-	# Weapon blades draw in front of the soldier bodies (added last at eff 2), tinted steel.
-	_weapon_mesh = UnitMeshes.weapon_mesh()
-	_mm_weapon = MultiMesh.new()
-	_mm_weapon.transform_format = MultiMesh.TRANSFORM_2D
-	_mm_weapon.mesh = _weapon_mesh
-	_mmi_weapon = MultiMeshInstance2D.new()
-	_mmi_weapon.multimesh = _mm_weapon
-	_mmi_weapon.z_index = -1   # eff 2, added after the body -> drawn in front of the marks
-	_mmi_weapon.modulate = WEAPON_COLOR
-	add_child(_mmi_weapon)
-
-	_flock_last_pos = position   # local-to-parent frame; see _update_flock
-	_flock_last_facing = facing
-	SoldierFlock.seed(self)
+	# The render reads _sim_soldier_pos directly; those bodies are seeded on the first
+	# physics tick (Battle._on_soldier_tick -> SoldierBodies.step), so the marks appear
+	# from frame 1. Size the shadow/chrome from the formation extent up front.
+	_block_extent = SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
+	_update_shadow()
 
 
 ## Flat geometric mark meshes (zoomed-out LOD). Per-type shapes so soldiers read
@@ -1614,9 +1552,34 @@ func _ellipse_polygon(segments: int = 18) -> PackedVector2Array:
 
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	_update_lod()
-	SoldierFlock.update(self, delta)
+	if state == State.DEAD:
+		if _mm_body.instance_count != 0:
+			_mm_body.instance_count = 0
+			_mm_outline.instance_count = 0
+		return
+	# Block extent depends only on the soldier count and frontage, not body positions, so
+	# recompute (and reshape the shadow/chrome) only when one of those changes — not the
+	# fresh PackedVector2Array the old path allocated every frame.
+	var fr: int = UnitFormation.frontage(self)
+	if soldiers != _render_extent_n or fr != _render_extent_frontage:
+		_render_extent_n = soldiers
+		_render_extent_frontage = fr
+		var new_extent: float = SoldierFlock.compute_extent(self, UnitFormation.slots(self, soldiers))
+		if not is_equal_approx(new_extent, _block_extent):
+			_block_extent = new_extent
+			_update_shadow()
+			queue_redraw()
+	# Marks mirror the simulated bodies. Refresh only when something visible changed: a body
+	# moved (SoldierBodies.step raised _render_dirty), the facing turned (mark rotation,
+	# figure mirror and conversio squash all key off it), the unit is fighting (front-rank
+	# churn / prone flips), or the instance count drifted from the body count.
+	if _render_dirty or facing != _render_last_facing or state == State.FIGHTING \
+			or _mm_body.instance_count != _sim_soldier_pos.size():
+		_render_dirty = false
+		_render_last_facing = facing
+		_refresh_flock_render()
 
 
 ## Swap the soldier meshes between the flat marks and the detailed figures based on
@@ -1663,55 +1626,36 @@ func _apply_lod_meshes() -> void:
 ## The figures' facing is handled by a mesh swap (see _apply_lod_meshes), not a per-instance
 ## transform — MultiMesh 2D can't store a reflected (mirrored) instance transform.
 func _refresh_flock_render() -> void:
-	var n: int = _soldier_pos.size()
+	var n: int = _sim_soldier_pos.size()
 	if _mm_body.instance_count != n:
 		_mm_body.instance_count = n
 		_mm_outline.instance_count = n
 	var sim_prone_n: int = _sim_prone.size()
 	for i in range(n):
-		# Prone: squash/rotate the mark and tint the body dark; outline stays WHITE (PRONE_COLOR × 0.35 modulate ≈ 0.08 — invisible).
+		# Prone: squash/rotate the mark and tint the body dark; outline stays WHITE.
 		var prone: bool = i < sim_prone_n and _sim_prone[i] > 0.0
+		var pos: Vector2 = _sim_soldier_pos[i] - position
 		var t: Transform2D
 		if prone:
 			if _detailed_lod:
-				# Figure LOD: rotate 90° so the silhouette lies on its side.
-				t = Transform2D(PI * 0.5, _soldier_pos[i])
+				t = Transform2D(PI * 0.5, pos)
 			else:
-				# Mark LOD: squash to a horizontal sliver (wide x, flat y).
-				t = Transform2D(Vector2(1.3, 0.0), Vector2(0.0, 0.3), _soldier_pos[i])
+				t = Transform2D(Vector2(1.3, 0.0), Vector2(0.0, 0.3), pos)
 		elif _detailed_lod and _conversio_target != Vector2.ZERO:
-			# Figure LOD during conversio: squash the silhouette horizontally as
-			# it rotates (full→edge-on→full), giving a visible spin animation.
 			var progress: float = (facing.dot(-_conversio_target) + 1.0) * 0.5
 			var squash: float = abs(cos(progress * PI))
-			t = Transform2D(Vector2(squash, 0.0), Vector2(0.0, 1.0), _soldier_pos[i])
+			t = Transform2D(Vector2(squash, 0.0), Vector2(0.0, 1.0), pos)
 		elif not _detailed_lod:
-			# Mark LOD: rotate every mark shape by the soldier's facing angle so all
-			# mark types (pointer, rect, diamond) read as directional indicators.
 			var sf: Vector2 = _sim_soldier_facing[i] if i < _sim_soldier_facing.size() else facing
-			t = Transform2D(sf.angle(), _soldier_pos[i])
+			t = Transform2D(sf.angle(), pos)
 		else:
-			# Figure LOD, normal: mesh swap handles left/right; no per-instance rotation.
-			t = Transform2D(0.0, _soldier_pos[i])
+			t = Transform2D(0.0, pos)
 		_mm_body.set_instance_transform_2d(i, t)
 		_mm_outline.set_instance_transform_2d(i, t)
 		_mm_body.set_instance_color(i, PRONE_COLOR if prone else Color.WHITE)
-		_mm_outline.set_instance_color(i, Color.WHITE)   # outline always WHITE; body carries the dark tint
+		_mm_outline.set_instance_color(i, Color.WHITE)
 	_apply_flock_color()
 
-
-## Push the front-rank weapon blade transforms into the weapon MultiMesh (one instance per
-## arming mark; empty when the block isn't engaged or is zoomed out, which hides them all).
-## Each transform's basis already encodes the blade's length, thickness and swing angle, so
-## this just resizes and assigns. Cosmetic only -- see SoldierFlock.weapon_stroke.
-func _set_weapon_instances(xforms: Array) -> void:
-	if _mm_weapon == null:
-		return
-	var n: int = xforms.size()
-	if _mm_weapon.instance_count != n:
-		_mm_weapon.instance_count = n
-	for i in range(n):
-		_mm_weapon.set_instance_transform_2d(i, xforms[i])
 
 
 ## Tint the marks via the MultiMeshInstance modulate (one colour for the whole block, so
@@ -1746,7 +1690,7 @@ func _draw() -> void:
 	# The soldier marks (Stage B) are rendered by the flocking MultiMeshes and the
 	# ground shadow by a Polygon2D — both child nodes layered under this chrome via
 	# z_index. _draw() handles only the screen-relative chrome: state ring, type emblem,
-	# selection halo and stat bars. `_block_extent` (maintained by SoldierFlock.update) sizes
+	# selection halo and stat bars. `_block_extent` (maintained by _process) sizes
 	# them to the live block rather than the bare collision radius.
 	var extent: float = _block_extent
 

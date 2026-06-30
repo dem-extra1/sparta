@@ -65,14 +65,14 @@ pace throughout; this is required for formed stances like shield wall or pike ph
 that break if the unit breaks into a run.
 
 **Move order sequence.** When you right-click a destination, the regiment turns to
-face it and marches there in good order: it **wheels** onto the new heading --- pivoting
-before it advances on a sharp turn --- marches, and settles back into formation on
-arrival. The next two sections cover the special cases: a small sideways shift
-(**side-step**) and a larger turn (**wheel / about-face**).
+face it and marches there in good order: it **pivots about its centre** onto the new
+heading --- turning in place before it advances on a sharp turn --- marches, and settles
+back into formation on arrival. The next two sections cover the special cases: a small
+sideways shift (**side-step**) and a larger turn (**centre pivot**).
 
 **Reform before move (default on).** By default, a fresh move order makes a unit hold
 its position briefly (~0.8 s) while its ranks settle into formation before it steps
-off. The unit spends this hold **wheeling in place** toward the destination, so its
+off. The unit spends this hold **pivoting in place** toward the destination, so its
 ranks are already coming onto the new heading before the first step.
 To make units move immediately without the pause, uncheck
 **☰ Menu → Reform before move** or click **Reform** in the control bar. The setting is
@@ -81,8 +81,8 @@ you issued them.
 
 **Side-step (small lateral moves).** A move order that only shifts a unit a short way
 to the side --- less than about its own width --- is carried out as a **side-step**: the
-unit shuffles sideways at a walk while holding its current facing, instead of wheeling
-the whole line round to face the move and then wheeling back. So a small dressing of the
+unit shuffles sideways at a walk while holding its current facing, instead of pivoting
+the whole line round to face the move and then pivoting back. So a small dressing of the
 line keeps every soldier looking the same way and keeps the ranks in order. A longer move,
 or one that heads forward, still turns to face the destination and marches normally.
 
@@ -94,19 +94,21 @@ or one that heads forward, still turns to face the destination and marches norma
     Your browser can't play this clip --- see the
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
-  <figcaption>Side-step: a short lateral move shuffles the regiment sideways while it holds its facing, rather than wheeling.</figcaption>
+  <figcaption>Side-step: a short lateral move shuffles the regiment sideways while it holds its facing, rather than pivoting.</figcaption>
 </figure>
 ```
 
-**Wheeling and about-face (larger turns).** A move order that turns a unit toward a new
-heading makes it **wheel** there gradually rather than snapping --- it turns toward its
+**Centre pivot (larger turns).** A move order that turns a unit toward a new heading makes
+it **pivot about its centre** there gradually rather than snapping --- it turns toward its
 travel direction in good order as it sets off. When the heading change is sharp, the unit
 **pivots before it advances**: it nearly halts, comes onto its new facing, then marches.
-For a destination directly **behind** the unit this reads as an **about-face** --- the
+For a destination directly **behind** the unit this is a 180° centre pivot --- the whole
 regiment turns around to face where it is going and then steps off, instead of sliding
-backwards. So a unit always marches facing its destination, and never reverses into it. (A
-chasing or charging unit still turns instantly --- the gradual wheel is for your own move
-orders, where order matters more than the last fraction of a second.)
+backwards. (That is distinct from the standing **about-face** drill on <kbd>V</kbd> below,
+where each soldier turns in place and the block never rotates.) So a unit always marches
+facing its destination, and never reverses into it. (A chasing or charging unit still turns
+instantly --- the gradual pivot is for your own move orders, where order matters more than
+the last fraction of a second.)
 
 ```{=html}
 <figure class="demo">
@@ -116,16 +118,16 @@ orders, where order matters more than the last fraction of a second.)
     Your browser can't play this clip --- see the
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
-  <figcaption>About-face: ordered to a point behind it, the regiment pivots in good order to face the destination, then marches off.</figcaption>
+  <figcaption>Centre pivot (180&deg;): ordered to a point behind it, the regiment pivots in good order to face the destination, then marches off.</figcaption>
 </figure>
 ```
 
 **About-face in place (conversio, <kbd>V</kbd>).** Press <kbd>V</kbd> with a unit
 selected to issue the *conversio*: every soldier reverses 180° where they stand --- the
 file/rank grid stays put, the front rank becomes the rear rank man-for-man, and the
-unit is now facing the other way. Unlike the gradual wheel that accompanies a move order
-(which pivots the whole block around its centre as it marches), the conversio is a
-standing drill command: no one takes a step. Use it to face a threat behind the line
+unit is now facing the other way. Unlike the gradual **centre pivot** that accompanies a
+move order (which rotates the whole block around its centre as it marches), the conversio
+is a standing drill command: no one takes a step. Use it to face a threat behind the line
 without marching first, or to quickly reorient a reserve before it moves up.
 
 **Zoom in to see the soldiers.** From the usual overview each regiment is a block of
@@ -133,12 +135,8 @@ small marks. Zoom in far enough and those marks become individual figures, and e
 type carries its own gear --- spearmen shoulder a spear, archers carry a bow, other
 foot raise a shield, and cavalry ride a mount that faces the regiment's march. So you
 can watch the ranks as people, not dots, and still read who is who. Zoom back out and
-they collapse to the legible marks again.
-
-Zoom in on a melee and the front-rank fighters **work their weapons** --- thrusting and
-swinging their blades at the enemy on the attack cadence. The blade length tracks each
-unit's reach, so a spear line visibly out-thrusts a sword line: the longest weapons reach
-furthest toward the foe (see [Weapon reach](tactics.qmd#weapon-reach)).
+they collapse to the legible marks again --- each mark points the way its soldier faces,
+so you can read a regiment's facing at a glance even from the overview.
 
 **Order stances.** Beyond plain move/attack you can arm a *stance* with a hotkey
 before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> clears it.
@@ -176,7 +174,7 @@ file count. The width holds as the unit takes casualties, and shows in the info 
 
 **Deploy with a drag (form up).** With a single unit selected, **right-click and drag
 across open ground** to lay out where it should stand: the start of the drag is the
-unit's **left flank**, the end is its **right flank**. The unit marches over and wheels
+unit's **left flank**, the end is its **right flank**. The unit marches over and pivots
 to face the line --- the drag sets its position, width, and facing in one gesture, with
 a live preview of the front line and a forward arrow. A short right-click (no drag) is
 still a plain move.

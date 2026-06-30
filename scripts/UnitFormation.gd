@@ -14,9 +14,9 @@ static func _files(n: int) -> int:
 
 
 ## The regiment's stable file count (frontage): `_files` at FULL strength, so the LINE
-## KEEPS ITS WIDTH as casualties thin its DEPTH (ranks). Keying the slot layout, the
-## engaged-rank cutoff, and the render's rank cycling off this -- not the live count --
-## stops the whole grid from reflowing (every soldier jumping to a new file at once) each
+## KEEPS ITS WIDTH as casualties thin its DEPTH (ranks). Keying the slot layout and the
+## engaged-rank cutoff off this -- not the live count -- stops the whole grid from
+## reflowing (every soldier jumping to a new file at once) each
 ## time the count crosses a sqrt threshold mid-fight. At full strength it equals
 ## `_files(soldiers)`, so nothing changes there.
 ##

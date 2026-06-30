@@ -120,23 +120,6 @@ static func diamond_mesh(radius: float) -> ArrayMesh:
 	return mesh
 
 
-## A unit-length melee-weapon blade pointing along +X: a slim leaf shape, half-width 1
-## at the hilt (x=0) tapering to a point at the tip (x=1). Built unit-sized so the render
-## sets the actual length and thickness through the per-instance transform basis (length
-## encodes the unit's reach; see SoldierFlock.weapon_stroke). Shared/cached. Cosmetic only.
-static func weapon_mesh() -> ArrayMesh:
-	var key := "weapon"
-	if _mesh_cache.has(key):
-		return _mesh_cache[key]
-	var blade := PackedVector2Array([
-		Vector2(0.0, -1.0), Vector2(0.65, -0.55), Vector2(1.0, 0.0),
-		Vector2(0.65, 0.55), Vector2(0.0, 1.0),
-	])
-	var mesh := _mesh_from_polys([blade])
-	_mesh_cache[key] = mesh
-	return mesh
-
-
 ## A detailed figure silhouette (zoomed-in LOD), shared/cached across units. `is_cav`
 ## picks a mounted rider over a standing soldier; for foot, `foot_kind` selects the
 ## per-type held item (FOOT_INFANTRY / FOOT_SPEAR / FOOT_ARCHER). `outline` returns the

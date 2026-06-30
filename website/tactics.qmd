@@ -168,10 +168,6 @@ spear line keeps knocking swordsmen out past their own reach while staying in it
 lines no longer snap apart by a spacing rule; the gap is the live balance of the press
 forward against the knockback, so it breathes as the fight ebbs and flows.
 
-You can **see** the reach difference: zoom in on a clash and each front-rank fighter
-thrusts or swings a blade whose length tracks its weapon's reach, so a spear line reaches
-visibly further toward the enemy than a sword line.
-
 ## Movement speed
 
 Units move at **realistic real-world speeds**, measured in metres per second:
@@ -220,9 +216,9 @@ your advantage when committing cavalry or an assault infantry charge.
 ## Side-stepping the line
 
 A small lateral move order is carried out as a **side-step**: the unit shuffles
-sideways while holding its facing, instead of wheeling to face the move and
-wheeling back. That matters when you are dressing a line just before contact.
-Wheeling a regiment turns it away from the enemy for the length of the turn ---
+sideways while holding its facing, instead of pivoting to face the move and
+pivoting back. That matters when you are dressing a line just before contact.
+Pivoting a regiment turns it away from the enemy for the length of the turn ---
 its front momentarily points sideways, and the ranks lose their dressing while
 the soldiers reshuffle. A side-step keeps every soldier looking at the enemy and
 keeps the line aligned, so you can nudge a unit a few paces to close a gap or
@@ -233,21 +229,22 @@ head forward, turn and march normally. So to reposition laterally in good order,
 make the adjustment small --- a short step keeps the line intact, a long one
 commits the unit to a march.
 
-## Wheeling and the about-face
+## The centre pivot
 
-A larger turn is a **wheel**: the unit comes onto its new heading in good order
-rather than snapping round. When the turn is sharp the unit pivots before it
-advances --- it nearly halts, faces its destination, then marches --- so it never
-slides sideways or backwards at speed. A destination to the **rear** therefore
-triggers an **about-face**: the regiment turns around to face where it is going
-before it steps off.
+A larger turn is a **centre pivot**: the unit rotates about its own centre onto its
+new heading in good order rather than snapping round. When the turn is sharp the unit
+pivots before it advances --- it nearly halts, faces its destination, then marches ---
+so it never slides sideways or backwards at speed. A destination to the **rear**
+therefore triggers a full 180° pivot: the whole regiment turns around to face where it
+is going before it steps off. (Don't confuse that with the **conversio** about-face on
+<kbd>V</kbd>, where each soldier turns in place and the block does not rotate.)
 
 The cost is time: a sharp reorientation spends a beat pivoting before the unit
-makes ground, and an about-face spends the most. Plan turns ahead of contact ---
+makes ground, and a 180° pivot spends the most. Plan turns ahead of contact ---
 a unit told to reverse at the moment of impact will spend its pivot facing the
 wrong way. Note that a **chasing or charging** unit turns instantly instead, so an
-attack order never pays the wheel tax; the orderly wheel is reserved for your own
-move orders, where keeping the ranks dressed is worth the beat.
+attack order never pays the pivot tax; the orderly centre pivot is reserved for your
+own move orders, where keeping the ranks dressed is worth the beat.
 
 ## Order stances
 

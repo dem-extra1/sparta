@@ -123,15 +123,15 @@ func test_accessor_and_setters_guard_bad_input() -> void:
 
 # --- Conversio (about-face, #370) -------------------------------------------
 
-func test_conversio_sets_target_and_starts_wheeling() -> void:
+func test_conversio_sets_target_and_starts_turning() -> void:
 	var u := _make_unit()
 	u.seed_sim_soldiers()
 	u.conversio()
-	# The target is set; the wheel starts on the first _think() tick, not immediately.
+	# The target is set; the turn starts on the first _think() tick, not immediately.
 	assert_true(u._conversio_target.is_equal_approx(Vector2.UP),
 		"conversio target is the reversed heading")
 	assert_true(u.facing.is_equal_approx(Vector2.DOWN),
-		"unit.facing has not moved yet (wheel starts on the first tick)")
+		"unit.facing has not moved yet (the turn starts on the first tick)")
 	# Per-soldier ownership is not used — all soldiers rotate together via unit.facing,
 	# which SoldierBodies.step auto-syncs each tick when _per_soldier_facing is false.
 	assert_false(u._per_soldier_facing,
@@ -164,4 +164,35 @@ func test_conversio_reverses_any_starting_heading() -> void:
 	assert_true(u._conversio_target.is_equal_approx(Vector2.LEFT),
 		"conversio target is LEFT when starting from RIGHT")
 	assert_true(u.facing.is_equal_approx(Vector2.RIGHT),
-		"unit.facing is unchanged at call time; the wheel starts on the next tick")
+		"unit.facing is unchanged at call time; the turn starts on the next tick")
+
+
+# --- About-face completion: relabel, don't march -----------------------------
+
+func test_about_face_relabel_preserves_world_positions() -> void:
+	# The completion relabel is a pure reversal of the body arrays: the SET of world
+	# positions is unchanged (nobody walks), each body just takes the reversed body's spot.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	var n: int = before.size()
+	u._reverse_soldier_bodies()
+	assert_eq(u._sim_soldier_pos.size(), n, "body count is unchanged by the relabel")
+	for i in range(n):
+		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[n - 1 - i]),
+			"body %d takes the reversed body's position (pure relabel, no movement)" % i)
+
+
+func test_about_face_leaves_bodies_on_their_slots() -> void:
+	# On a full (centrosymmetric) grid, flipping facing 180° and relabelling the bodies
+	# lands every body exactly on its new-facing slot, so the arrival spring has ~zero
+	# error and the block does not surge across itself after the turn.
+	var u := _make_unit()
+	u.frontage_override = 8        # 8 files x 5 ranks = 40: a full, centrosymmetric grid
+	u.seed_sim_soldiers()
+	u.facing = Vector2(-u.facing.x, -u.facing.y)   # the about-face end state
+	u._reverse_soldier_bodies()
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(u._sim_soldier_pos.size()):
+		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
+			"body %d sits on its reversed-facing slot (no post-turn spring)" % i)

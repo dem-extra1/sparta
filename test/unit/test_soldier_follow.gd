@@ -142,7 +142,7 @@ func test_soldier_layer_separation_is_deterministic() -> void:
 	assert_almost_eq(b1.position.x, b2.position.x, 1e-5, "and the partner too")
 
 
-# --- jog-speed cap during idle reshape (frontage changes, facing wheels) ------
+# --- jog-speed cap during idle reshape (frontage changes, centre pivots) ------
 
 func test_idle_soldier_bodies_capped_at_jog_speed() -> void:
 	# Displace bodies far from their slots (simulating a large frontage change).

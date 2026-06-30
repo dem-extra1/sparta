@@ -14,6 +14,9 @@ class_name SoldierBodies
 # onto its slot without overshoot or oscillation.
 const SPRING_STIFFNESS: float = 120.0
 const SPRING_DAMPING: float = 22.0
+# Below this body speed (px/s) the render treats a body as at rest and the unit's marks
+# can skip their per-frame MultiMesh rewrite — far under what the eye resolves at 60 fps.
+const REST_SPEED: float = 0.5
 
 
 ## Seed a unit's bodies onto its current formation slots, at rest (zero velocity) and
@@ -37,6 +40,7 @@ static func seed(unit: Unit) -> void:
 	unit._sim_soldier_facing.resize(unit._sim_soldier_pos.size())
 	unit._sim_soldier_facing.fill(unit.facing)
 	unit._per_soldier_facing = false
+	unit._render_dirty = true   # fresh bodies need an initial draw
 
 
 ## Advance a unit's persistent bodies one fixed step. Every body springs toward its slot
@@ -135,12 +139,16 @@ static func step(unit: Unit, delta: float) -> void:
 		var accel: Vector2 = to_slot * SPRING_STIFFNESS - (unit._sim_body_vel[i] - feed_forward) * SPRING_DAMPING
 		unit._sim_body_vel[i] += accel * delta
 		# Cap individual soldier speed to a jog while the unit is stationary: during the
-		# reform hold phase AND whenever a formation reshape (frontage change, facing wheel)
+		# reform hold phase AND whenever a formation reshape (frontage change, centre pivot)
 		# plays out on an idle unit. A marching unit is exempt — its bodies need to keep
 		# up with moving slots — so the cap only applies when state == IDLE.
 		if unit._reform_timer > 0.0 or unit.state == Unit.State.IDLE:
 			unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(Unit.REFORM_JOG_SPEED)
 		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
+		# Tell the render a body actually moved this tick, so _process can skip the
+		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
+		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
+			unit._render_dirty = true
 
 
 ## Slide the regiment center toward its soldiers' centroid, at a bounded velocity (phase 5).

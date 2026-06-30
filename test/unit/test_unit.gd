@@ -581,31 +581,31 @@ func test_move_to_without_ordered_facing_turns_to_travel() -> void:
 	assert_almost_eq(u.facing.y, 1.0, 0.001, "with no held facing the unit turns to face travel")
 
 
-# --- gradual wheel + about-face (orderly move orders) ------------------------
+# --- gradual centre pivot (orderly move orders) ------------------------------
 
-func test_wheel_toward_takes_a_bounded_step() -> void:
+func test_rotate_facing_toward_takes_a_bounded_step() -> void:
 	var u := _make_unit()
 	u.facing = Vector2.RIGHT                 # angle 0
-	u._wheel_toward(Vector2.DOWN, 0.1)       # target +PI/2, capped at TURN_RATE * 0.1
+	u._rotate_facing_toward(Vector2.DOWN, 0.1)       # target +PI/2, capped at TURN_RATE * 0.1
 	assert_almost_eq(u.facing.angle(), Unit.TURN_RATE * 0.1, 0.001,
 		"it rotates by at most TURN_RATE * delta toward the target")
 
 
-func test_wheel_toward_lands_exactly_when_within_one_step() -> void:
+func test_rotate_facing_toward_lands_exactly_when_within_one_step() -> void:
 	var u := _make_unit()
 	u.facing = Vector2.RIGHT
-	u._wheel_toward(Vector2(1.0, 0.05), 1.0)   # tiny angle, huge delta -> reach it, no overshoot
+	u._rotate_facing_toward(Vector2(1.0, 0.05), 1.0)   # tiny angle, huge delta -> reach it, no overshoot
 	assert_almost_eq(u.facing.angle(), atan2(0.05, 1.0), 0.001,
 		"a turn smaller than one step lands exactly on the target heading")
 
 
-func test_orderly_move_wheels_gradually_instead_of_snapping() -> void:
+func test_orderly_move_pivots_gradually_instead_of_snapping() -> void:
 	var u := _make_unit()
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
 	u._move_to(Vector2(0, 1000), 0.1, true)   # orderly move, destination straight down
 	assert_gt(u.facing.y, 0.0, "facing has begun turning toward travel")
-	assert_lt(u.facing.y, 0.95, "...but only part way in one frame -- a gradual wheel, not a snap")
+	assert_lt(u.facing.y, 0.95, "...but only part way in one frame -- a gradual centre pivot, not a snap")
 	assert_gt(u.facing.x, 0.0, "still mostly on its old heading after one frame")
 
 
@@ -615,7 +615,7 @@ func test_orderly_move_reaches_its_heading_over_time() -> void:
 	u.facing = Vector2.RIGHT
 	for _i in range(40):
 		u._move_to(Vector2(0, 100000), 0.1, true)   # far target so the heading stays ~down
-	assert_almost_eq(u.facing.y, 1.0, 0.02, "the wheel converges on the travel heading")
+	assert_almost_eq(u.facing.y, 1.0, 0.02, "the centre pivot converges on the travel heading")
 
 
 func test_orderly_sharp_turn_pivots_before_advancing() -> void:
@@ -630,7 +630,7 @@ func test_orderly_sharp_turn_pivots_before_advancing() -> void:
 	assert_lt(u.facing.x, 1.0, "and has begun turning toward the rear destination")
 
 
-func test_unit_wheels_in_place_during_the_reform_hold() -> void:
+func test_unit_pivots_in_place_during_the_reform_hold() -> void:
 	# With reform-before-move, the unit spends the hold turning toward its pending
 	# destination, so it sets off already coming onto its heading -- without advancing.
 	var u := _make_unit()
@@ -639,7 +639,7 @@ func test_unit_wheels_in_place_during_the_reform_hold() -> void:
 	u._reform_target = Vector2(0, 1000)            # destination straight down
 	u._reform_timer = Unit.REFORM_DURATION
 	u._think(0.1)
-	assert_gt(u.facing.y, 0.0, "the unit begins wheeling toward the destination during the hold")
+	assert_gt(u.facing.y, 0.0, "the unit begins centre-pivoting toward the destination during the hold")
 	assert_lt(u.facing.y, 0.95, "...gradually, not snapping")
 	assert_eq(u.state, Unit.State.IDLE, "it holds position during the reform")
 	assert_almost_eq(u.position.x, 0.0, 0.001, "no advance during the hold (x)")
@@ -1399,188 +1399,6 @@ func test_formation_is_wider_than_deep() -> void:
 	assert_gt(max_x - min_x, max_y - min_y, "the formation is wider than it is deep")
 
 
-# --- individual-soldier flocking (Stage B) -----------------------
-# SoldierFlock.step() is the pure, deterministic per-mark steering (arrival spring +
-# separation + clamps). It's cosmetic — never read by the sim — but unit-tested so the
-# motion stays stable: marks converge onto formation, push apart when overlapping, and
-# can't smear across the map from a far/teleported start.
-
-func test_flock_mark_converges_to_its_slot() -> void:
-	var pos := Vector2(40, -25)
-	var vel := Vector2.ZERO
-	var target := Vector2.ZERO
-	var none := PackedVector2Array()
-	for _i in range(600):   # ~10s at 60 fps
-		var res := SoldierFlock.step(pos, vel, target, none, 3.0, 1.0 / 60.0)
-		pos = res[0]
-		vel = res[1]
-	assert_lt(pos.distance_to(target), Unit.FLOCK_SETTLE_POS, "mark eases onto its slot")
-	assert_lt(vel.length(), Unit.FLOCK_SETTLE_VEL, "and comes to rest there (no ringing)")
-
-
-func test_flock_overlapping_marks_push_apart() -> void:
-	# Two marks almost on the same spot shove each other apart, so the block never
-	# collapses to a point. Each steers toward its own current spot so arrival is neutral
-	# and separation is the only net force.
-	var sep: float = Unit.FORMATION_SPACING * 0.9
-	var a := Vector2(0, 0)
-	var b := Vector2(0.4, 0)   # well inside the separation distance
-	var va := Vector2.ZERO
-	var vb := Vector2.ZERO
-	var start: float = a.distance_to(b)
-	for _i in range(180):
-		var ra := SoldierFlock.step(a, va, a, PackedVector2Array([b]), sep, 1.0 / 60.0)
-		var rb := SoldierFlock.step(b, vb, b, PackedVector2Array([a]), sep, 1.0 / 60.0)
-		a = ra[0]
-		va = ra[1]
-		b = rb[0]
-		vb = rb[1]
-	assert_gt(a.distance_to(b), start, "overlapping marks separate")
-
-
-func test_flock_mark_never_trails_its_slot_too_far() -> void:
-	# A step from far away (a spawn/teleport) is clamped to within FLOCK_MAX_LAG of the
-	# slot and stays finite — bounds the integration so a hitch can't smear the block.
-	var res := SoldierFlock.step(Vector2(5000, -3000), Vector2.ZERO, Vector2.ZERO,
-			PackedVector2Array(), 3.0, 1.0 / 60.0)
-	var pos: Vector2 = res[0]
-	assert_lte(pos.length(), Unit.FLOCK_MAX_LAG + 0.001, "a mark stays within max-lag of its slot")
-	assert_false(is_nan(pos.x) or is_nan(pos.y), "position stays finite")
-
-
-func test_flock_render_tracks_soldier_count() -> void:
-	# The two MultiMeshes carry one instance per living soldier and follow casualties, so
-	# the block thins as men fall (the sim's `soldiers` drives the render, never vice versa).
-	var u := _make_unit(120)
-	SoldierFlock.update(u, 1.0 / 60.0)
-	# Settled + unmoved, so this _update_flock takes the early-return fast-path: the count
-	# of 120 comes from _seed_soldiers (steady state). The casualty step below is what
-	# actually exercises _update_flock's resize/refresh path.
-	assert_eq(u._mm_body.instance_count, 120, "one body instance per soldier")
-	assert_eq(u._mm_outline.instance_count, 120, "one outline instance per soldier")
-	u.soldiers = 40
-	SoldierFlock.update(u, 1.0 / 60.0)
-	assert_eq(u._mm_body.instance_count, 40, "instance count tracks casualties")
-
-
-func test_flock_merge_growth_spawns_distinct_marks() -> void:
-	# New marks from a merge must not stack on the exact centre (where the separation step
-	# can't tell them apart and they'd drift as one blob); they spawn fanned out.
-	var u := _make_unit(60)
-	SoldierFlock.resize(u, 120)   # simulate a merge growing the regiment
-	var seen := {}
-	for i in range(60, 120):
-		var key: String = str(u._soldier_pos[i])
-		assert_false(seen.has(key), "merge-spawned mark %d is distinct, not stacked at centre" % i)
-		seen[key] = true
-
-
-func test_flock_marks_stay_finite_and_bounded_while_moving() -> void:
-	# Marching + wheeling for a while never smears the block across the map or produces
-	# NaNs — the per-mark clamps hold. (Cosmetic layer; the unit's own position is the sim.)
-	var u := _make_unit(120)
-	for _i in range(30):
-		u.position += Vector2(6, 0)
-		u.facing = Vector2(1, 0.3).normalized()
-		SoldierFlock.update(u, 1.0 / 60.0)
-	for p in u._soldier_pos:
-		assert_true(is_finite(p.x) and is_finite(p.y), "a mark stays finite while moving")
-		assert_lt(p.length(), 200.0, "a mark stays near the block, never smears off")
-
-
-# --- individual-soldier combat churn (Stage C) -------------------
-# SoldierFlock.combat_lunge_offset() is the pure, deterministic per-mark melee churn layered onto a
-# fighting block's front rank (press/recoil into the contact line + sideways jitter). It's
-# cosmetic — never read by the sim — but unit-tested so the motion stays bounded and only
-# the fighting edge moves: front-rank marks press toward the enemy, deep ranks hold still.
-
-func test_combat_lunge_presses_front_rank_toward_the_enemy() -> void:
-	# A front-rank mark (depth 0) is pushed forward — toward the enemy, which is -Y in the
-	# unrotated local frame (matching UnitFormation.slots' front rank) — and stays bounded.
-	var off := SoldierFlock.combat_lunge_offset(0.0, 0.0, 0.0)
-	assert_lt(off.y, 0.0, "a front-rank mark presses toward the enemy (-Y)")
-	assert_lte(off.length(), Unit.COMBAT_LUNGE + Unit.COMBAT_LATERAL + 0.001,
-			"and the churn never exceeds its amplitude budget")
-
-
-func test_combat_lunge_fades_for_rear_ranks() -> void:
-	# A mark deeper than COMBAT_REACH behind the front doesn't churn at all — only the
-	# fighting edge moves while the body of the block holds formation.
-	var rear := SoldierFlock.combat_lunge_offset(Unit.COMBAT_REACH + 5.0, 0.0, 0.0)
-	assert_eq(rear, Vector2.ZERO, "a deep-rank mark stays in formation (no churn)")
-
-
-func test_combat_lunge_surges_and_recoils_over_time() -> void:
-	# The same front-rank mark presses by different amounts at different times — it surges
-	# forward and recoils rather than sitting at a fixed offset, so the contact edge churns.
-	var rest := SoldierFlock.combat_lunge_offset(0.0, 0.0, 0.0)
-	var surge := SoldierFlock.combat_lunge_offset(0.0, 0.0, (PI * 0.5) / Unit.COMBAT_FREQ)
-	assert_lt(surge.y, rest.y, "the front-rank press deepens toward the enemy as it surges")
-
-
-# --- relief corridor (Stage E) -------------------------------------------
-# SoldierFlock.relief_spread_offset() is the pure function that computes a lateral spread
-# offset for one mark, opening a corridor during a line-relief swap.
-
-func test_relief_spread_offset_pushes_mark_away_from_axis() -> void:
-	# A mark to the right of the approach axis is pushed further right.
-	var perp := Vector2(1.0, 0.0)
-	var off := SoldierFlock.relief_spread_offset(Vector2(5.0, 0.0), perp, 0.5)
-	assert_gt(off.x, 0.0, "mark right of the corridor axis is pushed further right")
-	assert_eq(off.y, 0.0, "no displacement perpendicular to the spread direction")
-
-
-func test_relief_spread_offset_symmetric_about_axis() -> void:
-	# A mark to the left is pushed left by the same magnitude as a mark on the right.
-	var perp := Vector2(1.0, 0.0)
-	var left := SoldierFlock.relief_spread_offset(Vector2(-5.0, 0.0), perp, 0.5)
-	var right := SoldierFlock.relief_spread_offset(Vector2(5.0, 0.0), perp, 0.5)
-	assert_eq(left.x, -right.x, "spread is symmetric about the corridor axis")
-
-
-func test_relief_spread_offset_zero_on_axis() -> void:
-	# A mark sitting on the approach axis has no perpendicular component and stays put.
-	var perp := Vector2(1.0, 0.0)
-	var off := SoldierFlock.relief_spread_offset(Vector2(0.0, 3.0), perp, 0.5)
-	assert_eq(off, Vector2.ZERO, "mark on the approach axis gets no spread offset")
-
-
-func test_relief_spread_offset_scales_with_spread_factor() -> void:
-	# Doubling the spread factor doubles the offset.
-	var perp := Vector2(1.0, 0.0)
-	var mark := Vector2(4.0, 0.0)
-	var half := SoldierFlock.relief_spread_offset(mark, perp, 0.25)
-	var full := SoldierFlock.relief_spread_offset(mark, perp, 0.50)
-	assert_almost_eq(full.x, half.x * 2.0, 0.0001, "spread scales linearly with the factor")
-
-
-func test_relief_spread_offset_works_for_diagonal_perp() -> void:
-	# Diagonal approach angles are the common case in gameplay; verify the
-	# dot-product decomposition when both X and Y contribute to the projection.
-	var perp := Vector2(0.707107, 0.707107)   # normalised up-right diagonal
-	# Mark on the diagonal axis (dot = -1*0.707 + 1*0.707 = 0) → zero offset.
-	var on_axis := SoldierFlock.relief_spread_offset(Vector2(-1.0, 1.0), perp, 0.5)
-	assert_almost_eq(on_axis.length(), 0.0, 0.01,
-			"mark on a diagonal axis gets no spread offset")
-	# Mark off the diagonal axis → non-zero offset driven by both components.
-	var off_axis := SoldierFlock.relief_spread_offset(Vector2(3.0, 0.0), perp, 0.5)
-	assert_gt(off_axis.length(), 0.0,
-			"mark off a diagonal axis gets a non-zero spread offset")
-
-
-func test_fighting_block_keeps_animating_instead_of_settling() -> void:
-	# A standing, fighting unit must not sleep: the churn fast-path is skipped so the front
-	# rank keeps moving each frame. Start from a genuinely settled, unmoved block (seeded on
-	# its slots in _ready) and assert that precondition first, so this actually exercises the
-	# `not fighting` guard — without it, a settled unit that isn't moving or turning would
-	# take the at-rest fast-path and stay settled, failing the second assert.
-	var u := _make_unit(60)
-	assert_true(u._flock_settled, "a freshly-seeded, unmoved block starts settled")
-	u.state = Unit.State.FIGHTING
-	SoldierFlock.update(u, 1.0 / 60.0)
-	assert_false(u._flock_settled, "but a fighting block un-settles and keeps churning")
-
-
 func test_can_rally_at_exactly_the_strength_floor() -> void:
 	# Boundary: soldiers == floor(max * SHATTER_STRENGTH_FRAC) still rallies (the gate is
 	# "< floor" → shatter, ">= floor" → can rally). Pins the >= semantics in the doc.
@@ -2056,52 +1874,6 @@ func test_ranged_unit_does_not_recover_morale_while_fighting() -> void:
 			"ranged units don't cycle ranks; no morale recovery while fighting")
 
 
-# --- _hard_separate_marks --------------------------------------------------
-
-func test_hard_separate_resolves_two_coincident_marks() -> void:
-	var u := _make_unit(2)
-	# Stack both marks on the same point.
-	u._soldier_pos[0] = Vector2.ZERO
-	u._soldier_pos[1] = Vector2.ZERO
-	SoldierFlock.hard_separate(u, Unit.MARK_RADIUS)
-	var dist: float = u._soldier_pos[0].distance_to(u._soldier_pos[1])
-	assert_almost_eq(dist, Unit.MARK_RADIUS * 2.0, 0.001,
-			"two coincident marks must be pushed apart to diameter")
-
-
-func test_hard_separate_leaves_non_overlapping_marks_unchanged() -> void:
-	var u := _make_unit(2)
-	var a := Vector2(0.0, 0.0)
-	var b := Vector2(Unit.MARK_RADIUS * 3.0, 0.0)   # well clear of min-dist
-	u._soldier_pos[0] = a
-	u._soldier_pos[1] = b
-	SoldierFlock.hard_separate(u, Unit.MARK_RADIUS)
-	assert_eq(u._soldier_pos[0], a, "non-overlapping mark 0 should not move")
-	assert_eq(u._soldier_pos[1], b, "non-overlapping mark 1 should not move")
-
-
-func test_hard_separate_partially_resolves_overlap() -> void:
-	# Two marks overlapping but not coincident.
-	var u := _make_unit(2)
-	u._soldier_pos[0] = Vector2(-0.5, 0.0)
-	u._soldier_pos[1] = Vector2( 0.5, 0.0)   # 1 px apart, need 2*MARK_RADIUS apart
-	SoldierFlock.hard_separate(u, Unit.MARK_RADIUS)
-	var dist: float = u._soldier_pos[0].distance_to(u._soldier_pos[1])
-	assert_almost_eq(dist, Unit.MARK_RADIUS * 2.0, 0.001,
-			"overlapping marks must be pushed to exactly min-dist")
-
-
-func test_hard_separate_cavalry_uses_larger_radius() -> void:
-	var u := _make_unit(2)
-	u.is_cavalry = true
-	u._soldier_pos[0] = Vector2.ZERO
-	u._soldier_pos[1] = Vector2.ZERO
-	SoldierFlock.hard_separate(u, Unit.CAV_MARK_RADIUS)
-	var dist: float = u._soldier_pos[0].distance_to(u._soldier_pos[1])
-	assert_almost_eq(dist, Unit.CAV_MARK_RADIUS * 2.0, 0.001,
-			"cavalry marks use the larger mark radius for separation")
-
-
 # --- zoom level-of-detail (figure silhouettes) ------------------
 
 func test_lod_hysteresis_latches_on_above_zoom_in() -> void:
@@ -2146,6 +1918,42 @@ func test_cavalry_and_foot_get_distinct_figure_meshes() -> void:
 	var horse := _cavalry()
 	assert_true(foot._figure_body_mesh != horse._figure_body_mesh,
 			"foot and cavalry figures are distinct meshes")
+
+
+# --- mark rendering from the sim bodies --------------------------------------
+
+func test_marks_track_the_simulated_body_count() -> void:
+	# The render reads _sim_soldier_pos directly: one mark instance per simulated body.
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()
+	u._refresh_flock_render()
+	assert_eq(u._mm_body.instance_count, u._sim_soldier_pos.size(),
+			"one body instance per simulated soldier")
+	assert_eq(u._mm_outline.instance_count, u._sim_soldier_pos.size(),
+			"one outline instance per simulated soldier")
+
+
+func test_dead_unit_clears_its_marks() -> void:
+	# A DEAD unit drops all its instances on the next process tick instead of drawing
+	# the last frame's marks (the _process DEAD guard).
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()
+	u._refresh_flock_render()
+	assert_gt(u._mm_body.instance_count, 0, "a living unit draws its marks")
+	u.state = Unit.State.DEAD
+	u._process(0.0)
+	assert_eq(u._mm_body.instance_count, 0, "a dead unit clears its body marks")
+	assert_eq(u._mm_outline.instance_count, 0, "a dead unit clears its outline marks")
+
+
+func test_render_dirty_clears_after_a_refreshing_process_tick() -> void:
+	# The at-rest fast-path: seeding raises _render_dirty so the first process tick draws,
+	# then clears it so an idle, unmoved, unturned block skips the MultiMesh rewrite.
+	var u := _make_unit(40)
+	u.seed_sim_soldiers()           # SoldierBodies.seed raises _render_dirty
+	assert_true(u._render_dirty, "a fresh seed marks the render dirty")
+	u._process(0.0)
+	assert_false(u._render_dirty, "a process tick consumes the dirty flag")
 
 
 func _archer_unit() -> Unit:
@@ -2206,7 +2014,7 @@ func test_lod_meshes_pick_facing_mirror_when_detailed() -> void:
 
 # --- drag-to-form-up: deploy facing on arrival ----------
 
-func test_deploy_facing_wheels_on_arrival() -> void:
+func test_deploy_facing_pivots_on_arrival() -> void:
 	var u := _make_unit()
 	u.facing = Vector2.DOWN
 	u.position = Vector2.ZERO
@@ -2216,7 +2024,7 @@ func test_deploy_facing_wheels_on_arrival() -> void:
 	u._think(0.1)
 	assert_false(u.has_move_target, "the unit arrives at its destination")
 	assert_almost_eq(u.facing.angle(), Vector2.RIGHT.angle(), 0.001,
-			"and wheels to the parked deploy facing")
+			"and pivots to the parked deploy facing")
 	assert_eq(u.deploy_facing, Vector2.ZERO, "the deploy facing is consumed")
 
 

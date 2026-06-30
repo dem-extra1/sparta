@@ -532,7 +532,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.support_target = null
 			# Any fresh order drops a deploy facing a prior form-up parked; the form-up
 			# move branch below re-sets it. So attack / support / relief / plain move all
-			# clear it, and a unit can't wheel to a stale heading on arrival.
+			# clear it, and a unit can't pivot to a stale heading on arrival.
 			u.deploy_facing = Vector2.ZERO
 			# Drop any side-step hold from a prior order; the plain-move branch below
 			# re-sets it when this order is itself a small lateral shift.
@@ -579,7 +579,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			else:
 				# Choose the drill maneuver for a plain move (a form-up commands its own
 				# facing, so it never side-steps). A small lateral shift holds facing and
-				# shuffles sideways instead of wheeling to face travel and back.
+				# shuffles sideways instead of centre-pivoting to face travel and back.
 				if not cmd.has("face") \
 						and UnitManeuver.is_sidestep(u.facing, point - u.position):
 					u.ordered_facing = u.facing
@@ -589,8 +589,8 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					u.deploy_facing = Vector2.from_angle(float(cmd["face"]))
 					if cmd.has("frontage"):
 						u.set_frontage(int(cmd["frontage"]))
-				# Facing is not snapped here: an orderly move wheels gradually toward its
-				# heading in Unit (turning in place during the reform hold and as it
+				# Facing is not snapped here: an orderly move centre-pivots gradually toward
+				# its heading in Unit (turning in place during the reform hold and as it
 				# marches), so the ranks come onto the new bearing in good order rather
 				# than the whole line flipping its facing at order time.
 				# Reform-before-move: store the destination and let the reform timer

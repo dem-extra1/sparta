@@ -1,5 +1,5 @@
 {
-  "_comment": "About-face / gradual-wheel demo: zoom on the lone Spearmen (seed 12345, ~500,300, facing south toward the enemy), select it, then right-click a destination directly behind it (north). Because the destination is to the rear, the regiment ABOUT-FACES -- it nearly halts and pivots in good order to face north, then marches off -- instead of sliding backwards at speed. Watch the soldiers wheel around to face their destination before advancing. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "_comment": "Centre-pivot (move-to-rear) demo: zoom on the lone Spearmen (seed 12345, ~500,300, facing south toward the enemy), select it, then right-click a destination directly behind it (north). Because the destination is to the rear, the regiment makes a 180 centre pivot -- it nearly halts and rotates the whole block in good order to face north, then marches off -- instead of sliding backwards at speed. Watch the block pivot around to face its destination before advancing. (Distinct from the conversio about-face on V, where each soldier turns in place.) Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
     {"tick": 0, "x": 500.0, "y": 215.0, "zoom": 1.7}

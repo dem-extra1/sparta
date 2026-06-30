@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/conversio.json",
-  "caption": "Conversio (V key): pointer marks (zoomed out) rotate 180° in place showing each soldier's facing; zoomed in, the figure silhouettes squash edge-on mid-turn — the true per-soldier about-face.",
+  "caption": "Conversio (V key) rendered through the unified path: marks now draw directly from the simulated body positions (the cosmetic spring layer is gone), so the per-soldier about-face renders cleanly with no separate render-side state to keep in sync.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,

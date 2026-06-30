@@ -3,10 +3,10 @@ class_name UnitManeuver
 ## trigger. Stateless so the choice logic is unit-testable without a SceneTree.
 ##
 ## The first maneuver is the SIDE-STEP: a small lateral shift is executed by
-## holding facing and shuffling sideways, rather than wheeling the whole line to
-## face the destination and wheeling back. About-face, file-march pivots, and
-## gradual wheeling are tracked as follow-ups and will add their own classifiers
-## here.
+## holding facing and shuffling sideways, rather than centre-pivoting the whole line
+## to face the destination and back. About-face, file-march pivots, and flank
+## wheeling (circumductio) are tracked as follow-ups and will add their own
+## classifiers here.
 
 # A move counts as a side-step when its lateral offset (perpendicular to the
 # unit's current facing) dominates its forward offset AND the whole move is

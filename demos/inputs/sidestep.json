@@ -1,5 +1,5 @@
 {
-  "_comment": "Side-step maneuver demo: zoom in on the lone Spearmen (seed 12345, ~500,300, facing south toward the enemy), select it, then right-click a short step to the right. Because the shift is small and sideways, the regiment SIDE-STEPS -- it shuffles right at a walk while holding its south-facing line, instead of wheeling to face the move and wheeling back. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
+  "_comment": "Side-step maneuver demo: zoom in on the lone Spearmen (seed 12345, ~500,300, facing south toward the enemy), select it, then right-click a short step to the right. Because the shift is small and sideways, the regiment SIDE-STEPS -- it shuffles right at a walk while holding its south-facing line, instead of centre-pivoting to face the move and pivoting back. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd. World coordinates; physics ticks (60/s).",
   "seed": "12345",
   "camera": [
     {"tick": 0, "x": 500.0, "y": 318.0, "zoom": 2.0}
