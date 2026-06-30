@@ -15,7 +15,8 @@ const UnitRef = preload("res://scripts/Unit.gd")
 enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_EQUAL_DEPTH, MENU_FORMUP_EQUAL_WIDTH,
 		MENU_FORMUP_CYCLE_DEPTH, MENU_FORMUP_CYCLE_WIDTH,
-		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_KEYBINDINGS }
+		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_KEYBINDINGS,
+		MENU_SHORTCUTS }
 
 var _hint: Label
 var _info: Label
@@ -30,6 +31,7 @@ var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
 var _keybindings_dialog: AcceptDialog
+var _shortcuts_dialog: AcceptDialog
 var _legend_panel: PanelContainer
 var _legend_bar: ColorRect
 var _legend_label: Label
@@ -166,6 +168,7 @@ func _ready() -> void:
 	popup.add_check_item("Walk advance (no jog/sprint)", MENU_WALK_ADVANCE)
 	popup.add_check_item("Distance legend (map scale)", MENU_DISTANCE_LEGEND)
 	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
+	popup.add_item("Shortcuts… (?)", MENU_SHORTCUTS)
 	_sync_setting_toggles()
 	popup.id_pressed.connect(_on_menu_id)
 	# Keep the check items in sync if a setting changes elsewhere. Use a named
@@ -200,6 +203,10 @@ func _ready() -> void:
 	# usable while paused, like the other menu dialogs.
 	_keybindings_dialog = preload("res://scripts/KeybindingsDialog.gd").new()
 	add_child(_keybindings_dialog)
+
+	# Read-only "every shortcut" reference, opened by ? or ☰ Menu → Shortcuts.
+	_shortcuts_dialog = preload("res://scripts/ShortcutsOverlay.gd").new()
+	add_child(_shortcuts_dialog)
 
 	# Selected-unit info panel, pinned above the bottom-left corner. The top
 	# offset is derived from the panel's own min-height + bottom margin (not a
@@ -388,6 +395,8 @@ func _on_menu_id(id: int) -> void:
 			Settings.show_distance_legend = not Settings.show_distance_legend
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
+		MENU_SHORTCUTS:
+			_shortcuts_dialog.popup_centered()
 
 
 func _toggle_form_up_cycle(mode: int) -> void:
@@ -424,6 +433,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	# and apply on resume. Disabled once the end-of-battle overlay is up.
 	if _is_pause_keypress(event) and not _overlay.visible:
 		_toggle_pause()
+	elif _is_shortcuts_keypress(event) and not _overlay.visible:
+		_shortcuts_dialog.popup_centered()
+		get_viewport().set_input_as_handled()
+
+
+## Shift+/ produces "?" on a standard layout; physical_keycode (the / key) keeps the
+## binding layout-independent, like the pause/edge-scroll keys. Same shape as
+## _is_pause_keypress -- Shift carries the second meaning of an otherwise-plain key.
+func _is_shortcuts_keypress(event: InputEvent) -> bool:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return false
+	return event.physical_keycode == KEY_SLASH and event.shift_pressed
 
 
 func _is_pause_keypress(event: InputEvent) -> bool:

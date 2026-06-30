@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Static reference overlay (a dialog listing every keyboard shortcut, opened with ?) -- a recorded battle clip can't usefully show a popup dialog. See the PR description for a screenshot."
+}
