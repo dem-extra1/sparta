@@ -102,6 +102,17 @@ var show_distance_legend: bool = true:
 			_save()
 			changed.emit()
 
+# Order-overlay distance label: the metric distance to each order's target, drawn on the
+# hold-Space order overlay's move/attack/support lines. Cosmetic only. Default on.
+var show_order_distance: bool = true:
+	set(value):
+		if value == show_order_distance:
+			return
+		show_order_distance = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Order-mode selector hotkeys: stable slug -> physical keycode. Slugs (and the
 # menu order) are owned by Battle.ORDER_MODE_HOTKEYS; these are the factory defaults.
 # Physical keycodes keep the bindings layout-independent (like the camera/pause keys).
@@ -185,6 +196,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	walk_advance = bool(cfg.get_value("gameplay", "walk_advance", walk_advance))
 	reform_before_move = bool(cfg.get_value("gameplay", "reform_before_move", reform_before_move))
 	show_distance_legend = bool(cfg.get_value("camera", "show_distance_legend", show_distance_legend))
+	show_order_distance = bool(cfg.get_value("camera", "show_order_distance", show_order_distance))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
 	_loading = false
@@ -201,6 +213,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("gameplay", "walk_advance", walk_advance)
 	cfg.set_value("gameplay", "reform_before_move", reform_before_move)
 	cfg.set_value("camera", "show_distance_legend", show_distance_legend)
+	cfg.set_value("camera", "show_order_distance", show_order_distance)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))
 	cfg.save(path)

@@ -1,0 +1,12 @@
+{
+  "_comment": "Order-distance-label demo (#413): hold Space so the orders overlay is live, select the Spearmen (seed 12345, ~500,300), then right-click a long march south. The green move line now carries a metric distance label at its midpoint (e.g. '13 m'), in the same units as the map-scale legend, and the number counts down as the regiment closes on its target. hold_space fires at tick 2 so the overlay is up before the move order lands.",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 430.0, "zoom": 1.5}
+  ],
+  "steps": [
+    {"tick": 2,  "hold_space": true},
+    {"tick": 8,  "click": [500, 300]},
+    {"tick": 24, "rmb_click": [500, 560]}
+  ]
+}

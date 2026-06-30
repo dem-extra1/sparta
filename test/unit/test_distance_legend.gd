@@ -27,6 +27,24 @@ func test_metres_per_pixel_guards_nonpositive_input() -> void:
 	assert_eq(DistanceLegend.metres_per_pixel(1.0, 0.0), 0.0, "zero world-units-per-metre guarded")
 
 
+# --- metres_for_world (order-overlay distance labels) ------------------------
+
+func test_metres_for_world_converts_world_units_to_metres() -> void:
+	# 20 world units/metre, so 100 world units is 5 metres.
+	assert_almost_eq(DistanceLegend.metres_for_world(100.0, WUPM), 5.0, 0.0001)
+
+
+func test_metres_for_world_is_zoom_independent() -> void:
+	# Unlike metres_per_pixel, a world-space length maps to a fixed metric length
+	# regardless of camera zoom -- it's purely the world->metre conversion.
+	assert_almost_eq(DistanceLegend.metres_for_world(1000.0, WUPM), 50.0, 0.0001)
+
+
+func test_metres_for_world_guards_nonpositive_scale() -> void:
+	assert_eq(DistanceLegend.metres_for_world(100.0, 0.0), 0.0, "zero scale guarded")
+	assert_eq(DistanceLegend.metres_for_world(100.0, -1.0), 0.0, "negative scale guarded")
+
+
 # --- pick_round_metres --------------------------------------------------------
 
 ## True when `value` is some power of ten times 1, 2, or 5 (the 1-2-5 ladder rule) -- a

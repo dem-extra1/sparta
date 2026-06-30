@@ -41,6 +41,7 @@ left fighting --- every remaining unit is dead or routing.
 | Merge selected units | <kbd>M</kbd> |
 | Control groups | <kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall |
 | Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (bottom-right, on by default) |
+| Order distance labels | **☰ Menu → Order distance labels** toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default) |
 | Pan camera | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges |
 | Zoom | **Mouse wheel** |
 | Show all orders + formation preview | hold <kbd>Space</kbd> |
@@ -215,6 +216,24 @@ line to each attack target, and a teal link for support duties. At the end of ea
 line, a **ghost formation** (faint green dots) shows exactly where each individual
 soldier will stand when the regiment finishes its march --- so you can check whether
 units will fit, overlap, or leave a gap before they arrive.
+
+Each order line also carries a **distance label** at its midpoint, in the same metres
+the scale bar uses --- the remaining march for a move (the full route, summed over any
+waypoints), or the range to the target for an attack or support link. The number counts
+down as the unit closes. Toggle the labels off in **☰ Menu → Order distance labels**
+(on by default).
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/order_distance.jpg">
+    <source src="media/order_distance.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.</figcaption>
+</figure>
+```
 
 ## The battle loop
 
