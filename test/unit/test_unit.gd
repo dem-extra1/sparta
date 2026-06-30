@@ -625,7 +625,7 @@ func test_orderly_sharp_turn_pivots_before_advancing() -> void:
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
 	u._move_to(Vector2(-1000, 0), 0.1, true)   # destination straight to the rear
-	assert_almost_eq(u.position.x, 0.0, 0.5,
+	assert_almost_eq(u.position.x, 0.0, 0.01,
 		"facing away from travel, it pivots in place instead of reversing at speed")
 	assert_lt(u.facing.x, 1.0, "and has begun turning toward the rear destination")
 

@@ -122,13 +122,13 @@ const MELEE_INTERMIX_MAX: float = 0.85
 const WALK_SPEED_FRACTION: float = 0.5
 const JOG_SPEED_FRACTION: float = 0.75
 const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed charge
-
-const MELEE_PRESS_FRACTION: float = 0.6
 # Orderly move orders wheel toward their travel direction at this angular rate
 # (rad/s) rather than snapping, so the ranks turn in good order. A half-circle
 # about-face takes ~PI / TURN_RATE seconds. Combat chases still snap (they pass
 # orderly = false to _move_to).
 const TURN_RATE: float = PI
+
+const MELEE_PRESS_FRACTION: float = 0.6
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
@@ -662,7 +662,7 @@ func _face_dir(dir: Vector2) -> void:
 ## the gradual wheel an orderly move order uses instead of snapping. Takes the
 ## shortest arc, so an about-face turns through the nearer side.
 func _wheel_toward(target_dir: Vector2, delta: float) -> void:
-	if target_dir.length() < 0.01 or facing.length() < 0.01:
+	if target_dir.length() < 0.01:
 		return
 	var cur: float = facing.angle()
 	var diff: float = angle_difference(cur, target_dir.angle())
