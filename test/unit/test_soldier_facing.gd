@@ -131,6 +131,11 @@ func test_conversio_takes_ownership_and_reverses_all_facings() -> void:
 	_all_face(u, Vector2.UP, "every soldier faces the reversed heading immediately")
 	assert_true(u._conversio_target.is_equal_approx(Vector2.UP),
 		"conversio target is the reversed heading")
+	assert_almost_eq(u._conversio_timer, Unit.CONVERSIO_DURATION, 0.001,
+		"conversio starts the animation timer")
+	# unit.facing does NOT change immediately — soldiers stay in place until the timer expires
+	assert_true(u.facing.is_equal_approx(Vector2.DOWN),
+		"unit.facing is unchanged until the timer expires (no slot drift during the pivot)")
 
 
 func test_conversio_blocked_while_fighting() -> void:
