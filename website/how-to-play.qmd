@@ -64,10 +64,17 @@ out the troops on the march. Toggle **☰ Menu → Walk advance** to lock units 
 pace throughout; this is required for formed stances like shield wall or pike phalanx
 that break if the unit breaks into a run.
 
+**Move order sequence.** When you right-click a destination, the regiment
+turns to face that direction immediately --- soldiers wheel in place so the
+formation is already pointed at the march target before the first step.
+The unit then marches straight forward and arrives facing the direction it
+came from, with soldiers settling into formation on arrival.
+
 **Reform before move (default on).** By default, a fresh move order makes a unit hold
 its position briefly (~0.8 s) while its ranks settle into formation before it steps
-off. This means troops arrive at their destination in order rather than marching while
-still adjusting their files. To make units move immediately without the pause, uncheck
+off. Because the unit pre-faces the destination during this hold, soldiers
+complete their wheel while standing still rather than rotating mid-march.
+To make units move immediately without the pause, uncheck
 **☰ Menu → Reform before move** or click **Reform** in the control bar. The setting is
 baked into each recorded order, so replays reproduce whichever mode was active when
 you issued them.

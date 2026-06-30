@@ -456,3 +456,46 @@ func test_attack_order_clears_a_stale_deploy_facing() -> void:
 	assert_ne(u.deploy_facing, Vector2.ZERO, "form-up parks a deploy facing")
 	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 0.0, "target": 2})   # attack the enemy
 	assert_eq(u.deploy_facing, Vector2.ZERO, "an attack order clears the stale facing")
+
+
+# --- pre-facing on move orders -----------------------------------------
+
+func test_plain_move_pre_faces_destination() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 100.0, "y": 0.0, "target": -1})
+	assert_almost_eq(u.facing.x, 1.0, 0.01, "plain move pre-faces the destination (right)")
+	assert_almost_eq(u.facing.y, 0.0, 0.01, "facing is normalized")
+
+
+func test_reform_move_pre_faces_destination() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 100.0, "y": 0.0, "target": -1, "reform": true})
+	assert_almost_eq(u.facing.x, 1.0, 0.01,
+		"reform move pre-faces destination before the march, so soldiers wheel during the hold")
+
+
+func test_move_no_pre_face_when_destination_is_self() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	var b := _battle([u])
+	# Destination within 1 unit — degenerate, no facing change.
+	b._apply_order_cmd({"units": [1], "x": 0.5, "y": 0.5, "target": -1})
+	assert_eq(u.facing, Vector2.DOWN, "facing unchanged for a near-zero march")
+
+
+func test_append_does_not_pre_face() -> void:
+	# A waypoint append continues the current march; pre-facing would abruptly
+	# re-orient the unit mid-march so it is suppressed for appends.
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	u.move_target = Vector2(0, 100)
+	u.has_move_target = true
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 100.0, "y": 0.0,
+		"target": BattleScript.ORDER_APPEND_WAYPOINT})
+	assert_eq(u.facing, Vector2.DOWN,
+		"a waypoint append does not pre-face the queued destination")

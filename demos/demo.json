@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/pace-modes.json",
-  "caption": "Pace modes: player regiments advance at walk pace, jog when enemy archers open fire, and sprint to full charge speed within 200 px of the target --- all three AUTO phases in one clip. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout, required for formed stances.",
+  "input": "demos/inputs/default-move-order.json",
+  "caption": "Default move order: when a move order arrives the regiment immediately wheels to face the destination, soldiers rotate in place during the reform hold, then march straight forward. No sideways sliding on departure.",
   "fixed_fps": 30,
-  "max_frames": 420,
+  "max_frames": 360,
   "fps": 12,
   "width": 640
 }
