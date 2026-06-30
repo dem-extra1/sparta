@@ -108,6 +108,14 @@ const MELEE_INTERMIX_MAX: float = 0.85
 # How hard a committed melee unit presses onto the enemy while fighting, as a fraction
 # of move speed. The separation / engaged-enemy front-rank floor counters it, so the
 # value only sets how fast the lines close to contact, not the final spacing.
+# Pace fractions of move_speed. AUTO mode walks by default, jogs when a ranged
+# enemy is within RANGED_RANGE (under fire), and sprints (full speed) once within
+# SPRINT_START_DISTANCE of the target. WALK mode holds walk pace throughout —
+# mandatory for formed stances (shield wall, pike phalanx) that break on a jog.
+const WALK_SPEED_FRACTION: float = 0.5
+const JOG_SPEED_FRACTION: float = 0.75
+const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed charge
+
 const MELEE_PRESS_FRACTION: float = 0.6
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
@@ -122,6 +130,13 @@ const SUPPORT_GUARD_RADIUS: float = 180.0
 const SUPPORT_FOLLOW_DISTANCE: float = 80.0
 # The friendly unit a SUPPORT order tells this one to guard (set by Battle from the
 # order's target). Cleared when it dies/routs, reverting this unit to NORMAL.
+# Pace mode: when true the unit always walks (WALK_SPEED_FRACTION), overriding the
+# AUTO escalation to jog/sprint. Set from the walk_advance setting at order time.
+var walk_advance: bool = false
+# Set to true in _think when a ranged enemy is within RANGED_RANGE; drives the
+# AUTO-pace jog escalation. Cleared each frame before the check.
+var _under_fire: bool = false
+
 var support_target: Unit = null
 # Field rectangle the unit keeps inside when kiting (set by Battle on spawn). The
 # default is effectively unbounded so direct Unit tests don't need to set it.
@@ -403,6 +418,18 @@ func _think(delta: float) -> void:
 				return
 			_commit_pending_reform()
 
+	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit is
+	# within RANGED_RANGE of this unit (i.e. could be shooting at us this frame).
+	# Must run before the ORDER_SUPPORT early return so _support_tick's _move_to
+	# calls see the correct value.
+	_under_fire = false
+	for u in get_tree().get_nodes_in_group("units"):
+		if u is Unit and u.team != team and u.is_ranged and u.state != State.DEAD \
+				and u.state != State.ROUTING \
+				and position.distance_to(u.position) <= RANGED_RANGE:
+			_under_fire = true
+			break
+
 	# Support stance: guard a friendly ward — engage threats near it, else
 	# shadow it. Handled up front so it overrides the normal target/move logic. If
 	# the ward is gone (dead, routed, or cleared) the order is spent, so drop it and
@@ -552,7 +579,18 @@ func _move_to(point: Vector2, delta: float) -> void:
 	if to.length() < 1.0:
 		return
 	var dir: Vector2 = to.normalized()
-	var effective_speed: float = move_speed * terrain_speed
+	# Pace: walk advance holds walk speed throughout. AUTO walks by default, jogs
+	# under missile fire, and sprints at full speed once close to the target.
+	var pace_frac: float
+	if walk_advance:
+		pace_frac = WALK_SPEED_FRACTION
+	elif position.distance_to(point) <= SPRINT_START_DISTANCE:
+		pace_frac = 1.0  # sprint distance beats under-fire: charge through the kill zone at full speed
+	elif _under_fire:
+		pace_frac = JOG_SPEED_FRACTION
+	else:
+		pace_frac = WALK_SPEED_FRACTION
+	var effective_speed: float = move_speed * terrain_speed * pace_frac
 	_face_dir(dir)
 	position += dir * effective_speed * delta
 	state = State.MOVING

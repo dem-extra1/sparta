@@ -30,6 +30,7 @@ left fighting --- every remaining unit is dead or routing.
 | Form up in selection order | **Shift + right-click and drag** (instead of the default left-to-right field order) |
 | Form-up split mode | <kbd>Y</kbd> cycles equal-depth ↔ equal-width (set the default in ☰ Menu) |
 | Reform before move | **☰ Menu** or **control bar** toggles whether units pause to settle their ranks before marching (on by default) |
+| Walk advance | **☰ Menu → Walk advance** keeps units at walk speed throughout --- no jog or sprint phase. Required for formed stances (shield wall, pike phalanx) that break on a run |
 | Attack | **Right-click** an enemy unit |
 | Group attack mode | <kbd>X</kbd> cycles focused ↔ distributed · or **control bar** |
 | Add waypoint | **Shift + Right-click** (chain several move points) |
@@ -55,6 +56,13 @@ Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking
 - **Focused atk / Spread atk** --- cycle the group-attack mode (same as <kbd>X</kbd>).
 
 The bar updates immediately when you select a different unit or change a setting elsewhere.
+
+**Pace modes (AUTO by default).** Units walk on approach, jog when a ranged enemy is
+within range (under missile fire), and accelerate to full sprint speed once within
+about 200 px of the target --- so a charge arrives at full momentum without wearing
+out the troops on the march. Toggle **☰ Menu → Walk advance** to lock units to walk
+pace throughout; this is required for formed stances like shield wall or pike phalanx
+that break if the unit breaks into a run.
 
 **Reform before move (default on).** By default, a fresh move order makes a unit hold
 its position briefly (~0.8 s) while its ranks settle into formation before it steps

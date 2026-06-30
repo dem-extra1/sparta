@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "This adds a bottom control bar (HUD panel) that appears when units are selected. A static screenshot shows it more clearly than a recorded battle clip. See the PR description for the screenshot follow-up note."
+  "input": "demos/inputs/pace-modes.json",
+  "caption": "Pace modes: player regiments advance at walk pace, jog when enemy archers open fire, and sprint to full charge speed within 200 px of the target --- all three AUTO phases in one clip. Toggle Walk advance (☰ Menu) to lock units to walk pace throughout, required for formed stances.",
+  "fixed_fps": 30,
+  "max_frames": 420,
+  "fps": 12,
+  "width": 640
 }

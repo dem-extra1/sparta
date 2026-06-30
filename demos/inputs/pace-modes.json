@@ -1,0 +1,11 @@
+{
+  "_comment": "Pace modes demo: box-select all five player regiments (seed 12345, y≈300), issue an attack order on the enemy line (y≈700). Units walk on the approach, jog when the enemy archers open fire, and sprint at full speed once within ~200 px of the target — showing all three AUTO pace phases in one clip.",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 512.0, "y": 512.0, "zoom": 0.7}
+  ],
+  "steps": [
+    {"tick": 8,  "box": {"from": [100, 240], "to": [924, 360]}},
+    {"tick": 28, "rmb_click": [512, 700]}
+  ]
+}

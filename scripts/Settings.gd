@@ -49,6 +49,20 @@ var form_up_dist_default: int = FORM_UP_DIST_EQUAL_DEPTH:
 			_save()
 			changed.emit()
 
+# Walk advance: when true, units approach at walk pace (WALK_SPEED_FRACTION of their
+# move speed) rather than the default auto-pace (walk → jog under fire → sprint near
+# contact). Mandatory for formed stances that break on a jog or sprint (shield wall,
+# pike phalanx). Default off. Applied per-order so replays reproduce behavior as
+# recorded, regardless of whether the setting is later changed.
+var walk_advance: bool = false:
+	set(value):
+		if value == walk_advance:
+			return
+		walk_advance = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Reform before move: when true, a fresh move order makes the unit hold its position
 # for REFORM_DURATION before marching, so its ranks settle before it steps off.
 # Default on (the historical default for formed infantry). Baked into each order's
@@ -140,6 +154,7 @@ func _load(path: String = SAVE_PATH) -> void:
 	edge_scroll = cfg.get_value("camera", "edge_scroll", edge_scroll)
 	sfx_enabled = cfg.get_value("audio", "sfx_enabled", sfx_enabled)
 	form_up_dist_default = int(cfg.get_value("gameplay", "form_up_dist_default", form_up_dist_default))
+	walk_advance = bool(cfg.get_value("gameplay", "walk_advance", walk_advance))
 	reform_before_move = bool(cfg.get_value("gameplay", "reform_before_move", reform_before_move))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
@@ -153,6 +168,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("camera", "edge_scroll", edge_scroll)
 	cfg.set_value("audio", "sfx_enabled", sfx_enabled)
 	cfg.set_value("gameplay", "form_up_dist_default", form_up_dist_default)
+	cfg.set_value("gameplay", "walk_advance", walk_advance)
 	cfg.set_value("gameplay", "reform_before_move", reform_before_move)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))

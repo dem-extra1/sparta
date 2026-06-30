@@ -54,6 +54,7 @@ var forced_seed: int = -1
 #               "formation"?: int (Unit.FORMATION_*; omitted when 0 = NORMAL),
 #               "frontage"?: int (absolute file count for a -4 resize or a form-up move),
 #               "face"?: float (deploy facing in radians for a drag-to-form-up move),
+#               "walk_advance"?: bool (omitted when false),
 #               "group_attack"?: int (Battle.GroupAttackMode; omitted when 0 = FOCUSED) }.
 var _orders: Array = []
 var _play_index: int = 0
@@ -183,6 +184,8 @@ func start_playback(path: String) -> bool:
 			entry["frontage"] = int(o["frontage"])
 		if o.has("face"):
 			entry["face"] = float(o["face"])
+		if o.has("walk_advance"):
+			entry["walk_advance"] = bool(o["walk_advance"])
 		if o.has("group_attack"):
 			entry["group_attack"] = int(o["group_attack"])
 		_orders.append(entry)
@@ -248,7 +251,7 @@ func replays_dir() -> String:
 ## RECORD: append an order at the current tick. No-op otherwise.
 func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 		order_mode: int = 0, formation: int = 0, frontage: int = 0, face: float = INF,
-		group_attack: int = 0) -> void:
+		group_attack: int = 0, walk_advance: bool = false) -> void:
 	if mode != Mode.RECORD:
 		return
 	var entry := {
@@ -267,6 +270,8 @@ func record_order(tick: int, uids: Array, pos: Vector2, target_uid: int,
 	# (a plain move), so any real angle -- including 0 -- is recorded.
 	if not is_inf(face):
 		entry["face"] = face
+	if walk_advance:
+		entry["walk_advance"] = true
 	# 0 = GroupAttackMode.FOCUSED (the default); omit it so old replays stay valid.
 	if group_attack != 0:
 		entry["group_attack"] = group_attack
