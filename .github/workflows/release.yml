@@ -101,8 +101,7 @@ jobs:
           V="${GITHUB_REF_NAME//\//-}"
           # OUTFILE is absolute so makensis writes straight into build/. A relative
           # OutFile resolves against the .nsi's directory (tools/installer/), not
-          # this working directory, which would strand the file (a prior mv here
-          # failed for exactly that reason).
+          # this working directory.
           makensis \
             -DVERSION="${V}" \
             -DOUTFILE="$(pwd)/build/sparta-${V}-windows-setup.exe" \
