@@ -121,6 +121,21 @@ func test_cycle_checkbox_disable_follows_the_default_when_it_changes() -> void:
 			"the new default's cycle checkbox becomes disabled")
 
 
+func test_changing_default_to_a_mode_excluded_from_the_cycle_adds_it() -> void:
+	# The symmetric path to the bug: narrow the cycle to DEPTH only (allowed -- DEPTH is still
+	# the default), then flip the default to the excluded mode (WIDTH). The default must stay
+	# Y-key reachable, so WIDTH gets added back to the cycle automatically.
+	Settings.form_up_dist_default = SelectionManagerScript.FormUpDist.EQUAL_DEPTH
+	Settings.form_up_dist_cycle = [SelectionManagerScript.FormUpDist.EQUAL_DEPTH]
+	var hud := _hud()
+	hud._on_menu_id(HUDScript.MENU_FORMUP_EQUAL_WIDTH)
+	assert_true(Settings.form_up_dist_cycle.has(SelectionManagerScript.FormUpDist.EQUAL_WIDTH),
+			"changing the default to an excluded mode adds it back to the cycle")
+	var popup := _popup(hud)
+	assert_true(popup.is_item_checked(popup.get_item_index(HUDScript.MENU_FORMUP_CYCLE_WIDTH)),
+			"the newly-defaulted mode's cycle checkbox shows checked, not stuck unchecked")
+
+
 func test_toggling_the_default_out_of_the_cycle_is_a_no_op() -> void:
 	# Defense-in-depth: even if _toggle_form_up_cycle is reached for the disabled item, the
 	# default stays in the cycle (the invariant the disabled checkbox is meant to guarantee).

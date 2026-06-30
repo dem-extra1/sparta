@@ -312,6 +312,20 @@ func _sync_setting_toggles() -> void:
 			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_DEPTH)
 	popup.set_item_disabled(popup.get_item_index(MENU_FORMUP_CYCLE_WIDTH),
 			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_WIDTH)
+	# The default can also become excluded the other way: the player narrows the cycle to one
+	# OTHER mode, then later switches the default radio to the excluded one. Guarantee the
+	# current default is always in the cycle, and re-check its (now-disabled) box directly —
+	# not via the Settings.changed signal this setter emits, since the very first call here
+	# (from _ready, before the signal is connected) must also self-correct synchronously.
+	if not Settings.form_up_dist_cycle.has(Settings.form_up_dist_default):
+		var cycle: Array = Settings.form_up_dist_cycle.duplicate()
+		cycle.append(Settings.form_up_dist_default)
+		Settings.form_up_dist_cycle = SelectionManagerRef.FORM_UP_DIST_CYCLE.filter(
+				func(m) -> bool: return cycle.has(m))
+		popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_DEPTH),
+				Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_DEPTH))
+		popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_WIDTH),
+				Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_WIDTH))
 	popup.set_item_checked(popup.get_item_index(MENU_REFORM_BEFORE_MOVE),
 			Settings.reform_before_move)
 	popup.set_item_checked(popup.get_item_index(MENU_WALK_ADVANCE),
