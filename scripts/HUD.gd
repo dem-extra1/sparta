@@ -435,6 +435,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_toggle_pause()
 	elif _is_shortcuts_keypress(event) and not _overlay.visible:
 		_shortcuts_dialog.popup_centered()
+		get_viewport().set_input_as_handled()
 
 
 ## Shift+/ produces "?" on a standard layout; physical_keycode (the / key) keeps the

@@ -70,8 +70,8 @@ func _ready() -> void:
 		if action == "STANCES":
 			for entry in BattleRef.ORDER_MODE_HOTKEYS:
 				var slug: String = entry["slug"]
-				var name: String = str(BattleRef.ORDER_MODE_NAMES.get(entry["mode"], slug))
-				var key_label := _add_row(grid, name, OS.get_keycode_string(Settings.order_binding(slug)))
+				var mode_name: String = str(BattleRef.ORDER_MODE_NAMES.get(entry["mode"], slug))
+				var key_label := _add_row(grid, mode_name, OS.get_keycode_string(Settings.order_binding(slug)))
 				_stance_labels[slug] = key_label
 			_add_row(grid, "Clear stance", "Esc")
 		else:
