@@ -198,7 +198,7 @@ func test_about_face_leaves_bodies_on_their_slots() -> void:
 			"body %d sits on its reversed-facing slot (no post-turn spring)" % i)
 
 
-# --- Quarter-turn (90° in place, #371) --------------------------------------
+# --- Quarter-turn (90° in place) --------------------------------------------
 
 func test_quarter_turn_sets_perpendicular_target() -> void:
 	var u := _make_unit()                  # facing DOWN
