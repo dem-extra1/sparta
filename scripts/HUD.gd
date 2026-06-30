@@ -509,9 +509,10 @@ func _build_ctrl_formation_menu() -> Control:
 		{"mode": UnitRef.FORMATION_TIGHT, "label": "Tight"},
 		{"mode": UnitRef.FORMATION_LOOSE, "label": "Loose"},
 	]
-	for i in entries.size():
-		popup.add_item(entries[i]["label"], i)
-		popup.set_item_metadata(i, entries[i]["mode"])
+	for entry: Dictionary in entries:
+		var mode: int = entry["mode"]
+		popup.add_item(entry["label"], mode)
+		popup.set_item_metadata(popup.get_item_index(mode), mode)
 	popup.about_to_popup.connect(_reposition_dropup.bind(popup, _ctrl_formation_btn))
 	popup.id_pressed.connect(_on_formation_popup_id)
 	return _ctrl_formation_btn
@@ -545,23 +546,23 @@ func _build_ctrl_stance_menu() -> Control:
 
 
 func _reposition_dropup(popup: PopupMenu, btn: Control) -> void:
-	popup.position = Vector2i(
-		int(btn.global_position.x),
-		int(btn.global_position.y) - popup.size.y
-	)
+	# Defer so Godot finishes its first layout pass before we read popup.size.
+	(func():
+		popup.position = Vector2i(
+			int(btn.global_position.x),
+			int(btn.global_position.y) - popup.size.y
+		)).call_deferred()
 
 
 func _on_formation_popup_id(id: int) -> void:
-	var popup := _ctrl_formation_btn.get_popup()
-	var mode: int = popup.get_item_metadata(popup.get_item_index(id))
 	if _sel_mgr != null:
-		_sel_mgr.set_formation_to(mode)
+		_sel_mgr.set_formation_to(id)
 	var names := {
 		UnitRef.FORMATION_NORMAL: "Normal",
 		UnitRef.FORMATION_TIGHT: "Tight",
 		UnitRef.FORMATION_LOOSE: "Loose",
 	}
-	_ctrl_formation_btn.text = names.get(mode, "Formation") + " ▾"
+	_ctrl_formation_btn.text = names.get(id, "Formation") + " ▾"
 
 
 func _on_stance_popup_id(id: int) -> void:
