@@ -176,8 +176,9 @@ comments or docstrings.
 - **A local `var name` shadows the inherited `Node.name` property.** Every
   `Node` already has `name` (`get_name()`/`set_name()`), so a local `var name`
   inside a `Node`-derived script trips a GDScript shadow warning. Qualify it —
-  `mode_name`, `display_name` — as `KeybindingsDialog.gd`'s `name_label` does.
-  The same applies to other inherited names (`position`, `owner`, `scale`).
+  e.g. `mode_name`, `display_name`, `name_label` — so the local doesn't shadow
+  the inherited property. The same applies to other inherited names
+  (`position`, `owner`, `scale`).
 
 - **Godot generates `.import` sidecar files — don't add new ones to git.**
   `.gitignore` already has `*.import`. Several legacy ones in `assets/sfx/` and
