@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Pure refactor + new pure helper functions (formation grid-ops). slots() output is byte-identical and the new transpose/widen/narrow helpers have no caller yet, so there is no visual change to show. The maneuvers that consume these (quarter-turn #371, widen, move-order wiring) will carry their own demos."
+  "input": "demos/inputs/quarter-turn.json",
+  "caption": "Quarter-turn (E): every soldier pivots 90° in place — nobody marches — and the block's frontage and depth swap (wide line → deep column facing the new direction). Q turns left, E turns right.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
 }

@@ -66,6 +66,11 @@ var formation_mode: int = FORMATION_NORMAL
 # change rides the replay command stream so playback reproduces it. Honoured and
 # clamped to [1, max_soldiers] in UnitFormation.frontage.
 var frontage_override: int = 0
+# Maneuver-set frontage: 0 = inactive; > 0 while a drill maneuver has reshaped the grid
+# (a quarter-turn transposes frontage<->depth, a widen doubles it). Outranks the player
+# override in UnitFormation.frontage -- the formation genuinely IS this shape until the
+# unit reforms (a fresh move order / rout clears it). Set by the maneuver on completion.
+var maneuver_frontage: int = 0
 # Facing to pivot to once a move order's destination is reached, set by a
 # drag-to-form-up order so the unit deploys facing the dragged line rather than its
 # march direction. Vector2.ZERO means "keep the march facing" (no deploy turn).
@@ -429,20 +434,32 @@ func _think(delta: float) -> void:
 				return
 			_commit_pending_reform()
 
-	# Conversio (in-place about-face): pivot soldiers 180° without advancing.
-	# Cancelled by engaging in combat or receiving a move order; completes when
-	# unit.facing arrives at the reversed heading.
+	# In-place drill turns: every soldier turns where they stand, the block does not advance
+	# or pivot as a body. Cancelled by engaging in combat or receiving a move order (the
+	# partial rotation is preserved). On arrival the bodies are relabelled onto the reshaped
+	# grid so the re-engaged arrival spring sees ~zero error instead of surging across.
+	#
+	# Conversio (about-face, 180°): the grid keeps its shape; bodies just reverse.
 	if _conversio_target != Vector2.ZERO:
 		if state == State.FIGHTING or has_move_target:
-			# Interrupt: unit.facing stays wherever it got to — that is the soldiers' current
-			# facing, which the sim should preserve (shield side, threat awareness, etc.).
 			_conversio_target = Vector2.ZERO
 		else:
-			_rotate_facing_toward(_conversio_target, delta, CONVERSIO_TURN_RATE)
-			if facing.dot(_conversio_target) > 1.0 - 0.0001:
-				facing = _conversio_target
+			if _advance_turn(_conversio_target, delta):
 				_conversio_target = Vector2.ZERO
 				_reverse_soldier_bodies()
+			state = State.IDLE
+			return
+
+	# Quarter-turn (90°): frontage and depth swap. On arrival the grid transposes
+	# (maneuver_frontage) and the bodies are relabelled onto the transposed slots.
+	if _quarter_target != Vector2.ZERO:
+		if state == State.FIGHTING or has_move_target:
+			_quarter_target = Vector2.ZERO
+		else:
+			if _advance_turn(_quarter_target, delta):
+				_quarter_target = Vector2.ZERO
+				maneuver_frontage = UnitFormation.transposed_files(soldiers, UnitFormation.frontage(self))
+				_relabel_bodies_to_grid()
 			state = State.IDLE
 			return
 
@@ -918,6 +935,10 @@ var _per_soldier_facing: bool = false
 # spring restoring force while it turns so bodies don't drift to intermediate slot positions.
 # Cleared on arrival or when interrupted by combat, a move order, or routing.
 var _conversio_target: Vector2 = Vector2.ZERO
+# Non-zero while a quarter-turn (90° in-place turn) is in progress: the target facing,
+# 90° to the left or right of the start. Same freeze/relabel machinery as the conversio;
+# on arrival the grid transposes (maneuver_frontage) so frontage and depth swap.
+var _quarter_target: Vector2 = Vector2.ZERO
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -989,6 +1010,92 @@ func conversio() -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
 		return
 	_conversio_target = Vector2(-facing.x, -facing.y)
+
+
+## Quarter-turn (90° in-place turn, Aelian/Asclepiodotus): every soldier pivots a quarter
+## turn to the left (`dir` = -1) or right (`dir` = +1); the unit's frontage and depth swap
+## relative to the field, but the men do not march and the internal grid is preserved. Same
+## freeze-and-relabel machinery as the conversio: facing rotates toward the target, the
+## spring is frozen so bodies hold their ground, and on arrival the grid transposes and the
+## bodies are relabelled onto the transposed slots. Blocked while fighting / before seeding.
+func quarter_turn(dir: int) -> void:
+	if state == State.FIGHTING or _sim_soldier_facing.is_empty() or dir == 0:
+		return
+	_quarter_target = facing.rotated(signf(dir) * PI * 0.5)
+
+
+## Advance an in-place turn one tick: rotate `facing` toward `target` at the drill rate and
+## report whether it arrived this tick (snapping exactly onto the target so the relabel runs
+## on an exact heading). Shared by the conversio and the quarter-turn.
+func _advance_turn(target: Vector2, delta: float) -> bool:
+	_rotate_facing_toward(target, delta, CONVERSIO_TURN_RATE)
+	if facing.dot(target) > 1.0 - 0.0001:
+		facing = target
+		return true
+	return false
+
+
+## Relabel the bodies onto the unit's current formation grid (used after a maneuver reshapes
+## it -- e.g. the quarter-turn's transpose). The men keep their world positions; each body is
+## reassigned to the nearest free target slot of the new grid, so the arrival spring sees
+## ~zero error instead of dragging bodies across the block. Deterministic (greedy nearest in
+## slot order, ties broken by index -- no RNG / wall-clock), so it reproduces on replay.
+func _relabel_bodies_to_grid() -> void:
+	var n: int = _sim_soldier_pos.size()
+	if n == 0:
+		return
+	var slots: PackedVector2Array = soldier_world_slots(n)
+	if slots.size() != n:
+		return   # arrays mid-resize this tick; the spring eases it next tick
+	# For each new slot (in order), claim the nearest not-yet-claimed body. order[j] is the
+	# body index that takes slot j; the per-body arrays are then gathered into that order.
+	var order := PackedInt32Array()
+	order.resize(n)
+	var claimed := PackedByteArray()
+	claimed.resize(n)   # 0 = free
+	for j in range(n):
+		var best: int = -1
+		var best_d: float = INF
+		for b in range(n):
+			if claimed[b] == 0:
+				var d: float = slots[j].distance_squared_to(_sim_soldier_pos[b])
+				if d < best_d:
+					best_d = d
+					best = b
+		order[j] = best
+		claimed[best] = 1
+	_gather_soldier_bodies(order)
+
+
+## Reorder every index-aligned per-body array so that new index j takes the data of old
+## index order[j]. A pure permutation -- positions and all per-body state are preserved, just
+## relabelled -- so it stays replay-deterministic. Used by the grid relabel.
+func _gather_soldier_bodies(order: PackedInt32Array) -> void:
+	_sim_soldier_pos = _gather_v2(_sim_soldier_pos, order)
+	_sim_body_vel = _gather_v2(_sim_body_vel, order)
+	_sim_soldier_facing = _gather_v2(_sim_soldier_facing, order)
+	_sim_soldier_hp = _gather_f32(_sim_soldier_hp, order)
+	_sim_prone = _gather_f32(_sim_prone, order)
+	_sim_soldier_stamina = _gather_f32(_sim_soldier_stamina, order)
+	if _sim_steer.size() == order.size():
+		_sim_steer = _gather_v2(_sim_steer, order)
+	_render_dirty = true   # positions were relabelled — redraw next frame
+
+
+static func _gather_v2(src: PackedVector2Array, order: PackedInt32Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	out.resize(order.size())
+	for j in range(order.size()):
+		out[j] = src[order[j]]
+	return out
+
+
+static func _gather_f32(src: PackedFloat32Array, order: PackedInt32Array) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(order.size())
+	for j in range(order.size()):
+		out[j] = src[order[j]]
+	return out
 
 
 ## Relabel the bodies for a completed about-face. The men keep their world positions, but
@@ -1353,6 +1460,8 @@ func _rout() -> void:
 	has_move_target = false
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
+	_quarter_target = Vector2.ZERO     # cancel any quarter-turn likewise
+	maneuver_frontage = 0              # a routed unit reforms to its default grid on rally
 	_rout_timer = ROUT_TIME
 	_combat_intermixing = 0.0
 	remove_from_group("units")   # no longer counts as a fighting unit

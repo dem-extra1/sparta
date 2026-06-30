@@ -20,10 +20,13 @@ static func _files(n: int) -> int:
 ## time the count crosses a sqrt threshold mid-fight. At full strength it equals
 ## `_files(soldiers)`, so nothing changes there.
 ##
-## A player-set `frontage_override` (> 0) wins over the auto width, clamped to
-## [1, max_soldiers] -- so the line can be widened (shallower) or narrowed (deeper)
-## by hand, still keying every downstream layout off one stable file count.
+## A maneuver-set `maneuver_frontage` (> 0) wins while a drill maneuver has reshaped the
+## grid (a quarter-turn's transpose, a widen) -- the formation genuinely IS that shape until
+## the unit reforms. Failing that, a player-set `frontage_override` (> 0) wins over the auto
+## width. All clamped to [1, max_soldiers], so every downstream layout keys off one file count.
 static func frontage(u: Unit) -> int:
+	if u.maneuver_frontage > 0:
+		return clampi(u.maneuver_frontage, 1, maxi(1, u.max_soldiers))
 	if u.frontage_override > 0:
 		return clampi(u.frontage_override, 1, maxi(1, u.max_soldiers))
 	return _files(u.max_soldiers)

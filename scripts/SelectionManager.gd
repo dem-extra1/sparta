@@ -233,6 +233,12 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_V:
 		_issue_conversio()   # conversio: every soldier reverses 180° in place
 		return true
+	elif event.keycode == KEY_Q:
+		_issue_quarter_turn(-1)   # quarter-turn left: every soldier pivots 90° CCW
+		return true
+	elif event.keycode == KEY_E:
+		_issue_quarter_turn(1)    # quarter-turn right: every soldier pivots 90° CW
+		return true
 	elif event.keycode == KEY_M:
 		_issue_merge()   # merge the selected friendly regiments into one
 		return true
@@ -551,6 +557,21 @@ func _issue_conversio() -> void:
 	for unit in _selected:
 		if is_instance_valid(unit) and unit.team == 0:
 			unit.conversio()
+			issued = true
+	if issued:
+		Sfx.play(&"order")
+
+
+## Quarter-turn: each soldier on every selected friendly unit pivots 90° in place (`dir`
+## = -1 left / +1 right); the unit's frontage and depth swap. Same drill-state-only path as
+## the conversio -- blocked during playback and combat, not recorded in the replay stream.
+func _issue_quarter_turn(dir: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var issued: bool = false
+	for unit in _selected:
+		if is_instance_valid(unit) and unit.team == 0:
+			unit.quarter_turn(dir)
 			issued = true
 	if issued:
 		Sfx.play(&"order")

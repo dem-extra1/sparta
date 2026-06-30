@@ -196,3 +196,88 @@ func test_about_face_leaves_bodies_on_their_slots() -> void:
 	for i in range(u._sim_soldier_pos.size()):
 		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
 			"body %d sits on its reversed-facing slot (no post-turn spring)" % i)
+
+
+# --- Quarter-turn (90° in place, #371) --------------------------------------
+
+func test_quarter_turn_sets_perpendicular_target() -> void:
+	var u := _make_unit()                  # facing DOWN
+	u.seed_sim_soldiers()
+	u.quarter_turn(1)                      # right
+	assert_true(u._quarter_target.is_equal_approx(Vector2.DOWN.rotated(PI * 0.5)),
+		"the target is 90° to the right of the start heading")
+	assert_true(u.facing.is_equal_approx(Vector2.DOWN),
+		"unit.facing is unchanged at call time; the turn starts next tick")
+
+
+func test_quarter_turn_blocked_while_fighting() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.state = Unit.State.FIGHTING
+	u.quarter_turn(1)
+	assert_true(u._quarter_target.is_zero_approx(), "no quarter-turn while fighting")
+
+
+func test_quarter_turn_blocked_before_bodies_are_seeded() -> void:
+	var u := _make_unit()
+	u.quarter_turn(1)
+	assert_true(u._quarter_target.is_zero_approx(), "no quarter-turn before the bodies exist")
+
+
+func test_quarter_turn_zero_dir_is_a_noop() -> void:
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	u.quarter_turn(0)
+	assert_true(u._quarter_target.is_zero_approx(), "a zero direction does nothing")
+
+
+func test_quarter_turn_transposes_grid_and_keeps_bodies_in_place() -> void:
+	# Completing a quarter-turn swaps frontage and depth and relabels the bodies onto the
+	# transposed grid: the men keep their world positions, and each lands on a transposed
+	# slot so the re-engaged spring sees ~zero error (no post-turn surge).
+	var u := _make_unit()
+	u.frontage_override = 8                 # 8 files x 5 ranks = 40, a full grid
+	u.seed_sim_soldiers()
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	# Simulate the arrival the _think loop performs on completion:
+	u.facing = u.facing.rotated(PI * 0.5)
+	u.maneuver_frontage = UnitFormation.transposed_files(u.soldiers, 8)
+	u._relabel_bodies_to_grid()
+	assert_eq(u.maneuver_frontage, 5, "frontage and depth swap: 8x5 -> 5x8")
+	assert_eq(u._sim_soldier_pos.size(), before.size(), "no body is added or lost")
+	# Pure relabel: the SET of world positions is unchanged (nobody marches).
+	for p in before:
+		var found: bool = false
+		for q in u._sim_soldier_pos:
+			if p.is_equal_approx(q):
+				found = true
+				break
+		assert_true(found, "every body keeps its world position through the relabel")
+	# And each body sits on its transposed-grid slot.
+	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
+	for i in range(u._sim_soldier_pos.size()):
+		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
+			"body %d sits on its transposed slot (no post-turn surge)" % i)
+
+
+func test_relabel_is_a_valid_permutation() -> void:
+	# Every target slot claims exactly one distinct body -- the relabel is a bijection, so no
+	# body is dropped or duplicated even when the grid is partial.
+	var u := _make_unit()                   # 40 men, default frontage -> partial last rank
+	u.seed_sim_soldiers()
+	u.facing = u.facing.rotated(PI * 0.5)
+	u.maneuver_frontage = UnitFormation.transposed_files(u.soldiers, UnitFormation.frontage(u))
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	u._relabel_bodies_to_grid()
+	assert_eq(u._sim_soldier_pos.size(), before.size(), "count unchanged")
+	# Same multiset of positions -> a permutation (no teleport, no loss).
+	for p in before:
+		var n_before: int = 0
+		for q in before:
+			if p.is_equal_approx(q):
+				n_before += 1
+		var n_after: int = 0
+		for q in u._sim_soldier_pos:
+			if p.is_equal_approx(q):
+				n_after += 1
+		assert_eq(n_after, n_before, "position multiplicity preserved (bijection)")
