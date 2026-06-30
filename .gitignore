@@ -1,6 +1,7 @@
 # Godot 4 ignores
 .godot/
 .import/
+*.import
 export.cfg
 *.translation
 
