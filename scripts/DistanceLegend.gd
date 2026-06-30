@@ -29,12 +29,13 @@ static func metres_per_pixel(zoom: float, world_units_per_metre: float) -> float
 static func pick_round_metres(mpp: float, max_px: float = MAX_PX) -> float:
 	if mpp <= 0.0:
 		return 0.0
+	var ladder: Array[float] = _ladder()
 	var best: float = 0.0
-	for c in _ladder():
+	for c in ladder:
 		if c / mpp > max_px:
 			break
 		best = c
-	return best if best > 0.0 else _ladder()[0]
+	return best if best > 0.0 else ladder[0]
 
 
 ## On-screen width (px) of a bar spanning `metres` at `mpp` metres-per-pixel.

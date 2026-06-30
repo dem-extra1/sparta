@@ -361,8 +361,9 @@ func _on_menu_id(id: int) -> void:
 		MENU_WALK_ADVANCE:
 			Settings.walk_advance = not Settings.walk_advance
 		MENU_DISTANCE_LEGEND:
+			# Settings.changed -> _sync_setting_toggles -> _sync_distance_legend_visibility,
+			# same as every other menu toggle here.
 			Settings.show_distance_legend = not Settings.show_distance_legend
-			_sync_distance_legend_visibility()
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 

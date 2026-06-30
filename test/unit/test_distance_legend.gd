@@ -29,11 +29,24 @@ func test_metres_per_pixel_guards_nonpositive_input() -> void:
 
 # --- pick_round_metres --------------------------------------------------------
 
+## True when `value` is some power of ten times 1, 2, or 5 (the 1-2-5 ladder rule) -- a
+## property check, not a fixed list, so it stays valid at any rung the ladder might pick.
+func _is_ladder_value(value: float) -> bool:
+	if value <= 0.0:
+		return false
+	var mag: float = value
+	while mag >= 10.0:
+		mag /= 10.0
+	while mag < 1.0:
+		mag *= 10.0
+	return is_equal_approx(mag, 1.0) or is_equal_approx(mag, 2.0) or is_equal_approx(mag, 5.0)
+
+
 func test_pick_round_metres_is_a_ladder_value() -> void:
 	var mpp: float = DistanceLegend.metres_per_pixel(1.0, WUPM)   # 0.05 m/px
 	var picked: float = DistanceLegend.pick_round_metres(mpp)
-	assert_true(picked in [1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0],
-		"the result is one of the 1-2-5 ladder values, got %s" % picked)
+	assert_true(_is_ladder_value(picked),
+		"the result is a 1-2-5 ladder value (1/2/5 x a power of ten), got %s" % picked)
 
 
 func test_pick_round_metres_width_never_exceeds_max_px() -> void:
