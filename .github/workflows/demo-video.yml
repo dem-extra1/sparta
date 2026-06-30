@@ -80,7 +80,7 @@ jobs:
         id: demo
         # Pick what to record, preferring the most specific manifest available:
         #   1. A per-PR manifest (demos/demo.<slug>.json) ADDED in this PR's diff --
-        #      a uniquely-named file, so two PRs in flight never conflict on it (#416).
+        #      a uniquely-named file, so two PRs in flight never conflict on it.
         #   2. The legacy shared demos/demo.json, if present (still supported).
         #   3. The default showcase battle (generic, honestly labelled).
         # Records as long as some replay file resolves; only skips if even the
