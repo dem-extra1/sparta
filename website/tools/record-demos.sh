@@ -34,6 +34,7 @@ DEMOS=(
   "group_attack|demos/inputs/group-attack-distributed.json|30|240|640|input"
   "pace_modes|demos/inputs/pace-modes.json|30|420|640|input"
   "sidestep|demos/inputs/sidestep.json|30|150|640|input"
+  "about_face|demos/inputs/about-face.json|30|180|640|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a

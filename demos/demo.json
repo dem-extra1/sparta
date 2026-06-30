@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/sidestep.json",
-  "caption": "Side-step: a short lateral move order shuffles the regiment sideways at a walk while it holds its south-facing line, instead of wheeling to face the move and wheeling back. Watch the soldiers keep facing the enemy as the block slides right.",
+  "input": "demos/inputs/about-face.json",
+  "caption": "Gradual wheel / about-face: a move order to a destination behind the unit makes it pivot in good order to face the destination, then march off -- instead of snapping its facing or sliding backwards. Watch the regiment about-face before it advances north.",
   "fixed_fps": 30,
-  "max_frames": 150,
+  "max_frames": 180,
   "fps": 15,
   "width": 640
 }

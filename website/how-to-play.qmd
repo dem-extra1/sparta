@@ -91,6 +91,28 @@ or one that heads forward, still turns to face the destination and marches norma
 </figure>
 ```
 
+**Wheeling and about-face (larger turns).** A move order that turns a unit toward a new
+heading makes it **wheel** there gradually rather than snapping --- it turns toward its
+travel direction in good order as it sets off. When the heading change is sharp, the unit
+**pivots before it advances**: it nearly halts, comes onto its new facing, then marches.
+For a destination directly **behind** the unit this reads as an **about-face** --- the
+regiment turns around to face where it is going and then steps off, instead of sliding
+backwards. So a unit always marches facing its destination, and never reverses into it. (A
+chasing or charging unit still turns instantly --- the gradual wheel is for your own move
+orders, where order matters more than the last fraction of a second.)
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/about_face.jpg">
+    <source src="media/about_face.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>About-face: ordered to a point behind it, the regiment pivots in good order to face the destination, then marches off.</figcaption>
+</figure>
+```
+
 **Zoom in to see the soldiers.** From the usual overview each regiment is a block of
 small marks. Zoom in far enough and those marks become individual figures, and each
 type carries its own gear --- spearmen shoulder a spear, archers carry a bow, other

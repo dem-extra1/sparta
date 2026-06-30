@@ -124,6 +124,11 @@ const JOG_SPEED_FRACTION: float = 0.75
 const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed charge
 
 const MELEE_PRESS_FRACTION: float = 0.6
+# Orderly move orders wheel toward their travel direction at this angular rate
+# (rad/s) rather than snapping, so the ranks turn in good order. A half-circle
+# about-face takes ~PI / TURN_RATE seconds. Combat chases still snap (they pass
+# orderly = false to _move_to).
+const TURN_RATE: float = PI
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
@@ -510,9 +515,11 @@ func _think(delta: float) -> void:
 			return
 
 	# Obey a move order (disengaging if needed), else auto-advance on a near enemy.
+	# A player move order marches orderly -- it wheels gradually toward its heading
+	# and pivots before advancing; combat chases above stay snappy (orderly = false).
 	if has_move_target:
 		if position.distance_to(move_target) > 5.0:
-			_move_to(move_target, delta)
+			_move_to(move_target, delta, true)
 		elif not waypoints.is_empty():
 			# Each queued leg marches on its own terms: drop any side-step hold from
 			# the leg just finished so the next leg turns to face its own travel.
@@ -580,7 +587,7 @@ func _support_tick(delta: float) -> void:
 
 # --- Movement --------------------------------------------------------------
 
-func _move_to(point: Vector2, delta: float) -> void:
+func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	# Route around terrain via the pathfinding layer when one is active; with no
 	# obstacles registered the next step is the target itself (straight line).
 	var step: Vector2 = point
@@ -592,12 +599,14 @@ func _move_to(point: Vector2, delta: float) -> void:
 	if to.length() < 1.0:
 		return
 	var dir: Vector2 = to.normalized()
-	# Facing: a drill maneuver (side-step) holds its commanded heading and shuffles
-	# at a measured walk to keep ranks orderly; otherwise the unit turns to face its
-	# travel direction and uses the AUTO pace ladder below.
+	# Facing. A side-step holds its commanded heading and shuffles sideways. An
+	# orderly move order wheels gradually toward its travel direction (the ranks turn
+	# in good order). A combat chase faces travel instantly (it must stay responsive).
 	var maneuvering: bool = ordered_facing != Vector2.ZERO
 	if maneuvering:
 		_face_dir(ordered_facing)
+	elif orderly:
+		_wheel_toward(dir, delta)
 	else:
 		_face_dir(dir)
 	# Pace: a maneuver or walk-advance holds walk speed throughout. AUTO otherwise
@@ -613,6 +622,13 @@ func _move_to(point: Vector2, delta: float) -> void:
 	else:
 		pace_frac = WALK_SPEED_FRACTION
 	var effective_speed: float = move_speed * terrain_speed * pace_frac
+	# Turn-before-march: while wheeling an orderly move, scale the advance by how far
+	# the unit has come onto its heading. A sharp turn (e.g. an about-face to a rear
+	# destination) nearly halts and pivots, then accelerates as it aligns -- so it
+	# never slides backwards/sideways at speed. Full speed once within ~60 deg of the
+	# heading; side-steps are exempt (they march at a fixed walk perpendicular).
+	if orderly and not maneuvering:
+		effective_speed *= clampf(facing.dot(dir) * 2.0, 0.0, 1.0)
 	position += dir * effective_speed * delta
 	state = State.MOVING
 	_moved_last_frame = true
@@ -640,6 +656,18 @@ func _face(point: Vector2) -> void:
 func _face_dir(dir: Vector2) -> void:
 	if dir.length() > 0.01:
 		facing = dir.normalized()
+
+
+## Rotate `facing` toward `target_dir` by at most TURN_RATE * delta this frame --
+## the gradual wheel an orderly move order uses instead of snapping. Takes the
+## shortest arc, so an about-face turns through the nearer side.
+func _wheel_toward(target_dir: Vector2, delta: float) -> void:
+	if target_dir.length() < 0.01 or facing.length() < 0.01:
+		return
+	var cur: float = facing.angle()
+	var diff: float = angle_difference(cur, target_dir.angle())
+	var step: float = clampf(diff, -TURN_RATE * delta, TURN_RATE * delta)
+	facing = Vector2.from_angle(cur + step)
 
 
 ## Collision footprint by unit type. Cavalry get the widest body, spearmen a bit
