@@ -99,11 +99,15 @@ jobs:
           # directory error. Version tags (v0.1.0) contain no slashes, so this
           # is a no-op for real releases.
           V="${GITHUB_REF_NAME//\//-}"
+          # OUTFILE is absolute so makensis writes straight into build/. A relative
+          # OutFile resolves against the .nsi's directory (tools/installer/), not
+          # this working directory, which would strand the file (a prior mv here
+          # failed for exactly that reason).
           makensis \
             -DVERSION="${V}" \
+            -DOUTFILE="$(pwd)/build/sparta-${V}-windows-setup.exe" \
             -DEXE_PATH="$(pwd)/build/windows/sparta.exe" \
             tools/installer/sparta.nsi
-          mv "sparta-${V}-windows-setup.exe" build/
 
       - name: Package
         run: |
