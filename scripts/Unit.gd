@@ -127,6 +127,9 @@ const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed 
 # about-face takes ~PI / TURN_RATE seconds. Combat chases still snap (they pass
 # orderly = false to _move_to).
 const TURN_RATE: float = PI
+# Conversio (drill about-face): each soldier reverses 180° in place. Faster than the orderly
+# move-order wheel (TURN_RATE) so the maneuver feels snappy rather than a slow arc.
+const CONVERSIO_TURN_RATE: float = PI * 2.0
 
 const MELEE_PRESS_FRACTION: float = 0.6
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
@@ -435,6 +438,22 @@ func _think(delta: float) -> void:
 				return
 			_commit_pending_reform()
 
+	# Conversio (in-place about-face): pivot soldiers 180° without advancing.
+	# Cancelled by engaging in combat or receiving a move order; completes when
+	# unit.facing arrives at the reversed heading.
+	if _conversio_target != Vector2.ZERO:
+		if state == State.FIGHTING or has_move_target:
+			_conversio_target = Vector2.ZERO
+			release_soldier_facing()
+		else:
+			_wheel_toward(_conversio_target, delta, CONVERSIO_TURN_RATE)
+			if facing.dot(_conversio_target) > 1.0 - 0.0001:
+				facing = _conversio_target
+				_conversio_target = Vector2.ZERO
+				release_soldier_facing()
+			state = State.IDLE
+			return
+
 	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit is
 	# within RANGED_RANGE of this unit (i.e. could be shooting at us this frame).
 	# Must run before the ORDER_SUPPORT early return so _support_tick's _move_to
@@ -663,15 +682,15 @@ func _face_dir(dir: Vector2) -> void:
 		facing = dir.normalized()
 
 
-## Rotate `facing` toward `target_dir` by at most TURN_RATE * delta this frame --
+## Rotate `facing` toward `target_dir` by at most `rate` * delta this frame —
 ## the gradual wheel an orderly move order uses instead of snapping. Takes the
 ## shortest arc, so an about-face turns through the nearer side.
-func _wheel_toward(target_dir: Vector2, delta: float) -> void:
+func _wheel_toward(target_dir: Vector2, delta: float, rate: float = TURN_RATE) -> void:
 	if target_dir.length() < 0.01:
 		return
 	var cur: float = facing.angle()
 	var diff: float = angle_difference(cur, target_dir.angle())
-	var step: float = clampf(diff, -TURN_RATE * delta, TURN_RATE * delta)
+	var step: float = clampf(diff, -rate * delta, rate * delta)
 	facing = Vector2.from_angle(cur + step)
 
 
@@ -901,6 +920,9 @@ var _sim_soldier_facing: PackedVector2Array = PackedVector2Array()
 # While true, _sim_soldier_facing is owned by a maneuver and NOT re-synced to the
 # unit heading each tick. False = bodies track unit.facing (the default).
 var _per_soldier_facing: bool = false
+# Non-zero while a conversio pivot is in progress: the target (reversed) facing direction.
+# Cleared on arrival or when interrupted by combat or a move order.
+var _conversio_target: Vector2 = Vector2.ZERO
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -957,6 +979,19 @@ func release_soldier_facing() -> void:
 	_per_soldier_facing = false
 	if _sim_soldier_facing.size() > 0:
 		_sim_soldier_facing.fill(facing)
+
+
+## Conversio (about-face, Vegetius III): every soldier reverses 180° in place; the
+## file/rank grid is unchanged (front rank becomes rear rank man-for-man). Each body's
+## per-soldier facing is set to the reversed heading immediately; unit.facing wheels
+## there at CONVERSIO_TURN_RATE over ~0.5 s so the mesh-swap tracks the pivot.
+## Blocked while fighting; a move order issued mid-pivot cancels it.
+func conversio() -> void:
+	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
+		return
+	var target := Vector2(-facing.x, -facing.y)
+	set_all_soldier_facing(target)
+	_conversio_target = target
 
 
 ## The facing of body `index`; the unit heading for an out-of-range index (so

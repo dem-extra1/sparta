@@ -230,6 +230,9 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	if mode >= 0:
 		_set_armed_mode(mode)   # arm a smart-order stance
 		return true
+	elif event.keycode == KEY_V:
+		_issue_conversio()   # conversio: every soldier reverses 180° in place
+		return true
 	elif event.keycode == KEY_M:
 		_issue_merge()   # merge the selected friendly regiments into one
 		return true
@@ -539,6 +542,20 @@ func _form_up_facing(a: Vector2, b: Vector2) -> float:
 ## Merge the selected friendly regiments into the first-selected one. Encoded
 ## as an order whose target is the primary uid — which IS in `units`, so Battle
 ## tells it apart from a relief (whose target is a friendly outside the selection).
+## Conversio (about-face): each soldier on every selected friendly unit reverses 180°
+## in place. Blocked during replay playback and while units are engaged in combat.
+func _issue_conversio() -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var issued: bool = false
+	for unit in _selected:
+		if is_instance_valid(unit) and unit.team == 0:
+			unit.conversio()
+			issued = true
+	if issued:
+		Sfx.play(&"order")
+
+
 func _issue_merge() -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return

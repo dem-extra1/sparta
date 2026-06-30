@@ -120,6 +120,14 @@ orders, where order matters more than the last fraction of a second.)
 </figure>
 ```
 
+**About-face in place (conversio, <kbd>V</kbd>).** Press <kbd>V</kbd> with a unit
+selected to issue the *conversio*: every soldier reverses 180° where they stand --- the
+file/rank grid stays put, the front rank becomes the rear rank man-for-man, and the
+unit is now facing the other way. Unlike the gradual wheel that accompanies a move order
+(which pivots the whole block around its centre as it marches), the conversio is a
+standing drill command: no one takes a step. Use it to face a threat behind the line
+without marching first, or to quickly reorient a reserve before it moves up.
+
 **Zoom in to see the soldiers.** From the usual overview each regiment is a block of
 small marks. Zoom in far enough and those marks become individual figures, and each
 type carries its own gear --- spearmen shoulder a spear, archers carry a bow, other
