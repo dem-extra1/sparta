@@ -1,11 +1,12 @@
 {
-  "_comment": "Conversio demo: zoom in on the Spearmen (seed 12345, at ~500,300, facing south), select it, press V, and watch every soldier execute an in-place about-face (conversio) — each reverses 180° to face north while the file/rank grid stays put. Camera is zoomed in at figure LOD so the silhouette flip is visible.",
+  "_comment": "Conversio demo: start zoomed out (mark LOD) so the directional pointer marks are visible, select the Spearmen, press V, and watch the pointer marks rotate 180° in place. The camera zooms in mid-maneuver to show the figure-LOD squash animation as each soldier silhouette goes edge-on during the turn.",
   "seed": "12345",
   "camera": [
-    {"tick": 0, "x": 500.0, "y": 215.0, "zoom": 2.2}
+    {"tick": 0,   "x": 500.0, "y": 300.0, "zoom": 0.8},
+    {"tick": 60,  "x": 500.0, "y": 270.0, "zoom": 1.8}
   ],
   "steps": [
     {"tick": 10, "click": [500, 300]},
-    {"tick": 50, "key": "V"}
+    {"tick": 30, "key": "V"}
   ]
 }

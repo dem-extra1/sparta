@@ -1,6 +1,6 @@
 {
   "input": "demos/inputs/conversio.json",
-  "caption": "Conversio (V key): every soldier reverses 180° in place without the formation moving — the true per-soldier about-face, distinct from the gradual block-wheel used for move orders.",
+  "caption": "Conversio (V key): pointer marks (zoomed out) rotate 180° in place showing each soldier's facing; zoomed in, the figure silhouettes squash edge-on mid-turn — the true per-soldier about-face.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,

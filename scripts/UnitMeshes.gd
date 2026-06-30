@@ -20,6 +20,41 @@ const FOOT_ARCHER: int = 2
 static var _mesh_cache: Dictionary = {}
 
 
+## Facing-indicator mark: a left-side semicircle (rear) joined to an isosceles triangle
+## (front), pointed along +X. Rotate the instance transform to face any direction.
+## tip_factor controls how far the tip extends past the radius; 1.5 gives a clear point.
+static func pointer_mesh(radius: float, tip_factor: float = 1.5) -> ArrayMesh:
+	var key: String = "ptr%.2f_%.2f" % [radius, tip_factor]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var segments: int = 8   # semicircle resolution
+	var verts := PackedVector2Array()
+	verts.push_back(Vector2.ZERO)   # fan centre
+	# Semicircle from (0, +radius) going left to (0, -radius)
+	for i in range(segments + 1):
+		var a: float = PI * 0.5 + PI * float(i) / float(segments)
+		verts.push_back(Vector2(cos(a), sin(a)) * radius)
+	# Triangle tip along +X
+	verts.push_back(Vector2(radius * tip_factor, 0.0))
+	var n: int = verts.size()
+	var idx := PackedInt32Array()
+	for i in range(1, n - 1):
+		idx.append(0)
+		idx.append(i)
+		idx.append(i + 1)
+	idx.append(0)   # close: tip back to top of semicircle
+	idx.append(n - 1)
+	idx.append(1)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_mesh_cache[key] = mesh
+	return mesh
+
+
 ## Disc mesh at the given radius, shared across all units. Built once and cached.
 static func disc_mesh(radius: float) -> ArrayMesh:
 	var key: float = snappedf(radius, 0.01)
