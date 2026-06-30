@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Menu interactions cannot be captured by the scripted-input recorder, and the underlying form-up behaviour is already shown in existing demos."
+  "input": "demos/inputs/default-move-order.json",
+  "caption": "Default move order: when a move order arrives the regiment immediately wheels to face the destination, soldiers rotate in place during the reform hold, then march straight forward. No sideways sliding on departure.",
+  "fixed_fps": 30,
+  "max_frames": 360,
+  "fps": 12,
+  "width": 640
 }

@@ -589,6 +589,12 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					u.deploy_facing = Vector2.from_angle(float(cmd["face"]))
 					if cmd.has("frontage"):
 						u.set_frontage(int(cmd["frontage"]))
+				# Pre-face the destination: rotate the regiment to face the march
+				# direction now, so soldiers start wheeling before movement begins
+				# rather than sliding sideways on departure.
+				var march_dir: Vector2 = point - u.position
+				if march_dir.length() > 1.0:
+					u.facing = march_dir.normalized()
 				# Reform-before-move: store the destination and let the reform timer
 				# (in Unit._think) commit it once the unit's ranks have had time to
 				# settle. Baked into the command so replays reproduce this as recorded.
