@@ -576,22 +576,26 @@ ul.task-list li input[type="checkbox"] {
 <td><strong>☰ Menu → Distance legend</strong> toggles the map-scale bar (bottom-right, on by default)</td>
 </tr>
 <tr class="odd">
+<td>Order distance labels</td>
+<td><strong>☰ Menu → Order distance labels</strong> toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default)</td>
+</tr>
+<tr class="even">
 <td>Pan camera</td>
 <td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Zoom</td>
 <td><strong>Mouse wheel</strong></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Show all orders + formation preview</td>
 <td>hold <kbd>Space</kbd></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Active pause</td>
 <td><kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>All shortcuts (this list, in-game)</td>
 <td><kbd>?</kbd> (Shift + <kbd>/</kbd>) or <strong>☰ Menu → Shortcuts</strong></td>
 </tr>
@@ -651,6 +655,15 @@ ul.task-list li input[type="checkbox"] {
 <p><strong>Deploy with a drag (form up).</strong> With a single unit selected, <strong>right-click and drag across open ground</strong> to lay out where it should stand: the start of the drag is the unit’s <strong>left flank</strong>, the end is its <strong>right flank</strong>. The unit marches over and pivots to face the line — the drag sets its position, width, and facing in one gesture, with a live preview of the front line and a forward arrow. A short right-click (no drag) is still a plain move.</p>
 <p><strong>Deploy several units at once.</strong> Select multiple units first, then drag the same flank line: it’s split into one contiguous slice per unit, with a small gap between them. By default the line splits to <strong>equal depth</strong> — every regiment forms up the same number of ranks, so a bigger unit simply takes a wider slice and the whole front is a uniform wall. Press <kbd>Y</kbd> to switch to <strong>equal width</strong> (every unit the same frontage, so a small unit just stacks deeper) and back; the choice you make in <strong>☰ Menu → Form-up</strong> is the default each battle starts with. By default the units fill the line <strong>left-to-right by where they already stand</strong>, so each marches to the nearest slice without crossing a neighbour; hold <strong>Shift</strong> while you drag to place them in <strong>selection order</strong> instead (the first unit you picked takes the left flank). The preview shows every unit’s slice, file count, and the active split mode before you release.</p>
 <p><strong>Survey all orders (hold Space).</strong> Holding <kbd>Space</kbd> overlays every unit’s current order on the battlefield: a dashed green line to each move destination, a red line to each attack target, and a teal link for support duties. At the end of each move line, a <strong>ghost formation</strong> (faint green dots) shows exactly where each individual soldier will stand when the regiment finishes its march — so you can check whether units will fit, overlap, or leave a gap before they arrive.</p>
+<p>Each order line also carries a <strong>distance label</strong> at its midpoint, in the same metres the scale bar uses — the remaining march for a move (the full route, summed over any waypoints), or the range to the target for an attack or support link. The number counts down as the unit closes. Toggle the labels off in <strong>☰ Menu → Order distance labels</strong> (on by default).</p>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/order_distance.jpg">
+    <source src="media/order_distance.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Order distance labels: the green move line shows the remaining march in metres, counting down as the regiment closes on its target.</figcaption>
+</figure>
 </section>
 <section id="the-battle-loop" class="level2">
 <h2 class="anchored" data-anchor-id="the-battle-loop">The battle loop</h2>
