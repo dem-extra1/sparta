@@ -67,7 +67,7 @@ var formation_mode: int = FORMATION_NORMAL
 # clamped to [1, max_soldiers] in UnitFormation.frontage.
 var frontage_override: int = 0
 # Extra rotation (radians) applied to the formation slot grid, on top of the unit heading.
-# A quarter-turn (#371) turns every soldier in place WITHOUT reorganising the grid: each man
+# A quarter-turn turns every soldier in place WITHOUT reorganising the grid: each man
 # faces a new way but stands where he stood. unit.facing rotates 90°, and this offset cancels
 # that rotation in soldier_world_slots so the slots stay put -- the men don't drift. 0 = the
 # grid is square to the heading (the default). A fresh move order / rout reforms it to 0.
@@ -437,8 +437,9 @@ func _think(delta: float) -> void:
 
 	# In-place drill turns: every soldier turns where they stand, the block does not advance
 	# or pivot as a body. Cancelled by engaging in combat or receiving a move order (the
-	# partial rotation is preserved). On arrival the bodies are relabelled onto the reshaped
-	# grid so the re-engaged arrival spring sees ~zero error instead of surging across.
+	# partial rotation is preserved). On arrival each path runs its own completion step so the
+	# re-engaged spring sees ~zero error: the conversio reverses body ordering; the quarter-turn
+	# absorbs the rotation into _formation_angle.
 	#
 	# Conversio (about-face, 180°): the grid keeps its shape; bodies just reverse.
 	if _conversio_target != Vector2.ZERO:
@@ -1354,8 +1355,8 @@ func start_order_response() -> void:
 	_order_response_timer = order_response_delay
 	# A move/attack order reforms a quarter-turned unit back square to its heading, so it
 	# marches as a proper line rather than crabbing sideways. The bodies ease onto the
-	# reformed slots via the spring (the move/attack sequencing in #357 will make this a
-	# deliberate turn-and-widen; until then a clean reform is the safe default).
+	# reformed slots via the spring (a future turn-and-widen move maneuver will make this a
+	# deliberate reshape; until then a clean reform is the safe default).
 	_formation_angle = 0.0
 
 
