@@ -149,6 +149,8 @@ func _ready() -> void:
 	Settings.changed.connect(_sync_setting_toggles)
 	# Same lifetime concern: keep the hint's order-mode keys in sync after a rebind.
 	Settings.changed.connect(_refresh_hint)
+	# Keep the stance dropup labels in sync after a rebind (see _ctrl_bar_refresh_stance_popup).
+	Settings.changed.connect(_ctrl_bar_refresh_stance_popup)
 
 	# File picker for choosing a saved replay, plus an error popup for bad files.
 	# Both stay responsive while the tree is paused (end-of-battle overlay).
@@ -263,6 +265,8 @@ func _exit_tree() -> void:
 		Settings.changed.disconnect(_sync_setting_toggles)
 	if Settings.changed.is_connected(_refresh_hint):
 		Settings.changed.disconnect(_refresh_hint)
+	if Settings.changed.is_connected(_ctrl_bar_refresh_stance_popup):
+		Settings.changed.disconnect(_ctrl_bar_refresh_stance_popup)
 
 
 func _sync_setting_toggles() -> void:
@@ -430,6 +434,24 @@ func _ctrl_bar_sync_settings() -> void:
 	_ctrl_reform_btn.button_pressed = Settings.reform_before_move
 
 
+func _ctrl_bar_refresh_stance_popup() -> void:
+	if _ctrl_stance_btn == null:
+		return
+	var popup := _ctrl_stance_btn.get_popup()
+	var hotkey_entries := [
+		{"slug": "hold", "label": "Hold"},
+		{"slug": "attack_flank", "label": "Flank"},
+		{"slug": "attack_rear", "label": "Rear"},
+		{"slug": "skirmish", "label": "Skirmish"},
+		{"slug": "support", "label": "Support"},
+	]
+	for i in hotkey_entries.size():
+		var entry: Dictionary = hotkey_entries[i]
+		var key_str := OS.get_keycode_string(Settings.order_binding(entry["slug"]))
+		var item_id: int = i + 1
+		popup.set_item_text(popup.get_item_index(item_id), "%s  (%s)" % [entry["label"], key_str])
+
+
 func _ctrl_bar_update_formation(unit) -> void:
 	if _ctrl_formation_btn == null or unit == null or not is_instance_valid(unit):
 		return
@@ -526,7 +548,7 @@ func _build_ctrl_stance_menu() -> Control:
 	var popup := _ctrl_stance_btn.get_popup()
 	# NORMAL (Esc) is fixed and not in ORDER_MODE_HOTKEYS, so add it first with its key.
 	popup.add_item("Normal  (Esc)", 0)
-	popup.set_item_metadata(0, BattleRef.OrderMode.NORMAL)
+	popup.set_item_metadata(popup.get_item_index(0), BattleRef.OrderMode.NORMAL)
 	var hotkey_entries := [
 		{"mode": BattleRef.OrderMode.HOLD, "label": "Hold", "slug": "hold"},
 		{"mode": BattleRef.OrderMode.ATTACK_FLANK, "label": "Flank", "slug": "attack_flank"},
@@ -539,7 +561,7 @@ func _build_ctrl_stance_menu() -> Control:
 		var key_str := OS.get_keycode_string(Settings.order_binding(entry["slug"]))
 		var item_id: int = i + 1
 		popup.add_item("%s  (%s)" % [entry["label"], key_str], item_id)
-		popup.set_item_metadata(item_id, entry["mode"])
+		popup.set_item_metadata(popup.get_item_index(item_id), entry["mode"])
 	popup.about_to_popup.connect(_reposition_dropup.bind(popup, _ctrl_stance_btn))
 	popup.id_pressed.connect(_on_stance_popup_id)
 	return _ctrl_stance_btn
