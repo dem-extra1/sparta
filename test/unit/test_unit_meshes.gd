@@ -79,6 +79,14 @@ func test_dart_is_no_longer_along_facing_than_the_infantry_pointer() -> void:
 		"the dart stays at least as compact along facing as the infantry pointer")
 
 
+func test_dart_front_reach_exceeds_its_half_width() -> void:
+	# The 90°-rotation anti-stripe guard (parallel to the kite's): forward reach must beat
+	# half-width, so a rank rotated sideways can't merge into a flat horizontal bar.
+	var dart := UnitMeshes.dart_mesh(R)
+	assert_gt(_max_x(dart), _max_abs_y(dart),
+		"forward reach is longer than half-width, so a rotated rank can't flatten into a stripe")
+
+
 func test_dart_mesh_is_cached() -> void:
 	assert_eq(UnitMeshes.dart_mesh(R), UnitMeshes.dart_mesh(R),
 		"the same radius returns the shared cached mesh")

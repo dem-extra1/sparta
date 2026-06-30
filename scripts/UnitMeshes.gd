@@ -81,26 +81,6 @@ static func disc_mesh(radius: float) -> ArrayMesh:
 	return mesh
 
 
-static func rect_mesh(w: float, h: float) -> ArrayMesh:
-	var key: String = "r%.2f_%.2f" % [w, h]
-	if _mesh_cache.has(key):
-		return _mesh_cache[key]
-	var hw := w * 0.5
-	var hh := h * 0.5
-	var verts := PackedVector2Array([
-		Vector2(-hw, -hh), Vector2(hw, -hh), Vector2(hw, hh), Vector2(-hw, hh),
-	])
-	var idx := PackedInt32Array([0, 1, 2, 0, 2, 3])
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_INDEX] = idx
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	_mesh_cache[key] = mesh
-	return mesh
-
-
 ## Directional dart (spearmen mark): a compact triangle pointed along +X with a flat rear,
 ## distinct from the round-backed infantry pointer. Kept short along the facing axis (front
 ## reach ~ the pointer's) so a rotated rank never merges into a bar — the failure of the old
@@ -138,25 +118,6 @@ static func kite_mesh(radius: float) -> ArrayMesh:
 		Vector2(0.0, radius * 0.9),    # top
 		Vector2(-radius * 0.7, 0.0),   # rear
 		Vector2(0.0, -radius * 0.9),   # bottom
-	])
-	var idx := PackedInt32Array([0, 1, 2, 0, 2, 3])
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_INDEX] = idx
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	_mesh_cache[key] = mesh
-	return mesh
-
-
-static func diamond_mesh(radius: float) -> ArrayMesh:
-	var key: String = "d%.2f" % [radius]
-	if _mesh_cache.has(key):
-		return _mesh_cache[key]
-	var verts := PackedVector2Array([
-		Vector2(0.0, -radius), Vector2(radius, 0.0),
-		Vector2(0.0, radius),  Vector2(-radius, 0.0),
 	])
 	var idx := PackedInt32Array([0, 1, 2, 0, 2, 3])
 	var arrays := []
