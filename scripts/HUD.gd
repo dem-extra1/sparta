@@ -14,6 +14,7 @@ const UnitRef = preload("res://scripts/Unit.gd")
 # MENU_FORMUP_* ids set the default multi-unit form-up distribution (radio-checked).
 enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_EQUAL_DEPTH, MENU_FORMUP_EQUAL_WIDTH,
+		MENU_FORMUP_CYCLE_DEPTH, MENU_FORMUP_CYCLE_WIDTH,
 		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_KEYBINDINGS }
 
 var _hint: Label
@@ -152,6 +153,10 @@ func _ready() -> void:
 	popup.add_separator("Form-up: split a line by…")
 	popup.add_radio_check_item("Equal depth (ranks)", MENU_FORMUP_EQUAL_DEPTH)
 	popup.add_radio_check_item("Equal width (frontage)", MENU_FORMUP_EQUAL_WIDTH)
+	# Which modes the Y-key cycles through (check to include, uncheck to skip).
+	popup.add_separator("Form-up: Y-key cycles through…")
+	popup.add_check_item("Equal depth (ranks)", MENU_FORMUP_CYCLE_DEPTH)
+	popup.add_check_item("Equal width (frontage)", MENU_FORMUP_CYCLE_WIDTH)
 	popup.add_separator()
 	popup.add_check_item("Reform before move", MENU_REFORM_BEFORE_MOVE)
 	popup.add_check_item("Walk advance (no jog/sprint)", MENU_WALK_ADVANCE)
@@ -295,6 +300,10 @@ func _sync_setting_toggles() -> void:
 			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_DEPTH)
 	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_EQUAL_WIDTH),
 			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_WIDTH)
+	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_DEPTH),
+			Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_DEPTH))
+	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_WIDTH),
+			Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_WIDTH))
 	popup.set_item_checked(popup.get_item_index(MENU_REFORM_BEFORE_MOVE),
 			Settings.reform_before_move)
 	popup.set_item_checked(popup.get_item_index(MENU_WALK_ADVANCE),
@@ -334,12 +343,34 @@ func _on_menu_id(id: int) -> void:
 			Settings.form_up_dist_default = SelectionManagerRef.FormUpDist.EQUAL_DEPTH
 		MENU_FORMUP_EQUAL_WIDTH:
 			Settings.form_up_dist_default = SelectionManagerRef.FormUpDist.EQUAL_WIDTH
+		MENU_FORMUP_CYCLE_DEPTH:
+			_toggle_form_up_cycle(Settings.FORM_UP_DIST_EQUAL_DEPTH)
+		MENU_FORMUP_CYCLE_WIDTH:
+			_toggle_form_up_cycle(Settings.FORM_UP_DIST_EQUAL_WIDTH)
 		MENU_REFORM_BEFORE_MOVE:
 			Settings.reform_before_move = not Settings.reform_before_move
 		MENU_WALK_ADVANCE:
 			Settings.walk_advance = not Settings.walk_advance
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
+
+
+func _toggle_form_up_cycle(mode: int) -> void:
+	var enabled: Array = Settings.form_up_dist_cycle.duplicate()
+	if enabled.has(mode):
+		enabled.erase(mode)
+		# Keep at least one mode so the UI and Y-key behavior stay consistent.
+		# (An empty cycle falls back silently to all modes in SelectionManager,
+		# which would leave the checkboxes unchecked while Y still cycles both.)
+		if enabled.is_empty():
+			_sync_setting_toggles()   # Godot already auto-toggled before id_pressed; restore the checkbox
+			return
+	else:
+		enabled.append(mode)
+	# Rebuild in canonical order so the Y-key sequence is predictable regardless of
+	# the order modes were checked/unchecked.
+	Settings.form_up_dist_cycle = SelectionManagerRef.FORM_UP_DIST_CYCLE.filter(
+			func(m) -> bool: return enabled.has(m))
 
 
 func _unhandled_input(event: InputEvent) -> void:

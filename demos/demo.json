@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/sidestep.json",
-  "caption": "Side-step: a short lateral move order shuffles the regiment sideways at a walk while it holds its south-facing line, instead of wheeling to face the move and wheeling back. Watch the soldiers keep facing the enemy as the block slides right.",
-  "fixed_fps": 30,
-  "max_frames": 150,
-  "fps": 15,
-  "width": 640
+  "skip": true,
+  "reason": "Menu interactions cannot be captured by the scripted-input recorder, and the underlying form-up behaviour is already shown in existing demos."
 }
