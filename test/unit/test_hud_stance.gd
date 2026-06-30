@@ -8,8 +8,8 @@ const HUDScript = preload("res://scripts/HUD.gd")
 const BattleScript = preload("res://scripts/Battle.gd")
 
 
-func _hud() -> Node:
-	var h = HUDScript.new()
+func _hud() -> HUDScript:
+	var h := HUDScript.new()
 	autofree(h)
 	return h
 
@@ -31,8 +31,8 @@ func test_stance_entry_ids_are_sequential_and_unique() -> void:
 	var ids := []
 	for entry in h._STANCE_ENTRIES:
 		ids.append(entry["id"])
-	assert_eq(ids, [0, 1, 2, 3, 4, 5],
-		"popup item ids stay 0..5 in order; refresh/build index by id")
+	assert_eq(ids, range(h._STANCE_ENTRIES.size()),
+		"popup item ids are 0..N-1 in order; refresh/build index by id")
 
 
 func test_label_for_mode_matches_each_entry() -> void:
@@ -62,7 +62,7 @@ func test_rebindable_entry_text_shows_label_and_a_key() -> void:
 	var h := _hud()
 	var hold: Dictionary = h._STANCE_ENTRIES[1]
 	assert_ne(hold["slug"], "", "rebindable entries carry a slug")
-	var text: String = h._stance_item_text(hold)
+	var text := h._stance_item_text(hold)
 	assert_string_starts_with(text, hold["label"] + "  (",
 		"menu text leads with the label then the bound key in parens")
 	assert_string_ends_with(text, ")", "the hotkey hint is parenthesized")
