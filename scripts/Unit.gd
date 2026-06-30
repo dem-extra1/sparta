@@ -431,6 +431,7 @@ func _think(delta: float) -> void:
 			if facing.dot(_conversio_target) > 1.0 - 0.0001:
 				facing = _conversio_target
 				_conversio_target = Vector2.ZERO
+				_reverse_soldier_bodies()
 			state = State.IDLE
 			return
 
@@ -974,6 +975,24 @@ func conversio() -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty():
 		return
 	_conversio_target = Vector2(-facing.x, -facing.y)
+
+
+## Relabel the bodies for a completed about-face. The men keep their world positions, but
+## facing has flipped 180°, so every formation slot rotates to its point-reflected spot —
+## front rank and rear rank swap sides. Reversing the index-aligned body arrays maps each
+## body onto the slot it now physically occupies, so SoldierBodies.step's arrival spring
+## sees ~zero error and the block doesn't surge across itself. A centrosymmetric grid
+## cancels exactly; a partial rear rank leaves a small residual the spring eases. Pure
+## index permutation — no positions change — so it's replay-deterministic.
+func _reverse_soldier_bodies() -> void:
+	_sim_soldier_pos.reverse()
+	_sim_body_vel.reverse()
+	_sim_soldier_hp.reverse()
+	_sim_prone.reverse()
+	_sim_soldier_stamina.reverse()
+	_sim_soldier_facing.reverse()
+	if _sim_steer.size() == _sim_soldier_pos.size():
+		_sim_steer.reverse()
 
 
 ## The facing of body `index`; the unit heading for an out-of-range index (so
