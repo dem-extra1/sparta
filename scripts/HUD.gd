@@ -32,6 +32,21 @@ var _keybindings_dialog: AcceptDialog
 const PANEL_MIN := Vector2(240, 90)
 const PANEL_BOTTOM_GAP := 20.0   # clearance between info panel and screen edge
 
+# Single source of truth for the rebindable stance modes shown in the control-bar
+# dropup. Each entry carries the popup item id, the OrderMode it maps to, the
+# display label (used both as the menu text and the button caption), and the
+# rebind slug. NORMAL is fixed to Esc and has no rebindable slug (empty string).
+# Adding an OrderMode here updates the menu, the rebind refresh, and the caption
+# in one place. See _stance_key_str() for how the slug becomes a hotkey label.
+const _STANCE_ENTRIES := [
+	{"id": 0, "mode": BattleRef.OrderMode.NORMAL, "label": "Normal", "slug": ""},
+	{"id": 1, "mode": BattleRef.OrderMode.HOLD, "label": "Hold", "slug": "hold"},
+	{"id": 2, "mode": BattleRef.OrderMode.ATTACK_FLANK, "label": "Flank", "slug": "attack_flank"},
+	{"id": 3, "mode": BattleRef.OrderMode.ATTACK_REAR, "label": "Rear", "slug": "attack_rear"},
+	{"id": 4, "mode": BattleRef.OrderMode.SKIRMISH, "label": "Skirmish", "slug": "skirmish"},
+	{"id": 5, "mode": BattleRef.OrderMode.SUPPORT, "label": "Support", "slug": "support"},
+]
+
 var _ctrl_bar: PanelContainer
 var _ctrl_formation_btn: MenuButton
 var _ctrl_stance_btn: MenuButton
@@ -443,18 +458,9 @@ func _ctrl_bar_refresh_stance_popup() -> void:
 	if _ctrl_stance_btn == null:
 		return
 	var popup := _ctrl_stance_btn.get_popup()
-	var hotkey_entries := [
-		{"slug": "hold", "label": "Hold"},
-		{"slug": "attack_flank", "label": "Flank"},
-		{"slug": "attack_rear", "label": "Rear"},
-		{"slug": "skirmish", "label": "Skirmish"},
-		{"slug": "support", "label": "Support"},
-	]
-	for i in hotkey_entries.size():
-		var entry: Dictionary = hotkey_entries[i]
-		var key_str := OS.get_keycode_string(Settings.order_binding(entry["slug"]))
-		var item_id: int = i + 1
-		popup.set_item_text(popup.get_item_index(item_id), "%s  (%s)" % [entry["label"], key_str])
+	for entry: Dictionary in _STANCE_ENTRIES:
+		var item_id: int = entry["id"]
+		popup.set_item_text(popup.get_item_index(item_id), _stance_item_text(entry))
 
 
 func _ctrl_bar_update_formation(unit) -> void:
@@ -471,15 +477,30 @@ func _ctrl_bar_update_formation(unit) -> void:
 func _ctrl_bar_update_stance(mode: int) -> void:
 	if _ctrl_stance_btn == null:
 		return
-	var names := {
-		BattleRef.OrderMode.NORMAL: "Normal",
-		BattleRef.OrderMode.HOLD: "Hold",
-		BattleRef.OrderMode.ATTACK_FLANK: "Flank",
-		BattleRef.OrderMode.ATTACK_REAR: "Rear",
-		BattleRef.OrderMode.SKIRMISH: "Skirmish",
-		BattleRef.OrderMode.SUPPORT: "Support",
-	}
-	_ctrl_stance_btn.text = names.get(mode, "Normal") + " ▾"
+	_ctrl_stance_btn.text = _stance_label_for_mode(mode) + " ▾"
+
+
+## The hotkey label shown next to a stance item: "Esc" for the fixed Normal
+## entry (no rebindable slug), else the player's current binding for its slug.
+func _stance_key_str(entry: Dictionary) -> String:
+	var slug: String = entry["slug"]
+	if slug == "":
+		return "Esc"
+	return OS.get_keycode_string(Settings.order_binding(slug))
+
+
+## Full menu text for a stance entry: "Label  (Key)".
+func _stance_item_text(entry: Dictionary) -> String:
+	return "%s  (%s)" % [entry["label"], _stance_key_str(entry)]
+
+
+## The display label for an OrderMode, used as the stance button caption.
+## Falls back to "Normal" for an unmapped mode, matching the previous behavior.
+func _stance_label_for_mode(mode: int) -> String:
+	for entry: Dictionary in _STANCE_ENTRIES:
+		if entry["mode"] == mode:
+			return entry["label"]
+	return "Normal"
 
 
 ## Build the bottom control bar: formation, stance, and per-order options.
@@ -551,21 +572,11 @@ func _build_ctrl_stance_menu() -> Control:
 	_ctrl_stance_btn.custom_minimum_size = Vector2(110, 28)
 	_ctrl_stance_btn.add_theme_font_size_override("font_size", 13)
 	var popup := _ctrl_stance_btn.get_popup()
-	# NORMAL (Esc) is fixed and not in ORDER_MODE_HOTKEYS, so add it first with its key.
-	popup.add_item("Normal  (Esc)", 0)
-	popup.set_item_metadata(popup.get_item_index(0), BattleRef.OrderMode.NORMAL)
-	var hotkey_entries := [
-		{"mode": BattleRef.OrderMode.HOLD, "label": "Hold", "slug": "hold"},
-		{"mode": BattleRef.OrderMode.ATTACK_FLANK, "label": "Flank", "slug": "attack_flank"},
-		{"mode": BattleRef.OrderMode.ATTACK_REAR, "label": "Rear", "slug": "attack_rear"},
-		{"mode": BattleRef.OrderMode.SKIRMISH, "label": "Skirmish", "slug": "skirmish"},
-		{"mode": BattleRef.OrderMode.SUPPORT, "label": "Support", "slug": "support"},
-	]
-	for i in hotkey_entries.size():
-		var entry: Dictionary = hotkey_entries[i]
-		var key_str := OS.get_keycode_string(Settings.order_binding(entry["slug"]))
-		var item_id: int = i + 1
-		popup.add_item("%s  (%s)" % [entry["label"], key_str], item_id)
+	# NORMAL (Esc) is fixed and not rebindable; the other entries show their
+	# current keybinding. _STANCE_ENTRIES drives all three stance sites.
+	for entry: Dictionary in _STANCE_ENTRIES:
+		var item_id: int = entry["id"]
+		popup.add_item(_stance_item_text(entry), item_id)
 		popup.set_item_metadata(popup.get_item_index(item_id), entry["mode"])
 	popup.about_to_popup.connect(_reposition_dropup.bind(popup, _ctrl_stance_btn))
 	popup.id_pressed.connect(_on_stance_popup_id)

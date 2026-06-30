@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Signal-lifecycle bug fix: disconnects physics_frame in Battle._exit_tree() so a restart no longer null-derefs get_tree().paused. The win is the absence of an error log (and the brief post-restart stutter it caused) on reload_current_scene() --- a recorded battle can't film an error that no longer prints."
+  "reason": "Non-visual refactor: consolidates the three stance-mode lists in HUD.gd into one _STANCE_ENTRIES source of truth. The control-bar dropup looks and behaves exactly as before, so a recorded battle would show no change --- the win is internal (a one-place update instead of three) and is covered by test_hud_stance.gd."
 }
