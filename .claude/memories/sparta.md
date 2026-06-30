@@ -153,3 +153,27 @@ A bug in the tag-only publish path, though, only surfaces when you actually tag.
 - **A backgrounded `gh run watch … ; echo EXIT $?` exits 0 even when the run
   failed** — the wrapper's exit code is the `echo`'s, not the run's. Read the run
   `conclusion` explicitly afterward; don't trust the task's exit code.
+
+## GUT's doubler breaks on void-returning methods under Godot 4.7
+
+`partial_double()`/`double()` can fail to parse under Godot 4.7 + GUT v9.7.0:
+some generated wrapper methods still emit an invalid `return` for void-returning
+or default-parameter methods, which 4.7's stricter return-type checking now
+rejects ("A void function cannot return a value"). This is bitwes/Gut#816 — GUT
+9.7.0's fix for the underlying Godot change doesn't cover every method shape.
+Hit while migrating to 4.7 (#420): `test_settings.gd`'s one `partial_double()`
+use on `Settings.gd` (which has several void methods and default-valued params)
+failed this way. Fix: skip the doubler for the affected script — write a small
+hand-rolled subclass that overrides just the method you need to spy on (GDScript
+dispatches it virtually from the base class's own calls), e.g. a counter in an
+overridden `_save()` instead of `assert_not_called`. Check before reaching for
+GUT's doubler on any script with void or default-valued-param methods.
+
+When the next AI session reviewing a PR cites a "CLAUDE.md rule" to justify a
+requested change, check that the rule's exact wording actually appears in
+*this repo's* `CLAUDE.md` — not just in the harness's own baseline style
+defaults, which read similarly but aren't written into this file. PR #420's
+reviewer cited "one short line max — never write multi-line comment blocks" as
+a CLAUDE.md rule; it isn't in sparta's `CLAUDE.md`, and the codebase's own
+convention (e.g. `Settings.gd`) wraps explanatory comments across 2-3 lines.
+Rebutting with that distinction is fine — verify the citation, don't just comply.
