@@ -14,18 +14,25 @@ const BattleScript = preload("res://scripts/Battle.gd")
 # so a rebinding test can't leak into others or the real user://settings.cfg.
 var _orig_bindings: Dictionary
 var _orig_form_up_default: int
+var _orig_form_up_cycle: Array
 var _orig_reform_before_move: bool
 
 
 func before_each() -> void:
 	_orig_bindings = Settings.order_bindings.duplicate()
 	_orig_form_up_default = Settings.form_up_dist_default
+	_orig_form_up_cycle = Settings.form_up_dist_cycle.duplicate()
 	_orig_reform_before_move = Settings.reform_before_move
+	# Pin the canonical 2-mode cycle so the cycle tests don't depend on a developer's
+	# persisted settings.cfg — a custom cycle (e.g. [EQUAL_WIDTH]) made them fail locally
+	# while CI passed on a fresh default. Restored in after_each.
+	Settings.form_up_dist_cycle = [EQUAL_DEPTH, EQUAL_WIDTH]
 
 
 func after_each() -> void:
 	Settings.order_bindings = _orig_bindings.duplicate()
 	Settings.form_up_dist_default = _orig_form_up_default
+	Settings.form_up_dist_cycle = _orig_form_up_cycle.duplicate()
 	Settings.reform_before_move = _orig_reform_before_move
 
 
