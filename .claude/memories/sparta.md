@@ -125,3 +125,31 @@ optional `camera` track) and verifying it locally:
 Verify timing on paper first (unit speeds in `demos/README.md`), then confirm by
 recording + extracting a few frames — don't trust a CI run to catch a mistimed
 scenario.
+
+## Release workflow — tag-gated publish, and the NSIS installer path
+
+The `Release builds` workflow (`.github/workflows/release.yml`) builds on
+`push: tags: v*` **and** on manual `workflow_dispatch`. A dispatch run builds
+every artifact — including the NSIS installer step — and only the final
+*publish to the GitHub Release* is tag-gated. So you can validate the installer
+build without cutting a release; just don't expect a dispatch run to publish one.
+A bug in the tag-only publish path, though, only surfaces when you actually tag.
+
+- **The relative `OutFile` in `tools/installer/sparta.nsi` landed in the `.nsi`'s
+  own directory (`tools/installer/`), not the workflow's working dir.** makensis
+  ran from the repo root with the script path, yet the built installer wasn't in
+  the repo root — a `mv "sparta-…setup.exe" build/` from there failed with
+  *cannot stat*. (NSIS docs are muddy on whether a relative `OutFile` is cwd- or
+  script-relative, and it varies — don't rely on either.) This was the first tag
+  to run the installer step (added after v0.1.0). Fix pattern: make the path an
+  overridable define (`!ifndef OUTFILE` / `!define OUTFILE …` / `!endif`) and pass
+  an absolute `-DOUTFILE="$(pwd)/build/…"` from the workflow, matching how
+  `EXE_PATH` is already absolute — then makensis writes straight into `build/`
+  regardless.
+- **The release workflow runs from the *tagged* tree.** Fixing `main` is not
+  enough: re-point the tag at the fixed commit (`git tag -f -a v0.2.0 <sha>` +
+  `git push origin v0.2.0 --force`) to re-trigger. Reusing a tag is fine when no
+  release ever published under it.
+- **A backgrounded `gh run watch … ; echo EXIT $?` exits 0 even when the run
+  failed** — the wrapper's exit code is the `echo`'s, not the run's. Read the run
+  `conclusion` explicitly afterward; don't trust the task's exit code.

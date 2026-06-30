@@ -38,6 +38,7 @@ left fighting --- every remaining unit is dead or routing.
 | Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose) · or **control bar** |
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
+| Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (bottom-right, on by default) |
 | Pan camera | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges |
 | Zoom | **Mouse wheel** |
 | Show all orders + formation preview | hold <kbd>Space</kbd> |
@@ -146,6 +147,11 @@ foot raise a shield, and cavalry ride a mount that faces the regiment's march. S
 can watch the ranks as people, not dots, and still read who is who. Zoom back out and
 they collapse to the legible marks again --- each mark points the way its soldier faces,
 so you can read a regiment's facing at a glance even from the overview.
+
+**Reading distances.** A small semi-translucent scale bar sits in the bottom-right corner,
+labelled with the real metre distance it spans (e.g. "50 m") --- it rescales as you zoom,
+so you can always judge range and reach at a glance. Toggle it off in **☰ Menu → Distance
+legend** if you'd rather not see it.
 
 **Order stances.** Beyond plain move/attack you can arm a *stance* with a hotkey
 before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> clears it.

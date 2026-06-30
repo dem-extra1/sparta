@@ -15,7 +15,7 @@ const UnitRef = preload("res://scripts/Unit.gd")
 enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_EQUAL_DEPTH, MENU_FORMUP_EQUAL_WIDTH,
 		MENU_FORMUP_CYCLE_DEPTH, MENU_FORMUP_CYCLE_WIDTH,
-		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_KEYBINDINGS }
+		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_KEYBINDINGS }
 
 var _hint: Label
 var _info: Label
@@ -30,6 +30,10 @@ var _watch_button: Button
 var _load_dialog: FileDialog
 var _error_dialog: AcceptDialog
 var _keybindings_dialog: AcceptDialog
+var _legend_panel: PanelContainer
+var _legend_bar: ColorRect
+var _legend_label: Label
+var _legend_last_zoom: float = -1.0   # forces a first sync; _process re-syncs only on change
 const PANEL_MIN := Vector2(240, 90)
 const PANEL_BOTTOM_GAP := 20.0   # clearance between info panel and screen edge
 
@@ -160,6 +164,7 @@ func _ready() -> void:
 	popup.add_separator()
 	popup.add_check_item("Reform before move", MENU_REFORM_BEFORE_MOVE)
 	popup.add_check_item("Walk advance (no jog/sprint)", MENU_WALK_ADVANCE)
+	popup.add_check_item("Distance legend (map scale)", MENU_DISTANCE_LEGEND)
 	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
 	_sync_setting_toggles()
 	popup.id_pressed.connect(_on_menu_id)
@@ -221,6 +226,7 @@ func _ready() -> void:
 
 	_sel_mgr = get_node_or_null("../SelectionManager")
 	_build_ctrl_bar()
+	_build_distance_legend()
 
 	# End-of-battle overlay.
 	_overlay = ColorRect.new()
@@ -330,6 +336,9 @@ func _sync_setting_toggles() -> void:
 			Settings.reform_before_move)
 	popup.set_item_checked(popup.get_item_index(MENU_WALK_ADVANCE),
 			Settings.walk_advance)
+	popup.set_item_checked(popup.get_item_index(MENU_DISTANCE_LEGEND),
+			Settings.show_distance_legend)
+	_sync_distance_legend_visibility()
 	_ctrl_bar_sync_settings()
 
 
@@ -373,6 +382,10 @@ func _on_menu_id(id: int) -> void:
 			Settings.reform_before_move = not Settings.reform_before_move
 		MENU_WALK_ADVANCE:
 			Settings.walk_advance = not Settings.walk_advance
+		MENU_DISTANCE_LEGEND:
+			# Settings.changed -> _sync_setting_toggles -> _sync_distance_legend_visibility,
+			# same as every other menu toggle here.
+			Settings.show_distance_legend = not Settings.show_distance_legend
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 
@@ -399,6 +412,10 @@ func _toggle_form_up_cycle(mode: int) -> void:
 	# the order modes were checked/unchecked.
 	Settings.form_up_dist_cycle = SelectionManagerRef.FORM_UP_DIST_CYCLE.filter(
 			func(m) -> bool: return enabled.has(m))
+
+
+func _process(_delta: float) -> void:
+	_update_distance_legend()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -511,6 +528,75 @@ func _ctrl_bar_sync_settings() -> void:
 	if _ctrl_reform_btn == null:
 		return
 	_ctrl_reform_btn.button_pressed = Settings.reform_before_move
+
+
+# --- Distance legend (map scale bar, #364) ----------------------------------
+# A small semi-translucent panel in the bottom-right corner showing the battlefield's
+# real metre scale at the current camera zoom (DistanceLegend has the pure math). Bottom-
+# left is the selected-unit info panel and bottom-center is the control bar, so bottom-
+# right is the free corner.
+
+const _LEGEND_MARGIN := Vector2(14.0, 14.0)
+const _LEGEND_BAR_HEIGHT := 6.0
+const _LEGEND_PAD := 10.0
+
+func _build_distance_legend() -> void:
+	_legend_panel = PanelContainer.new()
+	_legend_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_legend_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_legend_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_legend_panel.position = -_LEGEND_MARGIN   # offset off the corner; grows up-and-left from here
+	_legend_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Semi-translucent panel background (distinct from the opaque default panel style),
+	# per #364's spec -- the battlefield should stay visible through it.
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.0, 0.0, 0.0, 0.35)
+	style.set_corner_radius_all(4)
+	style.set_content_margin_all(_LEGEND_PAD)
+	_legend_panel.add_theme_stylebox_override("panel", style)
+	add_child(_legend_panel)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	_legend_panel.add_child(col)
+
+	_legend_bar = ColorRect.new()
+	_legend_bar.color = Color(1, 1, 1, 0.9)
+	_legend_bar.custom_minimum_size = Vector2(DistanceLegend.MIN_PX, _LEGEND_BAR_HEIGHT)
+	col.add_child(_legend_bar)
+
+	_legend_label = Label.new()
+	_legend_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_legend_label.add_theme_font_size_override("font_size", 13)
+	_legend_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
+	col.add_child(_legend_label)
+
+	_sync_distance_legend_visibility()
+
+
+func _sync_distance_legend_visibility() -> void:
+	if _legend_panel == null:
+		return
+	_legend_panel.visible = Settings.show_distance_legend
+	if _legend_panel.visible:
+		_legend_last_zoom = -1.0   # force an immediate resync; _process only updates on change
+
+
+## Re-measure the bar against the live camera zoom each frame, but cheaply: skip the work
+## entirely when the zoom hasn't moved (the common case while the player isn't scrolling).
+func _update_distance_legend() -> void:
+	if _legend_panel == null or not _legend_panel.visible:
+		return
+	var cam := get_viewport().get_camera_2d()
+	if cam == null:
+		return
+	if is_equal_approx(cam.zoom.x, _legend_last_zoom):
+		return
+	_legend_last_zoom = cam.zoom.x
+	var mpp: float = DistanceLegend.metres_per_pixel(cam.zoom.x, BattleRef.WORLD_UNITS_PER_METER)
+	var metres: float = DistanceLegend.pick_round_metres(mpp)
+	_legend_bar.custom_minimum_size.x = DistanceLegend.bar_width_px(metres, mpp)
+	_legend_label.text = DistanceLegend.label_text(metres)
 
 
 func _ctrl_bar_refresh_stance_popup() -> void:

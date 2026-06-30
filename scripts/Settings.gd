@@ -91,6 +91,17 @@ var reform_before_move: bool = true:
 			_save()
 			changed.emit()
 
+# Distance legend: a semi-translucent map-scale bar in a HUD corner, showing the
+# battlefield's real metre scale at the current camera zoom. Cosmetic only. Default on.
+var show_distance_legend: bool = true:
+	set(value):
+		if value == show_distance_legend:
+			return
+		show_distance_legend = value
+		if not _loading:
+			_save()
+			changed.emit()
+
 # Order-mode selector hotkeys: stable slug -> physical keycode. Slugs (and the
 # menu order) are owned by Battle.ORDER_MODE_HOTKEYS; these are the factory defaults.
 # Physical keycodes keep the bindings layout-independent (like the camera/pause keys).
@@ -173,6 +184,7 @@ func _load(path: String = SAVE_PATH) -> void:
 		form_up_dist_cycle = raw_cycle.filter(func(v) -> bool: return v is int and v >= 0 and v <= FORM_UP_DIST_MAX)
 	walk_advance = bool(cfg.get_value("gameplay", "walk_advance", walk_advance))
 	reform_before_move = bool(cfg.get_value("gameplay", "reform_before_move", reform_before_move))
+	show_distance_legend = bool(cfg.get_value("camera", "show_distance_legend", show_distance_legend))
 	for slug in DEFAULT_ORDER_BINDINGS:
 		order_bindings[slug] = int(cfg.get_value("keybindings", slug, DEFAULT_ORDER_BINDINGS[slug]))
 	_loading = false
@@ -188,6 +200,7 @@ func _save(path: String = SAVE_PATH) -> void:
 	cfg.set_value("gameplay", "form_up_dist_cycle", form_up_dist_cycle)
 	cfg.set_value("gameplay", "walk_advance", walk_advance)
 	cfg.set_value("gameplay", "reform_before_move", reform_before_move)
+	cfg.set_value("camera", "show_distance_legend", show_distance_legend)
 	for slug in order_bindings:
 		cfg.set_value("keybindings", slug, int(order_bindings[slug]))
 	cfg.save(path)
