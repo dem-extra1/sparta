@@ -581,6 +581,85 @@ func test_move_to_without_ordered_facing_turns_to_travel() -> void:
 	assert_almost_eq(u.facing.y, 1.0, 0.001, "with no held facing the unit turns to face travel")
 
 
+# --- gradual wheel + about-face (orderly move orders) ------------------------
+
+func test_wheel_toward_takes_a_bounded_step() -> void:
+	var u := _make_unit()
+	u.facing = Vector2.RIGHT                 # angle 0
+	u._wheel_toward(Vector2.DOWN, 0.1)       # target +PI/2, capped at TURN_RATE * 0.1
+	assert_almost_eq(u.facing.angle(), Unit.TURN_RATE * 0.1, 0.001,
+		"it rotates by at most TURN_RATE * delta toward the target")
+
+
+func test_wheel_toward_lands_exactly_when_within_one_step() -> void:
+	var u := _make_unit()
+	u.facing = Vector2.RIGHT
+	u._wheel_toward(Vector2(1.0, 0.05), 1.0)   # tiny angle, huge delta -> reach it, no overshoot
+	assert_almost_eq(u.facing.angle(), atan2(0.05, 1.0), 0.001,
+		"a turn smaller than one step lands exactly on the target heading")
+
+
+func test_orderly_move_wheels_gradually_instead_of_snapping() -> void:
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._move_to(Vector2(0, 1000), 0.1, true)   # orderly move, destination straight down
+	assert_gt(u.facing.y, 0.0, "facing has begun turning toward travel")
+	assert_lt(u.facing.y, 0.95, "...but only part way in one frame -- a gradual wheel, not a snap")
+	assert_gt(u.facing.x, 0.0, "still mostly on its old heading after one frame")
+
+
+func test_orderly_move_reaches_its_heading_over_time() -> void:
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	for _i in range(40):
+		u._move_to(Vector2(0, 100000), 0.1, true)   # far target so the heading stays ~down
+	assert_almost_eq(u.facing.y, 1.0, 0.02, "the wheel converges on the travel heading")
+
+
+func test_orderly_sharp_turn_pivots_before_advancing() -> void:
+	# A move order to the rear: the unit nearly halts and pivots rather than sliding
+	# backwards at speed (no moon-walk). The first frame advances ~nothing.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._move_to(Vector2(-1000, 0), 0.1, true)   # destination straight to the rear
+	assert_almost_eq(u.position.x, 0.0, 0.01,
+		"facing away from travel, it pivots in place instead of reversing at speed")
+	assert_lt(u.facing.x, 1.0, "and has begun turning toward the rear destination")
+
+
+func test_unit_wheels_in_place_during_the_reform_hold() -> void:
+	# With reform-before-move, the unit spends the hold turning toward its pending
+	# destination, so it sets off already coming onto its heading -- without advancing.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u._reform_target = Vector2(0, 1000)            # destination straight down
+	u._reform_timer = Unit.REFORM_DURATION
+	u._think(0.1)
+	assert_gt(u.facing.y, 0.0, "the unit begins wheeling toward the destination during the hold")
+	assert_lt(u.facing.y, 0.95, "...gradually, not snapping")
+	assert_eq(u.state, Unit.State.IDLE, "it holds position during the reform")
+	assert_almost_eq(u.position.x, 0.0, 0.001, "no advance during the hold (x)")
+	assert_almost_eq(u.position.y, 0.0, 0.001, "no advance during the hold (y)")
+
+
+func test_orderly_about_face_marches_to_a_rear_destination() -> void:
+	# End to end through _think: ordered to a point behind it, the unit about-faces
+	# then marches there, ending up facing the destination -- not reversing into it.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT
+	u.move_target = Vector2(-300, 0)
+	u.has_move_target = true
+	for _i in range(80):
+		u._think(0.1)
+	assert_lt(u.position.x, -100.0, "the unit marches to the rear destination")
+	assert_lt(u.facing.x, 0.0, "...and faces it (about-faced), rather than reversing into it")
+
+
 func test_approach_velocity_clears_after_a_stationary_frame() -> void:
 	# A stationary, non-fighting unit carries no momentum: the impact velocity is dropped
 	# so a later standing strike can't charge off stale motion.

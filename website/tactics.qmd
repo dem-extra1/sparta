@@ -233,6 +233,22 @@ head forward, turn and march normally. So to reposition laterally in good order,
 make the adjustment small --- a short step keeps the line intact, a long one
 commits the unit to a march.
 
+## Wheeling and the about-face
+
+A larger turn is a **wheel**: the unit comes onto its new heading in good order
+rather than snapping round. When the turn is sharp the unit pivots before it
+advances --- it nearly halts, faces its destination, then marches --- so it never
+slides sideways or backwards at speed. A destination to the **rear** therefore
+triggers an **about-face**: the regiment turns around to face where it is going
+before it steps off.
+
+The cost is time: a sharp reorientation spends a beat pivoting before the unit
+makes ground, and an about-face spends the most. Plan turns ahead of contact ---
+a unit told to reverse at the moment of impact will spend its pivot facing the
+wrong way. Note that a **chasing or charging** unit turns instantly instead, so an
+attack order never pays the wheel tax; the orderly wheel is reserved for your own
+move orders, where keeping the ranks dressed is worth the beat.
+
 ## Order stances
 
 Each order can carry a *stance*, armed with a hotkey before you click (a coloured

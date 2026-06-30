@@ -1,0 +1,11 @@
+{
+  "_comment": "About-face / gradual-wheel demo: zoom on the lone Spearmen (seed 12345, ~500,300, facing south toward the enemy), select it, then right-click a destination directly behind it (north). Because the destination is to the rear, the regiment ABOUT-FACES -- it nearly halts and pivots in good order to face north, then marches off -- instead of sliding backwards at speed. Watch the soldiers wheel around to face their destination before advancing. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 215.0, "zoom": 1.7}
+  ],
+  "steps": [
+    {"tick": 10, "click": [500, 300]},
+    {"tick": 30, "rmb_click": [500, 90]}
+  ]
+}

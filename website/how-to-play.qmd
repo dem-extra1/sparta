@@ -64,16 +64,16 @@ out the troops on the march. Toggle **☰ Menu → Walk advance** to lock units 
 pace throughout; this is required for formed stances like shield wall or pike phalanx
 that break if the unit breaks into a run.
 
-**Move order sequence.** When you right-click a destination, the regiment
-turns to face that direction immediately --- soldiers wheel in place so the
-formation is already pointed at the march target before the first step.
-The unit then marches straight forward and arrives still facing the march
-direction, with soldiers settling into formation on arrival.
+**Move order sequence.** When you right-click a destination, the regiment turns to
+face it and marches there in good order: it **wheels** onto the new heading --- pivoting
+before it advances on a sharp turn --- marches, and settles back into formation on
+arrival. The next two sections cover the special cases: a small sideways shift
+(**side-step**) and a larger turn (**wheel / about-face**).
 
 **Reform before move (default on).** By default, a fresh move order makes a unit hold
 its position briefly (~0.8 s) while its ranks settle into formation before it steps
-off. Because the unit pre-faces the destination during this hold, soldiers
-complete their wheel while standing still rather than rotating mid-march.
+off. The unit spends this hold **wheeling in place** toward the destination, so its
+ranks are already coming onto the new heading before the first step.
 To make units move immediately without the pause, uncheck
 **☰ Menu → Reform before move** or click **Reform** in the control bar. The setting is
 baked into each recorded order, so replays reproduce whichever mode was active when
@@ -95,6 +95,28 @@ or one that heads forward, still turns to face the destination and marches norma
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
   <figcaption>Side-step: a short lateral move shuffles the regiment sideways while it holds its facing, rather than wheeling.</figcaption>
+</figure>
+```
+
+**Wheeling and about-face (larger turns).** A move order that turns a unit toward a new
+heading makes it **wheel** there gradually rather than snapping --- it turns toward its
+travel direction in good order as it sets off. When the heading change is sharp, the unit
+**pivots before it advances**: it nearly halts, comes onto its new facing, then marches.
+For a destination directly **behind** the unit this reads as an **about-face** --- the
+regiment turns around to face where it is going and then steps off, instead of sliding
+backwards. So a unit always marches facing its destination, and never reverses into it. (A
+chasing or charging unit still turns instantly --- the gradual wheel is for your own move
+orders, where order matters more than the last fraction of a second.)
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/about_face.jpg">
+    <source src="media/about_face.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>About-face: ordered to a point behind it, the regiment pivots in good order to face the destination, then marches off.</figcaption>
 </figure>
 ```
 

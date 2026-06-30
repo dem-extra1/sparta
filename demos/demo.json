@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/default-move-order.json",
-  "caption": "Default move order: when a move order arrives the regiment immediately wheels to face the destination, soldiers rotate in place during the reform hold, then march straight forward. No sideways sliding on departure.",
+  "input": "demos/inputs/about-face.json",
+  "caption": "Gradual wheel / about-face: a move order to a destination behind the unit makes it pivot in good order to face the destination, then march off -- instead of snapping its facing or sliding backwards. Watch the regiment about-face before it advances north.",
   "fixed_fps": 30,
-  "max_frames": 360,
-  "fps": 12,
+  "max_frames": 180,
+  "fps": 15,
   "width": 640
 }
