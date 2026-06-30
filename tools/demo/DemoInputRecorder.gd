@@ -18,7 +18,7 @@ const DRAG_TICKS := 16
 var _sel: Node = null
 var _battle: Node = null
 var _cam: Camera2D = null
-var _camera_kf: Dictionary = {}        # static framing {x,y,zoom}, or empty for the default camera
+var _camera_track: Array = []          # keyframes [{tick,x,y,zoom}], interpolated per tick; empty = default camera
 var _by_tick: Dictionary = {}          # tick -> Array of expanded input events
 var _drill: bool = false               # solo/no-opponent rehearsal (input script "drill" field)
 
@@ -29,9 +29,7 @@ func _ready() -> void:
 	var script: Dictionary = _load_script(OS.get_environment("SPARTA_DEMO_INPUT"))
 	# Deterministic seed so the recorded battle is reproducible run to run.
 	Replay.forced_seed = int(str(script.get("seed", "12345")))
-	var cams: Array = script.get("camera", [])
-	if not cams.is_empty():
-		_camera_kf = cams[0]
+	_camera_track = script.get("camera", [])
 	_schedule(script.get("steps", []))
 	_drill = bool(script.get("drill", false))
 	print("[demo-input] %d scripted input events over %d ticks%s" % [
@@ -48,7 +46,7 @@ func _start_battle() -> void:
 	add_child(_battle)
 	_sel = _battle.get_node("SelectionManager")
 	_cam = _battle.get_node("Camera2D")
-	_apply_camera()
+	_apply_camera(0)
 	get_tree().physics_frame.connect(_on_physics_frame)
 
 
@@ -57,19 +55,23 @@ func _on_physics_frame() -> void:
 	if _sel == null or not is_instance_valid(_sel) \
 			or _battle == null or not is_instance_valid(_battle):
 		return
-	_apply_camera()
 	var tick: int = _battle.current_tick()
+	_apply_camera(tick)
 	for ev in _by_tick.get(tick, []):
 		_fire(ev)
 
 
-func _apply_camera() -> void:
-	# CameraController only moves on real pan/zoom input, of which the recorder injects none,
-	# so a directly-set position/zoom holds. Re-applied each tick to be safe.
-	if _cam == null or _camera_kf.is_empty():
+## Set the camera to the track's framing for `tick`, interpolating between keyframes. The
+## CameraController only moves on real pan/zoom input (the recorder injects none), so a
+## directly-set position/zoom holds; we re-apply each tick to animate along the track.
+func _apply_camera(tick: int) -> void:
+	if _cam == null:
 		return
-	_cam.position = Vector2(_camera_kf["x"], _camera_kf["y"])
-	var z: float = float(_camera_kf["zoom"])
+	var kf: Dictionary = CameraKeyframes.sample(_camera_track, tick)
+	if kf.is_empty():
+		return
+	_cam.position = Vector2(kf["x"], kf["y"])
+	var z: float = float(kf["zoom"])
 	_cam.zoom = Vector2(z, z)
 
 

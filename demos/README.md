@@ -97,8 +97,11 @@ script under `demos/inputs/`:
 - `seed` — the battle seed (string). Use `"12345"` for the documented standard 5v5
   layout (the unit table below); spawn **positions** are seed-independent, so clicks
   land regardless — the seed only fixes combat RNG for reproducibility.
-- `camera` (optional) — a single keyframe `{tick,x,y,zoom}` that statically frames the
-  clip (world coordinates). Omit for the default whole-field camera.
+- `camera` (optional) — a list of keyframes `{tick,x,y,zoom}` (world coordinates), sorted
+  by tick. The recorder interpolates position and zoom linearly between them, so the clip
+  pans and zooms over time; outside the track's range it holds the first / last frame. A
+  single keyframe just statically frames the whole clip. Omit for the default whole-field
+  camera. (`demos/inputs/camera-zoom.json` shows a multi-keyframe pan-and-zoom.)
 - `steps` — each stamped with a `tick` (physics ticks, 60/s). Coordinates are world-space:
   - `click [x,y]` / `shift_click [x,y]` / `rmb_click [x,y]` — a press+release at a point.
   - `box { "from": [x,y], "to": [x,y] }` — a left-drag box-select.

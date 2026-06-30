@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/camera-zoom.json",
+  "caption": "DemoInputRecorder now interpolates the camera between keyframes (#412). This clip has no input steps -- just an animated framing that zooms in on the left flank, then pans right and zooms back out. Watch the bottom-right distance legend rescale (5 m -> 2 m -> back) as the zoom changes. Before this, the recorder held the first keyframe and couldn't animate.",
+  "fixed_fps": 30,
+  "max_frames": 240,
+  "fps": 12,
+  "width": 640
+}
