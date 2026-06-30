@@ -67,8 +67,8 @@ that break if the unit breaks into a run.
 **Move order sequence.** When you right-click a destination, the regiment
 turns to face that direction immediately --- soldiers wheel in place so the
 formation is already pointed at the march target before the first step.
-The unit then marches straight forward and arrives facing the direction it
-came from, with soldiers settling into formation on arrival.
+The unit then marches straight forward and arrives still facing the march
+direction, with soldiers settling into formation on arrival.
 
 **Reform before move (default on).** By default, a fresh move order makes a unit hold
 its position briefly (~0.8 s) while its ranks settle into formation before it steps

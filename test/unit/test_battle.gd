@@ -476,6 +476,7 @@ func test_reform_move_pre_faces_destination() -> void:
 	b._apply_order_cmd({"units": [1], "x": 100.0, "y": 0.0, "target": -1, "reform": true})
 	assert_almost_eq(u.facing.x, 1.0, 0.01,
 		"reform move pre-faces destination before the march, so soldiers wheel during the hold")
+	assert_almost_eq(u.facing.y, 0.0, 0.01, "facing is normalized")
 
 
 func test_move_no_pre_face_when_destination_is_self() -> void:
@@ -499,3 +500,16 @@ func test_append_does_not_pre_face() -> void:
 		"target": BattleScript.ORDER_APPEND_WAYPOINT})
 	assert_eq(u.facing, Vector2.DOWN,
 		"a waypoint append does not pre-face the queued destination")
+
+
+func test_form_up_pre_faces_march_direction() -> void:
+	# A form-up drag sets deploy_facing to the dragged angle *and* pre-faces
+	# facing toward the march destination, so soldiers wheel before stepping off.
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	var b := _battle([u])
+	b._apply_order_cmd({"units": [1], "x": 100.0, "y": 0.0,
+		"target": -1, "face": PI / 2.0, "frontage": 20, "reform": true})
+	assert_almost_eq(u.facing.x, 1.0, 0.01,
+		"form-up pre-faces toward the march destination")
+	assert_almost_eq(u.facing.y, 0.0, 0.01, "facing is normalized")
