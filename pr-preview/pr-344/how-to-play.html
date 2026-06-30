@@ -532,42 +532,46 @@ ul.task-list li input[type="checkbox"] {
 <td><strong>☰ Menu</strong> or <strong>control bar</strong> toggles whether units pause to settle their ranks before marching (on by default)</td>
 </tr>
 <tr class="even">
+<td>Walk advance</td>
+<td><strong>☰ Menu → Walk advance</strong> keeps units at walk speed throughout — no jog or sprint phase. Required for formed stances (shield wall, pike phalanx) that break on a run</td>
+</tr>
+<tr class="odd">
 <td>Attack</td>
 <td><strong>Right-click</strong> an enemy unit</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Group attack mode</td>
 <td><kbd>X</kbd> cycles focused ↔︎ distributed · or <strong>control bar</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Add waypoint</td>
 <td><strong>Shift + Right-click</strong> (chain several move points)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Order stance</td>
 <td><kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Formation</td>
 <td><kbd>T</kbd> (cycles Normal / Tight / Loose) · or <strong>control bar</strong></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Line width</td>
 <td><kbd>[</kbd> narrower · <kbd>]</kbd> wider, or <strong>drag a flank grip</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Pan camera</td>
 <td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Zoom</td>
 <td><strong>Mouse wheel</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Show all orders + formation preview</td>
 <td>hold <kbd>Space</kbd></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Active pause</td>
 <td><kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>)</td>
 </tr>
@@ -582,6 +586,7 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Focused atk / Spread atk</strong> — cycle the group-attack mode (same as <kbd>X</kbd>).</li>
 </ul>
 <p>The bar updates immediately when you select a different unit or change a setting elsewhere.</p>
+<p><strong>Pace modes (AUTO by default).</strong> Units walk on approach, jog when a ranged enemy is within range (under missile fire), and accelerate to full sprint speed once within about 200 px of the target — so a charge arrives at full momentum without wearing out the troops on the march. Toggle <strong>☰ Menu → Walk advance</strong> to lock units to walk pace throughout; this is required for formed stances like shield wall or pike phalanx that break if the unit breaks into a run.</p>
 <p><strong>Reform before move (default on).</strong> By default, a fresh move order makes a unit hold its position briefly (~0.8 s) while its ranks settle into formation before it steps off. This means troops arrive at their destination in order rather than marching while still adjusting their files. To make units move immediately without the pause, uncheck <strong>☰ Menu → Reform before move</strong> or click <strong>Reform</strong> in the control bar. The setting is baked into each recorded order, so replays reproduce whichever mode was active when you issued them.</p>
 <p><strong>Zoom in to see the soldiers.</strong> From the usual overview each regiment is a block of small marks. Zoom in far enough and those marks become individual figures, and each type carries its own gear — spearmen shoulder a spear, archers carry a bow, other foot raise a shield, and cavalry ride a mount that faces the regiment’s march. So you can watch the ranks as people, not dots, and still read who is who. Zoom back out and they collapse to the legible marks again.</p>
 <p>Zoom in on a melee and the front-rank fighters <strong>work their weapons</strong> — thrusting and swinging their blades at the enemy on the attack cadence. The blade length tracks each unit’s reach, so a spear line visibly out-thrusts a sword line: the longest weapons reach furthest toward the foe (see <a href="./tactics.html#weapon-reach">Weapon reach</a>).</p>
