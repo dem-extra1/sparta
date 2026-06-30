@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Mark-LOD glyph shapes (spearmen dart, archer kite) are only a few pixels at the zoom-out where they apply, so a recorded battle clip can't legibly show the change. The PR description embeds upscaled stills of a spearmen block instead — distinct downward darts, no horizontal/vertical striping."
+}

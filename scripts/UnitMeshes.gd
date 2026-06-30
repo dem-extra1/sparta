@@ -81,16 +81,20 @@ static func disc_mesh(radius: float) -> ArrayMesh:
 	return mesh
 
 
-static func rect_mesh(w: float, h: float) -> ArrayMesh:
-	var key: String = "r%.2f_%.2f" % [w, h]
+## Directional dart (spearmen mark): a compact triangle pointed along +X with a flat rear,
+## distinct from the round-backed infantry pointer. Kept short along the facing axis (front
+## reach ~ the pointer's) so a rotated rank never merges into a bar — the failure of the old
+## elongated rect, which striped whichever way the rank faced.
+static func dart_mesh(radius: float) -> ArrayMesh:
+	var key: String = "dart%.2f" % [radius]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var hw := w * 0.5
-	var hh := h * 0.5
 	var verts := PackedVector2Array([
-		Vector2(-hw, -hh), Vector2(hw, -hh), Vector2(hw, hh), Vector2(-hw, hh),
+		Vector2(radius * 1.5, 0.0),     # front tip (+X)
+		Vector2(-radius * 0.7, radius * 0.9),    # top rear corner
+		Vector2(-radius * 0.7, -radius * 0.9),   # bottom rear corner
 	])
-	var idx := PackedInt32Array([0, 1, 2, 0, 2, 3])
+	var idx := PackedInt32Array([0, 1, 2])
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
@@ -101,13 +105,19 @@ static func rect_mesh(w: float, h: float) -> ArrayMesh:
 	return mesh
 
 
-static func diamond_mesh(radius: float) -> ArrayMesh:
-	var key: String = "d%.2f" % [radius]
+## Directional kite (archer mark): a four-point shape pointed along +X with the front
+## vertex extended well past the rear, so rotating it by facing reads as an arrow rather
+## than the old symmetric diamond — which, laid flat across a rank, merged into stripes.
+## The cross-axis stays compact (< the front reach) so a rotated rank can't flatten.
+static func kite_mesh(radius: float) -> ArrayMesh:
+	var key: String = "k%.2f" % [radius]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
 	var verts := PackedVector2Array([
-		Vector2(0.0, -radius), Vector2(radius, 0.0),
-		Vector2(0.0, radius),  Vector2(-radius, 0.0),
+		Vector2(radius * 1.6, 0.0),    # front tip (+X)
+		Vector2(0.0, radius * 0.9),    # top
+		Vector2(-radius * 0.7, 0.0),   # rear
+		Vector2(0.0, -radius * 0.9),   # bottom
 	])
 	var idx := PackedInt32Array([0, 1, 2, 0, 2, 3])
 	var arrays := []

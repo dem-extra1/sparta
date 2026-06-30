@@ -150,7 +150,10 @@ type carries its own gear --- spearmen shoulder a spear, archers carry a bow, ot
 foot raise a shield, and cavalry ride a mount that faces the regiment's march. So you
 can watch the ranks as people, not dots, and still read who is who. Zoom back out and
 they collapse to the legible marks again --- each mark points the way its soldier faces,
-so you can read a regiment's facing at a glance even from the overview.
+so you can read a regiment's facing at a glance even from the overview. The mark shape
+tells you the type, too: a dart for spearmen, a kite for archers, and an arrow-pointer
+for other foot and cavalry. All three are compact directional glyphs, so a rank reads as
+arrows whichever way it faces rather than smearing into bars.
 
 **Reading distances.** A small semi-translucent scale bar sits in the bottom-right corner,
 labelled with the real metre distance it spans (e.g. "50 m") --- it rescales as you zoom,
