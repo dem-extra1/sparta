@@ -310,6 +310,28 @@ func _sync_setting_toggles() -> void:
 			Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_DEPTH))
 	popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_WIDTH),
 			Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_WIDTH))
+	# Disable the cycle checkbox for whichever mode is the current battle default: unchecking
+	# it would leave the default unreachable by the Y-key cycle, with no feedback that it
+	# happened. Disabling it (rather than warning after the fact) makes the inconsistency
+	# impossible instead of just visible.
+	popup.set_item_disabled(popup.get_item_index(MENU_FORMUP_CYCLE_DEPTH),
+			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_DEPTH)
+	popup.set_item_disabled(popup.get_item_index(MENU_FORMUP_CYCLE_WIDTH),
+			Settings.form_up_dist_default == SelectionManagerRef.FormUpDist.EQUAL_WIDTH)
+	# The default can also become excluded the other way: the player narrows the cycle to one
+	# OTHER mode, then later switches the default radio to the excluded one. Guarantee the
+	# current default is always in the cycle, and re-check its (now-disabled) box directly —
+	# not via the Settings.changed signal this setter emits, since the very first call here
+	# (from _ready, before the signal is connected) must also self-correct synchronously.
+	if not Settings.form_up_dist_cycle.has(Settings.form_up_dist_default):
+		var cycle: Array = Settings.form_up_dist_cycle.duplicate()
+		cycle.append(Settings.form_up_dist_default)
+		Settings.form_up_dist_cycle = SelectionManagerRef.FORM_UP_DIST_CYCLE.filter(
+				func(m) -> bool: return cycle.has(m))
+		popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_DEPTH),
+				Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_DEPTH))
+		popup.set_item_checked(popup.get_item_index(MENU_FORMUP_CYCLE_WIDTH),
+				Settings.form_up_dist_cycle.has(Settings.FORM_UP_DIST_EQUAL_WIDTH))
 	popup.set_item_checked(popup.get_item_index(MENU_REFORM_BEFORE_MOVE),
 			Settings.reform_before_move)
 	popup.set_item_checked(popup.get_item_index(MENU_WALK_ADVANCE),
@@ -371,6 +393,12 @@ func _on_menu_id(id: int) -> void:
 func _toggle_form_up_cycle(mode: int) -> void:
 	var enabled: Array = Settings.form_up_dist_cycle.duplicate()
 	if enabled.has(mode):
+		# The menu item is disabled for the current default (see _sync_setting_toggles), so
+		# this normally can't fire for it; guard anyway since it's cheap and keeps the
+		# invariant (default stays reachable by Y) true regardless of how this is reached.
+		if mode == Settings.form_up_dist_default:
+			_sync_setting_toggles()
+			return
 		enabled.erase(mode)
 		# Keep at least one mode so the UI and Y-key behavior stay consistent.
 		# (An empty cycle falls back silently to all modes in SelectionManager,

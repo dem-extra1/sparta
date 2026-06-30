@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Static HUD overlay (#364): the distance legend's value is showing it at a fixed zoom and reacting to camera zoom changes, which the scripted-input format can't animate (camera keyframes only set the initial framing). See the PR description for a screenshot."
+  "reason": "Menu checkbox disable-state change (HUD.gd _sync_setting_toggles) — a recorded battle clip can't usefully show a disabled ☰ Menu checkbox. See the PR description for a screenshot."
 }
