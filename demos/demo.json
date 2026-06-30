@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/about-face.json",
-  "caption": "Gradual wheel / about-face: a move order to a destination behind the unit makes it pivot in good order to face the destination, then march off -- instead of snapping its facing or sliding backwards. Watch the regiment about-face before it advances north.",
-  "fixed_fps": 30,
-  "max_frames": 180,
-  "fps": 15,
-  "width": 640
+  "skip": true,
+  "reason": "Internal foundation: adds a per-soldier facing layer (_sim_soldier_facing) to the soldier-body sim, index-aligned with the bodies and synced to the unit heading by default. Nothing reads it for rendering or gameplay yet -- it's the data layer the per-soldier drill maneuvers (about-face, quarter-turn) will consume -- so a recorded battle looks identical. Covered by test_soldier_facing.gd."
 }

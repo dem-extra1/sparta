@@ -32,6 +32,11 @@ static func seed(unit: Unit) -> void:
 	unit._sim_soldier_stamina = PackedFloat32Array()
 	unit._sim_soldier_stamina.resize(unit._sim_soldier_pos.size())
 	unit._sim_soldier_stamina.fill(unit.combat_profile()["max_stamina"])
+	# Per-soldier facing starts pointed at the unit heading, with no maneuver active.
+	unit._sim_soldier_facing = PackedVector2Array()
+	unit._sim_soldier_facing.resize(unit._sim_soldier_pos.size())
+	unit._sim_soldier_facing.fill(unit.facing)
+	unit._per_soldier_facing = false
 
 
 ## Advance a unit's persistent bodies one fixed step. Every body springs toward its slot
@@ -73,6 +78,16 @@ static func step(unit: Unit, delta: float) -> void:
 		unit._sim_soldier_stamina.resize(n)
 		for j in range(stam_old, n):
 			unit._sim_soldier_stamina[j] = maxs
+	if unit._sim_soldier_facing.size() != n:
+		# Keep per-soldier facing index-aligned; a fresh tail body faces the unit heading.
+		var face_old: int = unit._sim_soldier_facing.size()
+		unit._sim_soldier_facing.resize(n)
+		for j in range(face_old, n):
+			unit._sim_soldier_facing[j] = unit.facing
+	# Default: bodies track the unit heading. A maneuver that owns the facings
+	# (_per_soldier_facing) keeps its own values until it releases them.
+	if not unit._per_soldier_facing:
+		unit._sim_soldier_facing.fill(unit.facing)
 	# A felled body rises on its own: decay its prone timer toward 0 each tick. Stamina
 	# regens during the same pass; rising from prone costs KAPPA_P on the tick it happens.
 	# The body still springs to its slot below (it's down, not removed).

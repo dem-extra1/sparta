@@ -891,6 +891,17 @@ var _sim_prone: PackedFloat32Array = PackedFloat32Array()
 # reduces both offence and active defence through SoldierCombat.stamina_factor (g(sigma)).
 var _sim_soldier_stamina: PackedFloat32Array = PackedFloat32Array()
 
+# Per-soldier facing (the drill-maneuver foundation), index-aligned with
+# _sim_soldier_pos. By default every body faces the unit heading (kept synced each
+# tick in SoldierBodies.step). A per-soldier maneuver -- about-face (conversio),
+# the quarter-turn -- takes ownership via set_all_soldier_facing/set_soldier_facing
+# (which raise the _per_soldier_facing flag); the bodies then keep their own
+# facings until release_soldier_facing() hands control back to the unit heading.
+var _sim_soldier_facing: PackedVector2Array = PackedVector2Array()
+# While true, _sim_soldier_facing is owned by a maneuver and NOT re-synced to the
+# unit heading each tick. False = bodies track unit.facing (the default).
+var _per_soldier_facing: bool = false
+
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
 ## reproduces exactly on replay. Keys off `uid`, not `get_instance_id()`, for the
@@ -912,6 +923,46 @@ func soldier_world_slots(count: int) -> PackedVector2Array:
 	for i in range(slots.size()):
 		out.push_back(position + slots[i].rotated(ang))
 	return out
+
+
+## --- Per-soldier facing (drill-maneuver foundation) -------------------------
+## By default each body faces the unit heading; these let a maneuver orient bodies
+## individually. _sim_soldier_facing is index-aligned with _sim_soldier_pos.
+
+## Point every body at `dir` and take maneuver ownership (the per-tick re-sync to
+## the unit heading stops until release_soldier_facing()). No-op for a zero dir.
+func set_all_soldier_facing(dir: Vector2) -> void:
+	if dir.length() < 0.01:
+		return
+	_per_soldier_facing = true
+	var d: Vector2 = dir.normalized()
+	for i in range(_sim_soldier_facing.size()):
+		_sim_soldier_facing[i] = d
+
+
+## Point a single body at `dir` and take maneuver ownership. Out-of-range index or
+## a zero dir is a no-op.
+func set_soldier_facing(index: int, dir: Vector2) -> void:
+	if index < 0 or index >= _sim_soldier_facing.size() or dir.length() < 0.01:
+		return
+	_per_soldier_facing = true
+	_sim_soldier_facing[index] = dir.normalized()
+
+
+## Hand facing control back to the unit heading: clear the maneuver flag and
+## re-sync every body to the current unit facing.
+func release_soldier_facing() -> void:
+	_per_soldier_facing = false
+	if _sim_soldier_facing.size() > 0:
+		_sim_soldier_facing.fill(facing)
+
+
+## The facing of body `index`; the unit heading for an out-of-range index (so
+## callers never index past a mid-resize array).
+func soldier_facing(index: int) -> Vector2:
+	if index < 0 or index >= _sim_soldier_facing.size():
+		return facing
+	return _sim_soldier_facing[index]
 
 
 ## Half-extent of the seeded soldier block around the regiment center: the
