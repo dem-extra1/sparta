@@ -33,6 +33,16 @@ static func sample(track: Array, tick: int) -> Dictionary:
 	return _frame(last)
 
 
+## True if the track's keyframe ticks are non-decreasing — sample() assumes this (it scans
+## segments front-to-back). The recorder checks it once at load and warns if violated, since
+## an out-of-order track would silently interpolate the wrong segments.
+static func is_sorted(track: Array) -> bool:
+	for i in range(track.size() - 1):
+		if int(track[i + 1]["tick"]) < int(track[i]["tick"]):
+			return false
+	return true
+
+
 ## Normalize a keyframe to a bare {x, y, zoom} float framing (drops the tick).
 static func _frame(kf: Dictionary) -> Dictionary:
 	return {"x": float(kf["x"]), "y": float(kf["y"]), "zoom": float(kf["zoom"])}

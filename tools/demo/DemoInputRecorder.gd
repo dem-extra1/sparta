@@ -30,6 +30,8 @@ func _ready() -> void:
 	# Deterministic seed so the recorded battle is reproducible run to run.
 	Replay.forced_seed = int(str(script.get("seed", "12345")))
 	_camera_track = script.get("camera", [])
+	if not CameraKeyframes.is_sorted(_camera_track):
+		push_warning("[demo-input] camera keyframes are not sorted by tick; interpolation will be wrong.")
 	_schedule(script.get("steps", []))
 	_drill = bool(script.get("drill", false))
 	print("[demo-input] %d scripted input events over %d ticks%s" % [
@@ -71,7 +73,7 @@ func _apply_camera(tick: int) -> void:
 	if kf.is_empty():
 		return
 	_cam.position = Vector2(kf["x"], kf["y"])
-	var z: float = float(kf["zoom"])
+	var z: float = kf["zoom"]   # sample() already returns floats
 	_cam.zoom = Vector2(z, z)
 
 

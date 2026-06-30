@@ -17,6 +17,7 @@ func test_single_keyframe_holds_its_framing_at_every_tick() -> void:
 	for tick in [0, 50, 999]:
 		var f: Dictionary = CameraKeyframes.sample(track, tick)
 		assert_eq(f["x"], 500.0, "x held at tick %d" % tick)
+		assert_eq(f["y"], 300.0, "y held at tick %d" % tick)
 		assert_eq(f["zoom"], 1.5, "zoom held at tick %d" % tick)
 
 
@@ -51,8 +52,25 @@ func test_interpolates_within_the_correct_segment_of_a_multi_keyframe_track() ->
 
 func test_clamps_before_first_and_after_last() -> void:
 	var track: Array = [_kf(10, 50.0, 0.0, 1.0), _kf(100, 250.0, 0.0, 2.0)]
-	assert_eq(CameraKeyframes.sample(track, 0)["x"], 50.0, "before the first tick holds the first frame")
-	assert_eq(CameraKeyframes.sample(track, 999)["x"], 250.0, "after the last tick holds the last frame")
+	assert_eq(CameraKeyframes.sample(track, 0)["x"], 50.0, "before the first tick holds the first frame's x")
+	assert_eq(CameraKeyframes.sample(track, 0)["zoom"], 1.0, "...and its zoom")
+	assert_eq(CameraKeyframes.sample(track, 999)["x"], 250.0, "after the last tick holds the last frame's x")
+	assert_eq(CameraKeyframes.sample(track, 999)["zoom"], 2.0, "...and its zoom")
+
+
+func test_is_sorted_accepts_a_non_decreasing_track() -> void:
+	var track: Array = [_kf(0, 0.0, 0.0, 1.0), _kf(30, 0.0, 0.0, 1.0), _kf(90, 0.0, 0.0, 1.0)]
+	assert_true(CameraKeyframes.is_sorted(track), "non-decreasing ticks (including a tie) are sorted")
+
+
+func test_is_sorted_rejects_an_out_of_order_track() -> void:
+	var track: Array = [_kf(0, 0.0, 0.0, 1.0), _kf(90, 0.0, 0.0, 1.0), _kf(30, 0.0, 0.0, 1.0)]
+	assert_false(CameraKeyframes.is_sorted(track), "a tick that drops back is not sorted")
+
+
+func test_is_sorted_is_true_for_empty_and_single() -> void:
+	assert_true(CameraKeyframes.is_sorted([]), "empty track is trivially sorted")
+	assert_true(CameraKeyframes.is_sorted([_kf(5, 0.0, 0.0, 1.0)]), "single keyframe is trivially sorted")
 
 
 func test_duplicate_tick_keyframes_do_not_divide_by_zero() -> void:
