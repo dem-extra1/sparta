@@ -50,7 +50,7 @@ func test_first_step_seeds_bodies_on_their_slots() -> void:
 
 # --- the engaged arrival: hold, then recover ----------------------------------
 
-func test_engaged_body_holds_then_springs_back() -> void:
+func test_engaged_body_holds_then_recovers() -> void:
 	var u := _engaged_unit(2, 24)
 	u.step_sim_soldiers(DT)
 	var slot0: Vector2 = u.soldier_world_slots(u.soldiers)[0]
@@ -96,7 +96,7 @@ func test_shoved_body_arrives_without_overshoot() -> void:
 		var d: float = u._sim_soldier_pos[0].distance_to(slot0)
 		if prev_dist > eps:
 			assert_lte(d, prev_dist + 1e-4,
-				"distance to the slot never grows -- no overshoot, no oscillation")
+				"distance to the slot does not grow (within float tolerance) -- no overshoot, no oscillation")
 			# The body approached from +x; it must never cross to the -x side of the slot.
 			assert_gte(u._sim_soldier_pos[0].x - slot0.x, -eps,
 				"the body never crosses past its slot -- it arrives, it doesn't rebound")

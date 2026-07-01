@@ -123,6 +123,12 @@ static func step(unit: Unit, delta: float) -> void:
 	# acceleration and integrates its own velocity (fixed delta), so position only ever
 	# changes by velocity * delta.
 	var body_accel: float = maxf(unit.accel, BODY_ACCEL_FLOOR)
+	# Cap the arrival approach at the unit's jog pace (not walk, not the move_speed sprint):
+	# reforming and recovering from a knockback is a brisk jog, never a flat-out run, and the
+	# same ceiling applies to engaged and unengaged bodies alike. The idle/reform jog cap
+	# below enforces the same ceiling on the integrated velocity for a stationary unit; using
+	# jog here keeps the arrival target consistent with it. A body that needs to move faster
+	# than jog does so only via the march feed-forward, which is added on top and uncapped.
 	var max_arrive: float = unit.jog_speed
 	for i in range(n):
 		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
@@ -157,10 +163,13 @@ static func step(unit: Unit, delta: float) -> void:
 		var desired_vel: Vector2 = feed_forward
 		var dist: float = to_slot.length()
 		if dist > ARRIVE_EPS:
-			# v = sqrt(2 a d) decelerates to 0 exactly at the slot in continuous time. Also cap
-			# the approach at dist/delta so the desired velocity never asks for more than the
-			# remaining distance in one tick, so as the body closes it aims to land exactly on
-			# the slot rather than sail through it.
+			# v = sqrt(2 a d) decelerates to 0 exactly at the slot in continuous time. The extra
+			# dist/delta cap keeps the DESIRED velocity from asking for more than the remaining
+			# distance in one tick; at the fixed 1/60 delta and any body_accel <= 90 wu/s^2 the
+			# sqrt term is already the tighter of the two, so this inner cap is a cheap safety net
+			# that rarely binds -- the real overshoot guard is the post-step inbound clamp below,
+			# which bounds the INTEGRATED velocity (the desired cap can't stop a body carrying
+			# residual inbound speed from an earlier, faster tick).
 			var arrive_speed: float = minf(max_arrive, sqrt(2.0 * body_accel * dist))
 			if delta > 0.0:
 				arrive_speed = minf(arrive_speed, dist / delta)
