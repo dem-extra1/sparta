@@ -118,6 +118,7 @@ const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
+const ORDER_CYCLE_CHARGE := 6
 
 # Formation modes: how tightly the regiment is packed.
 # TIGHT: soldiers close ranks — better missile defense (shields raised) and
@@ -190,6 +191,17 @@ const MELEE_PRESS_FRACTION: float = 0.6
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
 const SKIRMISH_KITE_DISTANCE: float = 100.0
+# Cycle charge (caracole): a melee unit charges its target, lands the impact strike,
+# then peels back to CYCLE_CHARGE_STANDOFF away to re-form before charging again — so
+# it keeps trading momentum-scaled charge hits instead of grinding in a static melee
+# where the charge bonus is spent. The unit switches from "recharging" (pulling back)
+# to "charging" once it has opened at least this far, and back to recharging on the tick
+# it makes contact and strikes. Set beyond SPRINT_START_DISTANCE (200) by enough runway
+# that the next run reaches full sprint before contact: the charge bonus scales with the
+# closing speed carried into the strike, and _move_to only sprints inside
+# SPRINT_START_DISTANCE, so a standoff at (or just past) that line would land each cycle
+# at a walk. 280 leaves ~80px of sprint build-up ahead of the ~62px contact.
+const CYCLE_CHARGE_STANDOFF: float = 280.0
 # Support: a unit ordered to guard a friendly "ward" engages any enemy that
 # closes within SUPPORT_GUARD_RADIUS of the ward, otherwise shadows the ward,
 # holding station SUPPORT_FOLLOW_DISTANCE off so it doesn't pile onto it. The guard
@@ -352,6 +364,11 @@ var current_speed: float:
 # never teleports.
 var _body_follow_vel: Vector2 = Vector2.ZERO
 var _relief_partner: Unit = null   # unit we're swapping with mid-relief
+# Cycle-charge phase: true while the unit is peeling back to its standoff after a
+# charge, false while it's driving in for the next charge. Flipped by
+# _cycle_charge_tick — set on the contact strike, cleared once the unit has opened
+# to CYCLE_CHARGE_STANDOFF. Meaningful only while order_mode == ORDER_CYCLE_CHARGE.
+var _cycle_recharging: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -581,6 +598,14 @@ func _think(delta: float) -> void:
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
+		# Cycle charge: a melee unit lands a charge, then peels back to a standoff and
+		# re-charges, rather than grinding in a spent-bonus melee. Handled up front (like
+		# skirmish) so it overrides the press-and-grind melee below. Ranged units and a
+		# plain disengage move order fall through to the normal paths.
+		if not is_ranged and order_mode == ORDER_CYCLE_CHARGE \
+				and (target_enemy != null or not has_move_target):
+			if _cycle_charge_tick(enemy, dist, in_contact, delta):
+				return
 		# Skirmish: a ranged unit kites — if a threat is inside the kite
 		# distance it backs off (away from the threat, clamped to the field) rather
 		# than standing to fire or being caught in melee; beyond it, it falls through
@@ -666,6 +691,53 @@ func _think(delta: float) -> void:
 		# Idle: no enemy, or a HOLD stance that won't chase — the paths above
 		# still fight/fire whatever reaches a held unit.
 		state = State.IDLE
+
+
+## Cycle-charge stance: one tick of the caracole loop against `enemy`. A melee unit
+## drives in for a charge, lands the momentum-scaled impact strike, then peels back to
+## CYCLE_CHARGE_STANDOFF to rebuild closing speed before charging again — so it keeps
+## landing high-impact charge hits instead of grinding where the bonus is already spent.
+## Returns true when it fully handled the tick (caller should return); false to fall
+## through to the normal chase/melee paths (e.g. still closing on a distant target, so
+## the ordinary approach builds _approach_velocity for the charge). Deterministic — pure
+## geometry plus the shared strike cadence, so live play and replay stay in lockstep.
+func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float) -> bool:
+	# Recharging: peel back to the standoff so the next run rebuilds closing speed.
+	if _cycle_recharging:
+		if dist < CYCLE_CHARGE_STANDOFF:
+			var away: Vector2 = position - enemy.position
+			if away.length() < 0.001:
+				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
+			var goal: Vector2 = position + away.normalized() * (CYCLE_CHARGE_STANDOFF - dist)
+			_move_to(UnitTargeting.clamp_to_field(self, goal), delta)
+			# Cornered against the field edge with no room to peel off: give up the
+			# retreat and fight in place so the unit isn't frozen.
+			if not _moved_last_frame:
+				_cycle_recharging = false
+				return false
+			return true
+		# Opened past the standoff: end the pull-back and let the normal approach below
+		# drive the next charge run (return false so the caller falls through to it).
+		_cycle_recharging = false
+		return false
+
+	# Charging: on contact, land the (charge-scaled) strike, then flip to recharging so
+	# the unit pulls back next tick instead of pressing into a grind. Otherwise fall
+	# through so the normal approach closes on the enemy and carries a charge velocity.
+	if in_contact:
+		state = State.FIGHTING
+		_face(enemy.position)
+		# Only peel back once a hit actually lands: flipping to recharging is gated on the
+		# strike so a contact that arrives mid-cooldown holds and fights until the cooldown
+		# clears, rather than retreating without having landed the charge. (For current
+		# cavalry speeds the cycle period exceeds ATTACK_INTERVAL, so this rarely bites —
+		# but the gate keeps it correct if speed or the interval is later retuned.)
+		if _attack_cd <= 0.0:
+			_attack_cd = ATTACK_INTERVAL
+			UnitCombat.strike(self, enemy)
+			_cycle_recharging = true
+		return true
+	return false
 
 
 # --- Targeting & support order ----------------------------------------------
