@@ -49,6 +49,29 @@ func test_block_slots_partial_last_rank_stays_laterally_centred() -> void:
 	assert_almost_eq(c.x, 0.0, 0.02, "a partial last rank doesn't pull the block off centre laterally")
 
 
+func test_block_slots_partial_rear_rank_closes_toward_the_centre() -> void:
+	# The short rear rank fills the CENTRE files first -- the wings close in toward the
+	# standard while the centre files stay deepest. 10 in 4 files -> ranks 4, 4, 2; the 2-man
+	# rear rank sits on the inner columns (+/- half a spacing), never spread out to the wings
+	# (which for a full rank would be +/- 1.5 spacings). This is the file-closing behaviour:
+	# survivors cluster centrally rather than leaving a ragged gap-toothed rear rank.
+	var slots := UnitFormation.block_slots(10, 4, 4.0)
+	for i in range(8, 10):
+		assert_almost_eq(absf(slots[i].x), 2.0, 0.001,
+			"rear-rank survivor %d closes onto an INNER file, not a wing" % i)
+
+
+func test_block_slots_rear_rank_never_wider_than_a_full_rank() -> void:
+	# However the rear rank thins, its survivors stay within the block's full frontage -- the
+	# line never bulges sideways as it closes up. Check across a spread of partial counts.
+	var full := UnitFormation.block_slots(24, 6, 3.0)          # 6 x 4, full
+	var edge: float = absf(full[0].x)                          # a full rank's outermost |x|
+	for n in [19, 20, 21, 22, 23]:                             # assorted partial rear ranks
+		for s in UnitFormation.block_slots(n, 6, 3.0):
+			assert_true(absf(s.x) <= edge + 0.001,
+				"n=%d: no slot sits outside the full frontage as the block closes" % n)
+
+
 func test_block_slots_empty_for_nonpositive_inputs() -> void:
 	assert_eq(UnitFormation.block_slots(0, 8, 3.4).size(), 0, "no soldiers -> no slots")
 	assert_eq(UnitFormation.block_slots(40, 0, 3.4).size(), 0, "no files -> no slots")

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/rout-rally.json",
+  "caption": "Demo scenario staging (#473): the recorder can now spawn a custom matchup from the input script's `scenario` field, so a demo can show a specific fight the default 5v5 battle won't produce on its own. Here a lone low-morale infantry unit is deliberately staged against a strong cavalry force so it breaks and routs -- no more 'can't stage this deterministically' demo skips.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

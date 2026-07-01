@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This change pins and documents how a regiment's ranks close up after casualties: the front rank holds its full width, depth thins from the rear, and a short rear rank clusters onto the centre files (the wings close toward the standard, file-closer style) rather than leaving a ragged, gap-toothed rear. The block already reformed this way; the slice adds regression tests and the historical rationale, so the geometry a recorded battle draws is unchanged frame-to-frame -- there is nothing new to see in a short auto-recorded clip. Covered by test/unit/test_unit_formation.gd (centre-closing, never-wider-than-full-rank) and test/unit/test_soldier_melee.gd (reform holds frontage and closes up after casualties). Follows the precedent of the analogous demo.164 skip."
+}
