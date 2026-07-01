@@ -1,0 +1,8 @@
+{
+  "replay": "demos/showcase.json",
+  "caption": "Formation spacing and soldier/cavalry mark sizes now match real-world metrics (#415) -- regiments read as noticeably wider/bulkier blocks and marks read closer to true scale against the distance legend, instead of the old 3-6x-too-tight packing.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}
