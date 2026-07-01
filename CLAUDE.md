@@ -216,6 +216,14 @@ comments or docstrings.
   Pass the input script path via the `SPARTA_DEMO_INPUT` env var — CLI `--`
   args are not forwarded to `DemoInputRecorder`.
 
+- **`push_error()` does not set a non-zero exit code.** A `--headless` Godot run
+  (or a GUT run) that calls `push_error(...)` still exits `0`, so a CI step or
+  script that only checks the exit code passes even when the work silently
+  failed — e.g. a report file was never written. When a headless step is meant to
+  produce an artifact, verify the artifact exists (and is non-empty) rather than
+  trusting the exit code. The coverage job and `tools/check.sh coverage` guard
+  `coverage/lcov.info` this way.
+
 ## Code review handling policy
 When addressing review feedback (human or automated) on a PR, triage each finding:
 
