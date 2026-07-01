@@ -340,6 +340,11 @@ var _approach_velocity: Vector2 = Vector2.ZERO
 # _approach_velocity below (a stationary unit carries no momentum, so the next march
 # always ramps up from zero, never resumes at a stale carried-over speed).
 var _current_speed: float = 0.0
+# Read-only public view of the ramping speed above, for consumers outside this script
+# (the order overlay's speed label). Keeps _current_speed private while giving readers a
+# clean public name, matching the other cross-script unit reads (global_position, team, …).
+var current_speed: float:
+	get: return _current_speed
 # Velocity the regiment center followed its soldiers' centroid at this tick (phase 5):
 # the soldier->regiment coupling slides the center toward where its bodies actually are,
 # so friendly collision (and later all collision) emerges from the soldier layer. Stored

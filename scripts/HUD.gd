@@ -16,7 +16,7 @@ enum { MENU_RESTART, MENU_RESTART_REPLAY, MENU_LOAD, MENU_EDGE_SCROLL, MENU_SFX,
 		MENU_FORMUP_EQUAL_DEPTH, MENU_FORMUP_EQUAL_WIDTH,
 		MENU_FORMUP_CYCLE_DEPTH, MENU_FORMUP_CYCLE_WIDTH,
 		MENU_REFORM_BEFORE_MOVE, MENU_WALK_ADVANCE, MENU_DISTANCE_LEGEND, MENU_ORDER_DISTANCE,
-		MENU_KEYBINDINGS, MENU_SHORTCUTS }
+		MENU_UNIT_SPEED, MENU_KEYBINDINGS, MENU_SHORTCUTS }
 
 var _hint: Label
 var _info: Label
@@ -168,6 +168,7 @@ func _ready() -> void:
 	popup.add_check_item("Walk advance (no jog/sprint)", MENU_WALK_ADVANCE)
 	popup.add_check_item("Distance legend (map scale)", MENU_DISTANCE_LEGEND)
 	popup.add_check_item("Order distance labels", MENU_ORDER_DISTANCE)
+	popup.add_check_item("Unit speed labels", MENU_UNIT_SPEED)
 	popup.add_item("Keybindings…", MENU_KEYBINDINGS)
 	popup.add_item("Shortcuts… (?)", MENU_SHORTCUTS)
 	_sync_setting_toggles()
@@ -348,6 +349,8 @@ func _sync_setting_toggles() -> void:
 			Settings.show_distance_legend)
 	popup.set_item_checked(popup.get_item_index(MENU_ORDER_DISTANCE),
 			Settings.show_order_distance)
+	popup.set_item_checked(popup.get_item_index(MENU_UNIT_SPEED),
+			Settings.show_unit_speed)
 	_sync_distance_legend_visibility()
 	_ctrl_bar_sync_settings()
 
@@ -398,6 +401,8 @@ func _on_menu_id(id: int) -> void:
 			Settings.show_distance_legend = not Settings.show_distance_legend
 		MENU_ORDER_DISTANCE:
 			Settings.show_order_distance = not Settings.show_order_distance
+		MENU_UNIT_SPEED:
+			Settings.show_unit_speed = not Settings.show_unit_speed
 		MENU_KEYBINDINGS:
 			_keybindings_dialog.popup_centered()
 		MENU_SHORTCUTS:

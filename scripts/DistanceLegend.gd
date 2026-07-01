@@ -31,6 +31,24 @@ static func metres_for_world(world_units: float, world_units_per_metre: float) -
 	return world_units / world_units_per_metre
 
 
+## Real metres/second for a `world_speed` (world units/second), via `world_units_per_metre`
+## (Battle.WORLD_UNITS_PER_METER) and the global `speed_scale` (Battle.SPEED_SCALE) the
+## loadouts multiply their authored m/s by. Undoes that same product so a unit's live
+## `_current_speed` reads back in the metres/second the loadout declared. 0 for a
+## non-positive scale.
+static func mps_for_world_speed(world_speed: float, world_units_per_metre: float, speed_scale: float = 1.0) -> float:
+	var factor: float = world_units_per_metre * speed_scale
+	if factor <= 0.0:
+		return 0.0
+	return world_speed / factor
+
+
+## Player-facing label for a speed in metres/second: one decimal place, e.g. "2.6 m/s".
+## Negative inputs clamp to 0 (a magnitude, never below zero).
+static func speed_label_text(mps: float) -> String:
+	return "%.1f m/s" % maxf(mps, 0.0)
+
+
 ## The "nice" round distance (the classic 1-2-5 ladder: 1, 2, 5, 10, 20, 50, 100, 200, …,
 ## scaled by powers of ten in both directions) whose on-screen width is the largest that
 ## still fits at or under `max_px`. Width grows monotonically with the ladder, so the first
