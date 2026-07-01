@@ -35,7 +35,7 @@ DEMOS=(
   "pace_modes|demos/inputs/pace-modes.json|30|420|640|input"
   "sidestep|demos/inputs/sidestep.json|30|150|640|input"
   "arrow_nudge|demos/inputs/arrow-nudge.json|30|270|640|input"
-  "about_face|demos/inputs/about-face.json|30|180|640|input"
+  "about_face|demos/inputs/about-face.json|30|300|640|input"
   "wheel|demos/inputs/wheel.json|30|300|640|input"
   "square|demos/inputs/anti-cav-square.json|30|300|640|input"
   "order_distance|demos/inputs/order-distance.json|30|120|640|input"

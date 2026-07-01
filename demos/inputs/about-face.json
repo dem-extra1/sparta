@@ -1,11 +1,16 @@
 {
-  "_comment": "Move-to-rear demo: zoom on the lone Spearmen (seed 12345, ~500,300, facing south toward the enemy), select it, then right-click a destination directly behind it (north). Because the destination is to the rear (>135 off facing), the regiment about-faces in place -- every soldier reverses 180 where they stand, front rank becoming rear rank man-for-man, the block keeping its footprint -- and then marches north facing its destination, instead of pivoting the whole block about its centre or sliding backwards. Watch the men turn about on the spot before the block steps off. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "_comment": "Move-to-rear demo: a single Spearmen regiment is staged alone (drill mode, no opponent) at (500,430) facing SOUTH. It is selected, then given a move order to a destination directly to its REAR (north, 500,250). Because that destination is >135 deg off the unit's facing, the regiment executes an about-face (conversio) -- every soldier reverses 180 deg where they stand, front rank becoming rear rank, the block keeping its footprint -- and only then marches north facing its destination, instead of pivoting the whole block about its centre or sliding backwards. Staged as a lone unit so the in-place pivot is unmistakable on screen; the destination is kept close so the pivot AND the ensuing northward march both land inside the clip. The camera holds a tight frame spanning start and destination. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
   "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 500, "y": 430, "count": 40, "facing": [0, 1]}
+  ],
   "camera": [
-    {"tick": 0, "x": 500.0, "y": 215.0, "zoom": 1.7}
+    {"tick": 0, "x": 500.0, "y": 350.0, "zoom": 1.9}
   ],
   "steps": [
-    {"tick": 10, "click": [500, 300]},
-    {"tick": 30, "rmb_click": [500, 90]}
-  ]
+    {"tick": 12, "click": [500, 430]},
+    {"tick": 24, "rmb_click": [500, 250]}
+  ],
+  "frames": [0, 24, 60, 90, 130, 180, 240]
 }
