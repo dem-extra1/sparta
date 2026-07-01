@@ -134,7 +134,8 @@ static func step(unit: Unit, delta: float) -> void:
 		# unit.facing, which would drag bodies to intermediate positions and back. Zero the
 		# restoring force so bodies stay at their current positions; the damping term still
 		# bleeds off any existing velocity, so they settle exactly in place.
-		var turning: bool = unit._conversio_target != Vector2.ZERO or unit._quarter_target != Vector2.ZERO
+		var turning: bool = unit._conversio_target != Vector2.ZERO or unit._quarter_target != Vector2.ZERO \
+				or unit._wheel_target != Vector2.ZERO
 		var to_slot: Vector2 = Vector2.ZERO if turning \
 				else slots[i] - unit._sim_soldier_pos[i]
 		var accel: Vector2 = to_slot * SPRING_STIFFNESS - (unit._sim_body_vel[i] - feed_forward) * SPRING_DAMPING
@@ -201,6 +202,14 @@ static func _cap_body_speed(unit: Unit, i: int) -> Vector2:
 static func couple(unit: Unit, delta: float) -> void:
 	var n: int = unit._sim_soldier_pos.size()
 	if n == 0:
+		return
+	# During a wheel the maneuver authoritatively slides `position` along the hinge arc while the
+	# bodies spring onto the swinging slots a few frames behind. Their centroid therefore lags the
+	# slot centroid, so coupling would read that lag as off-formation drift and drag the centre
+	# BACKWARD against the arc — pulling the standing flank off its hinge. Skip it; the spring
+	# alone brings the bodies onto the arc, and coupling resumes once the wheel completes.
+	if unit._wheel_target != Vector2.ZERO:
+		unit._body_follow_vel = Vector2.ZERO
 		return
 	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
 	if slots.size() != n:
