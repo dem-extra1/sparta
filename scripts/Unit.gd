@@ -127,6 +127,15 @@ const TIGHT_CHARGE_ABSORPTION: float = 0.55
 # Separation-radius scale factors per formation mode.
 const TIGHT_SEPARATION_SCALE: float = 0.75
 const LOOSE_SEPARATION_SCALE: float = 1.35
+# Open-order grid-spacing scale. FORMATION_SPACING already sits at the historically
+# attested close-order / locked-shield floor (~0.45 m per man) -- there's no
+# historically grounded room to pack soldiers tighter than that, so TIGHT reuses the
+# same floor (spacing_scale stays 1.0; its bonuses come from
+# TIGHT_MISSILE_DEFENSE/TIGHT_CHARGE_ABSORPTION and the smaller separation_radius
+# above, not from squeezing marks closer than any real formation ever stood). Only
+# LOOSE widens the grid, to ~0.9 m per man -- matching the researched "room to wield
+# a weapon" open-order figure.
+const LOOSE_SPACING_SCALE: float = 2.0
 # Melee intermixing: a legacy softening of enemy separation for fighting non-hold
 # units. Largely superseded by the engaged-enemy front-rank close-up in _separate
 # (which lets lines meet at contact and the per-soldier collision set the spacing);
@@ -332,6 +341,13 @@ var separation_radius: float = SEPARATION_RADIUS_INFANTRY
 # this rather than to the raw type constant, so a merged unit doesn't silently
 # lose its widened body on a formation cycle.
 var _base_separation_radius: float = SEPARATION_RADIUS_INFANTRY
+# Density scale for the formation grid itself: set_formation() sets this alongside
+# separation_radius, so LOOSE (open marching order) actually spreads soldiers out --
+# not just widens an abstract collision footprint. TIGHT stays at 1.0 (see
+# LOOSE_SPACING_SCALE above for why there's no tighter-than-default grid spacing).
+# UnitFormation.slots() and _front_depth() read it; the files/ranks count itself
+# never changes, only the spacing between them.
+var spacing_scale: float = 1.0
 # Rises while this unit is locked in mutual melee (both FIGHTING, neither HOLD).
 # Scales down the separation push vs. matched enemies so units gradually intermix.
 var _combat_intermixing: float = 0.0
@@ -765,7 +781,7 @@ func _type_separation_radius() -> float:
 func _front_depth() -> float:
 	var files: int = UnitFormation.frontage(self)
 	var ranks: int = int(ceil(float(soldiers) / float(files)))
-	var depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING
+	var depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING * spacing_scale
 	# Cap the depth used as the engaged-enemy separation floor. A very narrow,
 	# deep player-set frontage would otherwise make the summed floor exceed melee
 	# contact range, pushing fighting lines apart faster than they close and
@@ -785,10 +801,13 @@ func set_formation(mode: int) -> void:
 	var base := _base_separation_radius
 	if mode == FORMATION_TIGHT:
 		separation_radius = base * TIGHT_SEPARATION_SCALE
+		spacing_scale = 1.0   # already at the historical close-order/locked-shield floor
 	elif mode == FORMATION_LOOSE:
 		separation_radius = minf(SEPARATION_RADIUS_MAX, base * LOOSE_SEPARATION_SCALE)
+		spacing_scale = LOOSE_SPACING_SCALE
 	else:
 		separation_radius = base
+		spacing_scale = 1.0
 
 
 ## Set the regiment's frontage (file count). Clamped to [1, max_soldiers]; the

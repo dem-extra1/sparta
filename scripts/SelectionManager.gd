@@ -496,17 +496,24 @@ func _files_for_mode(units: Array, usable: float, mode: int) -> Array:
 	# A lone unit just fills the drag in BOTH modes (equal depth is vacuous with one unit),
 	# matching the original single-unit deploy's frontage exactly.
 	if units.size() == 1:
-		return [UnitFormation.files_for_halfwidth(usable * 0.5, units[0].max_soldiers)]
+		var u0: Unit = units[0]
+		return [UnitFormation.files_for_halfwidth(usable * 0.5, u0.max_soldiers,
+				UnitRef.FORMATION_SPACING * u0.spacing_scale)]
 	var out: Array = []
 	if mode == FormUpDist.EQUAL_WIDTH:
 		var w: float = usable / float(units.size())
 		for u in units:
-			out.append(UnitFormation.files_for_halfwidth(w * 0.5, u.max_soldiers))
+			out.append(UnitFormation.files_for_halfwidth(w * 0.5, u.max_soldiers,
+					UnitRef.FORMATION_SPACING * u.spacing_scale))
 		return out
 	# EQUAL_DEPTH: target a total frontage that fills the span (a grid of f files spans
-	# (f-1) gaps of FORMATION_SPACING, so the units together want ~usable/SPACING + N files),
-	# then share one rank depth across the units to hit it.
-	var f_target: int = maxi(units.size(), int(round(usable / UnitRef.FORMATION_SPACING)) + units.size())
+	# (f-1) gaps of spacing, so the units together want ~usable/spacing + N files), then
+	# share one rank depth across the units to hit it. Uses the first unit's spacing_scale
+	# as the shared pitch -- correct for a same-formation group; a genuinely mixed group
+	# (e.g. TIGHT spears + LOOSE archers together) would need a per-unit target, which is
+	# a bigger refactor (tracked separately).
+	var effective_spacing: float = UnitRef.FORMATION_SPACING * units[0].spacing_scale
+	var f_target: int = maxi(units.size(), int(round(usable / effective_spacing)) + units.size())
 	var depth: int = _equal_depth_for_target(units, f_target)
 	for u in units:
 		out.append(clampi(int(ceil(float(maxi(1, u.max_soldiers)) / float(depth))), 1, maxi(1, u.max_soldiers)))
@@ -643,7 +650,8 @@ func _update_resize(world_pos: Vector2) -> void:
 		return
 	var offset: Vector2 = world_pos - _resize_unit.global_position
 	var half_width: float = absf(offset.dot(_file_axis(_resize_unit)))
-	_resize_files = UnitFormation.files_for_halfwidth(half_width, _resize_unit.max_soldiers)
+	_resize_files = UnitFormation.files_for_halfwidth(half_width, _resize_unit.max_soldiers,
+			UnitRef.FORMATION_SPACING * _resize_unit.spacing_scale)
 
 
 ## Commit a drag-resize on release: enqueue the delta from the unit's current
