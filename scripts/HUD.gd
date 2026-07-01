@@ -55,6 +55,25 @@ const _STANCE_ENTRIES := [
 	{"id": 6, "mode": BattleRef.OrderMode.CYCLE_CHARGE, "label": "Cycle charge", "slug": "cycle_charge"},
 ]
 
+# Display names and menu order for every formation mode, shared by the button
+# caption and the drop-up menu so the two never drift apart.
+const _FORMATION_NAMES := {
+	UnitRef.FORMATION_NORMAL: "Normal",
+	UnitRef.FORMATION_TIGHT: "Tight",
+	UnitRef.FORMATION_LOOSE: "Loose",
+	UnitRef.FORMATION_SQUARE: "Square",
+	UnitRef.FORMATION_SHIELD_WALL: "Shield Wall",
+	UnitRef.FORMATION_TESTUDO: "Testudo",
+}
+const _FORMATION_MENU_ORDER := [
+	UnitRef.FORMATION_NORMAL,
+	UnitRef.FORMATION_TIGHT,
+	UnitRef.FORMATION_LOOSE,
+	UnitRef.FORMATION_SQUARE,
+	UnitRef.FORMATION_SHIELD_WALL,
+	UnitRef.FORMATION_TESTUDO,
+]
+
 var _ctrl_bar: PanelContainer
 var _ctrl_formation_btn: MenuButton
 var _ctrl_stance_btn: MenuButton
@@ -366,7 +385,7 @@ func _refresh_hint() -> void:
 		if keys != "":
 			keys += "/"
 		keys += OS.get_keycode_string(Settings.order_binding(entry["slug"]))
-	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Normal)   •   WASD / two-finger pan   •   wheel / pinch zoom   •   P pause   •   hold Space show orders" % keys
+	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Square/Normal)   •   O square   •   WASD / two-finger pan   •   wheel / pinch zoom   •   P pause   •   hold Space show orders" % keys
 
 
 ## Dispatch a Menu popup selection by its stable item id.
@@ -643,12 +662,7 @@ func _ctrl_bar_refresh_stance_popup() -> void:
 func _ctrl_bar_update_formation(unit) -> void:
 	if _ctrl_formation_btn == null or unit == null or not is_instance_valid(unit):
 		return
-	var names := {
-		UnitRef.FORMATION_NORMAL: "Normal",
-		UnitRef.FORMATION_TIGHT: "Tight",
-		UnitRef.FORMATION_LOOSE: "Loose",
-	}
-	_ctrl_formation_btn.text = names.get(unit.formation_mode, "Formation") + " ▾"
+	_ctrl_formation_btn.text = _FORMATION_NAMES.get(unit.formation_mode, "Formation") + " ▾"
 
 
 func _ctrl_bar_update_stance(mode: int) -> void:
@@ -729,14 +743,8 @@ func _build_ctrl_formation_menu() -> Control:
 	_ctrl_formation_btn.custom_minimum_size = Vector2(90, 28)
 	_ctrl_formation_btn.add_theme_font_size_override("font_size", 13)
 	var popup := _ctrl_formation_btn.get_popup()
-	var entries := [
-		{"mode": UnitRef.FORMATION_NORMAL, "label": "Normal"},
-		{"mode": UnitRef.FORMATION_TIGHT, "label": "Tight"},
-		{"mode": UnitRef.FORMATION_LOOSE, "label": "Loose"},
-	]
-	for entry: Dictionary in entries:
-		var mode: int = entry["mode"]
-		popup.add_item(entry["label"], mode)
+	for mode: int in _FORMATION_MENU_ORDER:
+		popup.add_item(_FORMATION_NAMES[mode], mode)
 		popup.set_item_metadata(popup.get_item_index(mode), mode)
 	popup.about_to_popup.connect(_reposition_dropup.bind(popup, _ctrl_formation_btn))
 	popup.id_pressed.connect(_on_formation_popup_id)
@@ -772,12 +780,7 @@ func _reposition_dropup(popup: PopupMenu, btn: Control) -> void:
 func _on_formation_popup_id(id: int) -> void:
 	if _sel_mgr != null:
 		_sel_mgr.set_formation_to(id)
-	var names := {
-		UnitRef.FORMATION_NORMAL: "Normal",
-		UnitRef.FORMATION_TIGHT: "Tight",
-		UnitRef.FORMATION_LOOSE: "Loose",
-	}
-	_ctrl_formation_btn.text = names.get(id, "Formation") + " ▾"
+	_ctrl_formation_btn.text = _FORMATION_NAMES.get(id, "Formation") + " ▾"
 
 
 func _on_stance_popup_id(id: int) -> void:

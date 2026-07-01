@@ -33,13 +33,22 @@ static func charge_multiplier(u: Unit, enemy: Unit) -> float:
 	# Speed directed at the target (combines closing speed and angle, relative to it).
 	var speed_toward: float = maxf(0.0, u._approach_velocity.dot(to_target.normalized()))
 	var charge: float = Unit.CHARGE_BONUS_AT_REF_SPEED * (speed_toward / Unit.CHARGE_REFERENCE_SPEED)
+	# Anti-cavalry square: a spear-ring set on every side, so a charge from ANY
+	# direction meets braced spears and backfires -- the same speed-scaled reversal
+	# as set anti-cav spears, floored so a full charge never drops below x0.6. This
+	# is what "braces the charge from any direction" means: there's no open side.
+	if enemy.in_square():
+		return maxf(Unit.SQUARE_CHARGE_FLOOR, 1.0 - charge * Unit.SQUARE_CHARGE_BACKFIRE)
 	if enemy.anti_cavalry:
 		# A braced spear line reverses the charge into a penalty that grows with the
 		# closing speed, floored so it never drops below the old flat x0.6.
 		return maxf(Unit.ANTI_CAV_CHARGE_FLOOR, 1.0 - charge * Unit.ANTI_CAV_CHARGE_BACKFIRE)
-	# Tight formation: soldiers brace for impact, absorbing a fraction of the charge
-	# bonus (but not reversing it -- that's the spearmen's specialty).
-	if enemy.formation_mode == Unit.FORMATION_TIGHT:
+	# Close-order shielded stances brace for impact, absorbing a fraction of the charge
+	# bonus (but not reversing it -- that's the spearmen's specialty). SHIELD_WALL and
+	# TESTUDO are built on TIGHT's locked-shield density, so they brace the same way.
+	if enemy.formation_mode == Unit.FORMATION_TIGHT \
+			or enemy.formation_mode == Unit.FORMATION_SHIELD_WALL \
+			or enemy.formation_mode == Unit.FORMATION_TESTUDO:
 		return 1.0 + charge * (1.0 - Unit.TIGHT_CHARGE_ABSORPTION)
 	return 1.0 + charge
 
@@ -57,13 +66,19 @@ static func strike(u: Unit, enemy: Unit) -> void:
 		Sfx.play(&"hit")
 		return
 
-	# Tired troops hit softer; a freshly-merged unit hits softer still until it gels.
-	# Both scale effective attack before defence.
-	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion
+	# Tired troops hit softer; a freshly-merged unit hits softer still until it gels; a
+	# squared unit hunkers to defend all around and so hits softer (formation_attack_factor);
+	# a TESTUDO fights head-down under cover and hits softest (formation_melee_attack_factor).
+	# All scale effective attack before defence.
+	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion \
+			* u.formation_attack_factor() * u.formation_melee_attack_factor()
 	var base: float = maxf(1.0, eff_attack - float(enemy.defense))
 	# Draw from the seeded replay RNG (one stream, stable order) so battles are
 	# reproducible. This is the simulation's only source of randomness.
 	var dmg: float = base * Replay.rng.randf_range(0.6, 1.4)
+
+	# A braced SHIELD_WALL blunts a frontal melee assault (flank/rear blows land full).
+	dmg *= enemy.melee_defense_factor(u)
 
 	# Cavalry charge: a momentum-scaled bonus (or a backfire onto braced spears), computed
 	# from the rider's impact velocity at this contact. Spend it so the charge lands only
@@ -86,9 +101,20 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	var rng_roll: float = Replay.rng.randf_range(0.6, 1.4)
 	var interceptor: Unit = friendly_interceptor(u, enemy)
 	var target: Unit = enemy if interceptor == null else interceptor
-	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion
+	var eff_attack: float = float(u.attack) * UnitMorale.fatigue_attack_factor(u) * u.cohesion \
+			* u.formation_attack_factor()
 	var base: float = maxf(1.0, eff_attack - float(target.defense))
-	var dmg: float = base * Unit.RANGED_DAMAGE_FACTOR * rng_roll * target.missile_defense_factor()
+	# Pass the shooter so SHIELD_WALL's shields only stop a frontal volley; a flank/rear
+	# shot bypasses the wall. TIGHT/TESTUDO ignore direction (all-around cover).
+	#
+	# missile_defense_factor scales the pre-flank damage; the flank/rear casualty
+	# multiplier (flank_multiplier, applied in take_casualties/apply_ranged_casualties)
+	# still stacks on top. So even a TESTUDO -- whose overhead shields cut missile damage
+	# equally from every side -- takes MORE casualties from a flank/rear volley than a
+	# frontal one: the shields blunt the arrows, but a volley into a disordered flank
+	# still finds more gaps and shakes morale harder. That layering is intentional; the
+	# all-direction cover reduces the base damage, it doesn't erase the flanking geometry.
+	var dmg: float = base * Unit.RANGED_DAMAGE_FACTOR * rng_roll * target.missile_defense_factor(u)
 	Sfx.play(&"shoot")
 	# Cosmetic volley trail: arrows streak toward whoever was actually hit, so the player
 	# can see why a friendly is taking damage. Spawned on the (deterministic) sim tick but
@@ -209,7 +235,12 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 
 
 ## 1.0 = frontal, 1.5 = flank, 2.0 = rear (relative to `u`'s facing).
+## The anti-cavalry square defends on every side: it has no weak flank/rear facing,
+## so an attack from ANY direction lands as a frontal hit (multiplier 1.0). This is
+## the stance's defining trait — cavalry can't find an unprotected side to exploit.
 static func flank_multiplier(u: Unit, attacker: Unit) -> float:
+	if u.in_square():
+		return 1.0
 	var to_attacker: Vector2 = (attacker.position - u.position).normalized()
 	var d: float = u.facing.dot(to_attacker)
 	if d >= 0.35:

@@ -1,0 +1,16 @@
+{
+  "_comment": "Anti-cavalry square demo: a lone player Infantry unit (facing down) is charged in the REAR by two cavalry that spawn behind it (above; team 1 advances downward onto it). Early on the player selects the infantry and presses O to jump straight to Square (the direct anti-cav reaction, no cycling through Tight/Loose). In Square the unit presents spears/shields on every side: the rear charge finds no weak facing (no flank/rear bonus) and is braced from behind, so the ring holds instead of shattering. Camera frames the clash. Deterministic (scenario + seed + scripted input).",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 500, "count": 120},
+    {"team": 1, "type": "Cavalry", "x": 740, "y": 250},
+    {"team": 1, "type": "Cavalry", "x": 860, "y": 250}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 380.0, "zoom": 1.25}
+  ],
+  "steps": [
+    {"tick": 10, "click": [800, 500]},
+    {"tick": 30, "key": "O"}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/file-doubling.json",
+  "caption": "File-doubling maneuvers (#373). With the Spearmen selected, N issues DUPLICATIO -- alternate files tuck in behind their neighbours, halving the frontage and doubling the depth into a deeper, narrower column. Then B issues EXPLICATIO -- each file splits and the rear half steps out laterally, doubling the frontage and halving the depth back toward the wide line. The soldier bodies ease into the reshaped slots at jog speed; nobody teleports.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

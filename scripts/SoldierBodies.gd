@@ -130,12 +130,15 @@ static func step(unit: Unit, delta: float) -> void:
 		# reduces to the plain march for the uncrowded bulk.
 		var feed_forward: Vector2 = unit._sim_steer[i] if engaged.has(i) \
 				else unit._approach_velocity + unit._sim_steer[i]
-		# During an in-place turn (conversio or quarter-turn) the slot targets rotate with
-		# unit.facing, which would drag bodies to intermediate positions and back. Zero the
-		# restoring force so bodies stay at their current positions; the damping term still
-		# bleeds off any existing velocity, so they settle exactly in place.
-		var turning: bool = unit._conversio_target != Vector2.ZERO or unit._quarter_target != Vector2.ZERO \
-				or unit._wheel_target != Vector2.ZERO
+		# During an in-place turn the slot targets rotate with unit.facing, which would drag
+		# bodies to intermediate positions and back. Zero the restoring force so bodies stay at
+		# their current positions; the damping term still bleeds off any existing velocity, so
+		# they settle exactly in place. This covers the idle drill turns (conversio, quarter-turn,
+		# wheel) AND the engage re-face (a fighting unit turning its front onto a new enemy).
+		var turning: bool = unit._conversio_target != Vector2.ZERO \
+				or unit._quarter_target != Vector2.ZERO \
+				or unit._wheel_target != Vector2.ZERO \
+				or unit._engage_turn_target != Vector2.ZERO
 		var to_slot: Vector2 = Vector2.ZERO if turning \
 				else slots[i] - unit._sim_soldier_pos[i]
 		var accel: Vector2 = to_slot * SPRING_STIFFNESS - (unit._sim_body_vel[i] - feed_forward) * SPRING_DAMPING

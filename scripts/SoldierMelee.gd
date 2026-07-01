@@ -22,6 +22,15 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 	var my_maxstam: float = my_prof["max_stamina"]
 	var en_maxstam: float = en_prof["max_stamina"]
 	var reach: float = attacker.soldier_reach()
+	# Formation melee scaling, applied to the wound this cadence lands: a hunkered SQUARE
+	# or a head-down TESTUDO attacker hits softer (their offence penalties), and a braced
+	# SHIELD_WALL defender's locked shields blunt a frontal assault. All are regiment-level
+	# (constant across the cadence, from the units' formation and relative facing), so
+	# compute once. Scales only the wound magnitude, never the seeded land/fall rolls --
+	# the RNG stream (draw count and order) is untouched, so replays stay bit-identical.
+	var wound_scale: float = attacker.formation_attack_factor() \
+			* attacker.formation_melee_attack_factor() \
+			* defender.melee_defense_factor(attacker)
 
 	for ai in attackers:
 		if ai < attacker._sim_prone.size() and attacker._sim_prone[ai] > 0.0:
@@ -91,7 +100,8 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		var received: float = maxf(0.0, impulse_mag - cap)
 		defender._sim_body_vel[target] += push_dir * received
 		if landed:
-			defender._sim_soldier_hp[target] -= SoldierCombat.wound(my_prof["lethality"], c, en_prof["armour"], cond_a)
+			defender._sim_soldier_hp[target] -= \
+					SoldierCombat.wound(my_prof["lethality"], c, en_prof["armour"], cond_a) * wound_scale
 		# Going prone: a big enough impulse fells the defender. The fall roll is a second seeded
 		# draw per striking attacker, ALWAYS drawn (after the land roll, in id order) so the draw
 		# count per in-reach strike is fixed -- the size guard gates only the assignment, never
