@@ -173,11 +173,11 @@ func test_rear_move_holds_footprint_while_facings_reverse() -> void:
 	assert_almost_eq(end_bbox.y, start_bbox.y, 1.0, "final footprint height matches the start")
 
 
-func test_nudge_applied_once_travels_its_full_distance() -> void:
-	# A 30 wu arrow nudge sets move_target = position + offset. Under the double-apply the
-	# second apply recomputed the target from the crept position, so the goal chased the
-	# body and net travel collapsed to a few px (#521). With exactly-once application the
-	# target is set once, a full NUDGE_DISTANCE from the start.
+func test_nudge_applied_once_targets_its_full_distance() -> void:
+	# A nudge sets move_target = position + offset, a relative target. Exactly-once
+	# application must leave that target a full NUDGE_DISTANCE from the start (guarding
+	# the relative-target path against any future re-application that would recompute
+	# it from a moved position and shrink the step).
 	var u := _unit(1, Vector2.ZERO)
 	u.facing = Vector2.DOWN   # so LEFT nudge steps in world +x (perp to facing)
 	var b := _battle([u])
@@ -187,7 +187,20 @@ func test_nudge_applied_once_travels_its_full_distance() -> void:
 	assert_true(u.has_move_target, "the nudge sets a move target")
 	var travel: float = u.position.distance_to(u.move_target)
 	assert_almost_eq(travel, BattleScript.NUDGE_DISTANCE, 0.01,
-		"the nudge target is a full NUDGE_DISTANCE from the start, not a few px")
+		"the nudge target is a full NUDGE_DISTANCE from the start")
+
+
+func test_enqueue_formation_applies_once_through_the_drain() -> void:
+	# A formation change is idempotent, but it still routes through the same live-apply
+	# + tagged-drain path; exercise it so a formation order sets the mode and the drain
+	# doesn't need to touch it again.
+	var u := _unit(1, Vector2.ZERO)
+	var b := _battle([u])
+	b.enqueue_formation([1], UnitScript.FORMATION_LOOSE)
+	assert_eq(u.formation_mode, UnitScript.FORMATION_LOOSE, "the live apply set the formation")
+	_drain_pending(b)   # tagged -> the drain is a no-op for it
+	assert_eq(u.formation_mode, UnitScript.FORMATION_LOOSE, "and it stays set after the drain")
+	assert_true(b._pending_orders.is_empty(), "the drain cleared the queue")
 
 
 func test_forward_move_does_not_arm_an_about_face() -> void:
