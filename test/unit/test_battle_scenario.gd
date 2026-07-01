@@ -17,6 +17,9 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 		{"team": 0, "type": "Spearmen", "x": 500, "y": 250, "count": 40, "morale": 30.0, "facing": [1, 0]},
 		# A plain enemy cavalry unit: no facing override, so it takes the team-1 default (up).
 		{"team": 1, "type": "Cavalry", "x": 500, "y": 750},
+		# A second enemy cavalry with a MALFORMED facing (one element): must fall back to the
+		# team default rather than crash, and its label must read "Cavalry 2" (per-type index).
+		{"team": 1, "type": "Cavalry", "x": 700, "y": 750, "facing": [1]},
 	]
 	add_child_autofree(battle)
 	await get_tree().physics_frame
@@ -32,10 +35,10 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 		elif unit.team == 1:
 			team1.append(unit)
 
-	# Exactly the two listed units -- not the default 5-per-side lines.
+	# Exactly the listed units -- not the default 5-per-side lines.
 	assert_eq(team0.size(), 1, "exactly the one listed team-0 unit spawns (not the default line)")
-	assert_eq(team1.size(), 1, "exactly the one listed team-1 unit spawns")
-	if team0.is_empty() or team1.is_empty():
+	assert_eq(team1.size(), 2, "exactly the two listed team-1 units spawn")
+	if team0.is_empty() or team1.size() < 2:
 		return
 
 	var spear: Unit = team0[0]
@@ -48,6 +51,16 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 	assert_almost_eq(spear.facing.x, 1.0, 0.001, "the explicit facing vector wins over the team default (x)")
 	assert_almost_eq(spear.facing.y, 0.0, 0.001, "...and y")
 
-	var horse: Unit = team1[0]
-	assert_true(horse.is_cavalry, "type 'Cavalry' maps onto the cavalry loadout")
-	assert_almost_eq(horse.facing.y, -1.0, 0.001, "an enemy with no facing override defaults to facing up")
+	for horse: Unit in team1:
+		assert_true(horse.is_cavalry, "type 'Cavalry' maps onto the cavalry loadout")
+		# The first cavalry has no facing override, the second has a MALFORMED one -- both must
+		# fall back to the team-1 default (facing up), and neither may crash on the bad array.
+		assert_almost_eq(horse.facing.y, -1.0, 0.001,
+			"an enemy with no / a malformed facing override defaults to facing up (no crash)")
+
+	# Labels are numbered per type, not across all teams: the two cavalry read "Cavalry 1" and
+	# "Cavalry 2" (not "Cavalry 2"/"Cavalry 3" offset by the team-0 spearman).
+	var cav_labels := [str(team1[0].unit_name), str(team1[1].unit_name)]
+	cav_labels.sort()
+	assert_eq(cav_labels, ["Cavalry 1", "Cavalry 2"],
+		"unit labels are numbered per type, so cross-team spawns still read 1, 2 within a type")

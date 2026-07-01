@@ -314,9 +314,10 @@ func _default_loadout() -> Array:
 
 
 ## Build one unit from a loadout dict `d` at `pos`, facing `facing`, on `team`, register it,
-## and add it to the field. Shared by the default line spawn and the scenario spawn. A
-## loadout dict may carry optional overrides consumed here: `soldiers` sets the count,
-## `morale` the starting morale (default 100), `formation` the starting density.
+## and add it to the field. Shared by the default line spawn and the scenario spawn. Keys read
+## here (these are DICT keys, not scenario-spec fields -- _spawn_scenario maps a spec's `count`
+## onto `soldiers` before calling): `soldiers` sets max_soldiers, `morale` the starting morale
+## (default 100), `formation` the starting density.
 func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_label: String) -> Unit:
 	var u := UnitRef.new()
 	u.uid = _next_uid
@@ -363,7 +364,7 @@ func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_l
 ## the default-loadout entries (Spearmen / Infantry / Archers / Cavalry).
 func _spawn_scenario(specs: Array) -> void:
 	var loadout := _default_loadout()
-	var n := 0
+	var count_by_type: Dictionary = {}   # per-type running index, so labels read "Cavalry 1", not "Cavalry 2"
 	for spec in specs:
 		if typeof(spec) != TYPE_DICTIONARY:
 			continue
@@ -382,13 +383,17 @@ func _spawn_scenario(specs: Array) -> void:
 		var team := int(spec.get("team", 0))
 		var pos := Vector2(float(spec.get("x", FIELD.size.x * 0.5)), float(spec.get("y", FIELD.size.y * 0.5)))
 		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the
-		# line spawn, unless the spec pins an explicit facing vector [x, y].
+		# line spawn, unless the spec pins an explicit non-degenerate facing vector [x, y].
 		var facing := Vector2.DOWN if team == 0 else Vector2.UP
 		if spec.has("facing"):
 			var f: Array = spec["facing"]
-			facing = Vector2(float(f[0]), float(f[1])).normalized()
-		n += 1
-		_spawn_unit(d, team, facing, pos, "%s %d" % [d["name"], n])
+			if f.size() >= 2 and Vector2(float(f[0]), float(f[1])).length() > 0.0001:
+				facing = Vector2(float(f[0]), float(f[1])).normalized()
+			else:
+				push_warning("[battle] scenario 'facing' must be a non-zero [x, y]; using the team default.")
+		var type_name: String = str(d["name"])
+		count_by_type[type_name] = int(count_by_type.get(type_name, 0)) + 1
+		_spawn_unit(d, team, facing, pos, "%s %d" % [type_name, count_by_type[type_name]])
 
 
 ## First default-loadout entry whose "name" matches `type_name` (case-sensitive), or an empty
