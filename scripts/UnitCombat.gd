@@ -97,6 +97,14 @@ static func shoot(u: Unit, enemy: Unit) -> void:
 	var base: float = maxf(1.0, eff_attack - float(target.defense))
 	# Pass the shooter so SHIELD_WALL's shields only stop a frontal volley; a flank/rear
 	# shot bypasses the wall. TIGHT/TESTUDO ignore direction (all-around cover).
+	#
+	# missile_defense_factor scales the pre-flank damage; the flank/rear casualty
+	# multiplier (flank_multiplier, applied in take_casualties/apply_ranged_casualties)
+	# still stacks on top. So even a TESTUDO -- whose overhead shields cut missile damage
+	# equally from every side -- takes MORE casualties from a flank/rear volley than a
+	# frontal one: the shields blunt the arrows, but a volley into a disordered flank
+	# still finds more gaps and shakes morale harder. That layering is intentional; the
+	# all-direction cover reduces the base damage, it doesn't erase the flanking geometry.
 	var dmg: float = base * Unit.RANGED_DAMAGE_FACTOR * rng_roll * target.missile_defense_factor(u)
 	Sfx.play(&"shoot")
 	# Cosmetic volley trail: arrows streak toward whoever was actually hit, so the player

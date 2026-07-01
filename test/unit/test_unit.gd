@@ -1664,6 +1664,15 @@ func test_shield_wall_blunts_frontal_missiles_only() -> void:
 		"a volley into the rear bypasses the wall and lands full")
 
 
+func test_shield_wall_missile_defense_null_attacker_is_frontal() -> void:
+	# A plain query with no attacker (no direction) grants the frontal value, per the
+	# docstring -- so a caller that doesn't pass a shooter still sees the wall's cover.
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	assert_almost_eq(u.missile_defense_factor(), 1.0 - Unit.SHIELD_WALL_MISSILE_DEFENSE,
+		0.001, "a directionless query returns the shield wall's frontal cover")
+
+
 func test_shield_wall_frontal_missile_defense_is_strongest() -> void:
 	var u := _make_unit()
 	var front := _attacker_at(Vector2(0, 100))

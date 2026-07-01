@@ -937,6 +937,15 @@ func formation_speed_factor() -> float:
 ## Whether an attack from `attacker` lands on this unit's frontal arc (in the forward
 ## hemisphere -- strictly ahead of the line abreast, so a pure side/rear blow is not
 ## frontal). A null attacker counts as frontal (a plain defensive query, no direction).
+##
+## The frontal arc here (full forward hemisphere, dot > 0) is deliberately WIDER than
+## the flank-bonus threshold in UnitCombat.flank_multiplier (which starts the 1.5x flank
+## bonus once the attacker is more than ~70 deg off-front). A locked shield wall faces a
+## whole hemisphere with its shields, so it earns its frontal cover across that arc; the
+## flank casualty bonus is a separate, narrower geometric effect. So an attack in the
+## ~70-90 deg band both gets the flank casualty bonus AND meets a shield-wall's front --
+## a glancing hit on the shoulder of the wall that is neither a clean frontal push nor a
+## clean flank envelopment. That overlap is intended, not a mismatch to reconcile.
 func _is_frontal_attack(attacker: Unit) -> bool:
 	if attacker == null or not is_instance_valid(attacker):
 		return true
