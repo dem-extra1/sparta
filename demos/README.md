@@ -124,7 +124,10 @@ script under `demos/inputs/`:
   - `count` (optional) — soldier-count override (a smaller unit routs sooner; a bigger one
     holds longer).
   - `morale` (optional) — starting morale (default 100; set low to stage a quick rout).
-  - `formation` (optional) — starting density (`0` Normal, `1` Tight, `2` Loose).
+  - `formation` (optional) — starting stance (`0` Normal, `1` Tight, `2` Loose,
+    `3` Square, `4` Shield Wall, `5` Testudo). Square is the anti-cavalry ring; the two
+    shielded stances plant and barely move but blunt missile fire (testudo from all
+    sides, shield wall from the front).
 
   Example — stage a lone, low-morale infantry unit against a strong cavalry force so it routs
   (then rallies, if the build has that): `demos/inputs/rout-rally.json`.

@@ -40,6 +40,7 @@ DEMOS=(
   "order_distance|demos/inputs/order-distance.json|30|120|640|input"
   "file_doubling|demos/inputs/file-doubling.json|30|300|640|input"
   "cycle_charge|demos/inputs/cycle-charge.json|30|600|640|input"
+  "testudo_under_fire|demos/inputs/testudo-under-fire.json|30|300|640|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a
