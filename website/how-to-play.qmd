@@ -148,7 +148,10 @@ as the first step of marching off to the side in good order.
 small marks. Zoom in far enough and those marks become individual figures, and each
 type carries its own gear --- spearmen shoulder a spear, archers carry a bow, other
 foot raise a shield, and cavalry ride a mount that faces the regiment's march. So you
-can watch the ranks as people, not dots, and still read who is who. Zoom back out and
+can watch the ranks as people, not dots, and still read who is who. A small white
+facing pip on each figure shows its exact facing --- the figure itself only mirrors
+left/right, so the pip is what lets a maneuver's precise turn (a quarter-turn, say)
+read correctly even at this zoom, not just a coarse left/right flip. Zoom back out and
 they collapse to the legible marks again --- each mark points the way its soldier faces,
 so you can read a regiment's facing at a glance even from the overview. The mark shape
 tells you the type, too: a dart for spearmen, a kite for archers, and an arrow-pointer

@@ -1,0 +1,13 @@
+{
+  "_comment": "Facing-pip demo (#399, drill mode -- player army only): zoomed in past LOD_ZOOM_IN (1.55) so the figure silhouettes are active, select the Infantry block (seed 12345, uid 1 at ~650,300, facing south), quarter-turn right (E) then left (Q) back. At figure LOD the body silhouette only mirrors left/right, so without the facing pip a 90-degree turn would be invisible here; the small white pip on each soldier rotates to the exact facing so the turn reads correctly even zoomed in.",
+  "seed": "12345",
+  "drill": true,
+  "camera": [
+    {"tick": 0, "x": 650.0, "y": 300.0, "zoom": 2.0}
+  ],
+  "steps": [
+    {"tick": 10, "click": [650, 300]},
+    {"tick": 30, "key": "E"},
+    {"tick": 110, "key": "Q"}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/facing-pip-figure-lod.json",
+  "caption": "Per-soldier facing is now visible even zoomed all the way in (figure LOD): the figure silhouette only mirrors left/right, so a quarter-turn used to be invisible at this zoom (it worked, you just couldn't see it) -- a small white facing pip on each soldier now rotates to the exact facing, so the turn reads correctly at any zoom.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

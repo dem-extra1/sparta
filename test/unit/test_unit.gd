@@ -2059,6 +2059,47 @@ func test_lod_meshes_pick_facing_mirror_when_detailed() -> void:
 	assert_eq(u._mm_body.mesh, u._mark_body_mesh, "flat LOD always draws the symmetric mark")
 
 
+# --- facing pip: per-soldier facing visible at figure LOD -------------
+
+func test_facing_pip_hidden_at_mark_lod() -> void:
+	# The flat mark already rotates to show facing, so the pip would be redundant there.
+	var u := _make_unit(4)
+	u.seed_sim_soldiers()
+	u._detailed_lod = false
+	u._apply_lod_meshes()
+	assert_eq(u._mm_facing_pip.instance_count, 0, "no facing pip at the flat-mark LOD")
+
+
+func test_facing_pip_shown_at_figure_lod() -> void:
+	# At figure LOD the pip appears -- one instance per soldier -- alongside the figure.
+	var u := _make_unit(4)
+	u.seed_sim_soldiers()
+	u._detailed_lod = true
+	u._apply_lod_meshes()
+	assert_eq(u._mm_facing_pip.instance_count, u._sim_soldier_pos.size(),
+		"one pip instance per soldier at figure LOD")
+
+
+func test_facing_pip_transform_matches_soldier_facing() -> void:
+	# The figure mesh only mirrors left/right, so the pip's transform carries the exact
+	# per-soldier facing -- including a direction the mirror can't show (e.g. straight
+	# up) -- instead of just picking a mesh variant. Pure function, no live MultiMesh
+	# read-back (Godot's MultiMesh instance data isn't synchronously readable in
+	# headless tests, even for the already-working body/outline transforms).
+	var t: Transform2D = Unit._facing_pip_transform(false, Vector2.UP, Vector2(5, 5))
+	assert_almost_eq(t.get_rotation(), Vector2.UP.angle(), 0.001,
+		"the pip rotates to the soldier's own facing, not just left/right")
+	assert_eq(t.get_origin(), Vector2(5, 5), "the pip sits at the soldier's position")
+
+
+func test_prone_soldiers_facing_pip_collapses() -> void:
+	# A soldier on the ground has no meaningful facing to point an arrow along --
+	# collapse its pip to a zero-scale (invisible) transform rather than drawing one.
+	var t: Transform2D = Unit._facing_pip_transform(true, Vector2.UP, Vector2(5, 5))
+	assert_almost_eq(t.get_scale().length(), 0.0, 0.001,
+		"a prone soldier's facing pip is collapsed to zero scale")
+
+
 # --- drag-to-form-up: deploy facing on arrival ----------
 
 func test_deploy_facing_pivots_on_arrival() -> void:
