@@ -28,7 +28,7 @@ const _ROWS: Array = [
 	["STANCES", ""],
 	["Group attack mode (focused/distributed)", "X"],
 	["— Formation & drill —", ""],
-	["Formation (Normal/Tight/Loose)", "T"],
+	["Formation (Normal/Tight/Loose/Square)", "T"],
 	["Line width (narrower/wider)", "[ / ]"],
 	["Form-up split mode", "Y"],
 	["About-face (180° in place)", "V"],

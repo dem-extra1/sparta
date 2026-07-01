@@ -35,7 +35,7 @@ left fighting --- every remaining unit is dead or routing.
 | Group attack mode | <kbd>X</kbd> cycles focused ↔ distributed · or **control bar** |
 | Add waypoint | **Shift + Right-click** (chain several move points) |
 | Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear |
-| Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose) · or **control bar** |
+| Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose / Square) · or **control bar** |
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
 | Merge selected units | <kbd>M</kbd> |
@@ -56,7 +56,7 @@ under pressure.
 the screen with clickable buttons for the most-used unit toggles.
 Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking to typing.
 
-- **Formation** --- click Normal, Tight, or Loose directly (same as <kbd>T</kbd>).
+- **Formation** --- click Normal, Tight, Loose, or Square directly (same as <kbd>T</kbd>).
 - **Stance** --- click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).
 - **Reform** --- toggle Reform before move (same as ☰ Menu → Reform before move).
 - **Focused atk / Spread atk** --- cycle the group-attack mode (same as <kbd>X</kbd>).
@@ -188,10 +188,19 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
 ```
 
 Press <kbd>T</kbd> to cycle a selected unit's **formation** --- *Tight* closes ranks
-for better missile and charge defence, *Loose* spreads out. Every unit can cycle
-through all three; each type just starts at a different one --- spearmen deploy
-Tight (locked shields against a charge), archers deploy Loose (room to fire),
-and sword-armed infantry and cavalry deploy at the plain Normal combat order.
+for better missile and charge defence, *Loose* spreads out, and *Square* forms the
+anti-cavalry ring described below. Every unit can cycle through all four; each type
+just starts at a different one --- spearmen deploy Tight (locked shields against a
+charge), archers deploy Loose (room to fire), and sword-armed infantry and cavalry
+deploy at the plain Normal combat order.
+
+**Square (anti-cavalry ring).** *Square* forms a hollow square / orbis / schiltron:
+the soldiers face spears and shields outward on every side, so the unit has **no weak
+flank or rear** --- an attack from any direction lands as if it were frontal, and a
+cavalry charge into the ring is braced (and backfires) no matter which side it hits.
+The price is mobility (the ring crawls) and offence (it hits softer while hunkered),
+so square up *before* the horse arrives and drop back to Normal once the threat is
+gone.
 
 **Resize the line.** A regiment normally forms up at a sensible width, but you can
 reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more men

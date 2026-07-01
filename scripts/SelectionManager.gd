@@ -600,14 +600,24 @@ func _issue_merge() -> void:
 	Sfx.play(&"order")
 
 
-## Cycle the formation of all selected friendly units: Normal → Tight → Loose → Normal.
+## The order the T-key steps through. Kept as an explicit list (not `(mode + 1) % N`)
+## so new stances can be slotted in without a magic modulus, and so an unknown current
+## mode falls back cleanly to the front of the cycle.
+const FORMATION_CYCLE: Array[int] = [
+	Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT, Unit.FORMATION_LOOSE, Unit.FORMATION_SQUARE,
+]
+
+
+## Cycle the formation of all selected friendly units through FORMATION_CYCLE
+## (Normal → Tight → Loose → Square → Normal).
 func _cycle_formation() -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
 	if _selected.is_empty() or not is_instance_valid(_selected[0]):
 		return
 	var current: int = _selected[0].formation_mode
-	var next: int = (current + 1) % 3
+	var idx: int = FORMATION_CYCLE.find(current)
+	var next: int = FORMATION_CYCLE[(idx + 1) % FORMATION_CYCLE.size()]
 	var uids: Array = []
 	for unit in _selected:
 		if is_instance_valid(unit):
