@@ -480,7 +480,7 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>You command the <span class="army-blue"><strong>blue army</strong></span> (top of the field). Your objective: defeat the <span class="army-red"><strong>red army</strong></span> (bottom). A side loses when it has no units left fighting — every remaining unit is dead or routing.</p>
+<p>You command the <span class="army-blue"><strong>blue army</strong></span> (top of the field). Your objective: defeat the <span class="army-red"><strong>red army</strong></span> (bottom). A side loses when it has no units left on the field — every one dead or shattered. A unit that is merely <strong>routing</strong> still counts: it is off fighting for now, but it may break contact and rally back into the line, so the battle stays live while it might recover.</p>
 <figure class="demo figure">
   <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/clash.jpg">
     <source src="media/clash.mp4" type="video/mp4">
@@ -580,42 +580,46 @@ ul.task-list li input[type="checkbox"] {
 <td><kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file)</td>
 </tr>
 <tr class="even">
+<td>Nudge (small step, holds facing)</td>
+<td><kbd>←</kbd> side-step left · <kbd>→</kbd> side-step right · <kbd>↓</kbd> back-step (a few metres each)</td>
+</tr>
+<tr class="odd">
 <td>Merge selected units</td>
 <td><kbd>M</kbd></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Control groups</td>
 <td><kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Distance legend</td>
 <td><strong>☰ Menu → Distance legend</strong> toggles the map-scale bar (bottom-right, on by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Order distance labels</td>
 <td><strong>☰ Menu → Order distance labels</strong> toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Unit speed labels</td>
 <td><strong>☰ Menu → Unit speed labels</strong> shows each unit’s current speed in metres/second above it in the hold-<kbd>Space</kbd> survey (off by default)</td>
 </tr>
-<tr class="odd">
-<td>Pan camera</td>
-<td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges</td>
-</tr>
 <tr class="even">
+<td>Pan camera</td>
+<td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges (the ←→↓ arrows nudge instead while a unit is selected; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> always pans)</td>
+</tr>
+<tr class="odd">
 <td>Zoom</td>
 <td><strong>Mouse wheel</strong></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Show all orders + formation preview</td>
 <td>hold <kbd>Space</kbd></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Active pause</td>
 <td><kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>All shortcuts (this list, in-game)</td>
 <td><kbd>?</kbd> (Shift + <kbd>/</kbd>) or <strong>☰ Menu → Shortcuts</strong></td>
 </tr>
@@ -641,6 +645,15 @@ ul.task-list li input[type="checkbox"] {
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
   <figcaption>Side-step: a short lateral move shuffles the regiment sideways while it holds its facing, rather than pivoting.</figcaption>
+</figure>
+<p><strong>Arrow-key nudges.</strong> With a unit selected, the arrow keys order a small fixed step without touching the mouse: <kbd>←</kbd> and <kbd>→</kbd> side-step the unit a few metres to that side, and <kbd>↓</kbd> back-steps it a few metres straight to the rear. All three hold the unit’s facing — a nudge shuffles it into place, it never turns to face the step. Use them to dress a line, open a gap, or edge a regiment off a bad spot. While a unit is selected these three arrows nudge instead of panning the camera; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (and <kbd>↑</kbd>) still pan, so you never lose camera control.</p>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/arrow_nudge.jpg">
+    <source src="media/arrow_nudge.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Arrow-key nudges: the selected regiment side-steps left, then right, then back-steps --- each a small step that holds its facing.</figcaption>
 </figure>
 <p><strong>Centre pivot (larger turns).</strong> A move order that turns a unit toward a new heading makes it <strong>pivot about its centre</strong> there gradually rather than snapping — it turns toward its travel direction in good order as it sets off. When the heading change is sharp, the unit <strong>pivots before it advances</strong>: it nearly halts, comes onto its new facing, then marches. So a unit always marches facing its destination, and never reverses into it. (A chasing or charging unit still turns instantly — the gradual pivot is for your own move orders, where order matters more than the last fraction of a second.)</p>
 <p><strong>Move to the rear (about-face, then march).</strong> A move order to a destination roughly <strong>behind</strong> the unit (more than 135° off its facing) is not a centre pivot at all: the regiment first performs the standing <strong>about-face</strong> (<em>conversio</em>, below) — every soldier reverses 180° where they stand, the front rank becoming the rear rank man-for-man — and then marches to the destination facing it. The block keeps its footprint the whole time rather than swinging the whole line round about its centre, so a unit sent to the rear turns about cleanly and steps off, never sliding backwards.</p>
@@ -735,8 +748,8 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Order</strong> — right-click to send them. Move them onto an enemy’s flank, or right-click the enemy directly to attack. There is a brief <strong>reaction delay</strong> (~0.5 s, faster for cavalry) before units execute — orders aren’t instant.</li>
 <li><strong>Watch the bars</strong> — each unit flies a small <strong>regimental flag</strong> in its team colour and shows a strength bar that drops as it takes casualties. The flag is a click target too: clicking it selects the unit, just like clicking the block. Morale matters as much as numbers (see <a href="./tactics.html">Tactics</a>).</li>
 <li><strong>Navigate terrain</strong> — the field has two terrain patches: a <strong>dark-green forest</strong> (slows movement to 60%) on the left flank, and a <strong>tan hill</strong> (impassable) on the right. Units route around the hill automatically. See <a href="./tactics.html#terrain">Tactics → Terrain</a>.</li>
-<li><strong>Exploit the break</strong> — when a unit <strong>routs</strong>, it flees (shown faded) and stops counting toward the battle. Routs spread to nearby allies, so a single break can cascade.</li>
-<li><strong>Win</strong> — eliminate or rout the entire enemy army and a <strong>Victory</strong> overlay appears, with <strong>Fight Again</strong> to restart.</li>
+<li><strong>Exploit the break</strong> — when a unit <strong>routs</strong>, it flees (shown faded) and stops fighting for now. Routs spread to nearby allies, so a single break can cascade. A fugitive that breaks contact can <strong>rally</strong> and reform back under your control at low morale, so chase down a broken enemy to finish it before it recovers — and give your own routers room to escape and rally.</li>
+<li><strong>Win</strong> — destroy the entire enemy army (every unit dead or shattered for good) and a <strong>Victory</strong> overlay appears, with <strong>Fight Again</strong> to restart. A routing enemy isn’t beaten yet: run it down or it may rally.</li>
 </ol>
 </section>
 <section id="campaign-map" class="level2">

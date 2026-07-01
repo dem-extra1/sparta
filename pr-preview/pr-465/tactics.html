@@ -527,12 +527,13 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="morale-routing" class="level2">
 <h2 class="anchored" data-anchor-id="morale-routing">Morale &amp; routing</h2>
-<p>Units don’t fight to the last soldier. When a unit loses enough soldiers or takes flank/rear hits, it <strong>routs</strong> — it flees (shown faded) toward its own back edge and stops counting toward the battle. A routing unit <strong>stays on the field</strong>: it huddles at the back line where you can still see it, rather than vanishing off the map.</p>
+<p>Units don’t fight to the last soldier. When a unit loses enough soldiers or takes flank/rear hits, it <strong>routs</strong> — it flees (shown faded) toward its own back edge and stops fighting for now. A routing unit <strong>stays on the field</strong>: it huddles at the back line where you can still see it, rather than vanishing off the map.</p>
 <ul>
 <li><strong>Routs are contagious.</strong> A nearby ally watching a unit break is more likely to break too. One collapse can cascade down a line.</li>
 <li>This makes morale a <em>weapon</em>: you can win by breaking the enemy’s will before you’ve killed even half their soldiers.</li>
 <li><strong>A routing unit can rally.</strong> As it flees, its nerve steadies — morale climbs back toward a baseline, fast at first and levelling off. If it <strong>breaks contact</strong> (no enemy close on its heels) and still fields enough men, its recovering morale carries it over the rally threshold and it <strong>returns to your control</strong>, ready to fight again. So chase a broken enemy down to finish it: a router you leave alone will reform and come back.</li>
 <li>A unit still in contact, or gutted past reforming, <strong>shatters</strong> instead — it leaves play for good.</li>
+<li><strong>The battle isn’t over while a side is only routing.</strong> A team is beaten only once its last unit is truly gone (dead or shattered), not while its final unit is merely routing. Even a lone survivor that breaks can flee, rally, and fight on — so press a rout home rather than assuming a broken last unit is a win.</li>
 </ul>
 <figure class="demo figure">
   <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/rout_rally.jpg">
@@ -541,6 +542,14 @@ ul.task-list li input[type="checkbox"] {
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
   <figcaption>Rout and rally: a low-morale infantry block is charged by cavalry and breaks — it flees faded toward its own edge, staying on the field rather than running off. The cavalry lose the router and stop; its morale recovers as it flees, and it reforms under control, back in the fight.</figcaption>
+</figure>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/last_unit_rally.jpg">
+    <source src="media/last_unit_rally.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>A team's last unit routs, then rallies. A lone player infantry is broken and flees (faded); with no fightable unit left the enemy AI halts, so the fugitive breaks contact and reforms back under control at low morale — the battle stays live instead of ending the instant the last unit broke.</figcaption>
 </figure>
 </section>
 <section id="rank-cycling-trained-units" class="level2">
