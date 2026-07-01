@@ -525,7 +525,17 @@ func _physics_process(delta: float) -> void:
 	# keep it — a strike held back by attack cooldown on the contact frame still charges
 	# on the next — and _strike spends it, so grinding strikes after the first don't.
 	# _current_speed resets alongside it so the next march always ramps up from zero.
-	if not _moved_last_frame and state != State.FIGHTING:
+	#
+	# Guard on the order-response timer too: a unit that was actively cruising and
+	# gets re-ordered is frozen by start_order_response() for order_response_delay
+	# seconds (see _think below) — _move_to() doesn't run during the freeze, so
+	# _moved_last_frame reads false even though the unit had momentum a moment ago.
+	# Without this guard, every re-order (a rapid tap sequence, or any fast order
+	# dispatch) would hard-reset speed to zero and force the next march to ramp up
+	# from a standstill each time instead of carrying momentum through. A genuinely
+	# idle unit already has _current_speed == 0, so skipping the reset while frozen
+	# is a no-op for it — this only changes behavior for a unit that was moving.
+	if not _moved_last_frame and state != State.FIGHTING and _order_response_timer <= 0.0:
 		_approach_velocity = Vector2.ZERO
 		_current_speed = 0.0
 
