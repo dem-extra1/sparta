@@ -1,4 +1,4 @@
 {
   "skip": true,
-  "reason": "Menu checkbox disable-state change (HUD.gd _sync_setting_toggles) — a recorded battle clip can't usefully show a disabled ☰ Menu checkbox. See the PR description for a screenshot."
+  "reason": "CI/tooling change only — adds a GDScript test-coverage job (GUT instrumentation -> lcov -> Codecov). Nothing about how the game looks or plays changes, so a recorded battle clip wouldn't show anything relevant."
 }

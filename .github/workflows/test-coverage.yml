@@ -1,0 +1,70 @@
+# Measures GDScript line coverage for the GUT unit suite and uploads it to
+# Codecov. Instrumentation (addons/coverage, jamie-pate/godot-code-coverage's
+# godot4 branch) runs the tests through reloaded, counter-injected copies of the
+# scripts, so this is a separate, non-gating job -- the fast validate-and-test
+# gate lives in godot-ci.yml and stays uninstrumented.
+name: Test coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Keep GODOT_VERSION / GUT_VERSION in sync with godot-ci.yml.
+env:
+  GODOT_VERSION: 4.7.0
+  GUT_VERSION: v9.7.0
+
+jobs:
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }}
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false   # Standard build, not the .NET/C# build
+
+      - name: Install GUT ${{ env.GUT_VERSION }}
+        # Vendored at run time, matching godot-ci.yml. The coverage addon
+        # (addons/coverage) is committed, so only GUT is fetched here.
+        run: |
+          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
+          mkdir -p addons
+          rm -rf addons/gut
+          cp -r /tmp/gut/addons/gut addons/gut
+
+      - name: Import & validate project
+        # Import so autoloads, class_name globals and cross-script references
+        # resolve before the coverage run instruments and reloads them.
+        run: |
+          set -o pipefail
+          godot --headless --import --verbose 2>&1 | tee import.log
+          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
+            echo "::error::Godot reported script/resource errors during import"
+            exit 1
+          fi
+
+      - name: Run unit tests with coverage
+        # The pre/post-run hooks instrument res://scripts and write lcov.info.
+        # -gexit still fails the job on a test failure, so a broken suite is
+        # caught here too, but coverage numbers themselves never gate the PR.
+        env:
+          COVERAGE_LCOV_FILE: res://coverage/lcov.info
+        run: |
+          godot --headless -s addons/gut/gut_cmdln.gd \
+            -gdir=res://test -ginclude_subdirs -gexit \
+            -gpre_run_script=res://test/pre_run_hook.gd \
+            -gpost_run_script=res://test/post_run_hook.gd
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: ./coverage/lcov.info
+          disable_search: true          # upload only the file above
+          fail_ci_if_error: false        # coverage upload never gates the PR
+          token: ${{ secrets.CODECOV_TOKEN }}

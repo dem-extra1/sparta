@@ -11,6 +11,9 @@
 #   chars     Curly quotes and en/em dashes in the website docs (*.qmd, *.R) —
 #             the Quarto source is kept plain-ASCII. Mirrors
 #             .github/workflows/check-non-standard-chars.yml.
+#   coverage  GUT suite instrumented for line coverage; writes coverage/lcov.info.
+#             Mirrors .github/workflows/test-coverage.yml. Slower than `test` and
+#             non-gating, so not in the default set (run it explicitly or via "all").
 #   links     Markdown link-check with lychee, if it's installed. Mirrors
 #             .github/workflows/check-links.yml. Needs network; not in the
 #             default set (run it explicitly or via "all").
@@ -40,7 +43,7 @@ GODOT_BIN="${GODOT_BIN:-godot}"
 GUT_VERSION="${GUT_VERSION:-v9.7.0}"
 
 DEFAULT_CHECKS=(validate test chars)
-ALL_CHECKS=(validate test chars links)
+ALL_CHECKS=(validate test chars coverage links)
 
 # --- pretty output ---------------------------------------------------------
 # Colour only when stdout is a terminal and NO_COLOR isn't set. Per the NO_COLOR
@@ -100,6 +103,7 @@ list_checks() {
   info "  validate   Godot import / script-validation (godot-ci.yml)"
   info "  test       GUT unit suite (godot-ci.yml)"
   info "  chars      non-standard characters in docs (check-non-standard-chars.yml)"
+  info "  coverage   instrumented GUT suite -> coverage/lcov.info (test-coverage.yml)"
   info "  links      Markdown link-check via lychee (check-links.yml)"
   info ""
   info "Default (no args): ${DEFAULT_CHECKS[*]}"
@@ -192,6 +196,21 @@ check_test() {
       -gdir=res://test -ginclude_subdirs -gexit )
 }
 
+check_coverage() {
+  require_godot || return 1
+  ensure_gut || return 1
+  # Same run as `test`, plus the GUT pre/post hooks that instrument res://scripts
+  # and write an lcov report. Mirrors .github/workflows/test-coverage.yml. Not in
+  # the default set — instrumentation is slower and coverage never gates. The
+  # report lands at coverage/lcov.info (git-ignored); see test/README.md.
+  ( cd "$PROJECT_ROOT" && COVERAGE_LCOV_FILE=res://coverage/lcov.info \
+      "$GODOT_BIN" --headless -s addons/gut/gut_cmdln.gd \
+      -gdir=res://test -ginclude_subdirs -gexit \
+      -gpre_run_script=res://test/pre_run_hook.gd \
+      -gpost_run_script=res://test/post_run_hook.gd ) || return 1
+  info "Coverage report written to coverage/lcov.info"
+}
+
 check_chars() {
   # Flag curly quotes and en/em dashes in the Quarto docs, which are kept
   # plain-ASCII so pandoc's smart typography renders them. The flagged characters
@@ -280,7 +299,7 @@ main() {
       -h|--help) usage; exit 0 ;;
       -l|--list) list_checks; exit 0 ;;
       all)       checks+=("${ALL_CHECKS[@]}") ;;
-      validate|test|chars|links) checks+=("$arg") ;;
+      validate|test|chars|coverage|links) checks+=("$arg") ;;
       *) err "Unknown argument: $arg"; usage; exit 2 ;;
     esac
   done
