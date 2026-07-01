@@ -262,6 +262,11 @@ density, chosen from the control-bar Formation menu:
   of all. Use it to walk a unit across open ground under heavy archery, then drop back
   to a fighting formation before you close.
 
+Both stances show their shields on the map, so you can read a unit's stance at a
+glance: a shield wall draws a locked shield line along its front face, and a testudo
+draws an overhead shield roof over the whole block (the turtle). The shields are
+tinted to the unit's side and turn with its facing.
+
 **Resize the line.** A regiment normally forms up at a sensible width, but you can
 reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more men
 fighting at the front) or <kbd>[</kbd> to narrow it (deeper, fewer up front but more
