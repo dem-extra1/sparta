@@ -99,18 +99,35 @@ default).
 | `AttackOrder` | targeting | — | terminates when the target dies |
 | `FormationOrder` | transition | `formation_mode` | tight / loose / square / shield-wall / testudo |
 | `SpacingOrder` | transition | `spacing` | open / close order |
-| `StanceOrder` | transition | `stance` | hold / relief / cycle-charge |
+| `StanceOrder` | transition | `stance` | hold / cycle-charge (and the intra-unit rank-relief mode toggle — see below) |
 | `SwitchWeaponOrder` | transition | `active_weapon` | future: pike↔sword, javelin↔sword |
-| `ReliefOrder` | targeted action | — | line relief; the relief mode + response-delay + ward become the order's own execution state |
+| `RelieveUnitOrder` | targeted action | — | **inter-unit** relief: a fresh unit passes through / replaces a tired front-line ally; the order names the ally to relieve, and the response-delay + ward become the order's own execution state |
 
-**Waypoints and relief are absorbed, not preserved alongside.** The current
-waypoint/append list *is* a proto-orders-queue for moves — a waypoint already is
-a queued move. Unifying just replaces the bespoke move-only list with the general
-queue; the append gesture is identical to the player. Relief likewise becomes a
-`ReliefOrder` queue entry rather than an `order_mode = RELIEF` flag. The
-codebase already half-built this pattern (a move waypoint queue, then maneuvers
-and relief bolted on separately as flags); the unified queue finishes it. Net:
-fewer moving parts after the refactor, not more.
+**Waypoints are absorbed, not preserved alongside.** The current waypoint/append
+list *is* a proto-orders-queue for moves — a waypoint already is a queued move.
+Unifying just replaces the bespoke move-only list with the general queue; the
+append gesture is identical to the player. The codebase already half-built this
+pattern (a move waypoint queue, then maneuvers and relief bolted on separately
+as flags); the unified queue finishes it. Net: fewer moving parts after the
+refactor, not more.
+
+**Relief is two distinct behaviors — keep them separate.** The current
+`order_mode = RELIEF` flag lumps together two things we want to model
+differently. The order/mode split cleaves them cleanly:
+
+- **Inter-unit relief is an order.** One unit relieving another — a fresh unit
+  passes through or replaces a tired front-line ally — is a targeted queue action
+  (`RelieveUnitOrder`) that names the ally to relieve. Its response-delay and ward
+  become the order's own execution state. This is definitely an order, not a mode.
+- **Intra-unit rank-relief is a mode.** Individuals within a unit relieving their
+  *own* unit's front line — rear ranks rotating forward to the fighting line — is
+  a durable intra-unit behavior, so it belongs in the mode layer (a reactive /
+  ROE-style mode toggled by a `StanceOrder`), not a queue entry. It is the same
+  rank-cycle recovery that makes routs nearly unreachable in #529 — so whether
+  the mode is on, and how strong its recovery is, is the knob that issue turns.
+
+Modeling these two separately (an order for one, a mode for the other) is the
+right resolution of the old single `RELIEF` flag.
 
 **Support-ward is the one real judgement call.** "Guard unit Y until told
 otherwise" may fit better as a durable *assignment mode* (like formation/stance)
@@ -294,23 +311,28 @@ flags are deleted; the #517 conversio holds bodies frozen through the full turn
 and the #521 nudge translates the centroid by the full `NUDGE_DISTANCE`, both
 confirmed in the transcript.
 
-### Phase 3 — migrate transition orders + absorb relief/waypoints
+### Phase 3 — migrate transition orders + split relief + absorb waypoints
 
 **Scope.** Move `FormationOrder`, `SpacingOrder`, `StanceOrder`, and
 `SwitchWeaponOrder` onto the queue, each writing its durable mode on completion.
-Absorb relief into a `ReliefOrder` queue entry (mode + response-delay + ward
-become the order's execution state) and finish absorbing the waypoint list.
-Decide support-ward: durable assignment mode vs standing `SupportOrder`.
+Split the old `order_mode = RELIEF` flag into its two real behaviors:
+**inter-unit relief** becomes a `RelieveUnitOrder` queue entry (names the ally;
+response-delay + ward become the order's execution state), and **intra-unit
+rank-relief** becomes a durable mode toggled by a `StanceOrder` (cross-links
+#529, whose rank-cycle recovery is exactly this mode). Finish absorbing the
+waypoint list. Decide support-ward: durable assignment mode vs standing
+`SupportOrder`.
 
-**Subsumes.** `order_mode = RELIEF` and the ad-hoc formation/spacing/stance
-transition flags.
+**Subsumes.** `order_mode = RELIEF` (split into the order + the mode) and the
+ad-hoc formation/spacing/stance transition flags.
 
 **Determinism / replay risks.** Transition timing (a formation change over N
 ticks) must advance deterministically; a mode must be written exactly on
 completion, not mid-transition, or replays diverge.
 
 **Done-check.** Every transition order writes its mode on completion and appears
-in the transcript as an in-flight order until then; relief runs as a queue entry;
+in the transcript as an in-flight order until then; inter-unit relief runs as a
+`RelieveUnitOrder` queue entry while intra-unit rank-relief is a queryable mode;
 the support-ward decision is recorded here.
 
 ### Phase 4 — terminal conditions + trigger vocabulary + ROE modes
@@ -355,3 +377,7 @@ mode — no motion-inference needed.
 - **#517** (move-to-rear centre-pivot) — fixed by the phased move-to-rear in
   phase 2 and verified in phase 5.
 - **#521** (nudge under-travel) — fixed by apply-once + the queue in phases 1–2.
+- **#529** (routs nearly unreachable — in-fight morale recovery) — the intra-unit
+  rank-relief *mode* introduced in phase 3 is the same rank-cycle recovery that
+  issue tracks; whether that mode is on, and how strong its recovery is, is the
+  knob #529 tunes.
