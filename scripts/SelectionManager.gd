@@ -632,6 +632,14 @@ const FORMATION_CYCLE: Array[int] = [
 ]
 
 
+## The formation mode one step past `current` in FORMATION_CYCLE (wrapping at the
+## end). An unknown current mode (find returns -1) steps to the front of the cycle.
+## Static + pure so the T-cycle order is directly testable.
+static func next_formation(current: int) -> int:
+	var idx: int = FORMATION_CYCLE.find(current)
+	return FORMATION_CYCLE[(idx + 1) % FORMATION_CYCLE.size()]
+
+
 ## Cycle the formation of all selected friendly units through FORMATION_CYCLE
 ## (Normal → Tight → Loose → Square → Normal).
 func _cycle_formation() -> void:
@@ -639,9 +647,7 @@ func _cycle_formation() -> void:
 		return
 	if _selected.is_empty() or not is_instance_valid(_selected[0]):
 		return
-	var current: int = _selected[0].formation_mode
-	var idx: int = FORMATION_CYCLE.find(current)
-	var next: int = FORMATION_CYCLE[(idx + 1) % FORMATION_CYCLE.size()]
+	var next: int = next_formation(_selected[0].formation_mode)
 	var uids: Array = []
 	for unit in _selected:
 		if is_instance_valid(unit):

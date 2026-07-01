@@ -158,8 +158,43 @@ func test_formation_summary_labels_square() -> void:
 	assert_eq(u.formation_summary(), "Square", "the HUD label reads Square")
 
 
-func test_t_cycle_reaches_square() -> void:
-	# The T-key cycle order includes SQUARE, so the player can reach it by cycling.
+func test_t_cycle_reaches_square_then_wraps_to_normal() -> void:
+	# The T-key steps Normal -> Tight -> Loose -> Square -> Normal, so the player
+	# reaches the square by cycling and comes back round to Normal.
 	const SM = preload("res://scripts/SelectionManager.gd")
 	assert_true(SM.FORMATION_CYCLE.has(Unit.FORMATION_SQUARE),
 		"the formation cycle includes the square")
+	assert_eq(SM.next_formation(Unit.FORMATION_NORMAL), Unit.FORMATION_TIGHT,
+		"Normal steps to Tight")
+	assert_eq(SM.next_formation(Unit.FORMATION_TIGHT), Unit.FORMATION_LOOSE,
+		"Tight steps to Loose")
+	assert_eq(SM.next_formation(Unit.FORMATION_LOOSE), Unit.FORMATION_SQUARE,
+		"Loose steps to Square")
+	assert_eq(SM.next_formation(Unit.FORMATION_SQUARE), Unit.FORMATION_NORMAL,
+		"Square wraps back to Normal")
+
+
+# A minimal stand-in for Battle: _cycle_formation calls _battle.enqueue_formation
+# (its parent, via get_parent()). This records the enqueued mode so the test can
+# assert the T-cycle routed the right next mode through the recording path.
+class _StubBattle:
+	extends Node
+	var last_formation: int = -999
+	func enqueue_formation(_uids: Array, formation: int) -> void:
+		last_formation = formation
+
+
+func test_cycle_formation_enqueues_the_next_mode() -> void:
+	# Drive the actual _cycle_formation UI method (not just the pure helper) so the
+	# selected unit's current mode routes through to the recorded next mode.
+	const SM = preload("res://scripts/SelectionManager.gd")
+	var battle := _StubBattle.new()
+	add_child_autofree(battle)
+	var sm = SM.new()
+	battle.add_child(sm)   # so _battle = get_parent() resolves to the stub
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_LOOSE)
+	sm._select(u)
+	sm._cycle_formation()
+	assert_eq(battle.last_formation, Unit.FORMATION_SQUARE,
+		"cycling from Loose enqueues Square")
