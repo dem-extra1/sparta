@@ -1,0 +1,14 @@
+{
+  "_comment": "Shielded-stance VISUALS demo (#486): stage two player infantry units side by side -- the left in SHIELD WALL (formation 4, a locked shield line along its front face) and the right in TESTUDO (formation 5, an overhead shield roof over the block, the turtle) -- so the two new stance overlays are shown together at a glance. Drill mode (no opponent), so nothing routs and the units simply hold their stance for the whole clip. The camera frames both blocks; frame capture at a few ticks confirms the shield line and the roof actually render.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 660, "y": 480, "count": 120, "formation": 4, "facing": [0, -1]},
+    {"team": 0, "type": "Infantry", "x": 940, "y": 480, "count": 120, "formation": 5, "facing": [0, -1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 470.0, "zoom": 1.35}
+  ],
+  "steps": [],
+  "frames": [20, 60, 120]
+}

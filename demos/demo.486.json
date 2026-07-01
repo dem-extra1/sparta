@@ -1,0 +1,9 @@
+{
+  "_comment": "Per-PR demo manifest for #486 -- testudo overhead-cover & shield-wall stance visuals. Drives the shielded-stance-visuals scripted-input scenario, which stages two player infantry units side by side (shield wall + testudo) so the two new cosmetic overlays are shown together.",
+  "input": "demos/inputs/shielded-stance-visuals.json",
+  "caption": "Dedicated visuals for the shielded close-order stances: a locked shield line along the front (SHIELD WALL, left) and an overhead shield roof over the block (TESTUDO, right), team-tinted and rotating with facing.",
+  "fixed_fps": 30,
+  "max_frames": 180,
+  "fps": 12,
+  "width": 640
+}
