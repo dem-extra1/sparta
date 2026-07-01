@@ -46,7 +46,7 @@ func _dists_to(unit: Unit, origin: Vector2) -> Array[float]:
 func test_volley_reduces_soldiers_by_the_casualty_count() -> void:
 	var target := _target(2, 20, Vector2(0, 0), Vector2.DOWN)
 	var shooter := _shooter(1, Vector2(600, 400))
-	SoldierMelee.apply_ranged_casualties(target, shooter, 5, 1.0)
+	SoldierMelee.apply_ranged_casualties(target, shooter.position, shooter, 5, 1.0)
 	assert_eq(target.soldiers, 15, "five casualties drop the regiment count by five")
 
 
@@ -55,7 +55,7 @@ func test_volley_compacts_the_body_arrays_to_match() -> void:
 	# count immediately (reap compacted), rather than staying oversized until the next step.
 	var target := _target(2, 20, Vector2(0, 0), Vector2.DOWN)
 	var shooter := _shooter(1, Vector2(600, 400))
-	SoldierMelee.apply_ranged_casualties(target, shooter, 5, 1.0)
+	SoldierMelee.apply_ranged_casualties(target, shooter.position, shooter, 5, 1.0)
 	assert_eq(target._sim_soldier_hp.size(), target.soldiers, "health array tracks the survivors")
 	assert_eq(target._sim_soldier_pos.size(), target.soldiers, "position array tracks the survivors")
 
@@ -68,7 +68,7 @@ func test_volley_kills_the_near_side_first() -> void:
 	var origin: Vector2 = shooter.position
 	var before: Array[float] = _dists_to(target, origin)
 	before.sort()
-	SoldierMelee.apply_ranged_casualties(target, shooter, 5, 1.0)
+	SoldierMelee.apply_ranged_casualties(target, shooter.position, shooter, 5, 1.0)
 	var survivor_min: float = _dists_to(target, origin).min()
 	# The 5 nearest died, so every survivor is at least as far as the 5th-nearest original.
 	assert_gte(survivor_min, before[4] - 0.001,
@@ -78,7 +78,7 @@ func test_volley_kills_the_near_side_first() -> void:
 func test_overkill_kills_the_whole_regiment() -> void:
 	var target := _target(2, 8, Vector2(0, 0), Vector2.DOWN)
 	var shooter := _shooter(1, Vector2(600, 400))
-	SoldierMelee.apply_ranged_casualties(target, shooter, 50, 1.0)
+	SoldierMelee.apply_ranged_casualties(target, shooter.position, shooter, 50, 1.0)
 	assert_eq(target.soldiers, 0, "more casualties than men leaves none standing")
 	assert_true(target._sim_soldier_hp.is_empty(), "and the body arrays are emptied")
 
@@ -88,8 +88,8 @@ func test_selection_is_deterministic() -> void:
 	var b := _target(3, 20, Vector2(0, 0), Vector2.DOWN)
 	var shooter := _shooter(1, Vector2(600, 400))
 	var origin: Vector2 = shooter.position
-	SoldierMelee.apply_ranged_casualties(a, shooter, 6, 1.0)
-	SoldierMelee.apply_ranged_casualties(b, shooter, 6, 1.0)
+	SoldierMelee.apply_ranged_casualties(a, shooter.position, shooter, 6, 1.0)
+	SoldierMelee.apply_ranged_casualties(b, shooter.position, shooter, 6, 1.0)
 	var da: Array[float] = _dists_to(a, origin)
 	var db: Array[float] = _dists_to(b, origin)
 	da.sort()
@@ -105,8 +105,8 @@ func test_morale_erosion_tracks_casualties_not_the_flank_multiplier() -> void:
 	var front := _target(2, 20, Vector2(0, 0), Vector2.DOWN)
 	var rear := _target(3, 20, Vector2(0, 0), Vector2.DOWN)
 	var shooter := _shooter(1, Vector2(600, 400))
-	SoldierMelee.apply_ranged_casualties(front, shooter, 5, 1.0)
-	SoldierMelee.apply_ranged_casualties(rear, shooter, 5, 2.0)
+	SoldierMelee.apply_ranged_casualties(front, shooter.position, shooter, 5, 1.0)
+	SoldierMelee.apply_ranged_casualties(rear, shooter.position, shooter, 5, 2.0)
 	assert_eq(front.soldiers, rear.soldiers, "same casualty count either way")
 	assert_almost_eq(rear.morale, front.morale, 0.0001,
 		"equal casualties erode morale equally; the flank knob is off by default")
@@ -115,5 +115,5 @@ func test_morale_erosion_tracks_casualties_not_the_flank_multiplier() -> void:
 func test_zero_casualties_is_a_no_op() -> void:
 	var target := _target(2, 12, Vector2(0, 0), Vector2.DOWN)
 	var shooter := _shooter(1, Vector2(600, 400))
-	SoldierMelee.apply_ranged_casualties(target, shooter, 0, 1.0)
+	SoldierMelee.apply_ranged_casualties(target, shooter.position, shooter, 0, 1.0)
 	assert_eq(target.soldiers, 12, "no casualties changes nothing")

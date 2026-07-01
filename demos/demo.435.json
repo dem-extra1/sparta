@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Slice 1 makes ranged volleys fly as real projectile entities that deliver their casualties on LANDING (travel time), but the casualty count is unchanged and real arrows aren't rendered yet -- the cosmetic volley trail already streaks across, so a short clip looks the same at a glance. The visible payoff (arcing arrows, arc-over-ranks, shield blocking) comes with the rendering + shield slices. Covered by test_projectile_physics.gd and test_projectile_field.gd."
+}

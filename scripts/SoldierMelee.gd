@@ -146,18 +146,18 @@ static func reap(unit: Unit, killer: Unit, morale_flank: float = 1.0) -> void:
 
 
 ## Apply a ranged volley's `casualties` to `target` at the individual level: the men
-## nearest the `shooter` (the exposed rank the arrows reach first) fall, tie-broken by
-## soldier index for a stable order, then `reap` compacts them and drives morale/rout.
-## `casualties` is the same count the regiment formula would remove (flank already folded
-## in by the caller), so the volley's lethality and morale hit are unchanged — only *which*
-## soldiers die (geometric, near-side) and the body compaction differ from the old blind
-## rear-trim. Deterministic: selection reads only positions and index order, no RNG.
-static func apply_ranged_casualties(target: Unit, shooter: Unit, casualties: int, morale_flank: float) -> void:
+## nearest `origin` (the launch point the arrows came from — the exposed rank they reach
+## first) fall, tie-broken by soldier index for a stable order, then `reap` compacts them and
+## drives morale/rout. `killer` is the shooting regiment (morale/fallen direction); it may be
+## null if the shooter died while the volley was in flight. `origin` is parent-local — the
+## same frame `_sim_soldier_pos` and `flank_multiplier` use, NOT global_position — so a caller
+## passes the shooter's `.position` (or a projectile's launch position). `casualties` is the
+## same count the regiment formula would remove (flank already folded in by the caller), so
+## the volley's lethality and morale hit are unchanged — only *which* soldiers die (geometric,
+## near-side) and the body compaction differ. Deterministic: reads positions + index, no RNG.
+static func apply_ranged_casualties(target: Unit, origin: Vector2, killer: Unit, casualties: int, morale_flank: float) -> void:
 	if casualties <= 0 or target._sim_soldier_hp.is_empty():
 		return
-	# `_sim_soldier_pos` is parent-local (built from unit.position), so compare against the
-	# shooter's local position -- the same frame flank_multiplier uses -- not global_position.
-	var origin: Vector2 = shooter.position
 	var living: Array[int] = []
 	for i in range(target._sim_soldier_hp.size()):
 		if target._sim_soldier_hp[i] > 0.0:
@@ -166,7 +166,7 @@ static func apply_ranged_casualties(target: Unit, shooter: Unit, casualties: int
 	var kills: int = mini(casualties, living.size())
 	for k in range(kills):
 		target._sim_soldier_hp[living[k]] = 0.0
-	reap(target, shooter, morale_flank)
+	reap(target, killer, morale_flank)
 
 
 ## Strict-weak ordering for apply_ranged_casualties: nearer the origin first, ties broken

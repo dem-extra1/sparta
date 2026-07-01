@@ -154,6 +154,10 @@ func _ready() -> void:
 		_camera.position = Vector2(first["x"], first["y"])
 		_camera.zoom = Vector2(first["zoom"], first["zoom"])
 
+	# In-flight projectiles (ranged volleys) live here, ticked in _on_soldier_tick; cleared in
+	# _exit_tree(). A fresh field per battle so no arrows carry over a restart.
+	ProjectileField.active = ProjectileField.new()
+
 	# Register terrain patches as PathField obstacles or speed zones; cleared in _exit_tree().
 	PathField.active = PathField.new(FIELD)
 	for patch in TERRAIN:
@@ -204,6 +208,7 @@ func _exit_tree() -> void:
 	# Don't let this battle's pathfinding grid outlive it (e.g. across a scene
 	# reload or a future return-to-map flow). The next Battle._ready() republishes.
 	PathField.active = null
+	ProjectileField.active = null   # drop any in-flight arrows with the battle
 
 
 func _draw() -> void:
@@ -362,6 +367,11 @@ func _on_soldier_tick() -> void:
 	SoldierSteering.accumulate(units, Engine.get_physics_frames())
 	UnitRef.step_all_sim_soldiers(units, delta)
 	UnitRef.couple_all_sim_soldiers(units, delta)
+	# Advance in-flight volleys and land any that arrived this tick (delivers their casualties
+	# in launch order, no RNG -- see ProjectileField). After the bodies settle so a landing
+	# reads current positions.
+	if ProjectileField.active != null:
+		ProjectileField.active.step(delta, self)
 
 
 ## Called by SelectionManager when the player issues a right-click order. The
