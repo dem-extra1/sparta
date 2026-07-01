@@ -111,9 +111,10 @@ pattern (a move waypoint queue, then maneuvers and relief bolted on separately
 as flags); the unified queue finishes it. Net: fewer moving parts after the
 refactor, not more.
 
-**Relief is two distinct behaviors — keep them separate.** The current
-`order_mode = RELIEF` flag lumps together two things we want to model
-differently. The order/mode split cleaves them cleanly:
+**Relief is two distinct behaviors — keep them separate.** Today relief runs
+through `_relief_partner` links on `Unit`, managed by `UnitRelief.gd` — a single
+mechanism that conflates two things we want to model differently. The order/mode
+split cleaves them cleanly:
 
 - **Inter-unit relief is an order.** One unit relieving another — a fresh unit
   passes through or replaces a tired front-line ally — is a targeted queue action
@@ -127,7 +128,8 @@ differently. The order/mode split cleaves them cleanly:
   the mode is on, and how strong its recovery is, is the knob that issue turns.
 
 Modeling these two separately (an order for one, a mode for the other) is the
-right resolution of the old single `RELIEF` flag.
+right resolution of the current single-mechanism `_relief_partner` / `UnitRelief`
+relief.
 
 **Support-ward is the one real judgement call.** "Guard unit Y until told
 otherwise" may fit better as a durable *assignment mode* (like formation/stance)
@@ -206,8 +208,8 @@ Most "conditional orders" are really rules-of-engagement / stance: HOLD ("don't
 chase unless attacked"), cycle-charge / caracole (#472), "fire at will in range".
 These are durable **reactive modes** that modify how orders execute — the same
 layer as `formation_mode`, per the order/mode split. The existing `order_mode`
-(HOLD / RELIEF) is already a crude version. Do NOT encode these as if/else inside
-every order.
+enum (`HOLD` / `CYCLE_CHARGE` / `SUPPORT` / …) is already a crude version. Do NOT
+encode these as if/else inside every order.
 
 ### Out of the core: arbitrary reactive branching
 
@@ -315,16 +317,16 @@ confirmed in the transcript.
 
 **Scope.** Move `FormationOrder`, `SpacingOrder`, `StanceOrder`, and
 `SwitchWeaponOrder` onto the queue, each writing its durable mode on completion.
-Split the old `order_mode = RELIEF` flag into its two real behaviors:
-**inter-unit relief** becomes a `RelieveUnitOrder` queue entry (names the ally;
+Split the current `_relief_partner` / `UnitRelief` mechanism into its two real
+behaviors: **inter-unit relief** becomes a `RelieveUnitOrder` queue entry (names the ally;
 response-delay + ward become the order's execution state), and **intra-unit
 rank-relief** becomes a durable mode toggled by a `StanceOrder` (cross-links
 #529, whose rank-cycle recovery is exactly this mode). Finish absorbing the
 waypoint list. Decide support-ward: durable assignment mode vs standing
 `SupportOrder`.
 
-**Subsumes.** `order_mode = RELIEF` (split into the order + the mode) and the
-ad-hoc formation/spacing/stance transition flags.
+**Subsumes.** The `_relief_partner` / `UnitRelief` relief mechanism (split into
+the order + the mode) and the ad-hoc formation/spacing/stance transition flags.
 
 **Determinism / replay risks.** Transition timing (a formation change over N
 ticks) must advance deterministically; a mode must be written exactly on
