@@ -214,6 +214,7 @@ func test_support_unit_engages_a_threat_near_its_ward() -> void:
 	u.team = 0
 	u.order_mode = Unit.ORDER_SUPPORT
 	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT   # already fronting the threat: this tests fighting, not the re-face turn
 	var ward := _make_unit()
 	ward.team = 0
 	ward.position = Vector2(60, 0)
@@ -250,6 +251,7 @@ func test_support_ranged_unit_fires_at_a_threat_near_its_ward() -> void:
 	u.is_ranged = true
 	u.order_mode = Unit.ORDER_SUPPORT
 	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT   # already fronting the threat: this tests firing, not the re-face turn
 	var ward := _make_unit()
 	ward.team = 0
 	ward.position = Vector2(120, 0)
@@ -1010,6 +1012,7 @@ func _archer() -> Unit:
 
 func test_archer_shoots_enemy_within_range() -> void:
 	var archer := _archer()
+	archer.facing = Vector2.RIGHT   # already fronting the enemy: this tests firing, not the re-face turn
 	var enemy := _make_unit()
 	enemy.team = 1
 	# Derived from the constant so the test tracks RANGED_RANGE tuning: 40px inside
@@ -1037,6 +1040,7 @@ func test_archer_advances_toward_enemy_beyond_range() -> void:
 
 func test_archer_melees_when_enemy_in_contact() -> void:
 	var archer := _archer()
+	archer.facing = Vector2.RIGHT   # already fronting the enemy: this tests meleeing, not the re-face turn
 	var enemy := _make_unit()
 	enemy.team = 1
 	# Inside melee contact (attack_range + both radii), derived so the test tracks

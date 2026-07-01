@@ -1,0 +1,11 @@
+{
+  "_comment": "Engage re-facing demo (issue 402): the player Archers (seed 12345, uid 2 at ~800,300) are formed up IN PLACE facing WEST via a short vertical right-drag (the men just re-orient where they stand). The enemy Archers (uid 7) then advance into shooting range directly below. Auto-engaging a foe a quarter-turn off its front, the block does NOT snap its facing round (which would spin the slot grid 90 degrees in one tick and surge the men). Instead the whole line TURNS IN PLACE to bring its front to bear, the men holding their ground as it pivots, and it withholds its volley until it has come about. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 400.0, "zoom": 0.75}
+  ],
+  "steps": [
+    {"tick": 415, "click": [800, 300]},
+    {"tick": 425, "rmb_drag": {"from": [800, 220], "to": [800, 380]}}
+  ]
+}
