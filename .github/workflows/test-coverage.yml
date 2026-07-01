@@ -1,8 +1,10 @@
 # Measures GDScript line coverage for the GUT unit suite and uploads it to
 # Codecov. Instrumentation (addons/coverage, jamie-pate/godot-code-coverage's
 # godot4 branch) runs the tests through reloaded, counter-injected copies of the
-# scripts, so this is a separate, non-gating job -- the fast validate-and-test
-# gate lives in godot-ci.yml and stays uninstrumented.
+# scripts, so this is a job separate from the fast validate-and-test gate, which
+# lives in godot-ci.yml and stays uninstrumented. Coverage *numbers* never gate a
+# PR (a dip won't fail it), but a broken upload does -- fail_ci_if_error is true,
+# so a token/config failure surfaces as a red check instead of failing silently.
 name: Test coverage
 
 on:
@@ -77,5 +79,5 @@ jobs:
         with:
           files: ./coverage/lcov.info
           disable_search: true          # upload only the file above
-          fail_ci_if_error: false        # coverage upload never gates the PR
+          fail_ci_if_error: true         # a failed upload fails the job (catches token/config breakage)
           token: ${{ secrets.CODECOV_TOKEN }}
