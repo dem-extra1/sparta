@@ -136,6 +136,10 @@ script under `demos/inputs/`:
   `SPARTA_DEMO_FRAMES` env var adds to this list, so a reviewer can capture frames from any demo
   without editing its script. Ignored during a normal movie recording (capture only runs when a
   frame is armed).
+- `state` (optional) — a list of physics ticks to dump a machine-readable JSON game-state snapshot
+  at, for AI verification (see [Verifying a demo by state](#verifying-a-demo-by-state-ai-verification)).
+  The `SPARTA_DEMO_STATE` env var adds to this list, so a reviewer can dump state from any demo
+  without editing its script. Ignored during a normal movie recording.
 
 The standard 5v5 (`seed "12345"`) unit positions are in [Hand-authoring a scenario](#hand-authoring-a-scenario)
 below — clicks target those world coordinates.
@@ -215,6 +219,94 @@ Only after the frames confirm the behaviour is on-screen is the demo ready. If a
 genuinely can't be shown in a battle frame at all (a paused-overlay interaction, an editor-only
 tool), use the `skip` manifest ([No clip applies](#no-clip-applies)) with an honest reason —
 don't use the self-check's difficulty as the excuse.
+
+## Verifying a demo by state (AI verification)
+
+A rendered frame (above) proves the behaviour is *on-screen*, but reading it back means
+**interpreting pixels** — is that unit routing? what's its morale? A **machine-readable state
+dump** answers those precisely: at the ticks a demo cares about, it writes the authoritative
+game state to JSON, so a reviewing agent (or a test) reads **exact values** and asserts on them
+— "at tick 280, 'Infantry 1' is at morale 19, down to 8 soldiers, engaged" — instead of eyeballing
+a GIF. It's the machine-readable companion to the [frame capture](#verifying-a-demo-visually-frame-capture)
+above: same recorder, same tick-list plumbing, but it emits readable state rather than pixels.
+
+The recorder (`tools/demo/DemoInputRecorder.gd`) dumps state when the `SPARTA_DEMO_STATE` env var
+is **set** (to a comma-separated tick list like `8,60,140`). At each listed physics tick it writes
+`SPARTA_DEMO_STATE_DIR/state_<tick>.json` (a temp dir by default), then quits once the last snapshot
+is written. A demo's input script can also carry a `"state": [8, 60, 140]` array; when the env var is
+set, the two lists are merged (an empty env value falls back to the script's list — the same
+merge rule as `frames`). Dumping is **env-gated**: with the env var unset — the CI movie-recording
+path — it never arms, so normal recording and the frame-capture path are both unchanged.
+
+Unlike frame capture, the dump reads **sim state, not the drawn frame**, so it runs under
+`--headless` (no real renderer needed) — faster, and no window opens.
+
+Each `state_<tick>.json` holds the battle tick and a record per unit:
+
+| Field | Meaning |
+| --- | --- |
+| `uid`, `name`, `team` | Stable unit id, display name, side (0 player / 1 enemy). |
+| `position`, `facing` | World-space `[x, y]` pairs (rounded). |
+| `morale` | Current morale (100 = fresh; a rout triggers at 0). |
+| `state` | Readable `State` name — `IDLE` / `MOVING` / `FIGHTING` / `ROUTING` / `DEAD`. |
+| `formation` | Readable formation — `NORMAL` / `TIGHT` / `LOOSE` / `SQUARE` / `SHIELD_WALL` / `TESTUDO`. |
+| `soldiers` | Living soldier count (drops as the unit takes casualties). |
+| `current_speed` | Current movement speed (world units/s). |
+| `order_mode` | Readable order stance (`Normal`, `Hold`, `Attack flank`, …). |
+| `target_enemy_uid` | The uid this unit is attacking, or `null`. |
+| `engaged` | Whether the regiment is in the engaged tier (front ranks in/just-out of melee). |
+| `soldier_summary` | Per-soldier `{count, centroid:[x,y], bbox:[w,h], prone_count}` — a compact digest, **not** the full per-soldier arrays. |
+
+Set `SPARTA_DEMO_STATE_FULL=1` to also dump `soldiers_full` — the raw per-soldier arrays
+(`pos`, `facing`, `hp`, `prone`, `stamina`) — for deep debugging. Off by default (the summary is
+what a reviewer needs; the full arrays are ~20x larger).
+
+### The wrapper
+
+`tools/demo/dump-state.sh` wraps it, mirroring `capture-frames.sh`:
+
+```sh
+tools/demo/dump-state.sh <input-script> <ticks> [out-dir]
+```
+
+Concrete command that works on **Windows** (Git Bash), from the repo root:
+
+```sh
+GODOT_BIN="C:\Users\you\Documents\apps\Godot_v4.7-stable_win64_console.exe" \
+  tools/demo/dump-state.sh demos/inputs/rout-rally.json 8,60,140 /tmp/state
+```
+
+On Linux/CI, drop `GODOT_BIN` if `godot` is on `PATH`. No `xvfb-run` needed — the dump is headless.
+
+Or invoke Godot directly (no wrapper):
+
+```sh
+SPARTA_DEMO_INPUT="res://demos/inputs/rout-rally.json" \
+  SPARTA_DEMO_STATE="8,60,140" \
+  SPARTA_DEMO_STATE_DIR="/tmp/state" \
+  "$GODOT_BIN" --headless --path . res://tools/demo/DemoInputRecorder.tscn
+```
+
+Then `Read` each `/tmp/state/state_<tick>.json` and assert on the values. As with frame capture,
+**pick ticks the demo actually reaches** — a battle freezes its physics tick when it ends, so a
+tick armed past that never fires (the run quits on a wall-clock timeout, warning which snapshots
+it managed to write).
+
+### Worked example — the staged rout
+
+`demos/inputs/rout-rally.json` stages a lone, low-morale (25) player infantry unit of 60 against
+two 80-man cavalry that hit it head-on. Dumping at `8,60,140` (and on to `280`) shows the collapse
+in exact numbers, no frame-reading required:
+
+- **tick 8** — `Infantry 1`: `state MOVING`, `morale 25.3`, `soldiers 60`, `engaged false`; the two
+  cavalry (`morale 100`, `soldiers 80`) closing, `target_enemy_uid 0` (both targeting the infantry).
+- **tick 140** — `state FIGHTING`, `morale 25.4`, `soldiers 38`, `engaged true`; the weak unit is
+  locked in melee and already down a third of its men while the cavalry stay near full.
+- **tick 280** — `morale 19.1`, `soldiers 8`; the unit is nearly annihilated (it's ground down
+  before morale reaches the rout threshold of 0).
+
+A reviewer asserts on those values directly — the low morale, the falling `soldiers`, the
+`engaged`/`FIGHTING` transition — rather than judging a routed-looking sprite from a GIF.
 
 ## Getting a replay that shows your change
 
