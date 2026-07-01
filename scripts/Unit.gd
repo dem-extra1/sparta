@@ -168,7 +168,7 @@ const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed 
 # bounded by the lateral force a moving body/formation can exert without losing footing or
 # cohesion), never dropping below TURN_RATE_TAPER_FLOOR of the stationary rate. A first-cut
 # linear taper; the deeper pivot-radius/cohesion mechanics of an actual wheel maneuver are
-# a dedicated maneuver (circumductio, #372), not this general movement taper.
+# a dedicated maneuver (the circumductio flank wheel, see wheel()), not this general movement taper.
 const TURN_RATE: float = PI
 const TURN_RATE_TAPER_FLOOR: float = 0.4
 # Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
@@ -178,6 +178,12 @@ const TURN_RATE_TAPER_FLOOR: float = 0.4
 # SoldierBodies.step is zeroed while the turn runs, so soldiers stay at their grid positions
 # despite the facing change — they rotate without drifting.
 const CONVERSIO_TURN_RATE: float = PI * 2.0
+# Wheel (circumductio) swing rate: a stately quarter-circle over ~1 s. Deliberately slower than
+# the in-place CONVERSIO_TURN_RATE — the far flank actually MARCHES the arc (the whole regiment
+# rotates rigidly about the hinge), so a fast rate would fling the outer files across the field.
+# At this rate even the outermost file covers only a few px per tick, so the line reads as a door
+# swinging on its hinge rather than a whip-around.
+const WHEEL_TURN_RATE: float = PI * 0.5
 
 const MELEE_PRESS_FRACTION: float = 0.6
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
@@ -525,6 +531,21 @@ func _think(delta: float) -> void:
 			if _advance_turn(_quarter_target, delta):
 				_settle_formation_angle()
 				_quarter_target = Vector2.ZERO
+			state = State.IDLE
+			return
+
+	# Wheel (circumductio): the block swings about a fixed flank file. facing rotates and the
+	# regiment centre slides along an arc so the hinge holds; _advance_wheel rigidly rotates the
+	# centre and every body about the hinge, with the spring frozen (as for the conversio/
+	# quarter-turn) so it doesn't fight the rotation. An interrupt by combat or a move order just
+	# drops the wheel where it is — the partial swing is already a valid formation state (position
+	# and facing are consistent), so no settle step is needed.
+	if _wheel_target != Vector2.ZERO:
+		if state == State.FIGHTING or has_move_target:
+			_wheel_target = Vector2.ZERO
+		else:
+			if _advance_wheel(delta):
+				_wheel_target = Vector2.ZERO
 			state = State.IDLE
 			return
 
@@ -1022,6 +1043,21 @@ var _conversio_target: Vector2 = Vector2.ZERO
 # stops (full turn or an interrupt), leaving the slots — and the men — exactly where they were.
 var _quarter_target: Vector2 = Vector2.ZERO
 var _quarter_start_facing: Vector2 = Vector2.ZERO
+# Non-zero while a wheel (circumductio, hinge pivot) is in progress: the target facing, 90°
+# to the left or right of the start. UNLIKE the conversio and quarter-turn, a wheel is NOT an
+# in-place turn — one flank file stays fixed while the whole block swings about it like a door
+# on a hinge, so `position` slides along an arc as `facing` rotates and the men march to their
+# swung slots. _advance_wheel rigidly rotates the centre AND every body about the hinge by the
+# same step each tick, so the same spring-freeze as the conversio/quarter-turn applies (the
+# restoring force is zeroed while _wheel_target is set) — that keeps the spring from fighting the
+# rigid rotation, and bodies stay exactly on their swinging slots (no teleport). The wheel does not
+# modify _formation_angle (it's 0 normally, but non-zero after a quarter-turn — the pivot geometry
+# folds that in). `_wheel_pivot` is the fixed hinge point in parent-local space (like
+# `_sim_soldier_pos`), captured when the wheel is armed so the arc reproduces exactly on replay.
+# Cleared on arrival or when interrupted by combat, a move order, or routing (the partial swing is
+# preserved).
+var _wheel_target: Vector2 = Vector2.ZERO
+var _wheel_pivot: Vector2 = Vector2.ZERO
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -1132,6 +1168,73 @@ func _advance_turn(target: Vector2, delta: float) -> bool:
 	_rotate_facing_toward(target, delta, CONVERSIO_TURN_RATE)
 	if facing.dot(target) > 1.0 - 0.0001:
 		facing = target
+		return true
+	return false
+
+
+## Parent-local hinge point for a wheel to `dir` (-1 wheel-left / +1 wheel-right): the front of
+## the standing flank file. The formation grid (soldier_world_slots) lays its local +X along the
+## world direction `facing.rotated(PI/2 + _formation_angle)` and its front (local -Y) along
+## `facing.rotated(_formation_angle)`, so the flanks sit ±half_width along the file axis and the
+## front rank sits front_depth ahead along the front axis. `_formation_angle` is normally 0, but a
+## completed quarter-turn leaves it non-zero (it absorbs the heading change to keep the slots put),
+## so the axes MUST fold it in — otherwise a quarter-turn-then-wheel chain hinges about the wrong
+## point and the "standing" flank doesn't hold. The offset puts the hinge at the standing file's
+## leading man rather than the block centre, so the line pivots about its corner like a real hinge.
+## Parent-local (like `_sim_soldier_pos`): built from `position` and used in arithmetic with the
+## bodies. Pure of the turn's progress — a function of the CURRENT position/facing/shape — so the
+## caller captures it once when the wheel is armed.
+func _wheel_pivot_point(dir: int) -> Vector2:
+	var files: int = UnitFormation.frontage(self)
+	var half_width: float = float(files - 1) * 0.5 * FORMATION_SPACING * spacing_scale
+	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
+	var front_axis: Vector2 = facing.rotated(_formation_angle)             # slot-grid local -Y (toward front)
+	var flank: Vector2 = position + file_axis * (half_width * signf(dir))
+	# The front rank sits ahead of the centre along the front axis by the block's front depth, so
+	# the hinge is the leading man of the standing file (a door hinges at its edge post, not its mid).
+	var ranks: int = int(ceil(float(soldiers) / float(maxi(1, files))))
+	var front_depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING * spacing_scale
+	return flank + front_axis * front_depth
+
+
+## Wheel (circumductio, Aelian/Asclepiodotus): the block swings about one fixed flank file like a
+## door on a hinge, reorienting the whole line 90° to the left (`dir` = -1) or right (`dir` = +1)
+## while preserving internal order. UNLIKE the quarter-turn — which turns every man in place and
+## does not move the block — the standing flank file holds its ground and every other file marches
+## an arc around it, so `position` slides along that arc as `facing` rotates. _advance_wheel
+## rigidly rotates the centre and every soldier body about the hinge in lockstep, with the spring
+## restoring force frozen (the same freeze the conversio/quarter-turn use) so it doesn't fight the
+## rigid rotation — the men swing to their new slots at velocity, no body teleports. Blocked while
+## fighting, before seeding, or while another maneuver (conversio / quarter-turn / wheel) runs.
+func wheel(dir: int) -> void:
+	if state == State.FIGHTING or _sim_soldier_facing.is_empty() or dir == 0 \
+			or _wheel_target != Vector2.ZERO or _quarter_target != Vector2.ZERO \
+			or _conversio_target != Vector2.ZERO:
+		return
+	_wheel_pivot = _wheel_pivot_point(dir)
+	_wheel_target = facing.rotated(signf(dir) * PI * 0.5)
+
+
+## Advance a wheel one tick: rotate `facing` toward the target at the drill rate, then rigidly
+## rotate the WHOLE regiment — the centre `position` and every soldier body — about the fixed
+## hinge by the same increment. Because the slots (soldier_world_slots) are a rigid function of
+## position + facing and the bodies are rotated by the same arc step, body and slot stay locked
+## together through the swing: the standing flank man holds his ground, the far end sweeps, and no
+## body teleports (each tick is a small arc step). SoldierBodies.step freezes the restoring force
+## while _wheel_target is set, so it doesn't fight this rigid rotation. Returns true on arrival
+## (snapping facing exactly onto the target). Velocities are rotated too, so any residual body
+## motion carries through cleanly rather than snapping direction.
+func _advance_wheel(delta: float) -> bool:
+	var before: float = facing.angle()
+	_rotate_facing_toward(_wheel_target, delta, WHEEL_TURN_RATE)
+	var step: float = angle_difference(before, facing.angle())
+	position = _wheel_pivot + (position - _wheel_pivot).rotated(step)
+	for i in range(_sim_soldier_pos.size()):
+		_sim_soldier_pos[i] = _wheel_pivot + (_sim_soldier_pos[i] - _wheel_pivot).rotated(step)
+		_sim_body_vel[i] = _sim_body_vel[i].rotated(step)
+	_render_dirty = true
+	if facing.dot(_wheel_target) > 1.0 - 0.0001:
+		facing = _wheel_target
 		return true
 	return false
 
@@ -1504,6 +1607,7 @@ func _rout() -> void:
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
 	_quarter_target = Vector2.ZERO     # cancel any quarter-turn likewise
+	_wheel_target = Vector2.ZERO       # and any in-progress wheel (partial swing left as-is)
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_rout_timer = ROUT_TIME
 	_combat_intermixing = 0.0
