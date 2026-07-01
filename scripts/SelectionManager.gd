@@ -242,13 +242,13 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_M:
 		_issue_merge()   # merge the selected friendly regiments into one
 		return true
-	elif event.keycode == KEY_LEFT and not _selected.is_empty():
+	elif event.keycode == KEY_LEFT and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.LEFT)    # side-step left (holds facing)
 		return true
-	elif event.keycode == KEY_RIGHT and not _selected.is_empty():
+	elif event.keycode == KEY_RIGHT and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.RIGHT)   # side-step right (holds facing)
 		return true
-	elif event.keycode == KEY_DOWN and not _selected.is_empty():
+	elif event.keycode == KEY_DOWN and has_selection():
 		_issue_nudge(BattleRef.NudgeDir.BACK)    # back-step (holds facing)
 		return true
 	elif event.keycode == KEY_T:

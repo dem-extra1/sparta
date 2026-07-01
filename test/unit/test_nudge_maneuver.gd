@@ -39,8 +39,10 @@ func test_offsets_are_fixed_length_and_relative_to_facing() -> void:
 
 
 func test_nudge_distance_stays_within_the_sidestep_ceiling() -> void:
-	# The lateral nudge must classify as a shuffle, not a turn-and-march, so it has
-	# to sit under the side-step distance cap.
+	# Design guard on NUDGE_DISTANCE. The nudge bypasses UnitManeuver.is_sidestep()
+	# entirely -- _apply_order_cmd sets ordered_facing directly -- but the distance
+	# should stay small enough that it *would* read as a side-step if it ever went
+	# through the classifier, so bumping it past the cap trips this test.
 	assert_lt(BattleScript.NUDGE_DISTANCE, UnitManeuver.SIDESTEP_MAX_DISTANCE,
 		"a lateral nudge is short enough to read as a side-step")
 

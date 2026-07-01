@@ -17,14 +17,15 @@ var bounds: Rect2 = Rect2(0, 0, 1600, 1000)
 
 # Sibling SelectionManager (resolved in _ready). When it reports a live selection,
 # the arrow keys nudge that selection instead of panning the camera — WASD still
-# pans regardless, so camera control is never lost.
-var _selection: Node = null
+# pans regardless, so camera control is never lost. Typed so the type-checker
+# catches a rename of has_selection() at parse time.
+var _selection: SelectionManager = null
 
 
 func _ready() -> void:
 	make_current()
 	position = bounds.position + bounds.size * 0.5
-	_selection = get_parent().get_node_or_null("SelectionManager")
+	_selection = get_parent().get_node_or_null("SelectionManager") as SelectionManager
 	# Keep panning/zooming during active pause so the field can be surveyed
 	# while issuing orders.
 	process_mode = Node.PROCESS_MODE_ALWAYS
