@@ -1507,10 +1507,14 @@ func _shatter() -> void:
 # block of one small mark per living soldier (cosmetic only — never fed back into the
 # sim), packed roughly within the unit's footprint so the on-field size still matches
 # the collision RADIUS. Wider-than-deep, like a real formation.
-const FORMATION_SPACING: float = 3.4    # px between soldier marks
+# Historically-grounded metric values: close-order per-man frontage is
+# ~0.45 m (Battle.WORLD_UNITS_PER_METER = 20), and a foot soldier's mark is sized
+# to match — shoulder-to-shoulder at close order, no gap and no overlap. Cavalry
+# marks are sized to a horse's ~1 m body width. World-units, not px.
+const FORMATION_SPACING: float = 9.0    # world units between soldier marks (0.45 m)
 const FORMATION_ASPECT: float = 1.7     # files-to-ranks ratio (> 1 = wider than deep)
-const MARK_RADIUS: float = 1.7          # foot soldier mark
-const CAV_MARK_RADIUS: float = 2.6      # cavalry marks are larger (horses)
+const MARK_RADIUS: float = 4.5          # foot soldier mark (0.45 m across)
+const CAV_MARK_RADIUS: float = 10.0     # cavalry marks are larger (1 m horse body)
 
 # Zoom level-of-detail. Zoomed out, each soldier is a flat geometric mark (a
 # disc / rect / diamond) — cheap and legible at a glance. Zoomed in past

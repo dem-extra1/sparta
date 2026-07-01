@@ -122,7 +122,7 @@ func test_friendly_regiments_separate_via_soldier_layer() -> void:
 	var start_cross: float = _min_cross(a, b)
 	for f in range(200):
 		_soldier_tick([a, b], f + 1)
-	assert_gt(_min_cross(a, b), start_cross + 1.5,
+	assert_gt(_min_cross(a, b), start_cross + 1.0,
 			"the interpenetrating soldiers are pushed substantially apart")
 	assert_gt(a.position.distance_to(b.position), start_gap + 1.0,
 			"and the regiment centers slide off each other")

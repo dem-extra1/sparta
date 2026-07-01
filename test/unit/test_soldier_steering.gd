@@ -6,7 +6,7 @@ extends GutTest
 ## (knockback handles them), deeper overlap steers harder, the co-located tie-break is
 ## deterministic, and the whole pass is order-independent / replay-safe.
 
-const MIN_DIST_FOOT: float = 3.4   # 2 * MARK_RADIUS, the foot-vs-foot body floor
+const MIN_DIST_FOOT: float = 2.0 * Unit.MARK_RADIUS   # the foot-vs-foot body floor
 
 
 func before_each() -> void:
@@ -41,7 +41,7 @@ func test_overlapping_friendlies_steer_apart() -> void:
 	var a := _engaged(0, 0)
 	var b := _engaged(1, 0)            # same team
 	a._sim_soldier_pos[0] = Vector2(0.0, 0.0)
-	b._sim_soldier_pos[0] = Vector2(1.0, 0.0)   # 1.0 apart, inside the 3.4 floor
+	b._sim_soldier_pos[0] = Vector2(1.0, 0.0)   # 1.0 apart, inside the MIN_DIST_FOOT floor
 	SoldierSteering.accumulate([a, b], 1)
 	assert_lt(a._sim_steer[0].x, 0.0, "the left soldier steers further left, away from its neighbour")
 	assert_gt(b._sim_steer[0].x, 0.0, "the right soldier steers further right")
