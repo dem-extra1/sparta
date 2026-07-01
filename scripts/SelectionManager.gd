@@ -263,6 +263,12 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_BRACKETLEFT:
 		_resize_frontage(-1)   # [ narrows the line by one file
 		return true
+	elif event.keycode == KEY_B:
+		_issue_file_double(1)    # explicatio: files split, doubling frontage / halving depth
+		return true
+	elif event.keycode == KEY_N:
+		_issue_file_double(-1)   # duplicatio: files tuck in, halving frontage / doubling depth
+		return true
 	elif event.keycode == FORM_UP_DIST_CYCLE_KEY:
 		_cycle_form_up_dist()   # switch how a multi-unit form-up splits the line
 		return true
@@ -687,6 +693,23 @@ func _resize_frontage(delta: int) -> void:
 	if uids.is_empty():
 		return
 	_battle.enqueue_frontage(uids, delta)
+	_refresh_hud()
+	Sfx.play(&"order")
+
+
+## File-doubling maneuver on every selected friendly unit: `direction` > 0 is EXPLICATIO
+## (files split, doubling the frontage / halving the depth), `direction` < 0 is DUPLICATIO
+## (alternate files tuck in behind, halving the frontage / doubling the depth). Routed
+## through Battle so it reshapes each unit from its own current width, is recorded, and
+## replays exactly -- the same path as the [ / ] single-file resize, one whole factor
+## instead of one file. Blocked during playback.
+func _issue_file_double(direction: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	_battle.enqueue_file_double(uids, direction)
 	_refresh_hud()
 	Sfx.play(&"order")
 

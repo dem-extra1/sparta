@@ -38,6 +38,7 @@ DEMOS=(
   "wheel|demos/inputs/wheel.json|30|300|640|input"
   "square|demos/inputs/anti-cav-square.json|30|300|640|input"
   "order_distance|demos/inputs/order-distance.json|30|120|640|input"
+  "file_doubling|demos/inputs/file-doubling.json|30|300|640|input"
   "cycle_charge|demos/inputs/cycle-charge.json|30|600|640|input"
   "last_unit_rally|demos/inputs/last-unit-rally.json|30|420|640|input"
 )
