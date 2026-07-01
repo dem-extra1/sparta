@@ -1,5 +1,5 @@
 {
-  "_comment": "Orderly frontage demo: select the Spearmen and widen the formation six times with ]. Each frontage increment reshapes the slots; the jog-speed cap (REFORM_JOG_SPEED) keeps individual soldiers trotting to their new positions rather than snapping or sprinting.",
+  "_comment": "Orderly frontage demo: select the Spearmen and widen the formation six times with ]. Each frontage increment reshapes the slots; the jog-speed cap (each soldier's own jog_speed) keeps individual soldiers trotting to their new positions rather than snapping or sprinting.",
   "seed": "12345",
   "camera": [
     {"tick": 0, "x": 500.0, "y": 300.0, "zoom": 2.3}
