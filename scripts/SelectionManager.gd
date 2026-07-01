@@ -239,6 +239,12 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_E:
 		_issue_quarter_turn(1)    # quarter-turn right: every soldier pivots 90° CW
 		return true
+	elif event.keycode == KEY_Z:
+		_issue_wheel(-1)   # wheel left: swing 90° about the left flank file
+		return true
+	elif event.keycode == KEY_C:
+		_issue_wheel(1)    # wheel right: swing 90° about the right flank file
+		return true
 	elif event.keycode == KEY_M:
 		_issue_merge()   # merge the selected friendly regiments into one
 		return true
@@ -582,6 +588,24 @@ func _issue_quarter_turn(dir: int) -> void:
 			issued = true
 	if issued:
 		Sfx.play(&"order")
+
+
+## Wheel (circumductio): each selected friendly unit swings 90° about a fixed flank file (`dir`
+## = -1 left / +1 right). UNLIKE the conversio and quarter-turn — which touch only per-soldier
+## facing and stay out of the replay stream — a wheel moves the regiment (position + facing),
+## which the sim reads, so it goes through the recorded order path (Battle.enqueue_wheel).
+## Blocked during replay playback; combat-engaged units ignore it in Unit.wheel().
+func _issue_wheel(dir: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit) and unit.team == 0:
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_wheel(uids, dir)
+	Sfx.play(&"order")
 
 
 ## Merge the selected friendly regiments into the first-selected one. Encoded
