@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Routing units now stay on the field (clamped to the battle bounds instead of fleeing off-map), recover morale asymptotically toward a baseline while they flee, and RALLY back under control the moment their steadying morale crosses the rally threshold with contact broken -- otherwise they still shatter. The whole arc is emergent: it needs a full morale collapse driven by a lopsided melee grind, then the router left alone long enough to recover, which no fixed-length scripted clip at a fixed camera can stage deterministically. Covered tick-by-tick by test_unit.gd: test_routing_morale_recovers_asymptotically, test_routing_unit_stays_within_field_bounds, and test_routing_unit_rallies_when_morale_crosses_threshold (plus the existing rally/shatter timeout tests)."
+}

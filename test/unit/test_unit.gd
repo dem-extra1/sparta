@@ -1336,8 +1336,11 @@ func test_rout_timeout_leaves_groups_synchronously() -> void:
 
 func test_rout_rallies_after_breaking_contact() -> void:
 	# No enemy nearby and plenty of men left: the rout times out into a RALLY, returning
-	# the unit to play under the player's control at low (fragile) morale.
+	# the unit to play under the player's control at low (fragile) morale. Starting morale
+	# below the rally threshold keeps the timeout path in effect (not an early threshold
+	# rally); one recovery tick barely lifts it, so the fragile floor sets the reformed value.
 	var u := _make_unit()
+	u.morale = 0.0
 	u._rout()
 	u._rout_timer = 0.0
 	u._process_rout(0.016)
@@ -1847,15 +1850,54 @@ func test_morale_caps_at_100_during_recovery() -> void:
 	assert_almost_eq(u.morale, 100.0, 0.001, "morale recovery does not exceed 100")
 
 
-func test_morale_does_not_recover_while_routing_via_physics_process() -> void:
-	# Routing units return early from _physics_process before tick_morale is
-	# called; this test pins that the early-return path is in effect.
+func test_routing_morale_recovers_asymptotically() -> void:
+	# A routing unit's nerve steadies toward the baseline while it flees: morale ticks up
+	# by a fraction of the remaining gap each tick, so it rises but never overshoots.
 	var u := _make_unit()
-	u.morale = 50.0
-	u.state = Unit.State.ROUTING
-	u._rout_timer = 10.0   # keep timer alive so _process_rout returns early
-	u._physics_process(0.01)
-	assert_almost_eq(u.morale, 50.0, 0.001, "a routing unit does not recover morale")
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(30, 0)   # in contact, so recovery runs without an early rally
+	u.morale = 10.0
+	u._rout()
+	u.morale = 10.0   # _rout() leaves morale untouched; pin the low start explicitly
+	u._rout_timer = 10.0   # keep the timer alive so we exercise the fleeing path, not timeout
+	var expected: float = 10.0 + (Unit.ROUT_RALLY_BASELINE - 10.0) * Unit.ROUT_MORALE_RECOVER_RATE * 1.0
+	u._process_rout(1.0)
+	assert_true(u.state == Unit.State.ROUTING, "still routing (in contact, below threshold)")
+	assert_almost_eq(u.morale, expected, 0.001, "morale rises by a fraction of the gap")
+	assert_true(u.morale < Unit.ROUT_RALLY_BASELINE, "and stays below the baseline (asymptotic)")
+
+
+func test_routing_unit_stays_within_field_bounds() -> void:
+	# A router flees toward its back edge but is clamped to the field so it stays visible.
+	var u := _make_unit()
+	u.field_bounds = Rect2(0, 0, 400, 400)
+	u.position = Vector2(200, 5)   # team 0 flees UP (toward y=0)
+	u.morale = 0.0
+	u._rout()
+	u.morale = 0.0
+	u._rout_timer = 10.0
+	for i in range(120):   # ~2 s of fleeing at 60 fps
+		u._process_rout(0.016)
+	assert_true(u.position.y >= u.field_bounds.position.y,
+		"a routing unit never runs off the top of the field")
+	assert_true(u.field_bounds.has_point(u.position) or is_equal_approx(u.position.y, 0.0),
+		"the router stays on the visible map")
+
+
+func test_routing_unit_rallies_when_morale_crosses_threshold() -> void:
+	# Broke contact, timer still alive: as morale recovers past the rally threshold the unit
+	# rallies on the spot — no need to run the full timer or reach the map edge.
+	var u := _make_unit()
+	u.morale = Unit.RALLY_MORALE_THRESHOLD + 1.0   # already above threshold, no enemy near
+	u._rout()
+	u.morale = Unit.RALLY_MORALE_THRESHOLD + 1.0
+	u._rout_timer = 10.0   # timer nowhere near expiring
+	u._process_rout(0.016)
+	assert_eq(u.state, Unit.State.IDLE, "morale over the threshold with clear contact rallies")
+	assert_true(u.is_in_group("units"), "a threshold-rallied unit rejoins the fightable units")
+	assert_true(u.morale >= Unit.RALLY_MORALE_THRESHOLD,
+		"it keeps the nerve it steadied to, not reset to the fragile floor")
 
 
 # --- order response delay -----------------------------------------------

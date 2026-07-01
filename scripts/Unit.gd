@@ -222,6 +222,16 @@ const ROUT_SHOCK_RADIUS: float = 140.0
 const RALLY_CONTACT_RADIUS: float = 160.0   # = RANGED_RANGE: in archer reach = not broken contact
 const RALLY_MORALE: float = 30.0
 const SHATTER_STRENGTH_FRAC: float = 0.15
+# While routing, a shaken regiment's nerve slowly steadies: morale ticks UP toward
+# ROUT_RALLY_BASELINE at a rate proportional to the remaining gap, so recovery is fast
+# at first and levels off (an asymptotic approach, never quite reaching the baseline).
+# A unit that breaks contact and steadies past RALLY_MORALE_THRESHOLD rallies on the spot —
+# it need not run the full ROUT_TIME nor reach the map edge to return to play. The baseline
+# sits above the threshold so a clear unit reliably crosses it before the timer runs out.
+# Rates are deterministic (gap-proportional, delta-driven, no RNG), so replays stay exact.
+const ROUT_RALLY_BASELINE: float = 45.0
+const ROUT_MORALE_RECOVER_RATE: float = 0.25   # fraction of the gap closed per second
+const RALLY_MORALE_THRESHOLD: float = 35.0
 
 # Ranged combat. A ranged unit looses volleys at any enemy within
 # RANGED_RANGE that isn't already in melee contact — far outreaching melee's
@@ -1516,15 +1526,31 @@ func _rout() -> void:
 
 
 func _process_rout(delta: float) -> void:
-	# Flee toward own back edge (team 0 started at top, team 1 at bottom).
+	# Flee toward own back edge (team 0 started at top, team 1 at bottom). Clamp to the
+	# battle field so a router stays visible on the map instead of running off the edge —
+	# it huddles at the back line where the player can still see it rally or shatter.
 	var flee: Vector2 = Vector2.UP if team == 0 else Vector2.DOWN
 	facing = flee
 	position += flee * (move_speed * 1.3) * delta
+	position.x = clampf(position.x, field_bounds.position.x, field_bounds.end.x)
+	position.y = clampf(position.y, field_bounds.position.y, field_bounds.end.y)
+
+	# The regiment's nerve steadies as it flees: morale ticks up toward the baseline at a
+	# rate proportional to the remaining gap, so it recovers quickly at first and levels off.
+	if morale < ROUT_RALLY_BASELINE:
+		morale += (ROUT_RALLY_BASELINE - morale) * ROUT_MORALE_RECOVER_RATE * delta
+
+	# Rally the moment morale recovers past the threshold, provided contact is broken and
+	# enough men remain — the unit needn't run out the full timer or reach the edge.
+	if morale >= RALLY_MORALE_THRESHOLD and _can_rally():
+		_rally()
+		return
+
 	_rout_timer -= delta
 	if _rout_timer > 0.0:
 		queue_redraw()
 		return
-	# Rout over: a unit that broke contact and kept enough men RALLIES back into
+	# Timer ran out: a unit that broke contact and kept enough men RALLIES back into
 	# the fight; one still in contact, or gutted past reforming, SHATTERS for good.
 	if _can_rally():
 		_rally()
@@ -1547,7 +1573,9 @@ func _can_rally() -> bool:
 ## changes _rout() made. It can be re-ordered, and can break again, from here.
 func _rally() -> void:
 	state = State.IDLE
-	morale = RALLY_MORALE
+	# Keep whatever nerve the unit steadied to while fleeing, but never below the fragile
+	# floor — a unit that rallies the instant its timer expires still reforms shaken.
+	morale = maxf(morale, RALLY_MORALE)
 	_rout_timer = 0.0
 	# has_move_target was cleared on rout, so a stale waypoint queue is never consulted;
 	# clear it anyway so a unit that was mid-march before routing reforms with no orders.
