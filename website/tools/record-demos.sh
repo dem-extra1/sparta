@@ -42,6 +42,7 @@ DEMOS=(
   "file_doubling|demos/inputs/file-doubling.json|30|300|640|input"
   "cycle_charge|demos/inputs/cycle-charge.json|30|600|640|input"
   "rout_rally|demos/inputs/rout-rally-recover.json|30|300|640|input"
+  "last_unit_rally|demos/inputs/last-unit-rally.json|30|420|640|input"
   "testudo_under_fire|demos/inputs/testudo-under-fire.json|30|300|640|input"
 )
 

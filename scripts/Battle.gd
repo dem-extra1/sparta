@@ -1037,17 +1037,36 @@ func _team_units(team: int) -> Array:
 	return out
 
 
+## Whether a team still has any body on the field that could yet fight — a fightable
+## unit OR a routing one. A routing unit has left the "units" group for "routers", but
+## it is still on the field and may rally back into the fight, so it keeps its team in
+## play. Only once a team's last body has truly gone (died, shattered, or left the field)
+## does it fall out of play. Used by _check_victory so a team isn't declared defeated
+## while its final unit is merely routing and might still recover.
+func _team_in_play(team: int) -> bool:
+	for group in ["units", "routers"]:
+		for node in get_tree().get_nodes_in_group(group):
+			var u = node as UnitRef
+			if u != null and u.team == team:
+				return true
+	return false
+
+
 func _check_victory() -> void:
 	# Drill mode has no opponent, so "no enemies" is never a win — the rehearsal runs on.
 	if drill_mode:
 		return
-	var p: int = _team_units(0).size()
-	var e: int = _team_units(1).size()
-	if p == 0 and e == 0:
+	# A team is still contesting the battle while it has any body on the field — a
+	# fightable unit or a routing one that might rally. Waiting on routers is bounded:
+	# each rout resolves (rally or shatter) within ROUT_TIME, so a both-sides-only-routers
+	# state can't stall the outcome — it just defers the call until the routers settle.
+	var p_alive: bool = _team_in_play(0)
+	var e_alive: bool = _team_in_play(1)
+	if not p_alive and not e_alive:
 		_end("Mutual Destruction")
-	elif e == 0:
+	elif not e_alive:
 		_end("Victory!")
-	elif p == 0:
+	elif not p_alive:
 		_end("Defeat")
 
 

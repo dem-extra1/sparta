@@ -25,7 +25,7 @@ your cavalry hits its rear will melt --- and start a rout that spreads.
 
 Units don't fight to the last soldier. When a unit loses enough soldiers or takes
 flank/rear hits, it **routs** --- it flees (shown faded) toward its own back edge and
-stops counting toward the battle. A routing unit **stays on the field**: it huddles at
+stops fighting for now. A routing unit **stays on the field**: it huddles at
 the back line where you can still see it, rather than vanishing off the map.
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
@@ -39,6 +39,10 @@ the back line where you can still see it, rather than vanishing off the map.
   a broken enemy down to finish it: a router you leave alone will reform and come back.
 - A unit still in contact, or gutted past reforming, **shatters** instead --- it leaves
   play for good.
+- **The battle isn't over while a side is only routing.** A team is beaten only once
+  its last unit is truly gone (dead or shattered), not while its final unit is merely
+  routing. Even a lone survivor that breaks can flee, rally, and fight on --- so press a
+  rout home rather than assuming a broken last unit is a win.
 
 ```{=html}
 <figure class="demo">
@@ -49,6 +53,18 @@ the back line where you can still see it, rather than vanishing off the map.
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
   <figcaption>Rout and rally: a low-morale infantry block is charged by cavalry and breaks &mdash; it flees faded toward its own edge, staying on the field rather than running off. The cavalry lose the router and stop; its morale recovers as it flees, and it reforms under control, back in the fight.</figcaption>
+</figure>
+```
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/last_unit_rally.jpg">
+    <source src="media/last_unit_rally.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>A team's last unit routs, then rallies. A lone player infantry is broken and flees (faded); with no fightable unit left the enemy AI halts, so the fugitive breaks contact and reforms back under control at low morale &mdash; the battle stays live instead of ending the instant the last unit broke.</figcaption>
 </figure>
 ```
 

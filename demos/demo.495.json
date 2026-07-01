@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/last-unit-rally.json",
+  "caption": "A team's last unit can now rally instead of instantly losing. A lone player infantry (team 0's only unit) is charged by an enemy infantry, breaks, and flees up (faded). Before this fix, losing its last fightable unit ended the battle and paused the sim, freezing the unit mid-rout so it could never recover. Now a routing unit keeps its team in the fight while it might still rally: the enemy AI halts once no fightable player unit remains, the fugitive breaks contact, and when its rout times out it reforms back under control at low, fragile morale. The battle ends only once a team's units are truly gone (dead, shattered, or off the field).",
+  "fixed_fps": 30,
+  "max_frames": 420,
+  "fps": 15,
+  "width": 640
+}
