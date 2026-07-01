@@ -211,7 +211,7 @@ check_coverage() {
   # The post-run hook reports a failed lcov write with push_error(), which does
   # not make Godot exit non-zero, so a clean exit above doesn't prove the report
   # was written. Confirm the file exists before claiming success.
-  if [ ! -f "$PROJECT_ROOT/coverage/lcov.info" ]; then
+  if [ ! -s "$PROJECT_ROOT/coverage/lcov.info" ]; then
     err "coverage/lcov.info was not written — see the post_run_hook output above."
     return 1
   fi
