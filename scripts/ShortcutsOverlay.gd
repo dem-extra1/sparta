@@ -30,6 +30,7 @@ const _ROWS: Array = [
 	["— Formation & drill —", ""],
 	["Formation (Normal/Tight/Loose)", "T"],
 	["Line width (narrower/wider)", "[ / ]"],
+	["File-doubling (explicatio wider / duplicatio deeper)", "B / N"],
 	["Form-up split mode", "Y"],
 	["About-face (180° in place)", "V"],
 	["Quarter-turn left / right (90° in place)", "Q / E"],

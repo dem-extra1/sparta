@@ -100,6 +100,17 @@ A wider line is easier to outlast in depth and quicker to crumble once it bends;
 a deeper one trades frontage for staying power. The width holds as casualties thin
 the ranks, so a line you set wide stays wide until you change it.
 
+**File-doubling for a fast reshape.** The <kbd>[</kbd> / <kbd>]</kbd> steps are fine for
+fine-tuning, but two drill maneuvers swap the whole shape in one press. <kbd>N</kbd>
+(**duplicatio**) halves the frontage and doubles the depth --- a broad line folds into a deep
+column, so you can squeeze down a lane or mass depth to punch through one point. <kbd>B</kbd>
+(**explicatio**) does the reverse: it doubles the frontage and halves the depth, unfolding a
+column back into a wide line to overlap a flank or plug a gap. The men walk to their new
+slots rather than snapping, so there's a beat of disorder while the block reshapes --- don't
+start the maneuver in contact, and give it room before the enemy arrives. A natural rhythm is
+duplicatio to march a column through a chokepoint, then explicatio to deploy back into line on
+the far side.
+
 **Deploy a whole battle line at once.** Select several regiments and drag one flank
 line (right-click and drag): the line splits among them. By default it splits to **equal
 depth**, so every regiment forms up the same number of ranks --- a uniform front where

@@ -37,6 +37,7 @@ left fighting --- every remaining unit is dead or routing.
 | Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear |
 | Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose) · or **control bar** |
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
+| File-doubling | <kbd>N</kbd> duplicatio (narrower + deeper) · <kbd>B</kbd> explicatio (broader + shallower) |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
 | Merge selected units | <kbd>M</kbd> |
 | Control groups | <kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall |
@@ -199,6 +200,28 @@ fighting at the front) or <kbd>[</kbd> to narrow it (deeper, fewer up front but 
 staying power). With a single unit selected, two small grips appear on its flanks ---
 **drag** a grip in or out to set the width directly, with a live preview of the new
 file count. The width holds as the unit takes casualties, and shows in the info panel.
+
+**File-doubling (duplicatio and explicatio).** Where <kbd>[</kbd> / <kbd>]</kbd> nudge the
+width one file at a time, these two drill maneuvers reshape it by a whole factor at once.
+Press <kbd>N</kbd> for **duplicatio**: alternate files tuck in behind their neighbours, so
+the frontage halves and the depth doubles --- a wide line folds into a deep, narrow column,
+good for punching through or squeezing down a lane. Press <kbd>B</kbd> for **explicatio**:
+each file splits and the rear half steps out to the side, so the frontage doubles and the
+depth halves --- a column unfolds back into a broad line that brings more men to the front.
+Nobody teleports: the soldiers walk to their new slots, so the reshape takes a moment to
+settle. Explicatio can't widen past a single rank, and duplicatio bottoms out at one file.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/file_doubling.jpg">
+    <source src="media/file_doubling.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.</figcaption>
+</figure>
+```
 
 **Deploy with a drag (form up).** With a single unit selected, **right-click and drag
 across open ground** to lay out where it should stand: the start of the drag is the
