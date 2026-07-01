@@ -108,13 +108,17 @@ or one that heads forward, still turns to face the destination and marches norma
 it **pivot about its centre** there gradually rather than snapping --- it turns toward its
 travel direction in good order as it sets off. When the heading change is sharp, the unit
 **pivots before it advances**: it nearly halts, comes onto its new facing, then marches.
-For a destination directly **behind** the unit this is a 180° centre pivot --- the whole
-regiment turns around to face where it is going and then steps off, instead of sliding
-backwards. (That is distinct from the standing **about-face** drill on <kbd>V</kbd> below,
-where each soldier turns in place and the block never rotates.) So a unit always marches
-facing its destination, and never reverses into it. (A chasing or charging unit still turns
-instantly --- the gradual pivot is for your own move orders, where order matters more than
-the last fraction of a second.)
+So a unit always marches facing its destination, and never reverses into it. (A chasing or
+charging unit still turns instantly --- the gradual pivot is for your own move orders, where
+order matters more than the last fraction of a second.)
+
+**Move to the rear (about-face, then march).** A move order to a destination roughly
+**behind** the unit (more than 135° off its facing) is not a centre pivot at all: the
+regiment first performs the standing **about-face** (*conversio*, below) --- every soldier
+reverses 180° where they stand, the front rank becoming the rear rank man-for-man --- and
+then marches to the destination facing it. The block keeps its footprint the whole time
+rather than swinging the whole line round about its centre, so a unit sent to the rear
+turns about cleanly and steps off, never sliding backwards.
 
 ```{=html}
 <figure class="demo">
@@ -124,7 +128,7 @@ the last fraction of a second.)
     Your browser can't play this clip --- see the
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
-  <figcaption>Centre pivot (180&deg;): ordered to a point behind it, the regiment pivots in good order to face the destination, then marches off.</figcaption>
+  <figcaption>Move to the rear: ordered to a point behind it, the regiment about-faces in place (each soldier reversing 180&deg;) and then marches off facing the destination.</figcaption>
 </figure>
 ```
 

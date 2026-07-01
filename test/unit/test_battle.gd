@@ -44,6 +44,47 @@ func test_plain_move_sets_target_and_clears_waypoints() -> void:
 	assert_true(u.waypoints.is_empty(), "a fresh order discards any queued route")
 
 
+func test_rear_move_arms_the_about_face_and_parks_the_march() -> void:
+	# A move to a destination behind a seeded unit about-faces (conversio) in place and
+	# parks the march, rather than setting a move target that would slide it backwards.
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()   # conversio needs seeded soldier bodies
+	var b := _battle([u])
+	Settings.reform_before_move = false
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # straight behind
+	assert_ne(u._conversio_target, Vector2.ZERO, "the about-face is armed")
+	assert_false(u.has_move_target, "the march is parked, not started, during the turn")
+	assert_true(u._has_pending_march, "the destination is parked for after the about-face")
+	assert_eq(u._pending_march_target, Vector2(0, -200), "and it is the ordered rear destination")
+
+
+func test_forward_move_does_not_arm_an_about_face() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()
+	var b := _battle([u])
+	Settings.reform_before_move = false
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": 200.0, "target": -1})   # straight ahead
+	assert_eq(u._conversio_target, Vector2.ZERO, "a forward move does not about-face")
+	assert_true(u.has_move_target, "it marches normally")
+	assert_eq(u.move_target, Vector2(0, 200), "toward the ordered destination")
+
+
+func test_rear_move_falls_back_to_a_plain_march_when_bodies_unseeded() -> void:
+	# Before soldier bodies seed, conversio() can't run; a rear move must still march
+	# (via the normal path) rather than stalling with a parked destination nobody commits.
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	var b := _battle([u])
+	Settings.reform_before_move = false
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})
+	assert_eq(u._conversio_target, Vector2.ZERO, "no about-face armed without seeded bodies")
+	assert_false(u._has_pending_march, "and nothing is parked")
+	assert_true(u.has_move_target, "the unit still marches (fallback to a plain move)")
+	assert_eq(u.move_target, Vector2(0, -200), "toward the ordered destination")
+
+
 func test_append_queues_a_waypoint_behind_the_current_target() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
