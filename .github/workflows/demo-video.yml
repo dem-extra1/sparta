@@ -475,3 +475,51 @@ jobs:
             "$MARKER" "$REASON" "$MANIFEST")
           tools/ci/upsert-pr-comment.sh \
             "${{ github.repository }}" "$PR" "$MARKER" "$BODY" "'no clip' note"
+
+      - name: Verify demo freshness against current PR HEAD
+        # Belt-and-suspenders freshness gate. `concurrency: cancel-in-progress`
+        # above is the primary defense: a newer push cancels this whole run
+        # before it can post a comment for a superseded SHA. But cancellation is
+        # not instantaneous — there's a window where this run's webhook-delivery
+        # lag lets it finish and report "success" just as (or just after) a
+        # newer push landed. That's the exact race this issue is about: other
+        # required checks go green for the NEW head while this job's already-
+        # posted comment still cites the OLD one, so a merge based on "all green"
+        # can happen against stale demo evidence.
+        #
+        # This step re-queries the PR's head SHA from the API at the very end of
+        # the job (not the event payload snapshot, which is fixed at trigger
+        # time) and fails the job if it no longer matches the SHA this run
+        # recorded/posted against. That makes success self-verifying: a green
+        # "demo" check means the posted artifacts are fresh AS OF THE JOB'S OWN
+        # COMPLETION, not just as of when it started. A failure here isn't a bug
+        # in the recording — it means a newer push superseded this run, and that
+        # newer push already triggered its own run to supersede this comment.
+        if: steps.demo.outputs.record == 'true' || steps.demo.outputs.skip == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          PR=${{ github.event.pull_request.number }}
+          RECORDED_SHA="${{ github.event.pull_request.head.sha }}"
+
+          # Retry the API read (same backoff shape as the media-branch publish
+          # step above) so a transient GitHub API hiccup fails with its own
+          # error, distinct from a genuine "HEAD moved" verdict below — a flaky
+          # read must never be misreported as stale demo evidence.
+          CURRENT_SHA=""
+          for attempt in 1 2 3 4 5; do
+            if CURRENT_SHA=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq .head.sha); then
+              break
+            fi
+            echo "PR HEAD lookup attempt $attempt failed (transient API error?); retrying…"
+            CURRENT_SHA=""
+            sleep $((attempt * 2))
+          done
+          [ -n "$CURRENT_SHA" ] || { echo "::error::could not read the PR's current head SHA after 5 attempts (transient API failure, not a staleness verdict)"; exit 1; }
+
+          if [ "$RECORDED_SHA" != "$CURRENT_SHA" ]; then
+            echo "::error::Demo/transcript comment was recorded for $RECORDED_SHA, but PR HEAD has since moved to $CURRENT_SHA — a newer push landed mid-run. Failing so this check cannot show green for stale demo evidence; the newer push already triggered its own run to catch up."
+            exit 1
+          fi
+          echo "Demo/transcript comment matches current PR HEAD ($CURRENT_SHA) — fresh."

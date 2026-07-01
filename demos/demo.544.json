@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "CI-infrastructure change only (a freshness guard step in .github/workflows/demo-video.yml) — no game-visible behavior for a recorded battle to show."
+}
