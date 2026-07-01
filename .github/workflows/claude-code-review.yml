@@ -48,3 +48,11 @@ jobs:
         summary. Reserve the top-level summary comment for a brief overall verdict
         plus any finding not tied to a specific line; don't restate each inline
         comment there.
+
+        If this PR has a posted game-state transcript in the demo comment — a
+        collapsible "🔬 Per-tick state transcript" block, with a
+        "🔬 Full machine-readable state transcript (JSON)" link beneath it — read the
+        per-tick unit state there and use it to verify the change behaves as described,
+        rather than relying on the video clip. The block lists each unit's State,
+        formation, order mode, morale, soldier count, and centroid at the dumped ticks;
+        the linked JSON has the full detail.

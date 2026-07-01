@@ -144,6 +144,25 @@ jobs:
             CAPTION='⚙️ Generic build demo — no PR-specific demo was provided. To show what this PR changes, commit a `demos/demo.<slug>.json` pointing at a replay that exercises it (see `demos/README.md`).'
             FIXED_FPS=30; MAX_FRAMES=300; GIF_FPS=12; WIDTH=640
           fi
+          # The machine-readable state transcript is dumped by DemoInputRecorder, which
+          # only runs for a scripted-input demo. A replay/showcase demo uses DemoRunner,
+          # which has no state-dump path, so a transcript can't be produced for those.
+          # Resolve the ticks to dump from the input script's own state:/frames: list
+          # (the ticks the demo already cares about), falling back to a sensible default
+          # spread when neither is set. STATE_TICKS is only consumed when DUMP_STATE=true.
+          DUMP_STATE=false
+          STATE_TICKS=""
+          if [ "$SCENE" = "DemoInputRecorder.tscn" ] && [ -f "$SOURCE" ]; then
+            # Prefer the script's `state` ticks, then its `frames` ticks, then a default.
+            STATE_TICKS=$(jq -r '(.state // .frames // []) | map(tostring) | join(",")' "$SOURCE")
+            if [ -z "$STATE_TICKS" ]; then
+              STATE_TICKS="8,60,140"
+            fi
+            DUMP_STATE=true
+            echo "State transcript will dump ticks: $STATE_TICKS"
+          else
+            echo "No state transcript: $SCENE has no state-dump path (only scripted-input demos do)."
+          fi
           if [ ! -f "$SOURCE" ]; then
             echo "Demo source '$SOURCE' not found; skipping demo."
             echo "record=false" >> "$GITHUB_OUTPUT"
@@ -163,6 +182,8 @@ jobs:
             echo "max_frames=$MAX_FRAMES"
             echo "gif_fps=$GIF_FPS"
             echo "width=$WIDTH"
+            echo "dump_state=$DUMP_STATE"
+            echo "state_ticks=$STATE_TICKS"
             echo "caption<<$DELIM"
             printf '%s\n' "$CAPTION"
             echo "$DELIM"
@@ -265,6 +286,58 @@ jobs:
             rm -f /tmp/demo.mp4
           fi
 
+      - name: Dump state transcript
+        # Best-effort, exactly like the MP4 encode: a dump failure must never block the
+        # GIF (the primary demo) or fail the job. Everything is wrapped in an if/else that
+        # warns and continues, and `state_ok` gates the publish step. Only runs for a
+        # scripted-input demo (the only path with a state-dump); a replay/showcase demo
+        # sets dump_state=false in the resolve step and skips this entirely.
+        id: transcript
+        if: steps.demo.outputs.record == 'true' && steps.demo.outputs.dump_state == 'true'
+        # Belt-and-suspenders on the best-effort guarantee: the script already traps its
+        # own dump/summary failures and exits 0, but continue-on-error means even an
+        # unexpected non-zero here can't fail the job or block the GIF.
+        continue-on-error: true
+        # The recorder self-quits on its own wall-clock timeout, but cap the step too so a
+        # hung Godot can't hold the runner; the dump is seconds, so this is generous.
+        timeout-minutes: 5
+        env:
+          SOURCE: ${{ steps.demo.outputs.source }}
+          STATE_TICKS: ${{ steps.demo.outputs.state_ticks }}
+        run: |
+          set -uo pipefail
+          echo "state_ok=false" >> "$GITHUB_OUTPUT"
+          STATE_DIR=/tmp/state
+          rm -rf "$STATE_DIR"; mkdir -p "$STATE_DIR"
+          # Headless dump of the SAME input script the recording used, at the resolved
+          # ticks. Reads sim state (not the drawn frame), so no renderer/Xvfb needed —
+          # cheap. GODOT_BIN defaults to the `godot` on PATH (setup-godot installed it).
+          if SPARTA_DEMO_STATE_DIR="$STATE_DIR" \
+             tools/demo/dump-state.sh "$SOURCE" "$STATE_TICKS" "$STATE_DIR"; then
+            :
+          else
+            echo "::warning::state dump run failed; posting the demo without a transcript."
+            exit 0
+          fi
+          # Merge the per-tick snapshots into one JSON + build the compact comment block.
+          # The summary script exits non-zero if no snapshots landed (e.g. every armed
+          # tick fell past the battle's end), so an empty dump degrades gracefully.
+          if tools/ci/state-transcript-summary.sh \
+               "$STATE_DIR" /tmp/transcript.json /tmp/transcript.md; then
+            :
+          else
+            echo "::warning::no usable state snapshots; posting the demo without a transcript."
+            exit 0
+          fi
+          # Guard the artifacts per CLAUDE.md's push_error/exit-code note: verify both the
+          # merged JSON and the summary exist and are non-empty before trusting them.
+          if [ -s /tmp/transcript.json ] && [ -s /tmp/transcript.md ]; then
+            echo "state_ok=true" >> "$GITHUB_OUTPUT"
+            echo "State transcript ready."
+          else
+            echo "::warning::transcript artifacts empty; posting the demo without a transcript."
+          fi
+
       - name: Publish GIF and comment
         if: steps.demo.outputs.record == 'true'
         env:
@@ -272,6 +345,9 @@ jobs:
           # Author-controlled; via env so they can't inject the publish script.
           CAPTION: ${{ steps.demo.outputs.caption }}
           SOURCE: ${{ steps.demo.outputs.source }}
+          # Whether the state transcript dumped cleanly (best-effort; may be unset when
+          # the dump step was skipped for a replay/showcase demo).
+          STATE_OK: ${{ steps.transcript.outputs.state_ok }}
         run: |
           set -euo pipefail
           PR=${{ github.event.pull_request.number }}
@@ -280,6 +356,7 @@ jobs:
           SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
           DEST="pr-${PR}-${SHA}.gif"
           DEST_MP4="pr-${PR}-${SHA}.mp4"   # the sound version, when one was encoded
+          DEST_STATE="pr-${PR}-${SHA}.state.json"   # the full state transcript, when one dumped
 
           # Publish onto the long-lived media branch. An isolated clone keeps the PR
           # checkout untouched. Different PRs share this branch, so a concurrent push
@@ -300,16 +377,23 @@ jobs:
             fi
             git -C /tmp/media config user.name "github-actions[bot]"
             git -C /tmp/media config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            # Keep only the latest GIF + MP4 per PR; the comment is always repointed to
-            # the newest URLs. Subshell + nullglob so the glob expands inside the
-            # checkout and an empty match is a no-op, not a literal pattern.
-            ( cd /tmp/media && shopt -s nullglob && for f in pr-${PR}-*.gif pr-${PR}-*.mp4; do git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"; done )
+            # Keep only the latest GIF + MP4 + state JSON per PR; the comment is always
+            # repointed to the newest URLs. Subshell + nullglob so the glob expands inside
+            # the checkout and an empty match is a no-op, not a literal pattern.
+            ( cd /tmp/media && shopt -s nullglob && for f in pr-${PR}-*.gif pr-${PR}-*.mp4 pr-${PR}-*.state.json; do git rm -f "$f" >/dev/null 2>&1 || rm -f "$f"; done )
             cp /tmp/demo.gif "/tmp/media/$DEST"
             git -C /tmp/media add "$DEST"
             # Add the sound MP4 too, when the encode produced one (best-effort).
             if [ -s /tmp/demo.mp4 ]; then
               cp /tmp/demo.mp4 "/tmp/media/$DEST_MP4"
               git -C /tmp/media add "$DEST_MP4"
+            fi
+            # Add the full state transcript JSON too, when the dump produced one
+            # (best-effort — STATE_OK gates it; the compact summary is inlined in the
+            # comment below and this is the linked full-detail artifact).
+            if [ "${STATE_OK:-false}" = "true" ] && [ -s /tmp/transcript.json ]; then
+              cp /tmp/transcript.json "/tmp/media/$DEST_STATE"
+              git -C /tmp/media add "$DEST_STATE"
             fi
             # README exists on every clone after first creation; tolerate it missing.
             git -C /tmp/media add README.md 2>/dev/null || true
@@ -343,6 +427,22 @@ jobs:
           if [ -s /tmp/demo.mp4 ]; then
             RAW_MP4_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST_MP4}"
             BODY="$BODY"$(printf '\n\n🔊 The GIF above plays once and is silent — [watch with sound, pause and scrub (MP4)](%s).' "$RAW_MP4_URL")
+          fi
+          # Inline the compact per-tick state transcript directly in the comment, so a
+          # reviewer (human or the @claude review bot, which reads the PR conversation but
+          # NOT the media branch) sees exact unit state instead of eyeballing the GIF. That
+          # is the whole point: the reviewer never reads the media branch, so the numbers
+          # have to be in the comment text. The full JSON is linked for detail. Best-effort:
+          # only when the dump produced usable artifacts (STATE_OK), which excludes
+          # replay/showcase demos.
+          if [ "${STATE_OK:-false}" = "true" ] && [ -s /tmp/transcript.md ]; then
+            RAW_STATE_URL="https://github.com/${{ github.repository }}/raw/${MEDIA_BRANCH}/${DEST_STATE}"
+            # The leading blank line has to survive so GitHub ends the image paragraph and
+            # renders the <details> block — so pass the summary as a printf arg (internal
+            # \n\n is kept; only trailing newlines get stripped by $()), not via a bare
+            # $(cat) that would butt <details> up against the ![demo] on the same line.
+            BODY="$BODY"$(printf '\n\n%s\n\n🔬 [Full machine-readable state transcript (JSON)](%s) — exact per-tick unit state for AI/spot verification.' \
+              "$(cat /tmp/transcript.md)" "$RAW_STATE_URL")
           fi
           BODY="$BODY"$(printf '\n\n<sub>Recorded from `%s` at `%s`. Updated automatically on each push.</sub>' \
             "$SOURCE" "$SHA")

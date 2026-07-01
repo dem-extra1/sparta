@@ -308,6 +308,35 @@ in exact numbers, no frame-reading required:
 A reviewer asserts on those values directly — the low morale, the falling `soldiers`, the
 `engaged`/`FIGHTING` transition — rather than judging a routed-looking sprite from a GIF.
 
+### CI posts the transcript automatically
+
+You don't have to run the dump by hand for a reviewer to see the state — `demo-video.yml`
+does it for every PR whose demo is a **scripted-input** recording (a manifest with an `input`
+field). Alongside the GIF/MP4, CI runs the same headless dump for the same input script, at the
+ticks the script already cares about (its `state` list, else its `frames` list, else a default
+`8,60,140`), then adds two things to the demo comment:
+
+- **A compact per-tick table inlined in the comment body** — a collapsible `🔬 Per-tick state
+  transcript` block, one row per unit per dumped tick, with State / formation / order mode /
+  morale / soldier count / centroid. This puts the exact numbers in the PR conversation, where
+  both a human reviewer and the `@claude` review bot read them directly — the bot reviews the PR
+  thread and diff, not the media branch, so an inlined block is what makes the transcript
+  actually reach it.
+- **A link to the full JSON** — `🔬 Full machine-readable state transcript (JSON)`, the complete
+  per-tick snapshots (every field, including `soldier_summary`) published next to the GIF/MP4 on
+  the `demo-media` branch for detail.
+
+The `claude-code-review.yml` reviewer is told to prefer this transcript over the video clip when
+verifying behaviour.
+
+It's **best-effort**, like the MP4 encode: a dump failure never blocks the GIF or fails the job —
+the demo just posts without a transcript. It applies only to scripted-input demos; a **replay**
+or the generic **showcase** fallback records via `DemoRunner`, which has no state-dump path, so
+those post the clip alone. A `"skip": true` manifest posts neither clip nor transcript.
+
+The summary block is built by [`../tools/ci/state-transcript-summary.sh`](../tools/ci/state-transcript-summary.sh),
+which merges the per-tick `state_<tick>.json` files into one JSON and renders the markdown table.
+
 ## Getting a replay that shows your change
 
 Replays are the project's deterministic seed-plus-orders logs (see
