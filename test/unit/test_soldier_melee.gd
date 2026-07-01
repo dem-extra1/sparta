@@ -452,3 +452,34 @@ func test_death_compacts_stamina_alongside_other_arrays() -> void:
 	assert_eq(b._sim_body_vel.size(), b.soldiers, "velocities track it too")
 	assert_eq(b._sim_prone.size(), b.soldiers, "prone timers track it too")
 	assert_eq(b._sim_soldier_stamina.size(), b.soldiers, "stamina pool tracks it too")
+
+
+# --- reform after casualties (file-closing) -----------------------------------
+
+func test_reformed_block_holds_frontage_and_closes_up_after_casualties() -> void:
+	# A unit takes casualties and reforms. The held frontage does not change as depth thins
+	# (the line keeps its width and loses ranks), the front rank stays full-width, and the
+	# short rear rank closes toward the centre rather than fanning past the block's edges.
+	var u := _unit(1, 0, 12, Vector2(0, 0), Vector2.DOWN, false)   # 12 men
+	var files: int = UnitFormation.frontage(u)
+	var full := UnitFormation.slots(u, 12)
+	var front_edge: float = 0.0
+	for i in range(files):
+		front_edge = maxf(front_edge, absf(full[i].x))            # the front rank's outer |x|
+	# Fell three men (front-rank indices) and reap, so the rear rank goes partial.
+	u._sim_soldier_hp[0] = 0.0
+	u._sim_soldier_hp[1] = 0.0
+	u._sim_soldier_hp[2] = 0.0
+	SoldierMelee.reap(u, u)
+	assert_eq(u.soldiers, 9, "three men fell")
+	assert_eq(UnitFormation.frontage(u), files, "frontage holds as the block thins")
+	var slots := UnitFormation.slots(u, u.soldiers)  # target layout for survivors, not current world positions
+	# Front rank still spans the full frontage (the width the line holds).
+	var reformed_front: float = 0.0
+	for i in range(files):
+		reformed_front = maxf(reformed_front, absf(slots[i].x))
+	assert_almost_eq(reformed_front, front_edge, 0.001, "the front rank keeps its full width")
+	# No reformed body sits outside that width -- the block closes UP, never bulges out.
+	for i in range(slots.size()):
+		assert_true(absf(slots[i].x) <= front_edge + 0.001,
+			"reformed slot %d stays within the block's frontage" % i)

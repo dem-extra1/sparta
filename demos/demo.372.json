@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/wheel.json",
+  "caption": "Wheeling (circumductio): a new orderable maneuver. Press C (wheel right) or Z (wheel left) with a unit selected and one flank file plants and holds while the rest of the block swings around it like a door on a hinge — the line ends up facing a new bearing and lying along a new line, every man still in his rank and file. Distinct from the quarter-turn (facing changes in place, block stays put) and the centre pivot (both flanks sweep about the middle). Watch the near flank hold while the far flank marches a wide arc.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

@@ -29,6 +29,14 @@ var uid: int = -1
 # never get a loadout.
 @export var walk_speed: float = 45.0
 @export var jog_speed: float = 67.5
+# Backward-walk speed factor: a soldier repositioning BACKWARD relative to his own
+# facing (a common motion during a maneuver -- conversio, quarter-turn, frontage
+# reshape -- where the rear ranks back up into new slots) is capped slower than one
+# moving forward. Real troops shuffle backward at roughly half their forward pace,
+# so a maneuver where men must back up takes longer than one where they step forward.
+# This is a single tunable, not a full per-type stat; a per-loadout backward-speed
+# value is a deferred follow-up.
+@export var back_speed_fraction: float = 0.5
 # Acceleration/deceleration, in world units/s^2 -- how fast this unit's actual speed
 # ramps toward whichever pace it's targeting (see _current_speed below), instead of
 # snapping there instantly. Independent per-type values (Battle sets them from the
@@ -110,6 +118,7 @@ const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
+const ORDER_CYCLE_CHARGE := 6
 
 # Formation modes: how tightly the regiment is packed.
 # TIGHT: soldiers close ranks — better missile defense (shields raised) and
@@ -160,7 +169,7 @@ const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed 
 # bounded by the lateral force a moving body/formation can exert without losing footing or
 # cohesion), never dropping below TURN_RATE_TAPER_FLOOR of the stationary rate. A first-cut
 # linear taper; the deeper pivot-radius/cohesion mechanics of an actual wheel maneuver are
-# a dedicated maneuver (circumductio, #372), not this general movement taper.
+# a dedicated maneuver (the circumductio flank wheel, see wheel()), not this general movement taper.
 const TURN_RATE: float = PI
 const TURN_RATE_TAPER_FLOOR: float = 0.4
 # Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
@@ -170,12 +179,29 @@ const TURN_RATE_TAPER_FLOOR: float = 0.4
 # SoldierBodies.step is zeroed while the turn runs, so soldiers stay at their grid positions
 # despite the facing change — they rotate without drifting.
 const CONVERSIO_TURN_RATE: float = PI * 2.0
+# Wheel (circumductio) swing rate: a stately quarter-circle over ~1 s. Deliberately slower than
+# the in-place CONVERSIO_TURN_RATE — the far flank actually MARCHES the arc (the whole regiment
+# rotates rigidly about the hinge), so a fast rate would fling the outer files across the field.
+# At this rate even the outermost file covers only a few px per tick, so the line reads as a door
+# swinging on its hinge rather than a whip-around.
+const WHEEL_TURN_RATE: float = PI * 0.5
 
 const MELEE_PRESS_FRACTION: float = 0.6
 # Skirmish: a kiting ranged unit backs off when a threat closes inside this
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
 const SKIRMISH_KITE_DISTANCE: float = 100.0
+# Cycle charge (caracole): a melee unit charges its target, lands the impact strike,
+# then peels back to CYCLE_CHARGE_STANDOFF away to re-form before charging again — so
+# it keeps trading momentum-scaled charge hits instead of grinding in a static melee
+# where the charge bonus is spent. The unit switches from "recharging" (pulling back)
+# to "charging" once it has opened at least this far, and back to recharging on the tick
+# it makes contact and strikes. Set beyond SPRINT_START_DISTANCE (200) by enough runway
+# that the next run reaches full sprint before contact: the charge bonus scales with the
+# closing speed carried into the strike, and _move_to only sprints inside
+# SPRINT_START_DISTANCE, so a standoff at (or just past) that line would land each cycle
+# at a walk. 280 leaves ~80px of sprint build-up ahead of the ~62px contact.
+const CYCLE_CHARGE_STANDOFF: float = 280.0
 # Support: a unit ordered to guard a friendly "ward" engages any enemy that
 # closes within SUPPORT_GUARD_RADIUS of the ward, otherwise shadows the ward,
 # holding station SUPPORT_FOLLOW_DISTANCE off so it doesn't pile onto it. The guard
@@ -326,6 +352,11 @@ var _approach_velocity: Vector2 = Vector2.ZERO
 # _approach_velocity below (a stationary unit carries no momentum, so the next march
 # always ramps up from zero, never resumes at a stale carried-over speed).
 var _current_speed: float = 0.0
+# Read-only public view of the ramping speed above, for consumers outside this script
+# (the order overlay's speed label). Keeps _current_speed private while giving readers a
+# clean public name, matching the other cross-script unit reads (global_position, team, …).
+var current_speed: float:
+	get: return _current_speed
 # Velocity the regiment center followed its soldiers' centroid at this tick (phase 5):
 # the soldier->regiment coupling slides the center toward where its bodies actually are,
 # so friendly collision (and later all collision) emerges from the soldier layer. Stored
@@ -333,6 +364,11 @@ var _current_speed: float = 0.0
 # never teleports.
 var _body_follow_vel: Vector2 = Vector2.ZERO
 var _relief_partner: Unit = null   # unit we're swapping with mid-relief
+# Cycle-charge phase: true while the unit is peeling back to its standoff after a
+# charge, false while it's driving in for the next charge. Flipped by
+# _cycle_charge_tick — set on the contact strike, cleared once the unit has opened
+# to CYCLE_CHARGE_STANDOFF. Meaningful only while order_mode == ORDER_CYCLE_CHARGE.
+var _cycle_recharging: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -528,6 +564,21 @@ func _think(delta: float) -> void:
 			state = State.IDLE
 			return
 
+	# Wheel (circumductio): the block swings about a fixed flank file. facing rotates and the
+	# regiment centre slides along an arc so the hinge holds; _advance_wheel rigidly rotates the
+	# centre and every body about the hinge, with the spring frozen (as for the conversio/
+	# quarter-turn) so it doesn't fight the rotation. An interrupt by combat or a move order just
+	# drops the wheel where it is — the partial swing is already a valid formation state (position
+	# and facing are consistent), so no settle step is needed.
+	if _wheel_target != Vector2.ZERO:
+		if state == State.FIGHTING or has_move_target:
+			_wheel_target = Vector2.ZERO
+		else:
+			if _advance_wheel(delta):
+				_wheel_target = Vector2.ZERO
+			state = State.IDLE
+			return
+
 	# Under-fire detection for AUTO pace: true when any alive enemy ranged unit is
 	# within RANGED_RANGE of this unit (i.e. could be shooting at us this frame).
 	# Must run before the ORDER_SUPPORT early return so _support_tick's _move_to
@@ -555,6 +606,14 @@ func _think(delta: float) -> void:
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
+		# Cycle charge: a melee unit lands a charge, then peels back to a standoff and
+		# re-charges, rather than grinding in a spent-bonus melee. Handled up front (like
+		# skirmish) so it overrides the press-and-grind melee below. Ranged units and a
+		# plain disengage move order fall through to the normal paths.
+		if not is_ranged and order_mode == ORDER_CYCLE_CHARGE \
+				and (target_enemy != null or not has_move_target):
+			if _cycle_charge_tick(enemy, dist, in_contact, delta):
+				return
 		# Skirmish: a ranged unit kites — if a threat is inside the kite
 		# distance it backs off (away from the threat, clamped to the field) rather
 		# than standing to fire or being caught in melee; beyond it, it falls through
@@ -640,6 +699,53 @@ func _think(delta: float) -> void:
 		# Idle: no enemy, or a HOLD stance that won't chase — the paths above
 		# still fight/fire whatever reaches a held unit.
 		state = State.IDLE
+
+
+## Cycle-charge stance: one tick of the caracole loop against `enemy`. A melee unit
+## drives in for a charge, lands the momentum-scaled impact strike, then peels back to
+## CYCLE_CHARGE_STANDOFF to rebuild closing speed before charging again — so it keeps
+## landing high-impact charge hits instead of grinding where the bonus is already spent.
+## Returns true when it fully handled the tick (caller should return); false to fall
+## through to the normal chase/melee paths (e.g. still closing on a distant target, so
+## the ordinary approach builds _approach_velocity for the charge). Deterministic — pure
+## geometry plus the shared strike cadence, so live play and replay stay in lockstep.
+func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float) -> bool:
+	# Recharging: peel back to the standoff so the next run rebuilds closing speed.
+	if _cycle_recharging:
+		if dist < CYCLE_CHARGE_STANDOFF:
+			var away: Vector2 = position - enemy.position
+			if away.length() < 0.001:
+				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
+			var goal: Vector2 = position + away.normalized() * (CYCLE_CHARGE_STANDOFF - dist)
+			_move_to(UnitTargeting.clamp_to_field(self, goal), delta)
+			# Cornered against the field edge with no room to peel off: give up the
+			# retreat and fight in place so the unit isn't frozen.
+			if not _moved_last_frame:
+				_cycle_recharging = false
+				return false
+			return true
+		# Opened past the standoff: end the pull-back and let the normal approach below
+		# drive the next charge run (return false so the caller falls through to it).
+		_cycle_recharging = false
+		return false
+
+	# Charging: on contact, land the (charge-scaled) strike, then flip to recharging so
+	# the unit pulls back next tick instead of pressing into a grind. Otherwise fall
+	# through so the normal approach closes on the enemy and carries a charge velocity.
+	if in_contact:
+		state = State.FIGHTING
+		_face(enemy.position)
+		# Only peel back once a hit actually lands: flipping to recharging is gated on the
+		# strike so a contact that arrives mid-cooldown holds and fights until the cooldown
+		# clears, rather than retreating without having landed the charge. (For current
+		# cavalry speeds the cycle period exceeds ATTACK_INTERVAL, so this rarely bites —
+		# but the gate keeps it correct if speed or the interval is later retuned.)
+		if _attack_cd <= 0.0:
+			_attack_cd = ATTACK_INTERVAL
+			UnitCombat.strike(self, enemy)
+			_cycle_recharging = true
+		return true
+	return false
 
 
 # --- Targeting & support order ----------------------------------------------
@@ -1022,6 +1128,21 @@ var _conversio_target: Vector2 = Vector2.ZERO
 # stops (full turn or an interrupt), leaving the slots — and the men — exactly where they were.
 var _quarter_target: Vector2 = Vector2.ZERO
 var _quarter_start_facing: Vector2 = Vector2.ZERO
+# Non-zero while a wheel (circumductio, hinge pivot) is in progress: the target facing, 90°
+# to the left or right of the start. UNLIKE the conversio and quarter-turn, a wheel is NOT an
+# in-place turn — one flank file stays fixed while the whole block swings about it like a door
+# on a hinge, so `position` slides along an arc as `facing` rotates and the men march to their
+# swung slots. _advance_wheel rigidly rotates the centre AND every body about the hinge by the
+# same step each tick, so the same spring-freeze as the conversio/quarter-turn applies (the
+# restoring force is zeroed while _wheel_target is set) — that keeps the spring from fighting the
+# rigid rotation, and bodies stay exactly on their swinging slots (no teleport). The wheel does not
+# modify _formation_angle (it's 0 normally, but non-zero after a quarter-turn — the pivot geometry
+# folds that in). `_wheel_pivot` is the fixed hinge point in parent-local space (like
+# `_sim_soldier_pos`), captured when the wheel is armed so the arc reproduces exactly on replay.
+# Cleared on arrival or when interrupted by combat, a move order, or routing (the partial swing is
+# preserved).
+var _wheel_target: Vector2 = Vector2.ZERO
+var _wheel_pivot: Vector2 = Vector2.ZERO
 
 # Destination a rear-sector move order parked while an about-face (conversio) turns the
 # block around. _think reads it on conversio arrival, commits it as the move target, and
@@ -1103,7 +1224,8 @@ func release_soldier_facing() -> void:
 ## while another in-place turn (conversio or quarter-turn) is already running.
 func conversio() -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty() \
-			or _conversio_target != Vector2.ZERO or _quarter_target != Vector2.ZERO:
+			or _conversio_target != Vector2.ZERO or _quarter_target != Vector2.ZERO \
+			or _wheel_target != Vector2.ZERO:
 		return
 	_conversio_target = Vector2(-facing.x, -facing.y)
 
@@ -1118,7 +1240,8 @@ func conversio() -> void:
 ## re-arming mid-turn would reset the start heading and corrupt the settled offset.
 func quarter_turn(dir: int) -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty() or dir == 0 \
-			or _quarter_target != Vector2.ZERO or _conversio_target != Vector2.ZERO:
+			or _quarter_target != Vector2.ZERO or _conversio_target != Vector2.ZERO \
+			or _wheel_target != Vector2.ZERO:
 		return
 	_quarter_start_facing = facing
 	_quarter_target = facing.rotated(signf(dir) * PI * 0.5)
@@ -1141,6 +1264,73 @@ func _advance_turn(target: Vector2, delta: float) -> bool:
 	_rotate_facing_toward(target, delta, CONVERSIO_TURN_RATE)
 	if facing.dot(target) > 1.0 - 0.0001:
 		facing = target
+		return true
+	return false
+
+
+## Parent-local hinge point for a wheel to `dir` (-1 wheel-left / +1 wheel-right): the front of
+## the standing flank file. The formation grid (soldier_world_slots) lays its local +X along the
+## world direction `facing.rotated(PI/2 + _formation_angle)` and its front (local -Y) along
+## `facing.rotated(_formation_angle)`, so the flanks sit ±half_width along the file axis and the
+## front rank sits front_depth ahead along the front axis. `_formation_angle` is normally 0, but a
+## completed quarter-turn leaves it non-zero (it absorbs the heading change to keep the slots put),
+## so the axes MUST fold it in — otherwise a quarter-turn-then-wheel chain hinges about the wrong
+## point and the "standing" flank doesn't hold. The offset puts the hinge at the standing file's
+## leading man rather than the block centre, so the line pivots about its corner like a real hinge.
+## Parent-local (like `_sim_soldier_pos`): built from `position` and used in arithmetic with the
+## bodies. Pure of the turn's progress — a function of the CURRENT position/facing/shape — so the
+## caller captures it once when the wheel is armed.
+func _wheel_pivot_point(dir: int) -> Vector2:
+	var files: int = UnitFormation.frontage(self)
+	var half_width: float = float(files - 1) * 0.5 * FORMATION_SPACING * spacing_scale
+	var file_axis: Vector2 = facing.rotated(PI * 0.5 + _formation_angle)   # slot-grid local +X direction
+	var front_axis: Vector2 = facing.rotated(_formation_angle)             # slot-grid local -Y (toward front)
+	var flank: Vector2 = position + file_axis * (half_width * signf(dir))
+	# The front rank sits ahead of the centre along the front axis by the block's front depth, so
+	# the hinge is the leading man of the standing file (a door hinges at its edge post, not its mid).
+	var ranks: int = int(ceil(float(soldiers) / float(maxi(1, files))))
+	var front_depth: float = float(ranks - 1) * 0.5 * FORMATION_SPACING * spacing_scale
+	return flank + front_axis * front_depth
+
+
+## Wheel (circumductio, Aelian/Asclepiodotus): the block swings about one fixed flank file like a
+## door on a hinge, reorienting the whole line 90° to the left (`dir` = -1) or right (`dir` = +1)
+## while preserving internal order. UNLIKE the quarter-turn — which turns every man in place and
+## does not move the block — the standing flank file holds its ground and every other file marches
+## an arc around it, so `position` slides along that arc as `facing` rotates. _advance_wheel
+## rigidly rotates the centre and every soldier body about the hinge in lockstep, with the spring
+## restoring force frozen (the same freeze the conversio/quarter-turn use) so it doesn't fight the
+## rigid rotation — the men swing to their new slots at velocity, no body teleports. Blocked while
+## fighting, before seeding, or while another maneuver (conversio / quarter-turn / wheel) runs.
+func wheel(dir: int) -> void:
+	if state == State.FIGHTING or _sim_soldier_facing.is_empty() or dir == 0 \
+			or _wheel_target != Vector2.ZERO or _quarter_target != Vector2.ZERO \
+			or _conversio_target != Vector2.ZERO:
+		return
+	_wheel_pivot = _wheel_pivot_point(dir)
+	_wheel_target = facing.rotated(signf(dir) * PI * 0.5)
+
+
+## Advance a wheel one tick: rotate `facing` toward the target at the drill rate, then rigidly
+## rotate the WHOLE regiment — the centre `position` and every soldier body — about the fixed
+## hinge by the same increment. Because the slots (soldier_world_slots) are a rigid function of
+## position + facing and the bodies are rotated by the same arc step, body and slot stay locked
+## together through the swing: the standing flank man holds his ground, the far end sweeps, and no
+## body teleports (each tick is a small arc step). SoldierBodies.step freezes the restoring force
+## while _wheel_target is set, so it doesn't fight this rigid rotation. Returns true on arrival
+## (snapping facing exactly onto the target). Velocities are rotated too, so any residual body
+## motion carries through cleanly rather than snapping direction.
+func _advance_wheel(delta: float) -> bool:
+	var before: float = facing.angle()
+	_rotate_facing_toward(_wheel_target, delta, WHEEL_TURN_RATE)
+	var step: float = angle_difference(before, facing.angle())
+	position = _wheel_pivot + (position - _wheel_pivot).rotated(step)
+	for i in range(_sim_soldier_pos.size()):
+		_sim_soldier_pos[i] = _wheel_pivot + (_sim_soldier_pos[i] - _wheel_pivot).rotated(step)
+		_sim_body_vel[i] = _sim_body_vel[i].rotated(step)
+	_render_dirty = true
+	if facing.dot(_wheel_target) > 1.0 - 0.0001:
+		facing = _wheel_target
 		return true
 	return false
 
@@ -1515,6 +1705,7 @@ func _rout() -> void:
 	_has_pending_march = false         # drop any rear-move march parked behind the conversio
 	_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
 	_quarter_target = Vector2.ZERO     # cancel any quarter-turn likewise
+	_wheel_target = Vector2.ZERO       # and any in-progress wheel (partial swing left as-is)
 	_formation_angle = 0.0             # a routed unit reforms square to its heading on rally
 	_rout_timer = ROUT_TIME
 	_combat_intermixing = 0.0

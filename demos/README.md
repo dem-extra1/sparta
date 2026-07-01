@@ -109,6 +109,25 @@ script under `demos/inputs/`:
     `shift` toggles the form-up ordering variant). Drags animate over a few ticks so the
     live preview renders.
   - `key "Y"` — a gameplay hotkey press (formation cycle, order stance, etc.).
+- `drill` (optional bool) — solo/no-opponent rehearsal: only the player army (team 0)
+  deploys and the battle never auto-ends on "no enemies", so a unit can rehearse a maneuver
+  with no combat. Good for maneuver demos (quarter-turn, conversio, wheeling).
+- `scenario` (optional) — **stage a custom matchup** instead of the default 5v5 lines, so a
+  demo can show a *specific* fight the default battle won't produce on its own (a weak unit
+  that routs, an enemy placed off a unit's flank, cavalry vs a single target). A list of unit
+  specs; when present it replaces the default spawn entirely. Each spec:
+  - `team` — `0` (player, deploys facing down by default) or `1` (enemy, facing up).
+  - `type` — one of `"Spearmen"`, `"Infantry"`, `"Archers"`, `"Cavalry"` (uses that type's
+    full stat block from the default loadout).
+  - `x`, `y` — world-space spawn position.
+  - `facing` (optional `[x, y]`) — an explicit heading; defaults to facing the enemy half.
+  - `count` (optional) — soldier-count override (a smaller unit routs sooner; a bigger one
+    holds longer).
+  - `morale` (optional) — starting morale (default 100; set low to stage a quick rout).
+  - `formation` (optional) — starting density (`0` Normal, `1` Tight, `2` Loose).
+
+  Example — stage a lone, low-morale infantry unit against a strong cavalry force so it routs
+  (then rallies, if the build has that): `demos/inputs/rout-rally.json`.
 
 The standard 5v5 (`seed "12345"`) unit positions are in [Hand-authoring a scenario](#hand-authoring-a-scenario)
 below — clicks target those world coordinates.

@@ -45,6 +45,35 @@ func test_metres_for_world_guards_nonpositive_scale() -> void:
 	assert_eq(DistanceLegend.metres_for_world(100.0, -1.0), 0.0, "negative scale guarded")
 
 
+# --- mps_for_world_speed / speed_label_text (order-overlay speed labels) ------
+
+func test_mps_for_world_speed_converts_world_speed_to_mps() -> void:
+	# 20 world units/metre at speed_scale 1.0, so 52 world units/s is 2.6 m/s.
+	assert_almost_eq(DistanceLegend.mps_for_world_speed(52.0, WUPM), 2.6, 0.0001)
+
+
+func test_mps_for_world_speed_divides_out_speed_scale() -> void:
+	# The loadouts multiply authored m/s by WUPM * speed_scale; undo both. At scale 2.0,
+	# 80 world units/s came from 2.0 m/s (2.0 * 20 * 2.0 = 80).
+	assert_almost_eq(DistanceLegend.mps_for_world_speed(80.0, WUPM, 2.0), 2.0, 0.0001)
+
+
+func test_mps_for_world_speed_guards_nonpositive_scale() -> void:
+	assert_eq(DistanceLegend.mps_for_world_speed(52.0, 0.0), 0.0, "zero scale guarded")
+	assert_eq(DistanceLegend.mps_for_world_speed(52.0, -1.0), 0.0, "negative scale guarded")
+	assert_eq(DistanceLegend.mps_for_world_speed(52.0, WUPM, 0.0), 0.0, "zero speed_scale guarded")
+	assert_eq(DistanceLegend.mps_for_world_speed(52.0, WUPM, -1.0), 0.0, "negative speed_scale guarded")
+
+
+func test_speed_label_text_one_decimal() -> void:
+	assert_eq(DistanceLegend.speed_label_text(2.6), "2.6 m/s")
+	assert_eq(DistanceLegend.speed_label_text(0.0), "0.0 m/s", "a halted unit reads 0.0 m/s")
+
+
+func test_speed_label_text_clamps_negative_to_zero() -> void:
+	assert_eq(DistanceLegend.speed_label_text(-1.0), "0.0 m/s", "speed is a magnitude, never below zero")
+
+
 # --- pick_round_metres --------------------------------------------------------
 
 ## True when `value` is some power of ten times 1, 2, or 5 (the 1-2-5 ladder rule) -- a

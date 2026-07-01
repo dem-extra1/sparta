@@ -32,6 +32,12 @@ const ORDER_FORMATION_ONLY := -3
 # re-applying on the tick is idempotent). Handled like the formation-only order,
 # leaving movement untouched.
 const ORDER_FRONTAGE_ONLY := -4
+# Sentinel for a wheel order (circumductio, hinge pivot): the block swings 90° about a fixed
+# flank file. Carries the direction in the "x" field (-1 wheel-left / +1 wheel-right). UNLIKE
+# the conversio and quarter-turn — which touch only per-soldier facing and so never enter the
+# replay stream — a wheel moves the regiment (position and facing), which the sim reads, so it
+# IS recorded and replayed like a move. Handled before the main move/attack/merge logic.
+const ORDER_WHEEL := -5
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
@@ -39,7 +45,7 @@ const ORDER_FRONTAGE_ONLY := -4
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE }
 
 ## How a multi-unit attack order distributes its target among the ordered units.
 ## Focused (default): every unit attacks the same enemy.
@@ -60,6 +66,7 @@ const ORDER_MODE_NAMES := {
 	OrderMode.ATTACK_REAR: "Attack rear",
 	OrderMode.SKIRMISH: "Skirmish",
 	OrderMode.SUPPORT: "Support",
+	OrderMode.CYCLE_CHARGE: "Cycle charge",
 }
 
 ## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
@@ -73,6 +80,7 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.ATTACK_REAR, "slug": "attack_rear"},
 	{"mode": OrderMode.SKIRMISH, "slug": "skirmish"},
 	{"mode": OrderMode.SUPPORT, "slug": "support"},
+	{"mode": OrderMode.CYCLE_CHARGE, "slug": "cycle_charge"},
 ]
 
 # Global movement multiplier applied on top of each unit's real-world speed (which
@@ -115,6 +123,12 @@ var _ended: bool = false
 # normal two-army battle.
 var drill_mode: bool = false
 
+# Custom demo matchup (tooling): a list of unit specs the demo recorder can set from an input
+# script's "scenario" field BEFORE the node enters the tree, to stage a specific fight (a weak
+# unit that will rout, an enemy placed off a unit's flank, cavalry vs a target). Empty = the
+# normal default-loadout spawn, byte-for-byte. See _spawn_scenario and demos/README.md.
+var scenario: Array = []
+
 # Units deployed per side when this is a campaign-launched battle; used to
 # scale survivors back to campaign army strength when the battle ends.
 var _camp_atk_spawned: int = 0
@@ -136,7 +150,8 @@ func _ready() -> void:
 			and UnitRef.ORDER_ATTACK_FLANK == OrderMode.ATTACK_FLANK \
 			and UnitRef.ORDER_ATTACK_REAR == OrderMode.ATTACK_REAR \
 			and UnitRef.ORDER_SKIRMISH == OrderMode.SKIRMISH \
-			and UnitRef.ORDER_SUPPORT == OrderMode.SUPPORT,
+			and UnitRef.ORDER_SUPPORT == OrderMode.SUPPORT \
+			and UnitRef.ORDER_CYCLE_CHARGE == OrderMode.CYCLE_CHARGE,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 
 	# Start a fresh recording for every live battle (so any battle can be
@@ -181,12 +196,18 @@ func _ready() -> void:
 		dfn_count = CampaignBattle.units_for(int(CampaignBattle.pending["defender_strength"]))
 		_camp_atk_spawned = atk_count
 		_camp_dfn_spawned = dfn_count
-	# Player army (team 0) deploys along the top, facing down.
-	_spawn_line(0, Vector2.DOWN, 300, atk_count)
-	# Enemy army (team 1) deploys along the bottom, facing up — skipped in drill mode, where the
-	# player army rehearses alone.
-	if not drill_mode:
-		_spawn_line(1, Vector2.UP, 700, dfn_count)
+	# A demo scenario stages a custom matchup instead of the default two lines (tooling only;
+	# a normal battle leaves `scenario` empty). It owns both teams' placement, so it replaces
+	# the line spawn entirely rather than layering on top.
+	if not scenario.is_empty():
+		_spawn_scenario(scenario)
+	else:
+		# Player army (team 0) deploys along the top, facing down.
+		_spawn_line(0, Vector2.DOWN, 300, atk_count)
+		# Enemy army (team 1) deploys along the bottom, facing up — skipped in drill mode,
+		# where the player army rehearses alone.
+		if not drill_mode:
+			_spawn_line(1, Vector2.UP, 700, dfn_count)
 
 	# Drive the parallel individual-soldier layer once per tick. physics_frame
 	# fires AFTER every unit's _physics_process, so the seed reads settled
@@ -258,52 +279,139 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# spearmen brace tight by default (locked shields against a charge); ranged
 	# skirmishers start loose (room to fire, less to lose from spreading out);
 	# sword-armed foot and cavalry start at the plain combat-order default.
-	var loadout := [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "reach_m": 2.4, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "reach_m": 1.3, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "reach_m": 0.6, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
-	]
+	var loadout := _default_loadout()
 	# Tighten spacing as the line grows so even a max stack stays on the field.
 	var spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
 	var start_x: float = FIELD.size.x * 0.5 - (count - 1) * spacing * 0.5
 
 	for i in range(count):
 		var d: Dictionary = loadout[i % loadout.size()]
-		var u := UnitRef.new()
-		u.uid = _next_uid
-		_next_uid += 1
-		_by_uid[u.uid] = u
-		u.unit_name = "%s %d" % [d["name"], i + 1]
-		u.team = team
-		u.anti_cavalry = d["anti_cav"]
-		u.is_cavalry = d["cav"]
-		u.is_ranged = d.get("ranged", false)
-		u.max_soldiers = d["soldiers"]
-		u.attack = d["atk"]
-		u.defense = d["def"]
-		# Real-world m/s -> world units, times the global movement multiplier.
-		u.walk_speed = d["walk_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
-		u.jog_speed = d["jog_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
-		u.move_speed = d["sprint_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
-		u.accel = d["accel_mps2"] * WORLD_UNITS_PER_METER * SPEED_SCALE
-		u.decel = d["decel_mps2"] * WORLD_UNITS_PER_METER * SPEED_SCALE
-		# Weapon reach (metres) -> world units. Falls back to the unit default if a
-		# loadout entry omits it.
-		if d.has("reach_m"):
-			u.attack_range = d["reach_m"] * WORLD_UNITS_PER_METER
-		u.training = d.get("training", 0.0)
-		# Cavalry respond faster — more mobile and battle-conditioned.
-		if d["cav"]:
-			u.order_response_delay = 0.3
-		u.facing = facing
-		u.position = Vector2(start_x + i * spacing, y)
-		u.field_bounds = FIELD   # so a skirmisher kites without backing off the map
-		_units.add_child(u)
-		# Set after add_child() so _ready() has already established the type's base
-		# separation_radius for set_formation() to scale from.
-		u.set_formation(d.get("formation", Unit.FORMATION_NORMAL))
+		var pos := Vector2(start_x + i * spacing, y)
+		_spawn_unit(d, team, facing, pos, "%s %d" % [d["name"], i + 1])
+
+
+## The default battle loadout: spearmen, infantry, archers, cavalry, cavalry. A line
+## cycles this composition, so a larger army fields more of the same mix. Extracted so
+## both the line spawn and the scenario spawn (custom demo matchups) share one stat table.
+##
+## `reach_m` is the weapon's effective melee reach in metres, converted to the unit's
+## attack_range in _spawn_unit. Longer-reach weapons strike while a shorter-weapon enemy
+## is still closing the gap, so a spearman lands the first blows of a clash. Infantry's
+## sword sits at the 1.3 m baseline; the spear out-reaches it, the cavalry sword a touch
+## longer than the foot sword, and the archers' sidearm is short (they fight at range).
+##
+## `walk_mps`/`jog_mps`/`sprint_mps` are the unit's three gait speeds in metres/second,
+## converted to world units in _spawn_unit. Independent per type -- not a fixed fraction of
+## each other -- and scaled to each type's panoply weight: heavier kit costs proportionally
+## more at a run than at a walk, so spearmen's walk sits close to the lighter types' but
+## their sprint lags well behind. Cavalry's three paces map onto the horse's own real gaits
+## (walk / trot / gallop). `accel_mps2`/`decel_mps2` follow the same reasoning: heavier kit
+## accelerates slower, decel > accel for foot troops, cavalry symmetric. See
+## website/tactics.qmd for the full table.
+##
+## `formation` is the type's default density (every unit can still cycle Tight/Normal/Loose
+## live with the T hotkey): anti-cavalry spearmen brace tight, ranged skirmishers start
+## loose, sword-armed foot and cavalry at the plain combat-order default.
+func _default_loadout() -> Array:
+	return [
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "reach_m": 2.4, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "reach_m": 1.3, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "reach_m": 0.6, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+	]
+
+
+## Build one unit from a loadout dict `d` at `pos`, facing `facing`, on `team`, register it,
+## and add it to the field. Shared by the default line spawn and the scenario spawn. Keys read
+## here (these are DICT keys, not scenario-spec fields -- _spawn_scenario maps a spec's `count`
+## onto `soldiers` before calling): `soldiers` sets max_soldiers, `morale` the starting morale
+## (default 100), `formation` the starting density.
+func _spawn_unit(d: Dictionary, team: int, facing: Vector2, pos: Vector2, unit_label: String) -> Unit:
+	var u := UnitRef.new()
+	u.uid = _next_uid
+	_next_uid += 1
+	_by_uid[u.uid] = u
+	u.unit_name = unit_label
+	u.team = team
+	u.anti_cavalry = d["anti_cav"]
+	u.is_cavalry = d["cav"]
+	u.is_ranged = d.get("ranged", false)
+	u.max_soldiers = d["soldiers"]
+	u.attack = d["atk"]
+	u.defense = d["def"]
+	# Real-world m/s -> world units, times the global movement multiplier.
+	u.walk_speed = d["walk_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
+	u.jog_speed = d["jog_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
+	u.move_speed = d["sprint_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
+	u.accel = d["accel_mps2"] * WORLD_UNITS_PER_METER * SPEED_SCALE
+	u.decel = d["decel_mps2"] * WORLD_UNITS_PER_METER * SPEED_SCALE
+	# Weapon reach (metres) -> world units. Falls back to the unit default if omitted.
+	if d.has("reach_m"):
+		u.attack_range = d["reach_m"] * WORLD_UNITS_PER_METER
+	u.training = d.get("training", 0.0)
+	# Cavalry respond faster — more mobile and battle-conditioned.
+	if d["cav"]:
+		u.order_response_delay = 0.3
+	u.facing = facing
+	u.position = pos
+	u.field_bounds = FIELD   # so a skirmisher kites without backing off the map
+	_units.add_child(u)
+	# Set after add_child() so _ready() has already established the type's base
+	# separation_radius for set_formation() to scale from, and set soldiers from
+	# max_soldiers. A scenario's optional morale override lands here too.
+	u.set_formation(d.get("formation", Unit.FORMATION_NORMAL))
+	if d.has("morale"):
+		u.morale = float(d["morale"])
+	return u
+
+
+## Spawn a custom demo matchup from a scenario list (see demos/README.md, "Scenario
+## staging"). Each spec: {team, type, x, y, facing?, count?, morale?, formation?}. Tooling
+## only — reached solely when DemoInputRecorder sets `scenario` before the battle enters the
+## tree; a normal battle leaves `scenario` empty and never calls this. `type` names one of
+## the default-loadout entries (Spearmen / Infantry / Archers / Cavalry).
+func _spawn_scenario(specs: Array) -> void:
+	var loadout := _default_loadout()
+	var count_by_type: Dictionary = {}   # per-type running index, so labels read "Cavalry 1", not "Cavalry 2"
+	for spec in specs:
+		if typeof(spec) != TYPE_DICTIONARY:
+			continue
+		var base: Dictionary = _loadout_for_type(loadout, str(spec.get("type", "Infantry")))
+		if base.is_empty():
+			push_warning("[battle] scenario unit has unknown type '%s'; skipping." % spec.get("type", ""))
+			continue
+		# Copy the base stats, then layer the spec's optional overrides on top.
+		var d: Dictionary = base.duplicate()
+		if spec.has("count"):
+			d["soldiers"] = int(spec["count"])
+		if spec.has("morale"):
+			d["morale"] = float(spec["morale"])
+		if spec.has("formation"):
+			d["formation"] = int(spec["formation"])
+		var team := int(spec.get("team", 0))
+		var pos := Vector2(float(spec.get("x", FIELD.size.x * 0.5)), float(spec.get("y", FIELD.size.y * 0.5)))
+		# Default facing: toward the enemy half (team 0 faces down, team 1 up), matching the
+		# line spawn, unless the spec pins an explicit non-degenerate facing vector [x, y].
+		var facing := Vector2.DOWN if team == 0 else Vector2.UP
+		if spec.has("facing"):
+			var f: Array = spec["facing"]
+			if f.size() >= 2 and Vector2(float(f[0]), float(f[1])).length() > 0.0001:
+				facing = Vector2(float(f[0]), float(f[1])).normalized()
+			else:
+				push_warning("[battle] scenario 'facing' must be a non-zero [x, y]; using the team default.")
+		var type_name: String = str(d["name"])
+		count_by_type[type_name] = int(count_by_type.get(type_name, 0)) + 1
+		_spawn_unit(d, team, facing, pos, "%s %d" % [type_name, count_by_type[type_name]])
+
+
+## First default-loadout entry whose "name" matches `type_name` (case-sensitive), or an empty
+## dict if none. Lets a scenario spec name a unit type without duplicating its stat block.
+func _loadout_for_type(loadout: Array, type_name: String) -> Dictionary:
+	for d in loadout:
+		if str(d["name"]) == type_name:
+			return d
+	return {}
 
 
 func _physics_process(_delta: float) -> void:
@@ -472,6 +580,23 @@ func enqueue_frontage(uids: Array, delta: int) -> void:
 		_apply_order_cmd(cmd)
 
 
+## Wheel (circumductio): each selected unit swings 90° about a fixed flank file (`dir` = -1
+## wheel-left / +1 wheel-right). The direction rides in the "x" field. Recorded so replays
+## reproduce the arc — a wheel moves the regiment, which the sim reads (see ORDER_WHEEL).
+func enqueue_wheel(uids: Array, dir: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var cmd := {
+		"units": uids,
+		"x": float(dir),
+		"y": 0.0,
+		"target": ORDER_WHEEL,
+		"mode": OrderMode.NORMAL,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_cmd(cmd)
+
+
 ## Drag-to-form-up: move a single unit to `center` and deploy it there facing
 ## `face` (radians) with `frontage` files -- the front rank ends up along the
 ## dragged flank line. A plain move order (target -1) carrying the extra face +
@@ -518,6 +643,15 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				var u: Unit = _unit_by_uid(int(uid))
 				if u != null:
 					u.set_frontage(files)
+		return
+	# Wheel: swing each unit 90° about a fixed flank file. The direction rides in "x".
+	# Leaves movement orders and stances untouched, like the other drill sentinels.
+	if target_uid == ORDER_WHEEL:
+		var dir: int = int(round(float(cmd["x"])))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null:
+				u.wheel(dir)
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
@@ -577,6 +711,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.order_mode = mode
 			u.walk_advance = bool(cmd.get("walk_advance", false))
 			u.support_target = null
+			# A fresh order restarts the cycle-charge loop in its charging phase, so a
+			# newly-ordered unit drives in rather than resuming a stale pull-back.
+			u._cycle_recharging = false
 			# Any fresh order drops a deploy facing a prior form-up parked; the form-up
 			# move branch below re-sets it. So attack / support / relief / plain move all
 			# clear it, and a unit can't pivot to a stale heading on arrival.

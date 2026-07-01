@@ -105,6 +105,27 @@ func test_rear_move_during_an_in_progress_about_face_does_not_park_a_march() -> 
 	assert_eq(u.move_target, Vector2(0, -200), "toward the ordered destination")
 
 
+func test_rear_move_during_an_in_progress_wheel_does_not_park_a_march() -> void:
+	# A wheel (circumductio) is already swinging when a rear-move order arrives. conversio()
+	# is blocked while any in-place drill turn runs, so it must no-op -- the order must NOT
+	# arm an about-face on top of the wheel; it falls back to a plain march.
+	var u := _unit(1, Vector2.ZERO)
+	u.facing = Vector2.DOWN
+	u.seed_sim_soldiers()
+	u.wheel(1)                                      # the wheel is now swinging
+	var wheel_target: Vector2 = u._wheel_target
+	assert_ne(wheel_target, Vector2.ZERO, "the wheel is in progress")
+	var b := _battle([u])
+	Settings.reform_before_move = false
+	b._apply_order_cmd({"units": [1], "x": 0.0, "y": -200.0, "target": -1})   # rear move
+	assert_eq(u._conversio_target, Vector2.ZERO,
+		"no about-face is armed on top of the running wheel (conversio no-ops)")
+	assert_eq(u._wheel_target, wheel_target, "the wheel is left untouched at dispatch")
+	assert_false(u._has_pending_march, "and no march is parked")
+	assert_true(u.has_move_target, "it commits a plain march instead")
+	assert_eq(u.move_target, Vector2(0, -200), "toward the ordered destination")
+
+
 func test_append_queues_a_waypoint_behind_the_current_target() -> void:
 	var u := _unit(1, Vector2.ZERO)
 	var b := _battle([u])
