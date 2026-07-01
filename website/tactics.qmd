@@ -101,13 +101,13 @@ a deeper one trades frontage for staying power. The width holds as casualties th
 the ranks, so a line you set wide stays wide until you change it.
 
 **File-doubling for a fast reshape.** The <kbd>[</kbd> / <kbd>]</kbd> steps are fine for
-fine-tuning, but two drill maneuvers swap the whole shape in one press. <kbd>N</kbd>
-(**duplicatio**) halves the frontage and doubles the depth --- a broad line folds into a deep
-column, so you can squeeze down a lane or mass depth to punch through one point. <kbd>B</kbd>
-(**explicatio**) does the reverse: it doubles the frontage and halves the depth, unfolding a
-column back into a wide line to overlap a flank or plug a gap. The men walk to their new
-slots rather than snapping, so there's a beat of disorder while the block reshapes --- don't
-start the maneuver in contact, and give it room before the enemy arrives. A natural rhythm is
+fine-tuning, but two drill maneuvers swap the whole shape in one press. <kbd>B</kbd>
+(**explicatio**) doubles the frontage and halves the depth --- a column unfolds into a wide
+line to overlap a flank or plug a gap. <kbd>N</kbd> (**duplicatio**) does the reverse: it
+halves the frontage and doubles the depth, folding a broad line into a deep column so you can
+squeeze down a lane or mass depth to punch through one point. The men walk to their new slots
+rather than snapping, so there's a beat of disorder while the block reshapes --- don't start
+the maneuver in contact, and give it room before the enemy arrives. A natural rhythm is
 duplicatio to march a column through a chokepoint, then explicatio to deploy back into line on
 the far side.
 

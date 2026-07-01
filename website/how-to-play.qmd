@@ -201,15 +201,16 @@ staying power). With a single unit selected, two small grips appear on its flank
 **drag** a grip in or out to set the width directly, with a live preview of the new
 file count. The width holds as the unit takes casualties, and shows in the info panel.
 
-**File-doubling (duplicatio and explicatio).** Where <kbd>[</kbd> / <kbd>]</kbd> nudge the
+**File-doubling (explicatio and duplicatio).** Where <kbd>[</kbd> / <kbd>]</kbd> nudge the
 width one file at a time, these two drill maneuvers reshape it by a whole factor at once.
-Press <kbd>N</kbd> for **duplicatio**: alternate files tuck in behind their neighbours, so
-the frontage halves and the depth doubles --- a wide line folds into a deep, narrow column,
-good for punching through or squeezing down a lane. Press <kbd>B</kbd> for **explicatio**:
-each file splits and the rear half steps out to the side, so the frontage doubles and the
-depth halves --- a column unfolds back into a broad line that brings more men to the front.
-Nobody teleports: the soldiers walk to their new slots, so the reshape takes a moment to
-settle. Explicatio can't widen past a single rank, and duplicatio bottoms out at one file.
+Press <kbd>B</kbd> for **explicatio**: each file splits and the rear half steps out to the
+side, so the frontage doubles and the depth halves --- a column unfolds into a broad line
+that brings more men to the front, good for overlapping a flank. Press <kbd>N</kbd> for
+**duplicatio**: alternate files tuck in behind their neighbours, so the frontage halves and
+the depth doubles --- a wide line folds into a deep, narrow column, good for punching through
+or squeezing down a lane. Nobody teleports: the soldiers walk to their new slots, so the
+reshape takes a moment to settle. Explicatio can't widen past a single rank, and duplicatio
+bottoms out at one file.
 
 ```{=html}
 <figure class="demo">
