@@ -646,7 +646,8 @@ func _update_resize(world_pos: Vector2) -> void:
 		return
 	var offset: Vector2 = world_pos - _resize_unit.global_position
 	var half_width: float = absf(offset.dot(_file_axis(_resize_unit)))
-	_resize_files = UnitFormation.files_for_halfwidth(half_width, _resize_unit.max_soldiers)
+	_resize_files = UnitFormation.files_for_halfwidth(half_width, _resize_unit.max_soldiers,
+			UnitRef.FORMATION_SPACING * _resize_unit.spacing_scale)
 
 
 ## Commit a drag-resize on release: enqueue the delta from the unit's current

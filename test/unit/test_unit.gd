@@ -1479,6 +1479,9 @@ func test_set_formation_loose_widens_the_grid_spacing() -> void:
 	# LOOSE (open marching order) actually spreads the soldier marks out, not just the
 	# abstract collision footprint -- UnitFormation.slots() reads spacing_scale.
 	var u := _make_unit()
+	# slots[0] and slots[1] are both in the front rank (rank-major layout, block_slots),
+	# so they're adjacent within a single file -- holds for the default 120-soldier
+	# unit's frontage (> 1 file), which is the case exercised here.
 	var normal_slots: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
 	u.set_formation(Unit.FORMATION_LOOSE)
 	var loose_slots: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
