@@ -19,7 +19,16 @@ var uid: int = -1
 @export var max_soldiers: int = 120
 @export var attack: int = 12
 @export var defense: int = 6
-@export var move_speed: float = 90.0
+@export var move_speed: float = 90.0    # sprint pace (also the loadout's declared top speed)
+# Walk/jog paces, in world units/s -- independent per-type values (Battle sets them
+# from the loadout's walk_mps/jog_mps), not a fixed fraction of move_speed. Real gaits
+# don't scale by a uniform ratio across unit types (a horse's walk/trot/gallop ratios
+# look nothing like a human's walk/jog/sprint ratios), and load-carriage research shows
+# a heavier panoply costs proportionally more at a run than at a walk. Defaults here
+# match the old 0.5/0.75 fractions of the default move_speed, for bare test units that
+# never get a loadout.
+@export var walk_speed: float = 45.0
+@export var jog_speed: float = 67.5
 # Effective melee reach, in world units (Battle sets it per weapon from reach_m;
 # the 26 default is the infantry/sword baseline). A unit counts as in melee
 # contact when the gap to its target closes within attack_range + both RADII, so a
@@ -119,12 +128,10 @@ const MELEE_INTERMIX_MAX: float = 0.85
 # How hard a committed melee unit presses onto the enemy while fighting, as a fraction
 # of move speed. The separation / engaged-enemy front-rank floor counters it, so the
 # value only sets how fast the lines close to contact, not the final spacing.
-# Pace fractions of move_speed. AUTO mode walks by default, jogs when a ranged
-# enemy is within RANGED_RANGE (under fire), and sprints (full speed) once within
+# AUTO mode walks by default (walk_speed), jogs when a ranged enemy is within
+# RANGED_RANGE (jog_speed, under fire), and sprints (move_speed) once within
 # SPRINT_START_DISTANCE of the target. WALK mode holds walk pace throughout —
 # mandatory for formed stances (shield wall, pike phalanx) that break on a jog.
-const WALK_SPEED_FRACTION: float = 0.5
-const JOG_SPEED_FRACTION: float = 0.75
 const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed charge
 # Orderly move orders pivot the block about its centre toward their travel direction at
 # this angular rate (rad/s) rather than snapping, so the ranks turn in good order. A
@@ -153,7 +160,7 @@ const SUPPORT_GUARD_RADIUS: float = 180.0
 const SUPPORT_FOLLOW_DISTANCE: float = 80.0
 # The friendly unit a SUPPORT order tells this one to guard (set by Battle from the
 # order's target). Cleared when it dies/routs, reverting this unit to NORMAL.
-# Pace mode: when true the unit always walks (WALK_SPEED_FRACTION), overriding the
+# Pace mode: when true the unit always walks (walk_speed), overriding the
 # AUTO escalation to jog/sprint. Set from the walk_advance setting at order time.
 var walk_advance: bool = false
 # Set to true in _think when a ranged enemy is within RANGED_RANGE; drives the
@@ -179,9 +186,6 @@ const ROUT_TIME: float = 6.0
 # (both count from zero); the effective delay before the march is max(order_response_delay,
 # REFORM_DURATION). Deterministic (a plain counter, no RNG), so replays stay exact.
 const REFORM_DURATION: float = 0.8
-# Speed cap (world units/s) applied to each individual soldier body while the reform
-# hold is active — soldiers jog to their new slots rather than sprinting there.
-const REFORM_JOG_SPEED: float = 150.0
 # Radius over which a rout shakes friendly morale. Shared by the morale-spread
 # loop and the cosmetic shockwave so the visual matches the actual area of effect.
 const ROUT_SHOCK_RADIUS: float = 140.0
@@ -650,17 +654,18 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		_face_dir(dir)
 	# Pace: a maneuver or walk-advance holds walk speed throughout. AUTO otherwise
 	# walks by default, jogs under missile fire, and sprints at full speed once
-	# close to the target.
-	var pace_frac: float
+	# close to the target. Each pace is this unit's own gait speed, not a fraction
+	# of another -- see walk_speed/jog_speed/move_speed above.
+	var pace_speed: float
 	if maneuvering or walk_advance:
-		pace_frac = WALK_SPEED_FRACTION
+		pace_speed = walk_speed
 	elif position.distance_to(point) <= SPRINT_START_DISTANCE:
-		pace_frac = 1.0  # sprint distance beats under-fire: charge through the kill zone at full speed
+		pace_speed = move_speed  # sprint distance beats under-fire: charge through the kill zone at full speed
 	elif _under_fire:
-		pace_frac = JOG_SPEED_FRACTION
+		pace_speed = jog_speed
 	else:
-		pace_frac = WALK_SPEED_FRACTION
-	var effective_speed: float = move_speed * terrain_speed * pace_frac
+		pace_speed = walk_speed
+	var effective_speed: float = pace_speed * terrain_speed
 	# Turn-before-march: while centre-pivoting an orderly move, scale the advance by how
 	# far the unit has come onto its heading. A sharp turn (e.g. a 180° pivot to a rear
 	# destination) nearly halts and pivots, then accelerates as it aligns -- so it

@@ -139,12 +139,13 @@ static func step(unit: Unit, delta: float) -> void:
 				else slots[i] - unit._sim_soldier_pos[i]
 		var accel: Vector2 = to_slot * SPRING_STIFFNESS - (unit._sim_body_vel[i] - feed_forward) * SPRING_DAMPING
 		unit._sim_body_vel[i] += accel * delta
-		# Cap individual soldier speed to a jog while the unit is stationary: during the
-		# reform hold phase AND whenever a formation reshape (frontage change, centre pivot)
-		# plays out on an idle unit. A marching unit is exempt — its bodies need to keep
-		# up with moving slots — so the cap only applies when state == IDLE.
+		# Cap individual soldier speed to this unit's own jog pace while the unit is
+		# stationary: during the reform hold phase AND whenever a formation reshape
+		# (frontage change, centre pivot) plays out on an idle unit. A marching unit is
+		# exempt — its bodies need to keep up with moving slots — so the cap only
+		# applies when state == IDLE.
 		if unit._reform_timer > 0.0 or unit.state == Unit.State.IDLE:
-			unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(Unit.REFORM_JOG_SPEED)
+			unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(unit.jog_speed)
 		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
 		# Tell the render a body actually moved this tick, so _process can skip the
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).

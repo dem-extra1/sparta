@@ -201,11 +201,11 @@ To get the timing right you need the default battle's layout. A standard 5v5
 | Cavalry | 4 | 9 |
 
 Both lines center on `start_x = 500` with `spacing = 150` px on the `1600 × 1000`
-field, so they start **400 px** apart vertically. Each unit's speed is stated in the
-loadout in **metres/second**; effective px/s is `speed_mps × WORLD_UNITS_PER_METER`
-(`20`) `× SPEED_SCALE` (`1.0`):
+field, so they start **400 px** apart vertically. Each unit's sprint speed is stated
+in the loadout in **metres/second** (`sprint_mps`); effective px/s is
+`sprint_mps × WORLD_UNITS_PER_METER` (`20`) `× SPEED_SCALE` (`1.0`):
 
-| Unit | speed (m/s) | effective px/s |
+| Unit | sprint speed (m/s) | effective px/s |
 | --- | --- | --- |
 | Spearmen | 2.2 | 44 |
 | Infantry | 2.6 | 52 |

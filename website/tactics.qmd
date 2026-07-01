@@ -170,18 +170,29 @@ forward against the knockback, so it breathes as the fight ebbs and flows.
 
 ## Movement speed
 
-Units move at **realistic real-world speeds**, measured in metres per second:
+Units move at **realistic real-world speeds**, measured in metres per second, with
+**three independent paces** per type --- walk, jog, and sprint (see
+[Pace modes](#pace-modes) below) --- scaled to how much each type's panoply weighs:
 
-- **Foot** advances to contact at a brisk pace --- heavy **spearmen** slowest
-  (~2.2 m/s), **infantry** a touch quicker (~2.6 m/s), light **archers** quickest
-  of the foot (~3.0 m/s).
-- **Cavalry** charge at a **gallop** (~8.5 m/s) --- roughly three times any foot
-  unit's pace.
+| Type | Walk | Jog | Sprint |
+| --- | --- | --- | --- |
+| Spearmen (heaviest kit) | 1.1 m/s | 1.8 m/s | 2.8 m/s |
+| Infantry | 1.3 m/s | 2.5 m/s | 4.0 m/s |
+| Archers (lightest kit) | 1.5 m/s | 3.0 m/s | 4.5 m/s |
+| Cavalry | 1.7 m/s (walk gait) | 3.5 m/s (trot) | 8.5 m/s (gallop) |
 
-That gap is a lever: cavalry cross the field and reach an exposed flank far sooner
-than infantry can re-form to face them, so commit horse decisively and time your
-foot to be where the charge lands. (The faster the gallop at the moment of contact,
-the bigger the charge bonus --- so a clean run-up hits harder than a standing start.)
+Heavier armor and weapons cost proportionally more at a run than at a walk --- walking
+pace barely changes under load, but running form degrades fast, so spearmen's walk
+sits close to the lighter types' while their sprint lags well behind. Cavalry's three
+paces map onto the horse's own real gaits (walk / trot / gallop) rather than a
+rider-weight-scaled fraction, since a rider's kit is a small fraction of what the
+horse itself carries.
+
+That sprint gap is a lever: cavalry cross the field and reach an exposed flank far
+sooner than infantry can re-form to face them, so commit horse decisively and time
+your foot to be where the charge lands. (The faster the gallop at the moment of
+contact, the bigger the charge bonus --- so a clean run-up hits harder than a
+standing start.)
 
 ## Pace modes
 
