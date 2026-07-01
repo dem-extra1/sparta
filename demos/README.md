@@ -201,15 +201,15 @@ To get the timing right you need the default battle's layout. A standard 5v5
 | Cavalry | 4 | 9 |
 
 Both lines center on `start_x = 500` with `spacing = 150` px on the `1600 × 1000`
-field, so they start **400 px** apart vertically. Each unit's speed is stated in the
-loadout in **metres/second**; effective px/s is `speed_mps × WORLD_UNITS_PER_METER`
-(`20`) `× SPEED_SCALE` (`1.0`):
+field, so they start **400 px** apart vertically. Each unit's sprint speed is stated
+in the loadout in **metres/second** (`sprint_mps`); effective px/s is
+`sprint_mps × WORLD_UNITS_PER_METER` (`20`) `× SPEED_SCALE` (`1.0`):
 
-| Unit | speed (m/s) | effective px/s |
+| Unit | sprint speed (m/s) | effective px/s |
 | --- | --- | --- |
-| Spearmen | 2.2 | 44 |
-| Infantry | 2.6 | 52 |
-| Archers | 3.0 | 60 |
+| Spearmen | 2.8 | 56 |
+| Infantry | 4.0 | 80 |
+| Archers | 4.5 | 90 |
 | Cavalry | 8.5 | 170 |
 
 **Only team 1 advances on its own.** The enemy AI (`Battle.gd` →
@@ -220,8 +220,8 @@ order in `demos/scenarios/line-relief.json` and `charge_demo.json`. Forget it an
 the clip records the player line standing still while only the enemy closes.
 
 With both sides closing over the 400 px gap, a head-on meet takes roughly
-`400 / (sum of the two effective speeds)` seconds: about 4.5 s for
-spearmen-vs-spearmen (`44 + 44`), about 1.2 s for cavalry-vs-cavalry (`170 + 170`).
+`400 / (sum of the two effective speeds)` seconds: about 3.6 s for
+spearmen-vs-spearmen (`56 + 56`), about 1.2 s for cavalry-vs-cavalry (`170 + 170`).
 These are approximations — the enemy AI re-targets only every `AI_PERIOD` (1 s),
 and cavalry carry a 0.3 s order-response delay — so work the timing out on paper
 **before** spending a CI run on it; a mistimed scenario silently records the

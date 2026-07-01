@@ -1,0 +1,8 @@
+{
+  "replay": "demos/showcase.json",
+  "caption": "Movement now uses independent walk/jog/sprint speeds per unit type, scaled to each type's panoply weight (#445), instead of a fixed 0.5/0.75 fraction of one declared top speed -- spearmen's heavier kit costs them more at a run than a walk, and cavalry's three paces map onto a horse's real gaits (walk/trot/gallop).",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

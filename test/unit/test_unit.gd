@@ -569,7 +569,7 @@ func test_move_to_holds_ordered_facing_and_walks() -> void:
 	u._move_to(Vector2(0, 100), 0.1)   # destination straight down -- lateral to facing
 	assert_almost_eq(u.facing.x, 1.0, 0.001, "the held facing is kept, not turned toward travel")
 	assert_almost_eq(u.facing.y, 0.0, 0.001, "...so the unit faces the same way while side-stepping")
-	assert_almost_eq(u._approach_velocity.length(), u.move_speed * Unit.WALK_SPEED_FRACTION, 0.001,
+	assert_almost_eq(u._approach_velocity.length(), u.walk_speed, 0.001,
 		"a side-step moves at the measured walk pace")
 
 

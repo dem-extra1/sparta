@@ -115,6 +115,7 @@ func test_marching_bulk_tracks_its_moving_slot() -> void:
 	# still within a mark's width of its slot, and it never jumped there.
 	var u := _idle_unit(12, 24)
 	u.step_sim_soldiers(DT)            # seed bodies on their slots
+	u.state = Unit.State.MOVING        # a real march is never IDLE -- exempts the jog cap
 	var march: Vector2 = Vector2(0.0, 90.0)   # move_speed downfield
 	for _i in range(120):             # ~2 seconds of marching
 		u.position += march * DT

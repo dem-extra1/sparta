@@ -63,11 +63,11 @@ var form_up_dist_cycle: Array = [FORM_UP_DIST_EQUAL_DEPTH, FORM_UP_DIST_EQUAL_WI
 			_save()
 			changed.emit()
 
-# Walk advance: when true, units approach at walk pace (WALK_SPEED_FRACTION of their
-# move speed) rather than the default auto-pace (walk → jog under fire → sprint near
-# contact). Mandatory for formed stances that break on a jog or sprint (shield wall,
-# pike phalanx). Default off. Applied per-order so replays reproduce behavior as
-# recorded, regardless of whether the setting is later changed.
+# Walk advance: when true, units approach at their own walk pace rather than the
+# default auto-pace (walk → jog under fire → sprint near contact). Mandatory for
+# formed stances that break on a jog or sprint (shield wall, pike phalanx). Default
+# off. Applied per-order so replays reproduce behavior as recorded, regardless of
+# whether the setting is later changed.
 var walk_advance: bool = false:
 	set(value):
 		if value == walk_advance:
