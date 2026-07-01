@@ -83,10 +83,10 @@ func _on_physics_frame() -> void:
 	if _frame_ticks.has(tick) and not _captured.has(tick):
 		_captured[tick] = true
 		_capture_frame(tick)
-	# In capture / dump mode (not a movie recording), quit once the last armed frame AND state
-	# snapshot are done so the tool returns promptly, without a fragile --quit-after frame count.
-	# A movie recording arms neither, so this never fires there — it runs to Movie Maker's
-	# own --quit-after.
+	# In capture / dump mode (not a movie recording), quit once every armed frame AND state
+	# snapshot is done so the tool returns promptly, without a fragile --quit-after frame count.
+	# _all_artifacts_done() guards on at least one list being armed, so a movie recording (neither
+	# armed) never quits here — it runs to Movie Maker's own --quit-after.
 	if _all_artifacts_done():
 		_quit_after_captures()
 
@@ -155,11 +155,13 @@ func _capture_frame(tick: int) -> void:
 
 
 ## True once every armed frame is captured and every armed state snapshot is written — the
-## signal to quit a capture/dump run. When neither is armed (a normal movie recording) both
-## sizes are 0 and this is trivially true, but the per-tick hook only calls it after doing work,
-## so it can't quit an unarmed recording.
+## signal to quit a capture/dump run. The leading `> 0` guard is load-bearing: without it, a
+## normal movie recording (neither list armed, both sizes 0) would satisfy `0 == 0 and 0 == 0`
+## and quit after the first physics tick. The guard keeps this false unless at least one
+## artifact type is armed, so an unarmed recording runs to Movie Maker's own --quit-after.
 func _all_artifacts_done() -> bool:
-	return _captured.size() == _frame_ticks.size() \
+	return (_frame_ticks.size() + _state_ticks.size()) > 0 \
+		and _captured.size() == _frame_ticks.size() \
 		and _state_dumped.size() == _state_ticks.size()
 
 
