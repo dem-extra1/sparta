@@ -1,0 +1,13 @@
+{
+  "_comment": "Scenario-staged rout demo (#473): the default 5v5 battle never reliably produces a single clean rout in a fixed clip, so this stages one directly. A lone, low-morale (25) player infantry unit of 60 faces a strong cavalry force (two 80-man cavalry) that hits it head-on -- the weak unit breaks and flees (shown faded), demonstrating a rout on demand. Camera frames the clash. No player input needed; the scenario + seed make it deterministic.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 430, "count": 60, "morale": 25.0},
+    {"team": 1, "type": "Cavalry", "x": 740, "y": 560},
+    {"team": 1, "type": "Cavalry", "x": 860, "y": 560}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 480.0, "zoom": 1.3}
+  ],
+  "steps": []
+}

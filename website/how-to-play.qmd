@@ -38,6 +38,7 @@ left fighting --- every remaining unit is dead or routing.
 | Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose) · or **control bar** |
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
+| Wheel (hinge on a flank) | <kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file) |
 | Merge selected units | <kbd>M</kbd> |
 | Control groups | <kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall |
 | Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (bottom-right, on by default) |
@@ -144,6 +145,27 @@ simply face the new way, so the block now presents its **short edge** as its fro
 (its frontage and depth swap relative to the facing, without anyone moving). Like the
 conversio, it is a standing facing change. Use it to throw a fresh face toward a flank, or
 as the first step of marching off to the side in good order.
+
+**Wheel on a flank (circumductio, <kbd>Z</kbd> / <kbd>C</kbd>).** Press <kbd>Z</kbd> to
+wheel the selected unit left, or <kbd>C</kbd> to wheel it right. One end of the line ---
+the standing flank file --- holds its ground while the rest of the block swings around it
+like a door on a hinge, reorienting the whole line 90° while every man keeps his place in
+the ranks. Unlike the quarter-turn, this is not a standing facing change: the far flank
+actually marches an arc, so the line ends up facing a new direction *and* lying along a
+new line. Use it to refuse a flank, to swing a wing forward and take an enemy line in the
+side, or to change the front an entire wing presents without breaking its order.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/wheel.jpg">
+    <source src="media/wheel.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Wheel (circumductio): the line swings 90&deg; about its standing flank file --- the near flank holds while the far flank marches a wide arc --- reorienting the whole block without breaking its ranks. Wheeled right (C), then back left (Z).</figcaption>
+</figure>
+```
 
 **Zoom in to see the soldiers.** From the usual overview each regiment is a block of
 small marks. Zoom in far enough and those marks become individual figures, and each
