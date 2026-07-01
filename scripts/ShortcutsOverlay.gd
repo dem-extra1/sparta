@@ -30,6 +30,7 @@ const _ROWS: Array = [
 	["— Formation & drill —", ""],
 	["Formation (Normal/Tight/Loose/Square)", "T"],
 	["Anti-cavalry square (toggle direct)", "O"],
+	["Shield wall / Testudo (toggle direct)", "L / U"],
 	["Line width (narrower/wider)", "[ / ]"],
 	["File-doubling (explicatio wider / duplicatio deeper)", "B / N"],
 	["Form-up split mode", "Y"],

@@ -257,6 +257,16 @@ func _dispatch_key(event: InputEventKey) -> bool:
 		# so the same key drops the square once the horse is beaten off.
 		_toggle_square()
 		return true
+	elif event.keycode == KEY_L:
+		# Lock the shield wall (L for locked shields) -- a frontal holding stance.
+		# Toggles back to Normal so the same key stands the unit down.
+		_toggle_shield_wall()
+		return true
+	elif event.keycode == KEY_U:
+		# Form testudo (U for testUdo) -- all-around overhead arrow cover. Toggles
+		# back to Normal so the same key drops the roof once out of the beaten zone.
+		_toggle_testudo()
+		return true
 	elif event.keycode == KEY_BRACKETRIGHT:
 		_resize_frontage(1)    # ] widens the line by one file
 		return true
@@ -638,7 +648,10 @@ func _issue_merge() -> void:
 
 ## The order the T-key steps through. Kept as an explicit list (not `(mode + 1) % N`)
 ## so new stances can be slotted in without a magic modulus, and so an unknown current
-## mode falls back cleanly to the front of the cycle.
+## mode falls back cleanly to the front of the cycle. The shielded holding stances
+## (Shield Wall, Testudo) are deliberately NOT in this cycle -- they're set from the
+## control-bar menu or their own direct hotkeys, so T stays a short density-plus-square
+## toggle rather than a six-way slog. A unit in a shielded stance re-enters at Normal.
 const FORMATION_CYCLE: Array[int] = [
 	Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT, Unit.FORMATION_LOOSE, Unit.FORMATION_SQUARE,
 ]
@@ -658,10 +671,28 @@ static func next_formation(current: int) -> int:
 ## Routed through set_formation_to, which records/replays the change and re-checks the
 ## PLAYBACK / empty-selection guards; the empty guard here is only to read the lead unit.
 func _toggle_square() -> void:
+	_toggle_formation(Unit.FORMATION_SQUARE)
+
+
+## Directly toggle the shield wall on the selected units (a frontal holding stance).
+func _toggle_shield_wall() -> void:
+	_toggle_formation(Unit.FORMATION_SHIELD_WALL)
+
+
+## Directly toggle the testudo on the selected units (all-around arrow cover).
+func _toggle_testudo() -> void:
+	_toggle_formation(Unit.FORMATION_TESTUDO)
+
+
+## Shared direct-select toggle: set every selected unit to `mode`, or drop back to
+## Normal if the lead unit is already in it. One key to don a stance and one to doff it,
+## bypassing the T-cycle for the menu-only stances. set_formation_to records/replays and
+## re-checks the guards; the empty guard here is only to read the lead unit's mode.
+func _toggle_formation(mode: int) -> void:
 	if _selected.is_empty() or not is_instance_valid(_selected[0]):
 		return
-	var mode: int = Unit.FORMATION_NORMAL if _selected[0].in_square() else Unit.FORMATION_SQUARE
-	set_formation_to(mode)
+	var target: int = Unit.FORMATION_NORMAL if _selected[0].formation_mode == mode else mode
+	set_formation_to(target)
 
 
 ## Cycle the formation of all selected friendly units through FORMATION_CYCLE
