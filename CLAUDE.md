@@ -185,6 +185,19 @@ comments or docstrings.
   `demos/shots/` are still committed and tracked; don't add new `.import` files
   without intent.
 
+- **`.gd.uid` sidecars ARE tracked — commit one with every new script.** Unlike
+  `.import`, `.gd.uid` files are checked in (see the `test/unit/*.gd.uid` next to
+  each test). When you add a new `.gd`, `git add` its generated `.gd.uid` too;
+  leaving it out makes the file show as perpetually-untracked (Godot regenerates
+  it on every import) and churns the UID. Run `--headless --import` first to
+  generate it.
+
+- **A new `class_name` isn't visible to other scripts until the project
+  re-imports.** Add a `class_name Foo` script and a test that references `Foo`
+  fails to parse with `Identifier "Foo" not declared in the current scope` until
+  you run `godot --headless --import` once (it registers the global class). Do
+  the import before running the GUT suite on any change that adds a `class_name`.
+
 - **GUT's `assert_almost_eq` does not support `Vector2` operands — it silently
   passes regardless of the actual difference.** The `diff > margin` check reduces
   to `Vector2 > float`, which GDScript always evaluates as `false`. For an *exact*
