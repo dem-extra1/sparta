@@ -2090,6 +2090,8 @@ func test_facing_pip_transform_matches_soldier_facing() -> void:
 	assert_almost_eq(t.get_rotation(), Vector2.UP.angle(), 0.001,
 		"the pip rotates to the soldier's own facing, not just left/right")
 	assert_eq(t.get_origin(), Vector2(5, 5), "the pip sits at the soldier's position")
+	assert_almost_eq(t.get_scale().length(), sqrt(2.0), 0.001,
+		"a standing soldier's pip draws at full (unit) scale -- guards against a regression to zero")
 
 
 func test_prone_soldiers_facing_pip_collapses() -> void:

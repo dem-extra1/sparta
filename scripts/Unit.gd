@@ -1693,6 +1693,7 @@ func _process(_delta: float) -> void:
 		if _mm_body.instance_count != 0:
 			_mm_body.instance_count = 0
 			_mm_outline.instance_count = 0
+			_mm_facing_pip.instance_count = 0   # else pips linger a frame after a figure-LOD death
 		return
 	# Block extent depends only on the soldier count and frontage, not body positions, so
 	# recompute (and reshape the shadow/chrome) only when one of those changes — not the
@@ -1828,6 +1829,10 @@ func _apply_flock_color() -> void:
 	_flock_color = body_c
 	_mmi_body.modulate = body_c
 	_mmi_outline.modulate = Color(body_c.r * 0.35, body_c.g * 0.35, body_c.b * 0.35, alpha)
+	# The facing pip fades with the block while routing, at its own base 0.9 opacity, so it
+	# doesn't stay sharp over a fading figure. (The guard above keys off alpha, so this
+	# tracks the routing state.)
+	_mmi_facing_pip.modulate = Color(1.0, 1.0, 1.0, alpha * 0.9)
 
 
 ## Size/position the ground shadow ellipse to the current block extent.
