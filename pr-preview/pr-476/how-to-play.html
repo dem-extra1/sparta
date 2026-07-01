@@ -549,7 +549,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td>Order stance</td>
-<td><kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear</td>
+<td><kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>J</kbd> cycle charge · <kbd>Esc</kbd> clear</td>
 </tr>
 <tr class="odd">
 <td>Formation</td>
@@ -564,20 +564,28 @@ ul.task-list li input[type="checkbox"] {
 <td><kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right</td>
 </tr>
 <tr class="even">
+<td>Wheel (hinge on a flank)</td>
+<td><kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file)</td>
+</tr>
+<tr class="odd">
 <td>Merge selected units</td>
 <td><kbd>M</kbd></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Control groups</td>
 <td><kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Distance legend</td>
 <td><strong>☰ Menu → Distance legend</strong> toggles the map-scale bar (bottom-right, on by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Order distance labels</td>
 <td><strong>☰ Menu → Order distance labels</strong> toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default)</td>
+</tr>
+<tr class="odd">
+<td>Unit speed labels</td>
+<td><strong>☰ Menu → Unit speed labels</strong> shows each unit’s current speed in metres/second above it in the hold-<kbd>Space</kbd> survey (off by default)</td>
 </tr>
 <tr class="even">
 <td>Pan camera</td>
@@ -633,6 +641,15 @@ ul.task-list li input[type="checkbox"] {
 </figure>
 <p><strong>About-face in place (conversio, <kbd>V</kbd>).</strong> Press <kbd>V</kbd> with a unit selected to issue the <em>conversio</em>: every soldier reverses 180° where they stand — the file/rank grid stays put, the front rank becomes the rear rank man-for-man, and the unit is now facing the other way. Unlike the gradual <strong>centre pivot</strong> that accompanies a move order (which rotates the whole block around its centre as it marches), the conversio is a standing drill command: no one takes a step. Use it to face a threat behind the line without marching first, or to quickly reorient a reserve before it moves up.</p>
 <p><strong>Quarter-turn in place (<kbd>Q</kbd> / <kbd>E</kbd>).</strong> Press <kbd>Q</kbd> to turn the selected unit a quarter-turn left, or <kbd>E</kbd> to turn it right: every soldier pivots 90° where they stand. No one marches and the grid of men does not reorganize — they simply face the new way, so the block now presents its <strong>short edge</strong> as its frontage (its frontage and depth swap relative to the facing, without anyone moving). Like the conversio, it is a standing facing change. Use it to throw a fresh face toward a flank, or as the first step of marching off to the side in good order.</p>
+<p><strong>Wheel on a flank (circumductio, <kbd>Z</kbd> / <kbd>C</kbd>).</strong> Press <kbd>Z</kbd> to wheel the selected unit left, or <kbd>C</kbd> to wheel it right. One end of the line — the standing flank file — holds its ground while the rest of the block swings around it like a door on a hinge, reorienting the whole line 90° while every man keeps his place in the ranks. Unlike the quarter-turn, this is not a standing facing change: the far flank actually marches an arc, so the line ends up facing a new direction <em>and</em> lying along a new line. Use it to refuse a flank, to swing a wing forward and take an enemy line in the side, or to change the front an entire wing presents without breaking its order.</p>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/wheel.jpg">
+    <source src="media/wheel.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Wheel (circumductio): the line swings 90° about its standing flank file --- the near flank holds while the far flank marches a wide arc --- reorienting the whole block without breaking its ranks. Wheeled right (C), then back left (Z).</figcaption>
+</figure>
 <p><strong>Zoom in to see the soldiers.</strong> From the usual overview each regiment is a block of small marks. Zoom in far enough and those marks become individual figures, and each type carries its own gear — spearmen shoulder a spear, archers carry a bow, other foot raise a shield, and cavalry ride a mount that faces the regiment’s march. So you can watch the ranks as people, not dots, and still read who is who. A small white facing pip on each figure shows its exact facing — the figure itself only mirrors left/right, so the pip is what lets a maneuver’s precise turn (a quarter-turn, say) read correctly even at this zoom, not just a coarse left/right flip. Zoom back out and they collapse to the legible marks again — each mark points the way its soldier faces, so you can read a regiment’s facing at a glance even from the overview. The mark shape tells you the type, too: a dart for spearmen, a kite for archers, and an arrow-pointer for other foot and cavalry. All three are compact directional glyphs, so a rank reads as arrows whichever way it faces rather than smearing into bars.</p>
 <p><strong>Reading distances.</strong> A small semi-translucent scale bar sits in the bottom-right corner, labelled with the real metre distance it spans (e.g.&nbsp;“50 m”) — it rescales as you zoom, so you can always judge range and reach at a glance. Toggle it off in <strong>☰ Menu → Distance legend</strong> if you’d rather not see it.</p>
 <p><strong>Order stances.</strong> Beyond plain move/attack you can arm a <em>stance</em> with a hotkey before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> clears it.</p>
@@ -641,6 +658,7 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Attack flank</strong> (<kbd>F</kbd>) / <strong>Attack rear</strong> (<kbd>R</kbd>) — maneuver to strike the enemy’s side or back, where hits land far harder (see <a href="./tactics.html#order-stances">Tactics</a>).</li>
 <li><strong>Skirmish</strong> (<kbd>K</kbd>) — a ranged unit keeps its distance, backing off when a threat closes instead of standing to fire.</li>
 <li><strong>Support</strong> (<kbd>G</kbd>) — right-click a friendly to guard it: the unit shadows that ally and engages anything that threatens it.</li>
+<li><strong>Cycle charge</strong> (<kbd>J</kbd>) — cavalry charge the target, pull back to a standoff, and charge again, so each run lands a fresh momentum hit instead of grinding once the charge is spent (see <a href="./tactics.html#order-stances">Tactics</a>).</li>
 </ul>
 <figure class="demo figure">
   <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/support.jpg">
@@ -649,6 +667,14 @@ ul.task-list li input[type="checkbox"] {
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
   <figcaption>Support stance: a unit guards an ally, shadowing it and engaging any threat.</figcaption>
+</figure>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/cycle_charge.jpg">
+    <source src="media/cycle_charge.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Cycle charge stance: cavalry charge, land the impact hit, peel back to a standoff, then charge again.</figcaption>
 </figure>
 <p>Press <kbd>T</kbd> to cycle a selected unit’s <strong>formation</strong> — <em>Tight</em> closes ranks for better missile and charge defence, <em>Loose</em> spreads out. Every unit can cycle through all three; each type just starts at a different one — spearmen deploy Tight (locked shields against a charge), archers deploy Loose (room to fire), and sword-armed infantry and cavalry deploy at the plain Normal combat order.</p>
 <p><strong>Resize the line.</strong> A regiment normally forms up at a sensible width, but you can reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more men fighting at the front) or <kbd>[</kbd> to narrow it (deeper, fewer up front but more staying power). With a single unit selected, two small grips appear on its flanks — <strong>drag</strong> a grip in or out to set the width directly, with a live preview of the new file count. The width holds as the unit takes casualties, and shows in the info panel.</p>
