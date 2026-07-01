@@ -42,12 +42,13 @@ left fighting --- every remaining unit is dead or routing.
 | File-doubling | <kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper) |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
 | Wheel (hinge on a flank) | <kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file) |
+| Nudge (small step, holds facing) | <kbd>←</kbd> side-step left · <kbd>→</kbd> side-step right · <kbd>↓</kbd> back-step (a few metres each) |
 | Merge selected units | <kbd>M</kbd> |
 | Control groups | <kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall |
 | Distance legend | **☰ Menu → Distance legend** toggles the map-scale bar (bottom-right, on by default) |
 | Order distance labels | **☰ Menu → Order distance labels** toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default) |
 | Unit speed labels | **☰ Menu → Unit speed labels** shows each unit's current speed in metres/second above it in the hold-<kbd>Space</kbd> survey (off by default) |
-| Pan camera | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges |
+| Pan camera | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges (the ←→↓ arrows nudge instead while a unit is selected; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> always pans) |
 | Zoom | **Mouse wheel** |
 | Show all orders + formation preview | hold <kbd>Space</kbd> |
 | Active pause | <kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>) |
@@ -109,6 +110,26 @@ or one that heads forward, still turns to face the destination and marches norma
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
   <figcaption>Side-step: a short lateral move shuffles the regiment sideways while it holds its facing, rather than pivoting.</figcaption>
+</figure>
+```
+
+**Arrow-key nudges.** With a unit selected, the arrow keys order a small fixed step
+without touching the mouse: <kbd>←</kbd> and <kbd>→</kbd> side-step the unit a few metres
+to that side, and <kbd>↓</kbd> back-steps it a few metres straight to the rear. All three
+hold the unit's facing --- a nudge shuffles it into place, it never turns to face the step.
+Use them to dress a line, open a gap, or edge a regiment off a bad spot. While a unit is
+selected these three arrows nudge instead of panning the camera; <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+(and <kbd>↑</kbd>) still pan, so you never lose camera control.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/arrow_nudge.jpg">
+    <source src="media/arrow_nudge.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Arrow-key nudges: the selected regiment side-steps left, then right, then back-steps --- each a small step that holds its facing.</figcaption>
 </figure>
 ```
 

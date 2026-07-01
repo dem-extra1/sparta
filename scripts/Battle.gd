@@ -38,6 +38,17 @@ const ORDER_FRONTAGE_ONLY := -4
 # replay stream — a wheel moves the regiment (position and facing), which the sim reads, so it
 # IS recorded and replayed like a move. Handled before the main move/attack/merge logic.
 const ORDER_WHEEL := -5
+# Sentinel for an arrow-key nudge: a small fixed-distance drill move that holds
+# facing. The nudge direction rides the "frontage" field (1 = left, 2 = right,
+# 3 = back), so the replay format is unchanged. Each unit steps from its own
+# facing, so a mixed-facing selection nudges correctly per unit.
+const ORDER_NUDGE := -6
+enum NudgeDir { LEFT = 1, RIGHT = 2, BACK = 3 }
+# How far a single arrow-key nudge shifts the unit (world units). 30 wu is ~1.5 m
+# (WORLD_UNITS_PER_METER = 20) — a few soldier-widths, and under the side-step
+# distance ceiling (UnitManeuver.SIDESTEP_MAX_DISTANCE) so a lateral nudge always
+# reads as a shuffle rather than a turn-and-march.
+const NUDGE_DISTANCE := 30.0
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
@@ -580,6 +591,27 @@ func enqueue_frontage(uids: Array, delta: int) -> void:
 		_apply_order_cmd(cmd)
 
 
+## Arrow-key nudge: order each unit a small fixed-distance drill step to its own
+## `dir` (LEFT / RIGHT side-step, or BACK back-step), holding facing throughout.
+## Recorded (the direction rides the frontage field) so replays reproduce it, and
+## applied immediately for zero-latency feedback like every other order.
+func enqueue_nudge(uids: Array, dir: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	if uids.is_empty():
+		return
+	var cmd := {
+		"units": uids,
+		"x": 0.0,
+		"y": 0.0,
+		"target": ORDER_NUDGE,
+		"mode": OrderMode.NORMAL,
+		"frontage": dir,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_cmd(cmd)
+
+
 ## File-doubling maneuvers (duplicatio / explicatio): reshape each unit's frontage by
 ## a whole factor instead of a single file. `direction` > 0 is EXPLICATIO -- each file
 ## splits and the rear half steps out laterally, doubling the frontage and halving the
@@ -633,6 +665,23 @@ func enqueue_wheel(uids: Array, dir: int) -> void:
 	_apply_order_cmd(cmd)
 
 
+## World-space offset for a nudge of `dir` given a unit's `facing`. LEFT / RIGHT
+## are perpendicular to facing (a side-step); BACK is straight opposite facing (a
+## back-step). Each is NUDGE_DISTANCE long. Pure/static so it's unit-testable.
+static func nudge_offset(facing: Vector2, dir: int) -> Vector2:
+	var fwd: Vector2 = facing.normalized() if facing.length() > 0.01 else Vector2.UP
+	var perp := Vector2(-fwd.y, fwd.x)   # unit's right-hand side in world space
+	match dir:
+		NudgeDir.LEFT:
+			return -perp * NUDGE_DISTANCE
+		NudgeDir.RIGHT:
+			return perp * NUDGE_DISTANCE
+		NudgeDir.BACK:
+			return -fwd * NUDGE_DISTANCE
+		_:
+			return Vector2.ZERO
+
+
 ## Drag-to-form-up: move a single unit to `center` and deploy it there facing
 ## `face` (radians) with `frontage` files -- the front rank ends up along the
 ## dragged flank line. A plain move order (target -1) carrying the extra face +
@@ -680,14 +729,39 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				if u != null:
 					u.set_frontage(files)
 		return
+	# Arrow-key nudge: each unit steps a small fixed distance to its own side/rear,
+	# holding facing (ordered_facing set), leaving stance and formation untouched. A
+	# fresh move order, so it clears any queued route. The direction rides "frontage".
+	if target_uid == ORDER_NUDGE:
+		var dir: int = int(cmd.get("frontage", 0))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u == null or u.state == UnitRef.State.DEAD:
+				continue
+			# Don't yank a unit out of melee or a rout with a drill step.
+			if u.state == UnitRef.State.FIGHTING or u.state == UnitRef.State.ROUTING:
+				continue
+			var offset: Vector2 = nudge_offset(u.facing, dir)
+			if offset == Vector2.ZERO:
+				continue
+			u.waypoints.clear()
+			u.target_enemy = null
+			u.support_target = null
+			u.deploy_facing = Vector2.ZERO
+			u._reform_timer = 0.0
+			u.ordered_facing = u.facing   # hold facing: side-step / back-step, no pivot
+			u.move_target = u.position + offset
+			u.has_move_target = true
+			u.start_order_response()
+		return
 	# Wheel: swing each unit 90° about a fixed flank file. The direction rides in "x".
 	# Leaves movement orders and stances untouched, like the other drill sentinels.
 	if target_uid == ORDER_WHEEL:
-		var dir: int = int(round(float(cmd["x"])))
+		var wheel_dir: int = int(round(float(cmd["x"])))
 		for uid in cmd["units"]:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
-				u.wheel(dir)
+				u.wheel(wheel_dir)
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
