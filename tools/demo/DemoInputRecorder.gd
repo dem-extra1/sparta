@@ -168,21 +168,30 @@ func _all_artifacts_done() -> bool:
 ## Quit the tree once every armed frame is captured, after the pending save_png awaits finish.
 ## Only reached in frame-capture / state-dump mode; a normal movie recording never arms either
 ## and runs to Movie Maker's own --quit-after, so this never fires there.
+##
+## The frame_post_draw await lets any in-flight _capture_frame() save_png finish before we quit.
+## It is ONLY needed when frames were captured: under --headless (the state-dump path) the dummy
+## renderer may never emit frame_post_draw, so awaiting it there hangs the run until the caller's
+## wall-clock timeout. A state-only dump reads sim state, never the drawn frame, so it quits
+## straight away.
 func _quit_after_captures() -> void:
-	await RenderingServer.frame_post_draw
+	if not _frame_ticks.is_empty():
+		await RenderingServer.frame_post_draw
 	print("[demo-input] all artifacts done (%d frames, %d state snapshots); quitting."
 		% [_frame_ticks.size(), _state_ticks.size()])
 	get_tree().quit()
 
 
-## Fired if a capture/dump run runs long (a tick armed past the battle's end never fires — the
-## sim freezes its tick then). Quit anyway with a warning so the tool never hangs; whatever was
-## captured/dumped is already on disk.
+## Fired if a capture/dump run runs long. Quit anyway so the tool never hangs; whatever was
+## captured/dumped is already on disk. Two cases reach here: a tick armed past the battle's end
+## never fired (the sim freezes its tick then), so artifacts are incomplete; or every artifact
+## landed but the quit-after path stalled. Either way we are done waiting — quit unconditionally,
+## warning only when something is actually missing.
 func _on_capture_timeout() -> void:
 	if not _all_artifacts_done():
 		push_warning("[demo-input] run timed out: %d/%d frames, %d/%d state snapshots (a tick may be past the battle's end)."
 			% [_captured.size(), _frame_ticks.size(), _state_dumped.size(), _state_ticks.size()])
-		get_tree().quit()
+	get_tree().quit()
 
 
 # --- state dump ------------------------------------------------------------

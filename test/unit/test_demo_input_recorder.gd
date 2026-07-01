@@ -69,3 +69,25 @@ func test_box_expands_to_a_left_drag() -> void:
 	var rel: Array = r._by_tick[5 + RecorderScript.DRAG_TICKS]
 	assert_false(rel[0]["pressed"], "release after DRAG_TICKS")
 	assert_eq(rel[0]["pos"], Vector2(400, 500), "release lands at the box's end corner")
+
+
+# --- capture/dump completion gate ------------------------------------------
+# _all_artifacts_done() drives the quit of a capture/dump run; a state-only dump
+# (no frames armed) must report done once every state tick is written, so the run
+# quits instead of stalling. (The quit path itself skips the frame_post_draw await
+# when no frames were captured, so a --headless state dump never hangs on it.)
+
+func test_all_artifacts_done_false_when_nothing_is_armed() -> void:
+	var r = _rec()
+	assert_false(r._all_artifacts_done(),
+		"a movie recording arms neither list, so it must not report done (or it would quit at once)")
+
+
+func test_state_only_dump_is_done_when_every_state_tick_is_written() -> void:
+	var r = _rec()
+	r._state_ticks = [0, 60, 120]
+	r._state_dumped = {}
+	assert_false(r._all_artifacts_done(), "not done until every armed state tick is dumped")
+	r._state_dumped = {0: true, 60: true, 120: true}
+	assert_true(r._all_artifacts_done(),
+		"a state-only dump reports done once all snapshots land, with no frames armed")
