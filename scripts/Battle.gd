@@ -580,6 +580,42 @@ func enqueue_frontage(uids: Array, delta: int) -> void:
 		_apply_order_cmd(cmd)
 
 
+## File-doubling maneuvers (duplicatio / explicatio): reshape each unit's frontage by
+## a whole factor instead of a single file. `direction` > 0 is EXPLICATIO -- each file
+## splits and the rear half steps out laterally, doubling the frontage and halving the
+## depth (UnitFormation.widened_files, capped at a single rank). `direction` < 0 is
+## DUPLICATIO -- alternate files tuck in behind their neighbours, halving the frontage
+## and doubling the depth (UnitFormation.narrowed_files, floored at one column). Each
+## reshaped width is resolved per unit from its OWN current frontage and emitted as the
+## same absolute ORDER_FRONTAGE_ONLY command the [ / ] resize uses, so the soldier bodies
+## ease into the reshaped slots at velocity (no teleport) and the maneuver rides the
+## replay stream exactly like a manual resize.
+func enqueue_file_double(uids: Array, direction: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK or direction == 0:
+		return
+	for uid in uids:
+		var u: Unit = _unit_by_uid(int(uid))
+		if u == null:
+			continue
+		var current: int = UnitFormation.frontage(u)
+		var files: int
+		if direction > 0:
+			files = UnitFormation.widened_files(u.soldiers, current)
+		else:
+			files = UnitFormation.narrowed_files(current)
+		files = clampi(files, 1, maxi(1, u.max_soldiers))
+		var cmd := {
+			"units": [uid],
+			"x": 0.0,
+			"y": 0.0,
+			"target": ORDER_FRONTAGE_ONLY,
+			"mode": OrderMode.NORMAL,
+			"frontage": files,
+		}
+		_pending_orders.append(cmd)
+		_apply_order_cmd(cmd)
+
+
 ## Wheel (circumductio): each selected unit swings 90° about a fixed flank file (`dir` = -1
 ## wheel-left / +1 wheel-right). The direction rides in the "x" field. Recorded so replays
 ## reproduce the arc — a wheel moves the regiment, which the sim reads (see ORDER_WHEEL).

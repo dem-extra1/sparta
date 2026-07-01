@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/anti-cav-square.json",
+  "caption": "Anti-cavalry square (#380): a lone infantry unit is charged in the rear by two cavalry. The player presses O to jump straight to Square (the direct anti-cav reaction) -- the hollow ring faces spears/shields outward on every side, so the rear charge finds no weak facing and is braced from behind. Watch the squared unit hold where an ordinary rear-charged unit would break.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

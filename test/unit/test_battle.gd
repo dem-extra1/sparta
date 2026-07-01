@@ -420,6 +420,80 @@ func test_enqueue_frontage_steps_each_unit_from_its_own_width() -> void:
 	assert_eq(UnitFormation.frontage(c), fc + 2, "unit c widens from its own width")
 
 
+# --- file-doubling (duplicatio / explicatio) ------------
+
+func test_explicatio_doubles_the_frontage() -> void:
+	# EXPLICATIO (direction > 0): each file splits, doubling the frontage. Full strength,
+	# so widened_files isn't capped by the live count.
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 120
+	var b := _battle([u])
+	var start: int = UnitFormation.frontage(u)
+	b.enqueue_file_double([1], 1)
+	assert_eq(UnitFormation.frontage(u), start * 2, "explicatio doubles the files")
+	assert_eq(int(b._pending_orders[-1]["frontage"]), start * 2,
+		"the reshaped absolute width is recorded")
+	assert_eq(int(b._pending_orders[-1]["target"]), BattleScript.ORDER_FRONTAGE_ONLY,
+		"reuses the frontage-only command path (so it records and replays)")
+
+
+func test_duplicatio_halves_the_frontage() -> void:
+	# DUPLICATIO (direction < 0): alternate files tuck in behind, halving the frontage.
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 120
+	var b := _battle([u])
+	var start: int = UnitFormation.frontage(u)
+	b.enqueue_file_double([1], -1)
+	assert_eq(UnitFormation.frontage(u), maxi(1, start / 2), "duplicatio halves the files")
+
+
+func test_file_double_round_trips() -> void:
+	# Explicatio then duplicatio returns a unit to its start width.
+	var u := _unit(1, Vector2.ZERO)
+	# 128 men leaves plenty of soldiers for the widened rank (frontage 15 -> 30 files,
+	# well under 128), so explicatio isn't capped by the count and halve(double(f)) == f
+	# exactly. (A small count where widened_files hits its single-rank cap wouldn't round-trip.)
+	u.max_soldiers = 128
+	var b := _battle([u])
+	var start: int = UnitFormation.frontage(u)
+	b.enqueue_file_double([1], 1)
+	b.enqueue_file_double([1], -1)
+	assert_eq(UnitFormation.frontage(u), start, "widen then narrow returns to the start width")
+
+
+func test_explicatio_is_capped_at_a_single_rank() -> void:
+	# widened_files caps at the live soldier count: a depleted unit can't widen past one rank.
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 120
+	u.soldiers = 10                # fewer men than double the auto frontage
+	var b := _battle([u])
+	b.enqueue_file_double([1], 1)
+	assert_eq(UnitFormation.frontage(u), 10, "widening can't exceed the live soldier count")
+
+
+func test_duplicatio_floors_at_one_file() -> void:
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 120
+	var b := _battle([u])
+	u.set_frontage(1)
+	b.enqueue_file_double([1], -1)
+	assert_eq(UnitFormation.frontage(u), 1, "narrowing can't go below a single column")
+
+
+func test_file_double_apply_is_idempotent_under_tick_reapplication() -> void:
+	# The physics tick re-applies every pending order; an absolute target makes the
+	# second application a no-op (a delta would double again).
+	var u := _unit(1, Vector2.ZERO)
+	u.max_soldiers = 120
+	var b := _battle([u])
+	var start: int = UnitFormation.frontage(u)
+	b.enqueue_file_double([1], 1)
+	for o in b._pending_orders:
+		b._apply_order_cmd(o)   # the tick drains and re-applies
+	assert_eq(UnitFormation.frontage(u), start * 2,
+		"re-applying the recorded order leaves the width unchanged (idempotent)")
+
+
 # --- drag-to-form-up ------------------------------------
 
 func test_enqueue_form_up_sets_destination_facing_and_width() -> void:

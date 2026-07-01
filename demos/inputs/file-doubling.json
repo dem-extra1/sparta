@@ -1,0 +1,13 @@
+{
+  "_comment": "File-doubling demo (drill mode -- player army only, no enemy, no auto-win): zoom on the Spearmen block (seed 12345 at ~500,300), select it, press N for DUPLICATIO -- alternate files tuck in behind their neighbours, halving the frontage and doubling the depth (a deeper, narrower column). Hold, then press B for EXPLICATIO -- each file splits and the rear half steps out laterally, doubling the frontage and halving the depth (back toward the wide line). Nobody teleports: the soldier bodies ease into the reshaped slots at jog speed. Driven live through the real SelectionManager by tools/demo/DemoInputRecorder.gd; world coordinates; physics ticks (60/s).",
+  "seed": "12345",
+  "drill": true,
+  "camera": [
+    {"tick": 0, "x": 500.0, "y": 300.0, "zoom": 2.0}
+  ],
+  "steps": [
+    {"tick": 10,  "click": [500, 300]},
+    {"tick": 40,  "key": "N"},
+    {"tick": 150, "key": "B"}
+  ]
+}

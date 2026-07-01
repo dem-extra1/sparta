@@ -366,7 +366,7 @@ func _refresh_hint() -> void:
 		if keys != "":
 			keys += "/"
 		keys += OS.get_keycode_string(Settings.order_binding(entry["slug"]))
-	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Normal)   •   WASD / two-finger pan   •   wheel / pinch zoom   •   P pause   •   hold Space show orders" % keys
+	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Square/Normal)   •   O square   •   WASD / two-finger pan   •   wheel / pinch zoom   •   P pause   •   hold Space show orders" % keys
 
 
 ## Dispatch a Menu popup selection by its stable item id.
@@ -647,6 +647,7 @@ func _ctrl_bar_update_formation(unit) -> void:
 		UnitRef.FORMATION_NORMAL: "Normal",
 		UnitRef.FORMATION_TIGHT: "Tight",
 		UnitRef.FORMATION_LOOSE: "Loose",
+		UnitRef.FORMATION_SQUARE: "Square",
 	}
 	_ctrl_formation_btn.text = names.get(unit.formation_mode, "Formation") + " ▾"
 
@@ -733,6 +734,7 @@ func _build_ctrl_formation_menu() -> Control:
 		{"mode": UnitRef.FORMATION_NORMAL, "label": "Normal"},
 		{"mode": UnitRef.FORMATION_TIGHT, "label": "Tight"},
 		{"mode": UnitRef.FORMATION_LOOSE, "label": "Loose"},
+		{"mode": UnitRef.FORMATION_SQUARE, "label": "Square"},
 	]
 	for entry: Dictionary in entries:
 		var mode: int = entry["mode"]
@@ -776,6 +778,7 @@ func _on_formation_popup_id(id: int) -> void:
 		UnitRef.FORMATION_NORMAL: "Normal",
 		UnitRef.FORMATION_TIGHT: "Tight",
 		UnitRef.FORMATION_LOOSE: "Loose",
+		UnitRef.FORMATION_SQUARE: "Square",
 	}
 	_ctrl_formation_btn.text = names.get(id, "Formation") + " ▾"
 
