@@ -76,7 +76,8 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 		# momentum (eta 1), a turned-aside blow a fraction (ETA_DEFENDED), and a heavier body
 		# (high mass) is shoved less. So a charging horse throws foot back hard while shrugging
 		# off shoves, and a blocked spear wall still pushes a stalled enemy back. The body holds
-		# the push and the slot-spring eases it back. Velocity only -- never a position snap.
+		# the push, then decelerates and returns to its slot under bounded arrival force.
+		# Velocity only -- never a position snap.
 		var eta: float = 1.0 if landed else SoldierCombat.ETA_DEFENDED
 		var impulse_mag: float = SoldierCombat.knockback_impulse(my_prof["lethality"], c, en_prof["mass"], eta)
 		# Bracing: a front-facing, set, deep file resists a shove with the whole column's

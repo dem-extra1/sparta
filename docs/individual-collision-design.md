@@ -115,7 +115,7 @@ verified before the next phase builds on it.
    formation each tick, so the soldiers hold formation and deform at contact rather
    than wandering as free bodies.
 4. **Persistent bodies + combat at the individual level.** Give soldiers persistent
-   dynamics — they arrive at their slots while separating (a spring toward the slot
+   dynamics — they arrive at their slots while separating (bounded "arrive" steering
    instead of the current per-tick re-seed), so cohesion is emergent and soldiers can
    be displaced and hold the displacement. Then melee and missiles resolve against
    soldiers, so flanking and screening fall out of geometry. This is the first
@@ -127,9 +127,9 @@ verified before the next phase builds on it.
    [DONE]** lands two non-authoritative foundations: (i) the combat math (per-type
    profile, charge term, facing gate, opposed land contest, and wound) as pure,
    unit-tested functions on `Unit`, and (ii) **persistent soldier-body dynamics** —
-   the engaged front-rank bodies spring toward their slots and integrate their own
-   velocity (`step_sim_soldiers`), so a body knocked back in melee holds the
-   displacement and eases back instead of re-seeding onto formation each tick (the
+   the engaged front-rank bodies arrive at their slots under bounded force and integrate
+   their own velocity (`step_sim_soldiers`), so a body knocked back in melee holds the
+   displacement and returns instead of re-seeding onto formation each tick (the
    unengaged bulk feeds the unit's march velocity forward, tracking its slots at
    velocity with no teleport — #270). The regiment circle still resolves
    casualties, exactly as phase 1 added the soldier-body state before later phases

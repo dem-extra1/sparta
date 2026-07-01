@@ -226,8 +226,8 @@ $$J = J_0\,\frac{\ell_A\,(1 + c)}{m_D}\;\eta,
 
 $J_0 > 0$ is a base impulse scale, and $\eta$ is the fraction of momentum
 transmitted — $\eta_{\mathrm{def}}$ for a defended blow, $1$ for a clean landing.
-The struck soldier is displaced by $J\,\hat{u}_{A\to D}$; the formation spring then
-reels it back over the following ticks. A blocked blow draws no blood but still
+The struck soldier is displaced by $J\,\hat{u}_{A\to D}$; the formation's bounded
+arrival dynamics then decelerate and return it over the following ticks. A blocked blow draws no blood but still
 shoves — which is how a spear wall pushes a stalled enemy back even when it can't
 wound it.
 

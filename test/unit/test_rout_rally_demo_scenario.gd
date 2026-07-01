@@ -36,6 +36,13 @@ func _rout_time_ticks() -> int:
 
 
 func _spawn_rout_rally_battle() -> void:
+	# Seed the battle deterministically, exactly as the demo does (rout-rally-recover.json
+	# carries seed "12345"). Battle._ready() calls Replay.start_recording(), which consumes
+	# forced_seed into the RNG stream. Without this the scenario's combat rolls draw from
+	# whatever RNG state earlier tests left, so the rout/rally arc varies run to run and can
+	# flake (an unlucky casualty streak grinds the router below the shatter floor or keeps it
+	# in contact at timer expiry, so it shatters instead of rallying). Seeding pins the arc.
+	Replay.forced_seed = 12345
 	var battle: Node = load("res://scenes/Battle.tscn").instantiate()
 	_battle = battle
 	# The exact matchup from demos/inputs/rout-rally-recover.json.

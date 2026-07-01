@@ -1,0 +1,12 @@
+{
+  "_comment": "Arrival-dynamics (anti-spring) demo: a cavalry wedge charges head-on into a braced infantry line. On contact the melee knockback shoves the struck front-rank bodies backward; under the new bounded arrival dynamics each shoved body decelerates and returns to its slot under real force -- a knockback-and-recover with NO spring rebound, no wobble, no oscillation. Camera frames the contact line close so the smooth settle of individual bodies reads on screen. Scenario + seed make it deterministic; no player input needed.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 430, "count": 120},
+    {"team": 1, "type": "Cavalry", "x": 800, "y": 620, "count": 80}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 500.0, "zoom": 1.6}
+  ],
+  "steps": []
+}

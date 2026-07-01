@@ -1,19 +1,33 @@
 class_name SoldierBodies
 ## Persistent per-soldier body dynamics (phase 4), extracted from Unit.gd. Every body
-## accelerates toward its formation slot and integrates its own velocity — no body ever
-## teleports. An engaged front-rank body knocked back by melee HOLDS the displacement and
-## eases back rather than snapping, and feeds its friendly-avoidance steering velocity
-## forward so it drifts off a crowding friend; the unengaged bulk feeds the unit's march
-## velocity forward so it tracks its moving slots with no lag, easing onto a reformed slot
-## instead of snapping. Operates on a Unit's `_sim_soldier_pos` / `_sim_body_vel` /
-## `_sim_steer` (the state stays on the unit, where the render, steering, and melee read
-## it). Deterministic and order-free across soldiers, no RNG — replay-safe like the rest
-## of the soldier layer.
+## ARRIVES at its formation slot under real, bounded force — it accelerates toward the
+## slot at the unit's own acceleration and decelerates to land there with ~zero velocity,
+## no overshoot and no oscillation (classic "arrive" steering, not a spring). No body ever
+## teleports: position only ever changes by velocity * delta. An engaged front-rank body
+## knocked back by melee HOLDS the displacement, then decelerates and returns under bounded
+## force — a real knockback-and-recover, not a spring rebound — and feeds its
+## friendly-avoidance steering velocity forward so it drifts off a crowding friend; the
+## unengaged bulk feeds the unit's march velocity forward so it tracks its moving slots
+## with no lag, easing onto a reformed slot instead of snapping. Operates on a Unit's
+## `_sim_soldier_pos` / `_sim_body_vel` / `_sim_steer` (the state stays on the unit, where
+## the render, steering, and melee read it). Deterministic and order-free across soldiers,
+## no RNG — replay-safe like the rest of the soldier layer.
 
-# Near-critically-damped arrival spring (DAMPING ~ 2*sqrt(STIFFNESS)): a body eases
-# onto its slot without overshoot or oscillation.
-const SPRING_STIFFNESS: float = 120.0
-const SPRING_DAMPING: float = 22.0
+# Floor on the arrival acceleration (world units/s^2). A body accelerates toward its slot
+# at max(unit.accel, this) and decelerates to arrive at rest, so a body shoved off formation
+# returns under a real force ramp rather than snapping. The floor keeps reform brisk even
+# for a very-low-accel unit type: a ~15 u shove recovers over ~1-2 s at 30 u/s^2, not 5+.
+const BODY_ACCEL_FLOOR: float = 30.0
+# Below this distance (world units) a body counts as on its slot — the arrival target
+# collapses to the feed-forward velocity so a settled body doesn't jitter around the slot.
+# A twentieth of a pixel is far below anything the eye resolves, so a body inside this band
+# is visually on its mark; it just stops steering so discrete-step rounding can't drive a
+# sub-pixel oscillation around the exact point.
+const ARRIVE_EPS: float = 0.05
+# Guard for the `to_slot / dist` direction normalisation: below this distance the body is
+# on the slot for all purposes and dividing would be numerically meaningless. Shared by the
+# inside-band arrival aim and the post-step inbound clamp so they gate on the same threshold.
+const MIN_DIST: float = 1e-6
 # Below this body speed (px/s) the render treats a body as at rest and the unit's marks
 # can skip their per-frame MultiMesh rewrite — far under what the eye resolves at 60 fps.
 const REST_SPEED: float = 0.5
@@ -43,11 +57,11 @@ static func seed(unit: Unit) -> void:
 	unit._render_dirty = true   # fresh bodies need an initial draw
 
 
-## Advance a unit's persistent bodies one fixed step. Every body springs toward its slot
-## and integrates its velocity; the unengaged bulk additionally feeds the unit's march
-## velocity forward, which cancels the lag a plain spring would give a moving formation
-## (engaged regiments are ~stationary in melee, so their feed-forward is zero). Resizes
-## to the live soldier count first — a casualty trims the rear bodies; the first call
+## Advance a unit's persistent bodies one fixed step. Every body arrives at its slot under
+## bounded force and integrates its velocity; the unengaged bulk additionally feeds the
+## unit's march velocity forward, which cancels the lag a slot-only target would give a
+## moving formation (engaged regiments are ~stationary in melee, so their feed-forward is
+## zero). Resizes to the live soldier count first — a casualty trims the rear bodies; the first call
 ## (empty arrays) seeds every body on its slot at rest. Order-free across soldiers; driven
 ## by the fixed physics delta, so it reproduces on replay.
 static func step(unit: Unit, delta: float) -> void:
@@ -56,7 +70,7 @@ static func step(unit: Unit, delta: float) -> void:
 	var old_n: int = unit._sim_soldier_pos.size()
 	if old_n != n:
 		# resize trims/extends at the tail (rear bodies); seed any newly-added body on
-		# its slot at rest, so it never springs in from the array default (0, 0).
+		# its slot at rest, so it never accelerates in from the array default (0, 0).
 		unit._sim_soldier_pos.resize(n)
 		unit._sim_body_vel.resize(n)
 		for j in range(old_n, n):
@@ -97,7 +111,7 @@ static func step(unit: Unit, delta: float) -> void:
 		unit._sim_soldier_facing.fill(unit.facing)
 	# A felled body rises on its own: decay its prone timer toward 0 each tick. Stamina
 	# regens during the same pass; rising from prone costs KAPPA_P on the tick it happens.
-	# The body still springs to its slot below (it's down, not removed).
+	# The body still arrives at its slot below (it's down, not removed).
 	for p in range(n):
 		var was_prone: bool = unit._sim_prone[p] > 0.0
 		unit._sim_prone[p] = maxf(0.0, unit._sim_prone[p] - delta)
@@ -109,40 +123,87 @@ static func step(unit: Unit, delta: float) -> void:
 	var engaged := {}
 	for idx in unit.engaged_soldier_indices(n):
 		engaged[idx] = true
-	# No body ever teleports: every body accelerates toward its slot and integrates its
-	# own velocity (semi-implicit Euler, fixed delta), so position only ever changes by
-	# velocity * delta.
+	# No body ever teleports: every body steers toward a desired velocity under bounded
+	# acceleration and integrates its own velocity (fixed delta), so position only ever
+	# changes by velocity * delta.
+	var body_accel: float = maxf(unit.accel, BODY_ACCEL_FLOOR)
+	# Cap the arrival approach at the unit's jog pace (not walk, not the move_speed sprint):
+	# reforming and recovering from a knockback is a brisk jog, never a flat-out run, and the
+	# same ceiling applies to engaged and unengaged bodies alike. The idle/reform jog cap
+	# below enforces the same ceiling on the integrated velocity for a stationary unit; using
+	# jog here keeps the arrival target consistent with it. A body that needs to move faster
+	# than jog does so only via the march feed-forward, which is added on top and uncapped.
+	var max_arrive: float = unit.jog_speed
 	for i in range(n):
-		# Damp around a feed-forward velocity. For the marching bulk that is the unit's
-		# march velocity (the rate its formation slots translate), so a body keeps up with
-		# zero lag and eases onto a reformed or rotated slot over a few frames instead of
-		# snapping to it. For an engaged front-rank body it is the friendly-avoidance
-		# steering velocity (zero when no friendly crowds it, leaving the unchanged
-		# near-critically-damped hold-and-recover spring that lets a body keep a knockback
-		# push and ease back). (`_approach_velocity` is itself zero while a unit stands
-		# idle, so an idle bulk eases onto its slots, not drifts.)
-		# Engaged front-rank bodies are ~stationary in melee, so their feed-forward is just
-		# the friendly-avoidance steering. The unengaged bulk feeds the unit's march velocity
-		# forward, PLUS any friendly-contact steering (phase 5): a marching regiment overlapping
-		# a friendly steers its contact bodies off formation while still keeping up with the
-		# march, so the body->regiment coupling slides the two apart. _sim_steer is zero for any
-		# body not gathered by the steering pass this tick (it clears all steer first), so this
-		# reduces to the plain march for the uncrowded bulk.
+		# The desired velocity is a feed-forward plus an arrival term toward the slot. The
+		# feed-forward is what the slot itself is doing: for the marching bulk that is the
+		# unit's march velocity (the rate its formation slots translate), so a body keeps up
+		# with zero lag and arrives on a reformed or rotated slot over a few frames instead of
+		# snapping to it. For an engaged front-rank body it is the friendly-avoidance steering
+		# velocity (zero when no friendly crowds it, leaving the pure hold-and-recover arrival
+		# that lets a body keep a knockback push and return under bounded force).
+		# (`_approach_velocity` is itself zero while a unit stands idle, so an idle bulk
+		# arrives onto its slots, not drifts.)
+		# The unengaged bulk feeds the unit's march velocity forward, PLUS any friendly-contact
+		# steering (phase 5): a marching regiment overlapping a friendly steers its contact
+		# bodies off formation while still keeping up with the march, so the body->regiment
+		# coupling slides the two apart. _sim_steer is zero for any body not gathered by the
+		# steering pass this tick (it clears all steer first), so this reduces to the plain
+		# march for the uncrowded bulk.
 		var feed_forward: Vector2 = unit._sim_steer[i] if engaged.has(i) \
 				else unit._approach_velocity + unit._sim_steer[i]
 		# During an in-place turn the slot targets rotate with unit.facing, which would drag
-		# bodies to intermediate positions and back. Zero the restoring force so bodies stay at
-		# their current positions; the damping term still bleeds off any existing velocity, so
-		# they settle exactly in place. This covers the idle drill turns (conversio, quarter-turn,
-		# wheel) AND the engage re-face (a fighting unit turning its front onto a new enemy).
+		# bodies to intermediate positions and back. Drop the arrival term so bodies aim only at
+		# the feed-forward (~zero for a turn in place); they decelerate to rest where they stand
+		# instead of chasing the swinging slots. This covers the idle drill turns (conversio,
+		# quarter-turn, wheel) AND the engage re-face (a fighting unit turning its front onto a
+		# new enemy).
 		var turning: bool = unit._conversio_target != Vector2.ZERO \
 				or unit._quarter_target != Vector2.ZERO \
 				or unit._wheel_target != Vector2.ZERO \
 				or unit._engage_turn_target != Vector2.ZERO
 		var to_slot: Vector2 = Vector2.ZERO if turning \
 				else slots[i] - unit._sim_soldier_pos[i]
-		var accel: Vector2 = to_slot * SPRING_STIFFNESS - (unit._sim_body_vel[i] - feed_forward) * SPRING_DAMPING
-		unit._sim_body_vel[i] += accel * delta
+		# Arrival: approach the slot at a speed that decelerates to 0 by the time the body
+		# reaches it (v = sqrt(2 a d)), capped at the unit's jog pace, then move the body's
+		# velocity toward that desired velocity at the bounded acceleration. No spring, so no
+		# overshoot and no oscillation -- a body only ever slows as it nears the slot.
+		var desired_vel: Vector2 = feed_forward
+		var dist: float = to_slot.length()
+		if dist > ARRIVE_EPS:
+			# v = sqrt(2 a d) decelerates to 0 exactly at the slot in continuous time. The extra
+			# dist/delta cap keeps the DESIRED velocity from asking for more than the remaining
+			# distance in one tick; at the fixed 1/60 delta and any body_accel <= 90 wu/s^2 the
+			# sqrt term is already the tighter of the two, so this inner cap is a cheap safety net
+			# that rarely binds -- the real overshoot guard is the post-step inbound clamp below,
+			# which bounds the INTEGRATED velocity (the desired cap can't stop a body carrying
+			# residual inbound speed from an earlier, faster tick).
+			var arrive_speed: float = minf(max_arrive, sqrt(2.0 * body_accel * dist))
+			if delta > 0.0:
+				arrive_speed = minf(arrive_speed, dist / delta)
+			desired_vel += (to_slot / dist) * arrive_speed
+		elif dist > MIN_DIST and delta > 0.0:
+			# Inside the on-slot band, aim to land exactly this tick (dist/delta is tiny here),
+			# so a body coasting in with residual speed is brought to the slot instead of
+			# drifting through it and having to turn around -- the last guard against a
+			# sub-pixel oscillation around the exact point.
+			desired_vel += (to_slot / dist) * (dist / delta)
+		var new_vel: Vector2 = unit._sim_body_vel[i].move_toward(desired_vel, body_accel * delta)
+		# The sqrt(2 a d) arrival profile decelerates to 0 at the slot in continuous time, but
+		# its slope steepens near the slot faster than a bounded decel can follow, so a body
+		# arriving with residual inbound speed (built up from the previous tick's move_toward)
+		# would coast a hair past and start a tiny oscillation. Clamp the arrival component
+		# (velocity relative to the feed-forward) so it advances at most the remaining distance
+		# this tick, for any positive distance -- the body lands exactly on the slot instead of
+		# coasting through it. No overshoot, no oscillation.
+		if not turning and delta > 0.0 and dist > MIN_DIST:
+			var dir: Vector2 = to_slot / dist
+			var arrival_vel: Vector2 = new_vel - feed_forward
+			var inbound: float = arrival_vel.dot(dir)
+			var max_inbound: float = dist / delta
+			if inbound > max_inbound:
+				new_vel -= dir * (inbound - max_inbound)
+		unit._sim_body_vel[i] = new_vel
 		# Cap individual soldier speed to this unit's own jog pace while the unit is
 		# stationary: during the reform hold phase AND whenever a formation reshape
 		# (frontage change, centre pivot) plays out on an idle unit. A marching unit is
@@ -207,9 +268,9 @@ static func couple(unit: Unit, delta: float) -> void:
 	if n == 0:
 		return
 	# During a wheel the maneuver authoritatively slides `position` along the hinge arc while the
-	# bodies spring onto the swinging slots a few frames behind. Their centroid therefore lags the
+	# bodies arrive onto the swinging slots a few frames behind. Their centroid therefore lags the
 	# slot centroid, so coupling would read that lag as off-formation drift and drag the centre
-	# BACKWARD against the arc — pulling the standing flank off its hinge. Skip it; the spring
+	# BACKWARD against the arc — pulling the standing flank off its hinge. Skip it; the arrival
 	# alone brings the bodies onto the arc, and coupling resumes once the wheel completes.
 	if unit._wheel_target != Vector2.ZERO:
 		unit._body_follow_vel = Vector2.ZERO

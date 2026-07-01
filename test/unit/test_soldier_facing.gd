@@ -185,7 +185,7 @@ func test_about_face_relabel_preserves_world_positions() -> void:
 
 func test_about_face_leaves_bodies_on_their_slots() -> void:
 	# On a full (centrosymmetric) grid, flipping facing 180° and relabelling the bodies
-	# lands every body exactly on its new-facing slot, so the arrival spring has ~zero
+	# lands every body exactly on its new-facing slot, so the arrival term has ~zero
 	# error and the block does not surge across itself after the turn.
 	var u := _make_unit()
 	u.frontage_override = 8        # 8 files x 5 ranks = 40: a full, centrosymmetric grid
@@ -195,7 +195,7 @@ func test_about_face_leaves_bodies_on_their_slots() -> void:
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	for i in range(u._sim_soldier_pos.size()):
 		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
-			"body %d sits on its reversed-facing slot (no post-turn spring)" % i)
+			"body %d sits on its reversed-facing slot (no post-turn surge)" % i)
 
 
 # --- Quarter-turn (90° in place) --------------------------------------------
@@ -264,7 +264,7 @@ func test_conversio_ignored_during_quarter_turn() -> void:
 func test_quarter_turn_keeps_every_body_exactly_in_place() -> void:
 	# The grid does NOT reorganize: completing a quarter-turn turns the men's facing but moves
 	# nobody. _formation_angle absorbs the 90° so soldier_world_slots reproduces the men's
-	# pre-turn positions exactly -- the arrival spring sees ~zero error, no surge.
+	# pre-turn positions exactly -- the arrival term sees ~zero error, no surge.
 	var u := _make_unit()
 	u.frontage_override = 8                 # 8 x 5 full grid (mechanism is shape-independent)
 	u.seed_sim_soldiers()
@@ -277,7 +277,7 @@ func test_quarter_turn_keeps_every_body_exactly_in_place() -> void:
 	for i in range(before.size()):
 		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
 			"body %d stayed exactly where it stood" % i)
-	# And every body still sits on its slot under the new heading (zero spring error).
+	# And every body still sits on its slot under the new heading (zero arrival error).
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	for i in range(slots.size()):
 		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
@@ -304,7 +304,7 @@ func test_quarter_turn_no_surge_on_a_partial_grid() -> void:
 
 func test_quarter_turn_interrupt_settles_partial_rotation() -> void:
 	# An interrupt mid-turn (facing only part way) still settles the offset to the partial
-	# angle, so the bodies don't surge when the spring re-engages.
+	# angle, so the bodies don't surge when the arrival re-engages.
 	var u := _make_unit()
 	u.seed_sim_soldiers()
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()

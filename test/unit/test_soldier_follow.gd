@@ -120,12 +120,17 @@ func test_friendly_regiments_separate_via_soldier_layer() -> void:
 	var b := _block(1, 0, 12, Vector2(4.0, 0.0))   # blocks heavily overlap
 	var start_gap: float = a.position.distance_to(b.position)
 	var start_cross: float = _min_cross(a, b)
-	for f in range(200):
+	# Bodies now separate under bounded arrival/steering acceleration rather than an instant
+	# velocity snap, so give the sub-tick more frames to push the blocks apart. As the blocks
+	# slide past each other the two closest soldiers stay near contact, so the dominant
+	# separation signal is the centres sliding off (a large gap growth); the min cross-distance
+	# grows more modestly.
+	for f in range(1200):
 		_soldier_tick([a, b], f + 1)
-	assert_gt(_min_cross(a, b), start_cross + 1.0,
-			"the interpenetrating soldiers are pushed substantially apart")
-	assert_gt(a.position.distance_to(b.position), start_gap + 1.0,
-			"and the regiment centers slide off each other")
+	assert_gt(_min_cross(a, b), start_cross + 0.5,
+			"the interpenetrating soldiers are pushed apart")
+	assert_gt(a.position.distance_to(b.position), start_gap + 2.0,
+			"and the regiment centers slide substantially off each other")
 	assert_lt(a.position.x, b.position.x, "they fan apart along their offset, not through each other")
 
 
@@ -145,51 +150,63 @@ func test_soldier_layer_separation_is_deterministic() -> void:
 # --- jog-speed cap during idle reshape (frontage changes, centre pivots) ------
 
 func test_idle_soldier_bodies_capped_at_jog_speed() -> void:
-	# Displace bodies far from their slots (simulating a large frontage change).
-	# SoldierBodies.step() must not let any soldier body exceed the unit's own
-	# jog_speed in a single tick when the unit is IDLE — orderly reshape, no sprinting.
+	# Displace bodies far from their slots (simulating a large frontage change) and let the
+	# bounded arrival ramp their speed up over many ticks. SoldierBodies.step() must never
+	# let any soldier body exceed the unit's own jog_speed when the unit is IDLE — orderly
+	# reshape, no sprinting.
 	var u := _make_unit()
 	u.state = Unit.State.IDLE
 	for i in range(u._sim_soldier_pos.size()):
 		u._sim_soldier_pos[i] += Vector2(200.0, 0.0)   # far from slots
-	SoldierBodies.step(u, DELTA)
-	for i in range(u._sim_body_vel.size()):
-		assert_lte(u._sim_body_vel[i].length(), u.jog_speed + 1e-4,
-				"idle soldier speed is capped at jog_speed during reshape")
+	for _s in range(240):   # ~4 s: long enough for arrival to reach top speed
+		SoldierBodies.step(u, DELTA)
+		for i in range(u._sim_body_vel.size()):
+			assert_lte(u._sim_body_vel[i].length(), u.jog_speed + 1e-4,
+					"idle soldier speed is capped at jog_speed during reshape")
 
 
 func test_moving_soldier_bodies_not_speed_capped() -> void:
-	# A marching unit's bodies must be allowed to exceed jog_speed so they
-	# keep up with moving slots. The jog cap must NOT apply when state == MOVING.
+	# A marching unit's bodies must be allowed to exceed jog_speed so they keep up with
+	# moving slots: the march feed-forward is already at full jog, and the arrival term
+	# toward a far lateral slot stacks on top of it. The jog cap must NOT apply when
+	# state == MOVING, so the combined speed can exceed jog. Ramp over several ticks so
+	# the bounded arrival builds the lateral component up.
 	var u := _make_unit()
 	u.state = Unit.State.MOVING
-	u._approach_velocity = Vector2(0.0, u.jog_speed)   # full jog already from march
+	var march := Vector2(0.0, u.jog_speed)             # full jog already from march
+	u._approach_velocity = march
 	for i in range(u._sim_soldier_pos.size()):
 		u._sim_soldier_pos[i] += Vector2(200.0, 0.0)   # large lateral offset adds to march speed
-	SoldierBodies.step(u, DELTA)
 	var any_above_cap := false
-	for i in range(u._sim_body_vel.size()):
-		# +1.0 slack: the spring yields ~403 u/s for a 200-unit offset, so any
-		# value above jog_speed+1 confirms the cap is absent. 1e-4 would also work,
-		# but 1.0 makes the intent ("well above, not barely above") more readable.
-		if u._sim_body_vel[i].length() > u.jog_speed + 1.0:
-			any_above_cap = true
+	for _s in range(240):   # ~4 s: let the bounded arrival ramp the lateral term well in
+		u.position += march * DELTA                    # slots translate with the march...
+		u._approach_velocity = march                   # ...and the feed-forward tracks it
+		SoldierBodies.step(u, DELTA)
+		for i in range(u._sim_body_vel.size()):
+			# march (jog) downfield + lateral arrival (up to jog) toward the slot combine
+			# to well above jog overall, which a capped body could never reach.
+			if u._sim_body_vel[i].length() > u.jog_speed + 1.0:
+				any_above_cap = true
 	assert_true(any_above_cap, "marching bodies can exceed jog speed — no cap while MOVING")
 
 
 # --- backward-walk speed cap during a maneuver --------------------------------
 
-## Set up an idle unit whose bodies are displaced so the spring pulls every body
-## ALONG the given displacement direction, then step once and return the peak body
-## speed along the facing axis (component of velocity in the direction of travel).
+## Set up an idle unit whose bodies are displaced so arrival pulls every body ALONG the
+## given displacement direction, ramp for enough ticks to reach the capped top speed, and
+## return the peak body speed along the direction of travel (component of velocity toward
+## the slot) seen across the run. The displacement is far enough that the arrival term is
+## jog-capped, so the steady-state speed is set by whichever cap applies (forward jog vs.
+## backward jog*fraction), not by the arrival's decel taper.
 func _peak_speed_along_travel(u: Unit, displace: Vector2) -> float:
 	for i in range(u._sim_soldier_pos.size()):
 		u._sim_soldier_pos[i] += displace
-	SoldierBodies.step(u, DELTA)
 	var travel: Vector2 = (-displace).normalized()   # slot is opposite the displacement
 	var peak := 0.0
-	for i in range(u._sim_body_vel.size()):
-		peak = maxf(peak, u._sim_body_vel[i].dot(travel))
+	for _s in range(240):   # ~4 s: ramp the bounded arrival up to the capped top speed
+		SoldierBodies.step(u, DELTA)
+		for i in range(u._sim_body_vel.size()):
+			peak = maxf(peak, u._sim_body_vel[i].dot(travel))
 	return peak
 
 
@@ -197,7 +214,7 @@ func test_backward_moving_body_capped_slower_than_forward() -> void:
 	# facing = DOWN. A body whose slot lies BEHIND it (above, -y) must back up against
 	# its facing, and the cap slows that to jog_speed * back_speed_fraction. A body whose
 	# slot lies AHEAD (below, +y) steps forward and keeps the full jog cap. Same offset
-	# magnitude both ways, so the spring force is identical -- only the cap differs.
+	# magnitude both ways, so the arrival force is identical -- only the cap differs.
 	var back_u := _make_unit()
 	back_u.state = Unit.State.IDLE
 	# Displace bodies DOWN so their slots sit behind (above) them -> they back up.
@@ -228,7 +245,7 @@ func test_sideways_body_keeps_full_jog_cap() -> void:
 
 func test_diagonal_backward_body_stays_within_jog_cap() -> void:
 	# facing = DOWN. A body whose slot lies behind-and-to-the-side must back up AND sidestep
-	# at once, so the spring produces a velocity with both a backward and a sideways
+	# at once, so the arrival produces a velocity with both a backward and a sideways
 	# component. Capping the two axes independently could let the combined speed exceed jog;
 	# the final limit_length keeps total speed within the jog ceiling, while the backward
 	# axis is still slowed so the body isn't simply running at full jog.
@@ -237,17 +254,20 @@ func test_diagonal_backward_body_stays_within_jog_cap() -> void:
 	# Displace bodies DOWN-and-RIGHT so their slots sit behind-and-left -> back up + sidestep.
 	for i in range(u._sim_soldier_pos.size()):
 		u._sim_soldier_pos[i] += Vector2(200.0, 200.0)
-	SoldierBodies.step(u, DELTA)
 	var facing := Vector2.DOWN
-	for i in range(u._sim_body_vel.size()):
-		var v: Vector2 = u._sim_body_vel[i]
-		assert_lte(v.length(), u.jog_speed + 1e-3,
-				"a diagonal backward-and-sideways body stays within the jog ceiling")
-		# The backward (against-facing) axis is capped to the slower pace, so the body's
-		# reverse speed can't reach the full jog even though it's also sliding sideways.
-		var back_speed: float = -v.dot(facing)   # positive = backing up
-		assert_lte(back_speed, u.jog_speed * u.back_speed_fraction + 1e-3,
-				"and its backward-axis speed is still capped to the slower backward pace")
+	# Ramp the bounded arrival up to its capped top speed over several ticks, checking the
+	# cap holds every tick (not just after one step, where the body has barely accelerated).
+	for _s in range(120):
+		SoldierBodies.step(u, DELTA)
+		for i in range(u._sim_body_vel.size()):
+			var v: Vector2 = u._sim_body_vel[i]
+			assert_lte(v.length(), u.jog_speed + 1e-3,
+					"a diagonal backward-and-sideways body stays within the jog ceiling")
+			# The backward (against-facing) axis is capped to the slower pace, so the body's
+			# reverse speed can't reach the full jog even though it's also sliding sideways.
+			var back_speed: float = -v.dot(facing)   # positive = backing up
+			assert_lte(back_speed, u.jog_speed * u.back_speed_fraction + 1e-3,
+					"and its backward-axis speed is still capped to the slower backward pace")
 
 
 func test_backward_cap_is_deterministic() -> void:

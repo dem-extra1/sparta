@@ -102,7 +102,7 @@ static func accumulate(units: Array, frame: int) -> void:
 			var owner_a: Unit = sowners[a]
 			var owner_b: Unit = sowners[b]
 			if owner_a == owner_b:
-				continue   # intra-regiment spacing is the formation spring's job, not steering's
+				continue   # intra-regiment spacing is the formation arrival's job, not steering's
 			# Friendlies that pass cleanly through each other (a mover and an idle, or a
 			# relief pair) don't shove — the exemption that used to live in _separate().
 			if owner_a._separation_exempt(owner_b):
