@@ -125,9 +125,15 @@ const ORDER_CYCLE_CHARGE := 6
 #        better charge resistance, at the cost of a smaller footprint.
 # NORMAL: default spacing.
 # LOOSE: soldiers spread out — wider area coverage.
+# SQUARE: an anti-cavalry all-around stance (the hollow square / orbis / spear-ring
+#         schiltron). Soldiers face spears/shields outward on every side, so the unit
+#         presents no weak flank or rear to cavalry: the flank/rear damage multiplier
+#         no longer applies against it, and it braces a charge coming from ANY
+#         direction. The price is mobility (it crawls) and reduced offensive output.
 const FORMATION_NORMAL := 0
 const FORMATION_TIGHT := 1
 const FORMATION_LOOSE := 2
+const FORMATION_SQUARE := 3
 # In tight formation, shields reduce incoming missile damage by this fraction.
 const TIGHT_MISSILE_DEFENSE: float = 0.25
 # In tight formation, this fraction of a cavalry charge bonus is absorbed
@@ -136,6 +142,22 @@ const TIGHT_CHARGE_ABSORPTION: float = 0.55
 # Separation-radius scale factors per formation mode.
 const TIGHT_SEPARATION_SCALE: float = 0.75
 const LOOSE_SEPARATION_SCALE: float = 1.35
+# Anti-cavalry square (orbis / schiltron). Its defining trait is all-around defence:
+# no weak flank/rear facing vs cavalry. UnitCombat reads these (gated on in_square()):
+#   * a squared unit takes NO flank/rear damage multiplier -- an attack from any
+#     direction is treated as frontal (flank_multiplier returns 1.0). The ring
+#     presents spears/shields on every side.
+#   * a charge into the square backfires like set anti-cav spears from any direction --
+#     the same speed-scaled reversal, floored at SQUARE_CHARGE_FLOOR, so cavalry can't
+#     find an open side to hit at full impact.
+# The stance's cost: mobility (SQUARE_MOVE_FACTOR of pace) and offence
+# (SQUARE_ATTACK_FACTOR of melee/ranged damage) — a hunkered ring is slow and hits softer.
+const SQUARE_CHARGE_BACKFIRE: float = 0.5
+const SQUARE_CHARGE_FLOOR: float = 0.6
+const SQUARE_MOVE_FACTOR: float = 0.4
+const SQUARE_ATTACK_FACTOR: float = 0.7
+# The square packs to the same close-order floor as TIGHT (shields locked outward), so
+# it reuses TIGHT_SEPARATION_SCALE and keeps spacing_scale at 1.0.
 # Open-order grid-spacing scale. FORMATION_SPACING already sits at the historically
 # attested close-order / locked-shield floor (~0.45 m per man) -- there's no
 # historically grounded room to pack soldiers tighter than that, so TIGHT reuses the
@@ -809,6 +831,10 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		pace_speed = jog_speed
 	else:
 		pace_speed = walk_speed
+	# Anti-cavalry square: the ring shuffles as one hunkered body, so it crawls
+	# regardless of the pace picked above (no charging out of the square).
+	if formation_mode == FORMATION_SQUARE:
+		pace_speed *= SQUARE_MOVE_FACTOR
 	# Ramp toward the selected pace instead of snapping there -- a unit takes real time
 	# to build up to a pace (accel) and slows down rather than instantly stopping/downshifting
 	# (decel), per-type rates set from the loadout's panoply-weight-scaled accel_mps2/decel_mps2.
@@ -913,7 +939,7 @@ func _front_depth() -> float:
 func set_formation(mode: int) -> void:
 	formation_mode = mode
 	var base := _base_separation_radius
-	if mode == FORMATION_TIGHT:
+	if mode == FORMATION_TIGHT or mode == FORMATION_SQUARE:
 		separation_radius = base * TIGHT_SEPARATION_SCALE
 		spacing_scale = 1.0   # already at the historical close-order/locked-shield floor
 	elif mode == FORMATION_LOOSE:
@@ -931,10 +957,27 @@ func set_frontage(files: int) -> void:
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 
 
-## Multiplier applied to incoming ranged damage. Tight formation: shields raised,
-## reducing missile casualties. Normal/loose: no modifier.
+## Multiplier applied to incoming ranged damage. Tight formation: shields raised
+## overhead / to the front, reducing missile casualties. Square is deliberately NOT
+## given this bonus: its shields face outward at the horizon to meet a charge on every
+## side, not angled up against plunging arrows, so an orbis is no better against missiles
+## than an open line (arguably worse) -- its all-around bonus is against melee/charge, not
+## shot. Normal/loose: no modifier.
 func missile_defense_factor() -> float:
 	return 1.0 - TIGHT_MISSILE_DEFENSE if formation_mode == FORMATION_TIGHT else 1.0
+
+
+## True when the unit is holding the anti-cavalry square (orbis / schiltron): the
+## all-around defensive ring. Combat reads this to negate the flank/rear multiplier
+## and brace a charge from any direction; movement reads it for the mobility penalty.
+func in_square() -> bool:
+	return formation_mode == FORMATION_SQUARE
+
+
+## Offensive-output scale from the formation stance. The square hunkers to defend on
+## every side, so it hits softer (SQUARE_ATTACK_FACTOR); every other stance is 1.0.
+func formation_attack_factor() -> float:
+	return SQUARE_ATTACK_FACTOR if formation_mode == FORMATION_SQUARE else 1.0
 
 
 ## Push out of any overlapping unit so regiments form a solid line instead of
@@ -1526,6 +1569,8 @@ func formation_summary() -> String:
 			return "Tight"
 		FORMATION_LOOSE:
 			return "Loose"
+		FORMATION_SQUARE:
+			return "Square"
 		_:
 			return "Normal"
 

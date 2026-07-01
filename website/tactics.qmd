@@ -154,6 +154,41 @@ shorter weapons, landing the first blows as lines close (see below).
 your cavalry can get *around* to those flanks. Read the enemy's screen before you
 commit your horse.
 
+## Form square against cavalry
+
+When horse threatens a unit's flank or rear and you have no spear screen to spare,
+press <kbd>O</kbd> (for *orbis*) to form **Square** at once --- the hollow square /
+orbis / schiltron. (<kbd>O</kbd> jumps straight there, and the control bar's Square
+button does too; <kbd>T</kbd> also reaches it by cycling through Tight and Loose.) The
+soldiers face outward on every side, so the unit presents **no weak facing**: an
+attack from any direction lands as if it were frontal (the usual ×1.5 flank / ×2 rear
+bonus is gone), and a cavalry charge into the ring is braced and **backfires** whether
+it hits the front, a flank, or the rear. There is no open side for the horse to
+exploit.
+
+Square is a defensive commitment, not a free upgrade. While it holds, the unit
+**crawls** (it can't charge out) and **hits softer** (reduced offensive output). So:
+
+- **Square up early** --- before the charge lands, not as it connects. The mobility
+  penalty means a late square may not finish forming in time.
+- **Drop back to Normal** the moment the horse is beaten off or pulls away, or the
+  offence and mobility penalties will cost you against enemy foot.
+- **It's a fallback, not a replacement for spearmen.** A spear screen still blunts the
+  charge *and* keeps your line mobile and hitting hard; square is what you reach for
+  when a unit is caught in the open with cavalry on a bad angle.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/square.jpg">
+    <source src="media/square.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind &mdash; the unit holds where a rear-charged line would break.</figcaption>
+</figure>
+```
+
 ## Weapon reach
 
 Each weapon has an **effective reach** --- how close two units must get before they
