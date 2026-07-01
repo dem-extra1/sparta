@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "Docs-only change (adds .claude/skills/verify-via-state-dump/SKILL.md) with no gameplay-visible behavior to record."
+}
