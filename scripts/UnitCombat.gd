@@ -8,6 +8,15 @@ class_name UnitCombat
 ## in a fixed order, so battles stay replay-deterministic.
 
 
+## Extra morale debuff for a flank/rear attack, ON TOP OF the extra casualties it already
+## deals. A rear hit already kills more men (the flank multiplier scales the casualty count,
+## and rear blows bypass shield/active defence), and morale erosion tracks the casualty
+## count -- so the extra damage already costs extra morale. This knob adds a FURTHER morale
+## penalty scaled by how far past frontal the attack is; 0 keeps morale driven by casualties
+## alone (the default). Raise it later if flanking should shake morale beyond its body count.
+const REAR_MORALE_EXTRA: float = 0.0
+
+
 ## Physics-based cavalry charge multiplier: the bonus is the rider's IMPACT MOMENTUM, not
 ## a one-shot token. It scales with the component of the unit's approach velocity aimed
 ## straight at the target -- so a fast, head-on gallop lands the full bonus, a
@@ -143,12 +152,15 @@ static func take_casualties(u: Unit, amount: int, attacker: Unit) -> void:
 
 
 ## Apply the consequences of `total` casualties ALREADY subtracted from `u.soldiers`:
-## morale erosion (scaled by `morale_flank`), the thin-regiment crumble, death/rout
-## thresholds, and the cosmetic fallen markers. Shared by the regiment-formula path
-## (take_casualties) and the per-soldier melee path (which compacts the dead bodies and
-## decrements `soldiers` itself, then calls this with morale_flank 1.0).
+## morale erosion, the thin-regiment crumble, death/rout thresholds, and the cosmetic fallen
+## markers. Shared by the regiment-formula path (take_casualties) and the per-soldier melee
+## path (which compacts the dead bodies and decrements `soldiers` itself). Morale erosion is
+## driven by the casualty COUNT; `morale_flank` adds only the OPTIONAL extra rear/flank debuff
+## gated by REAR_MORALE_EXTRA (0 by default), so a rear attack shakes morale through its higher
+## body count, not a double-counted multiplier. Callers pass their flank (1.0 = frontal/melee).
 static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flank: float) -> void:
-	u.morale -= float(total) * 0.12 * morale_flank
+	var morale_scale: float = 1.0 + REAR_MORALE_EXTRA * (morale_flank - 1.0)
+	u.morale -= float(total) * 0.12 * morale_scale
 	var ratio: float = float(u.soldiers) / float(u.max_soldiers)
 	if ratio < 0.4:
 		u.morale -= (0.4 - ratio) * 6.0   # crumble as a regiment thins out

@@ -97,17 +97,19 @@ func test_selection_is_deterministic() -> void:
 	assert_eq(da, db, "two identical volleys leave the identical set of survivors")
 
 
-func test_rear_volley_erodes_morale_more_than_a_frontal_one() -> void:
-	# The morale_flank param must reach register_casualties: the same casualty count fired
-	# with a higher flank (a rear/flank volley) drops morale further than a frontal one.
+func test_morale_erosion_tracks_casualties_not_the_flank_multiplier() -> void:
+	# By default (REAR_MORALE_EXTRA = 0) a rear volley shakes morale only through its higher
+	# body count -- not a double-counted multiplier -- so the SAME casualty count erodes morale
+	# equally whatever morale_flank is passed. (A rear attack still hurts morale more in play,
+	# because it kills more men; that arrives via the count, not this knob.)
 	var front := _target(2, 20, Vector2(0, 0), Vector2.DOWN)
 	var rear := _target(3, 20, Vector2(0, 0), Vector2.DOWN)
 	var shooter := _shooter(1, Vector2(600, 400))
 	SoldierMelee.apply_ranged_casualties(front, shooter, 5, 1.0)
 	SoldierMelee.apply_ranged_casualties(rear, shooter, 5, 2.0)
 	assert_eq(front.soldiers, rear.soldiers, "same casualty count either way")
-	assert_lt(rear.morale, front.morale,
-		"the higher flank multiplier erodes morale more for the same number of dead")
+	assert_almost_eq(rear.morale, front.morale, 0.0001,
+		"equal casualties erode morale equally; the flank knob is off by default")
 
 
 func test_zero_casualties_is_a_no_op() -> void:
