@@ -29,6 +29,7 @@ const _ROWS: Array = [
 	["Group attack mode (focused/distributed)", "X"],
 	["— Formation & drill —", ""],
 	["Formation (Normal/Tight/Loose/Square)", "T"],
+	["Anti-cavalry square (toggle direct)", "O"],
 	["Line width (narrower/wider)", "[ / ]"],
 	["Form-up split mode", "Y"],
 	["About-face (180° in place)", "V"],

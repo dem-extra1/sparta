@@ -222,7 +222,7 @@ static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flan
 ## so an attack from ANY direction lands as a frontal hit (multiplier 1.0). This is
 ## the stance's defining trait — cavalry can't find an unprotected side to exploit.
 static func flank_multiplier(u: Unit, attacker: Unit) -> float:
-	if Unit.SQUARE_ALL_AROUND_DEFENSE and u.in_square():
+	if u.in_square():
 		return 1.0
 	var to_attacker: Vector2 = (attacker.position - u.position).normalized()
 	var d: float = u.facing.dot(to_attacker)

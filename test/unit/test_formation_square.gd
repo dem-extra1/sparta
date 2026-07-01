@@ -198,3 +198,81 @@ func test_cycle_formation_enqueues_the_next_mode() -> void:
 	sm._cycle_formation()
 	assert_eq(battle.last_formation, Unit.FORMATION_SQUARE,
 		"cycling from Loose enqueues Square")
+
+
+func _sm_with_unit(u: Unit):
+	# A SelectionManager wired under a stub Battle, with `u` selected -- the harness
+	# for the direct-select toggle tests.
+	const SM = preload("res://scripts/SelectionManager.gd")
+	var battle := _StubBattle.new()
+	add_child_autofree(battle)
+	var sm = SM.new()
+	battle.add_child(sm)
+	sm._select(u)
+	return [sm, battle]
+
+
+func test_toggle_square_jumps_straight_to_square_from_any_mode() -> void:
+	# Direct-select: O forms the square in one press, without cycling through
+	# Tight/Loose first -- from Normal AND from an unrelated mid-cycle mode.
+	var u1 := _make_unit()   # starts Normal
+	var pair1 = _sm_with_unit(u1)
+	pair1[0]._toggle_square()
+	assert_eq(pair1[1].last_formation, Unit.FORMATION_SQUARE,
+		"O jumps to Square from Normal in one press")
+
+	var u2 := _make_unit()
+	u2.set_formation(Unit.FORMATION_LOOSE)
+	var pair2 = _sm_with_unit(u2)
+	pair2[0]._toggle_square()
+	assert_eq(pair2[1].last_formation, Unit.FORMATION_SQUARE,
+		"O jumps to Square from Loose too (no cycling)")
+
+
+func test_toggle_square_drops_back_to_normal_when_already_squared() -> void:
+	# Pressing O again on an already-squared unit toggles the ring back off.
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var pair = _sm_with_unit(u)
+	pair[0]._toggle_square()
+	assert_eq(pair[1].last_formation, Unit.FORMATION_NORMAL,
+		"O on a squared unit drops back to Normal")
+
+
+func test_toggle_square_with_no_selection_is_a_no_op() -> void:
+	# The empty-selection guard: pressing O with nothing selected records nothing.
+	const SM = preload("res://scripts/SelectionManager.gd")
+	var battle := _StubBattle.new()
+	add_child_autofree(battle)
+	var sm = SM.new()
+	battle.add_child(sm)   # no unit selected
+	sm._toggle_square()
+	assert_eq(battle.last_formation, -999, "no selection -> nothing enqueued")
+
+
+func _key_event(keycode: int) -> InputEventKey:
+	var ev := InputEventKey.new()
+	ev.keycode = keycode
+	ev.pressed = true
+	return ev
+
+
+func test_o_key_dispatches_to_the_square_toggle() -> void:
+	# The O hotkey routes through the real key dispatcher straight to Square -- a
+	# direct anti-cav reaction, no cycling. (Covers the KEY_O dispatch branch.)
+	var u := _make_unit()   # Normal
+	var pair = _sm_with_unit(u)
+	var handled: bool = pair[0]._dispatch_key(_key_event(KEY_O))
+	assert_true(handled, "O is a known hotkey")
+	assert_eq(pair[1].last_formation, Unit.FORMATION_SQUARE,
+		"pressing O forms the square directly")
+
+
+func test_t_key_dispatches_to_the_formation_cycle() -> void:
+	# The T hotkey routes to the cycle (Normal -> Tight). Covers the KEY_T branch.
+	var u := _make_unit()   # Normal
+	var pair = _sm_with_unit(u)
+	var handled: bool = pair[0]._dispatch_key(_key_event(KEY_T))
+	assert_true(handled, "T is a known hotkey")
+	assert_eq(pair[1].last_formation, Unit.FORMATION_TIGHT,
+		"pressing T cycles Normal -> Tight")

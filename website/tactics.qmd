@@ -157,7 +157,9 @@ commit your horse.
 ## Form square against cavalry
 
 When horse threatens a unit's flank or rear and you have no spear screen to spare,
-press <kbd>T</kbd> to form **Square** --- the hollow square / orbis / schiltron. The
+press <kbd>O</kbd> (for *orbis*) to form **Square** at once --- the hollow square /
+orbis / schiltron. (<kbd>O</kbd> jumps straight there, and the control bar's Square
+button does too; <kbd>T</kbd> also reaches it by cycling through Tight and Loose.) The
 soldiers face outward on every side, so the unit presents **no weak facing**: an
 attack from any direction lands as if it were frontal (the usual ×1.5 flank / ×2 rear
 bonus is gone), and a cavalry charge into the ring is braced and **backfires** whether

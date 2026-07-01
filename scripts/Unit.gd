@@ -142,16 +142,15 @@ const TIGHT_CHARGE_ABSORPTION: float = 0.55
 const TIGHT_SEPARATION_SCALE: float = 0.75
 const LOOSE_SEPARATION_SCALE: float = 1.35
 # Anti-cavalry square (orbis / schiltron). Its defining trait is all-around defence:
-# no weak flank/rear facing vs cavalry. UnitCombat reads these:
-#   * SQUARE_ALL_AROUND_DEFENSE — while true, a squared unit takes NO flank/rear damage
-#     multiplier: an attack from any direction is treated as frontal (flank_multiplier
-#     returns 1.0). The ring presents spears/shields on every side.
-#   * a charge into the square backfires like set anti-cav spears from any direction —
+# no weak flank/rear facing vs cavalry. UnitCombat reads these (gated on in_square()):
+#   * a squared unit takes NO flank/rear damage multiplier -- an attack from any
+#     direction is treated as frontal (flank_multiplier returns 1.0). The ring
+#     presents spears/shields on every side.
+#   * a charge into the square backfires like set anti-cav spears from any direction --
 #     the same speed-scaled reversal, floored at SQUARE_CHARGE_FLOOR, so cavalry can't
 #     find an open side to hit at full impact.
 # The stance's cost: mobility (SQUARE_MOVE_FACTOR of pace) and offence
 # (SQUARE_ATTACK_FACTOR of melee/ranged damage) — a hunkered ring is slow and hits softer.
-const SQUARE_ALL_AROUND_DEFENSE: bool = true
 const SQUARE_CHARGE_BACKFIRE: float = 0.5
 const SQUARE_CHARGE_FLOOR: float = 0.6
 const SQUARE_MOVE_FACTOR: float = 0.4
@@ -886,8 +885,12 @@ func set_frontage(files: int) -> void:
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 
 
-## Multiplier applied to incoming ranged damage. Tight formation: shields raised,
-## reducing missile casualties. Normal/loose: no modifier.
+## Multiplier applied to incoming ranged damage. Tight formation: shields raised
+## overhead / to the front, reducing missile casualties. Square is deliberately NOT
+## given this bonus: its shields face outward at the horizon to meet a charge on every
+## side, not angled up against plunging arrows, so an orbis is no better against missiles
+## than an open line (arguably worse) -- its all-around bonus is against melee/charge, not
+## shot. Normal/loose: no modifier.
 func missile_defense_factor() -> float:
 	return 1.0 - TIGHT_MISSILE_DEFENSE if formation_mode == FORMATION_TIGHT else 1.0
 

@@ -1,5 +1,5 @@
 {
-  "_comment": "Anti-cavalry square demo: a lone player Infantry unit (facing down) is charged in the REAR by two cavalry that spawn behind it (above, team 1 advances downward onto it). Early on, the player selects the infantry and presses T four times to cycle Normal -> Tight -> Loose -> Square. In Square the unit presents spears/shields on every side: the rear charge finds no weak facing (no flank/rear bonus) and is braced from behind, so the ring holds instead of shattering. Camera frames the clash. Deterministic (scenario + seed + scripted input).",
+  "_comment": "Anti-cavalry square demo: a lone player Infantry unit (facing down) is charged in the REAR by two cavalry that spawn behind it (above; team 1 advances downward onto it). Early on the player selects the infantry and presses O to jump straight to Square (the direct anti-cav reaction, no cycling through Tight/Loose). In Square the unit presents spears/shields on every side: the rear charge finds no weak facing (no flank/rear bonus) and is braced from behind, so the ring holds instead of shattering. Camera frames the clash. Deterministic (scenario + seed + scripted input).",
   "seed": "12345",
   "scenario": [
     {"team": 0, "type": "Infantry", "x": 800, "y": 500, "count": 120},
@@ -11,9 +11,6 @@
   ],
   "steps": [
     {"tick": 10, "click": [800, 500]},
-    {"tick": 30, "key": "T"},
-    {"tick": 40, "key": "T"},
-    {"tick": 50, "key": "T"},
-    {"tick": 60, "key": "T"}
+    {"tick": 30, "key": "O"}
   ]
 }
