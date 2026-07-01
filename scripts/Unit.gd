@@ -867,7 +867,7 @@ func _is_melee_intermixing_with(other: Unit) -> bool:
 
 # --- Individual-soldier simulation (simulated bodies, rendered + authoritative melee) ---
 # The soldiers you SEE are the simulated bodies. Each tick Battle advances every
-# regiment's persistent world-space `_sim_soldier_pos` at velocity (SoldierBodies): a
+# regiment's persistent parent-local `_sim_soldier_pos` at velocity (SoldierBodies): a
 # body springs toward its formation slot, feeds the friendly-avoidance steering velocity
 # forward (SoldierSteering), and holds any knockback the melee dealt it (SoldierMelee) —
 # no body teleports, and there is no position-correction separation pass. The render
@@ -889,11 +889,13 @@ const INDIVIDUAL_COLLISION: bool = true
 # (default 120), so two regiments' id ranges never overlap.
 const SOLDIER_ID_STRIDE: int = 1024
 
-# World-space positions of this regiment's simulated soldiers, index-aligned
-# with their ids.
+# Parent-local positions (relative to the unit's transform, i.e. built from
+# `unit.position` — compare against `.position`, not `.global_position`) of this
+# regiment's simulated soldiers, index-aligned with their ids.
 var _sim_soldier_pos: PackedVector2Array = PackedVector2Array()
 
-# Persistent per-body velocity (world space), index-aligned with _sim_soldier_pos.
+# Persistent per-body velocity (parent-local, same frame as _sim_soldier_pos),
+# index-aligned with _sim_soldier_pos.
 # Phase 4 gives the bodies persistent dynamics: instead of re-seeding their positions
 # from the formation every tick (phase 3), each engaged body springs toward its slot
 # and integrates this velocity, so a soldier displaced by separation HOLDS the
@@ -901,8 +903,9 @@ var _sim_soldier_pos: PackedVector2Array = PackedVector2Array()
 # lives in SoldierBodies; this is the state it advances. Still non-authoritative.
 var _sim_body_vel: PackedVector2Array = PackedVector2Array()
 
-# Per-soldier friendly-avoidance steering velocity (world space), index-aligned with
-# _sim_soldier_pos. Recomputed each tick by SoldierSteering for the engaged subset (zero
+# Per-soldier friendly-avoidance steering velocity (parent-local, same frame as
+# _sim_soldier_pos), index-aligned with _sim_soldier_pos. Recomputed each tick by
+# SoldierSteering for the engaged subset (zero
 # elsewhere); SoldierBodies feeds it forward so an engaged body drifts off a crowding
 # friendly instead of overlapping it. Velocity-based — it never moves a body directly.
 var _sim_steer: PackedVector2Array = PackedVector2Array()
