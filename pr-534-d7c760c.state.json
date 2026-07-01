@@ -1,0 +1,278 @@
+{
+  "ticks": [
+    {
+      "tick": 20,
+      "units": [
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_mode": "Normal",
+          "position": [
+            300.0,
+            480.0
+          ],
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              63.0
+            ],
+            "centroid": [
+              300.0,
+              480.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        },
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SQUARE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_mode": "Normal",
+          "position": [
+            620.0,
+            480.0
+          ],
+          "soldier_summary": {
+            "bbox": [
+              90.0,
+              90.0
+            ],
+            "centroid": [
+              620.0,
+              479.63
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 1
+        },
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SHIELD_WALL",
+          "morale": 100.0,
+          "name": "Infantry 3",
+          "order_mode": "Normal",
+          "position": [
+            940.0,
+            480.0
+          ],
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "centroid": [
+              940.0,
+              480.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 2
+        },
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TESTUDO",
+          "morale": 100.0,
+          "name": "Infantry 4",
+          "order_mode": "Normal",
+          "position": [
+            1260.0,
+            480.0
+          ],
+          "soldier_summary": {
+            "bbox": [
+              75.6,
+              37.8
+            ],
+            "centroid": [
+              1260.0,
+              480.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 3
+        }
+      ]
+    },
+    {
+      "tick": 90,
+      "units": [
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "NORMAL",
+          "morale": 100.0,
+          "name": "Infantry 1",
+          "order_mode": "Normal",
+          "position": [
+            300.0,
+            480.0
+          ],
+          "soldier_summary": {
+            "bbox": [
+              126.0,
+              63.0
+            ],
+            "centroid": [
+              300.0,
+              480.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        },
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SQUARE",
+          "morale": 100.0,
+          "name": "Infantry 2",
+          "order_mode": "Normal",
+          "position": [
+            620.0,
+            480.0
+          ],
+          "soldier_summary": {
+            "bbox": [
+              90.0,
+              90.0
+            ],
+            "centroid": [
+              620.0,
+              479.63
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 1
+        },
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "SHIELD_WALL",
+          "morale": 100.0,
+          "name": "Infantry 3",
+          "order_mode": "Normal",
+          "position": [
+            940.0,
+            480.0
+          ],
+          "soldier_summary": {
+            "bbox": [
+              94.5,
+              47.25
+            ],
+            "centroid": [
+              940.0,
+              480.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 2
+        },
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TESTUDO",
+          "morale": 100.0,
+          "name": "Infantry 4",
+          "order_mode": "Normal",
+          "position": [
+            1260.0,
+            480.0
+          ],
+          "soldier_summary": {
+            "bbox": [
+              75.6,
+              37.8
+            ],
+            "centroid": [
+              1260.0,
+              480.0
+            ],
+            "count": 120,
+            "prone_count": 0
+          },
+          "soldiers": 120,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 3
+        }
+      ]
+    }
+  ]
+}
