@@ -198,6 +198,14 @@ comments or docstrings.
   you run `godot --headless --import` once (it registers the global class). Do
   the import before running the GUT suite on any change that adds a `class_name`.
 
+- **The soldier body arrays (`_sim_soldier_pos`, etc.) are PARENT-LOCAL, not
+  world-space.** They're built from `unit.position` (local) via
+  `soldier_world_slots`, so any new consumer that compares a unit/regiment position
+  against them must use `.position`, not `.global_position` — the two only coincide
+  while the Battle scene sits at the world origin with an identity transform, so a
+  `global_position` mix-up is a latent bug that stays dormant until that changes.
+  `flank_multiplier` and all the `SoldierMelee` geometry use `.position`; match them.
+
 - **GUT's `assert_almost_eq` does not support `Vector2` operands — it silently
   passes regardless of the actual difference.** The `diff > margin` check reduces
   to `Vector2 > float`, which GDScript always evaluates as `false`. For an *exact*
