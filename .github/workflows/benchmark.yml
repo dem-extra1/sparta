@@ -113,6 +113,11 @@ jobs:
           CUR_P95=$(jq -r '.stats.p95_ms' /tmp/benchmark-current.json)
           SOLDIERS=$(jq -r '.soldier_count' /tmp/benchmark-current.json)
           SAMPLES=$(jq -r '.samples_collected' /tmp/benchmark-current.json)
+          # Full-precision CUR_MEAN/CUR_P95 feed the awk percent-change math below; separate
+          # 3-decimal display versions go in the comment (jq/awk float rounding on the raw
+          # value would risk 18.627999999999997-style noise -- printf %.3f avoids that).
+          CUR_MEAN_FMT=$(awk -v v="$CUR_MEAN" 'BEGIN { printf "%.3f", v }')
+          CUR_P95_FMT=$(awk -v v="$CUR_P95" 'BEGIN { printf "%.3f", v }')
 
           VERDICT="info"
           BASELINE_LINE="No baseline committed yet at \`tools/benchmark/baseline.json\` -- nothing to compare against. See that file's header for how to establish one."
@@ -135,8 +140,8 @@ jobs:
 
           {
             echo "verdict=$VERDICT"
-            echo "cur_mean=$CUR_MEAN"
-            echo "cur_p95=$CUR_P95"
+            echo "cur_mean=$CUR_MEAN_FMT"
+            echo "cur_p95=$CUR_P95_FMT"
             echo "soldiers=$SOLDIERS"
             echo "samples=$SAMPLES"
             echo "baseline_table<<BASELINE_EOF"
@@ -147,22 +152,30 @@ jobs:
       - name: Post benchmark comment
         env:
           GH_TOKEN: ${{ github.token }}
+          # Every value that could carry markdown (backticks, etc.) is passed via env, not
+          # spliced with ${{ }} directly into a quoted bash string below -- ${{ }} substitution
+          # happens BEFORE bash parses the script, so an unescaped backtick in an interpolated
+          # value would re-enter bash as live command-substitution syntax (this bit us during
+          # development: the baseline_table's `tools/benchmark/baseline.json` code span silently
+          # vanished because bash tried to run it as a command). Referencing "$VAR" instead is
+          # the same safe pattern demo-video.yml uses for author-controlled text.
+          VERDICT: ${{ steps.compare.outputs.verdict }}
+          SOLDIERS: ${{ steps.compare.outputs.soldiers }}
+          SAMPLES: ${{ steps.compare.outputs.samples }}
+          CUR_MEAN: ${{ steps.compare.outputs.cur_mean }}
+          CUR_P95: ${{ steps.compare.outputs.cur_p95 }}
+          BASELINE_TABLE: ${{ steps.compare.outputs.baseline_table }}
         run: |
           set -euo pipefail
           PR=${{ github.event.pull_request.number }}
           MARKER="<!-- sparta-benchmark -->"
-          VERDICT="${{ steps.compare.outputs.verdict }}"
           case "$VERDICT" in
-            regression) HEADLINE="Regressed beyond the ${REGRESSION_THRESHOLD_PCT}% threshold vs. the CI baseline (CI-runner-noisy -- a human call, not an auto-block)." ;;
-            info)       HEADLINE="No CI baseline yet to compare against." ;;
-            *)          HEADLINE="Within the ${REGRESSION_THRESHOLD_PCT}% threshold vs. the CI baseline." ;;
+            regression) HEADLINE="Regressed beyond the ${REGRESSION_THRESHOLD_PCT}% threshold vs. the CI baseline (CI-runner-noisy -- a human call, not an auto-block)."; EMOJI=":warning:" ;;
+            info)       HEADLINE="No CI baseline yet to compare against."; EMOJI=":bar_chart:" ;;
+            *)          HEADLINE="Within the ${REGRESSION_THRESHOLD_PCT}% threshold vs. the CI baseline."; EMOJI=":chart_with_upwards_trend:" ;;
           esac
           BODY=$(printf '%s\n### %s Performance benchmark\n\n%s\n\nCurrent run: **%s soldiers**, %s ticks sampled, mean **%s ms**/tick, p95 **%s ms**/tick.\n\n%s\n\n<sub>This is a CI-runner-relative check, NOT the 60fps/reference-hardware target in PLAN.md -- see tools/benchmark/README.md. Run tools/benchmark/run-benchmark.sh locally on real hardware to check that target.</sub>' \
-            "$MARKER" \
-            "$([ "$VERDICT" = "regression" ] && echo "warning" || echo "chart_with_upwards_trend")" \
-            "$HEADLINE" \
-            "${{ steps.compare.outputs.soldiers }}" "${{ steps.compare.outputs.samples }}" \
-            "${{ steps.compare.outputs.cur_mean }}" "${{ steps.compare.outputs.cur_p95 }}" \
-            "${{ steps.compare.outputs.baseline_table }}")
+            "$MARKER" "$EMOJI" "$HEADLINE" \
+            "$SOLDIERS" "$SAMPLES" "$CUR_MEAN" "$CUR_P95" "$BASELINE_TABLE")
           tools/ci/upsert-pr-comment.sh \
             "${{ github.repository }}" "$PR" "$MARKER" "$BODY" "benchmark comment"
