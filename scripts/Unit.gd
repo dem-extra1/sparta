@@ -577,20 +577,22 @@ func _think(delta: float) -> void:
 
 	# In-place drill turns: every soldier turns where they stand, the block does not advance
 	# or pivot as a body. Cancelled by engaging in combat or receiving a move order (the
-	# partial rotation is preserved). On arrival each path runs its own completion step so the
-	# re-engaged arrival sees ~zero error: the conversio reverses body ordering; the quarter-turn
-	# absorbs the rotation into _formation_angle.
+	# partial rotation is preserved). On arrival (or an interrupt) each path folds the turned
+	# angle into _formation_angle so the re-engaged arrival sees ~zero error and every man
+	# holds his OWN slot -- the conversio and the quarter-turn share this settle mechanism.
 	#
-	# Conversio (about-face, 180°): the grid keeps its shape; bodies just reverse.
+	# Conversio (about-face, 180°): the grid keeps its shape and every soldier holds their
+	# own world position; only facing flips.
 	if _conversio_target != Vector2.ZERO:
 		if state == State.FIGHTING or has_move_target:
+			_settle_conversio()   # fold the partial turn so the bodies don't surge
 			_conversio_target = Vector2.ZERO
 			_has_pending_march = false   # a new order / combat pre-empts the parked rear march
 			_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
 		else:
 			if _advance_turn(_conversio_target, delta):
+				_settle_conversio()
 				_conversio_target = Vector2.ZERO
-				_reverse_soldier_bodies()
 				# Rear-sector move: the about-face is done, so start marching to the parked
 				# destination. The block now faces travel, so it advances forward, not backward.
 				if _has_pending_march:
@@ -1336,9 +1338,14 @@ var _sim_soldier_facing: PackedVector2Array = PackedVector2Array()
 var _per_soldier_facing: bool = false
 # Non-zero while a conversio (in-place about-face) is in progress: the target (reversed)
 # facing direction. unit.facing rotates toward this each tick; SoldierBodies.step drops the
-# arrival term while it turns so bodies don't drift to intermediate slot positions.
+# arrival term while it turns so bodies don't drift to intermediate slot positions. The
+# heading the turn started from is kept so _formation_angle can absorb exactly how far it
+# turned when it stops (full turn or an interrupt) -- same mechanism as the quarter-turn --
+# so every soldier holds its OWN world position and facing is the only thing that changes
+# (a true conversio, not an index-swap relabel).
 # Cleared on arrival or when interrupted by combat, a move order, or routing.
 var _conversio_target: Vector2 = Vector2.ZERO
+var _conversio_start_facing: Vector2 = Vector2.ZERO
 # Non-zero while a quarter-turn (90° in-place turn) is in progress: the target facing, 90°
 # to the left or right of the start. Same arrival-freeze as the conversio; the heading the
 # turn started from is kept so _formation_angle can absorb exactly how far it turned when it
@@ -1451,18 +1458,24 @@ func release_soldier_facing() -> void:
 ## Conversio (about-face, Vegetius III): every soldier turns in place to reverse 180° at
 ## CONVERSIO_TURN_RATE rad/s (~0.5 s for a full reversal). The grid keeps its footprint —
 ## the block does not pivot, neither about its centre (a move order) nor on a flank
-## (a wheel / circumductio); each man just turns where they stand.
+## (a wheel / circumductio); each man just turns where they stand, holding their OWN
+## world position for the whole turn -- zero displacement per soldier, only facing changes.
 ## unit.facing tracks the turn each tick so the sim always knows the soldiers' current
 ## facing (shield side, etc.). SoldierBodies.step drops the arrival term while
 ## it turns, so bodies stay at their grid positions instead of drifting to intermediate
-## slot targets. If interrupted by combat or a move order, unit.facing stays at its current
-## angle — the partial rotation is preserved. Blocked while fighting, before seeding, or
-## while another in-place turn (conversio or quarter-turn) is already running.
+## slot targets. On arrival (or an interrupt) _settle_conversio folds the rotation into
+## _formation_angle -- the same mechanism the quarter-turn and engage-turn use -- so
+## soldier_world_slots reproduces each body's own pre-turn slot under the new facing,
+## instead of the front/rear ranks trading slots. If interrupted by combat or a move
+## order, unit.facing stays at its current angle — the partial rotation is preserved.
+## Blocked while fighting, before seeding, or while another in-place turn (conversio or
+## quarter-turn) is already running.
 func conversio() -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty() \
 			or _conversio_target != Vector2.ZERO or _quarter_target != Vector2.ZERO \
 			or _wheel_target != Vector2.ZERO:
 		return
+	_conversio_start_facing = facing
 	_conversio_target = Vector2(-facing.x, -facing.y)
 
 
@@ -1488,6 +1501,18 @@ func quarter_turn(dir: int) -> void:
 ## the arrival sees ~zero error. Works for a full 90° turn or an interrupted partial.
 func _settle_formation_angle() -> void:
 	var turned: float = angle_difference(_quarter_start_facing.angle(), facing.angle())
+	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
+	_render_dirty = true
+
+
+## Fold the rotation a conversio just applied (start heading -> current heading) into
+## _formation_angle -- same math as _settle_formation_angle, for the about-face's own start
+## heading. A completed conversio turns exactly 180°, but this also settles an interrupted
+## partial turn correctly (whatever angle actually turned), so soldier_world_slots always
+## reproduces each body's own pre-turn slot and the arrival sees ~zero error either way —
+## no man ever surges to a different soldier's slot.
+func _settle_conversio() -> void:
+	var turned: float = angle_difference(_conversio_start_facing.angle(), facing.angle())
 	_formation_angle = wrapf(_formation_angle - turned, -PI, PI)
 	_render_dirty = true
 
@@ -1569,25 +1594,6 @@ func _advance_wheel(delta: float) -> bool:
 		facing = _wheel_target
 		return true
 	return false
-
-
-## Relabel the bodies for a completed about-face. The men keep their world positions, but
-## facing has flipped 180°, so every formation slot rotates to its point-reflected spot —
-## front rank and rear rank swap sides. Reversing the index-aligned body arrays maps each
-## body onto the slot it now physically occupies, so SoldierBodies.step's arrival
-## sees ~zero error and the block doesn't surge across itself. A centrosymmetric grid
-## cancels exactly; a partial rear rank leaves a small residual the arrival eases. Pure
-## index permutation — no positions change — so it's replay-deterministic.
-func _reverse_soldier_bodies() -> void:
-	_sim_soldier_pos.reverse()
-	_sim_body_vel.reverse()
-	_sim_soldier_hp.reverse()
-	_sim_prone.reverse()
-	_sim_soldier_stamina.reverse()
-	_sim_soldier_facing.reverse()
-	if _sim_steer.size() == _sim_soldier_pos.size():
-		_sim_steer.reverse()
-	_render_dirty = true   # positions were relabelled — redraw next frame
 
 
 ## The facing of body `index`; the unit heading for an out-of-range index (so

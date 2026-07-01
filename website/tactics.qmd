@@ -369,14 +369,20 @@ commits the unit to a march.
 ## Backing up costs time
 
 An in-place maneuver that makes men *back up* takes longer than one where they
-step forward. When a formation reshapes without the block marching --- a frontage
-change, a centre pivot on the spot, an about-face (**conversio**), a quarter-turn
---- some soldiers have to move backward relative to the way they face to reach
-their new slots. Troops shuffle backward at roughly **half** their forward pace, so
-those men lag, and the whole maneuver settles more slowly than it would if everyone
-were stepping forward. The practical upshot: a reshape that pushes the rear ranks
-backward (deepening the line, an about-face that shifts the block) is the slowest to
-dress. Order it with a margin of time before contact, not at the moment of impact.
+step forward. When a formation **reshapes** without the block marching --- a
+frontage change, a centre pivot on the spot --- some soldiers have to move
+backward relative to the way they face to reach their new slots. Troops shuffle
+backward at roughly **half** their forward pace, so those men lag, and the whole
+maneuver settles more slowly than it would if everyone were stepping forward. The
+practical upshot: a reshape that pushes the rear ranks backward (deepening the
+line) is the slowest to dress. Order it with a margin of time before contact, not
+at the moment of impact.
+
+The **about-face (conversio)** and **quarter-turn** are not reshapes, so this
+penalty doesn't touch them: every soldier turns in place and holds their exact
+position for the whole turn --- nobody steps forward or backward at all, only
+facing changes. Their duration depends solely on the drill turn rate, not the
+backward-speed cap.
 
 ## The centre pivot
 
