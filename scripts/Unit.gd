@@ -180,11 +180,14 @@ const SKIRMISH_KITE_DISTANCE: float = 100.0
 # Cycle charge (caracole): a melee unit charges its target, lands the impact strike,
 # then peels back to CYCLE_CHARGE_STANDOFF away to re-form before charging again — so
 # it keeps trading momentum-scaled charge hits instead of grinding in a static melee
-# where the charge bonus is spent. The standoff sits well beyond melee contact (~62)
-# so there's room to rebuild closing speed for the next charge; the unit switches from
-# "recharging" (pulling back) to "charging" once it has opened at least this far, and
-# back to recharging on the tick it makes contact and strikes.
-const CYCLE_CHARGE_STANDOFF: float = 220.0
+# where the charge bonus is spent. The unit switches from "recharging" (pulling back)
+# to "charging" once it has opened at least this far, and back to recharging on the tick
+# it makes contact and strikes. Set beyond SPRINT_START_DISTANCE (200) by enough runway
+# that the next run reaches full sprint before contact: the charge bonus scales with the
+# closing speed carried into the strike, and _move_to only sprints inside
+# SPRINT_START_DISTANCE, so a standoff at (or just past) that line would land each cycle
+# at a walk. 280 leaves ~80px of sprint build-up ahead of the ~62px contact.
+const CYCLE_CHARGE_STANDOFF: float = 280.0
 # Support: a unit ordered to guard a friendly "ward" engages any enemy that
 # closes within SUPPORT_GUARD_RADIUS of the ward, otherwise shadows the ward,
 # holding station SUPPORT_FOLLOW_DISTANCE off so it doesn't pile onto it. The guard
@@ -666,11 +669,8 @@ func _think(delta: float) -> void:
 ## geometry plus the shared strike cadence, so live play and replay stay in lockstep.
 func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float) -> bool:
 	# Recharging: peel back to the standoff so the next run rebuilds closing speed.
-	# Once opened far enough, flip to charging and let the approach below drive in.
 	if _cycle_recharging:
-		if dist >= CYCLE_CHARGE_STANDOFF:
-			_cycle_recharging = false
-		else:
+		if dist < CYCLE_CHARGE_STANDOFF:
 			var away: Vector2 = position - enemy.position
 			if away.length() < 0.001:
 				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
@@ -682,6 +682,10 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 				_cycle_recharging = false
 				return false
 			return true
+		# Opened past the standoff: end the pull-back and let the normal approach below
+		# drive the next charge run (return false so the caller falls through to it).
+		_cycle_recharging = false
+		return false
 
 	# Charging: on contact, land the (charge-scaled) strike, then flip to recharging so
 	# the unit pulls back next tick instead of pressing into a grind. Otherwise fall
@@ -689,10 +693,15 @@ func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float
 	if in_contact:
 		state = State.FIGHTING
 		_face(enemy.position)
+		# Only peel back once a hit actually lands: flipping to recharging is gated on the
+		# strike so a contact that arrives mid-cooldown holds and fights until the cooldown
+		# clears, rather than retreating without having landed the charge. (For current
+		# cavalry speeds the cycle period exceeds ATTACK_INTERVAL, so this rarely bites —
+		# but the gate keeps it correct if speed or the interval is later retuned.)
 		if _attack_cd <= 0.0:
 			_attack_cd = ATTACK_INTERVAL
 			UnitCombat.strike(self, enemy)
-		_cycle_recharging = true
+			_cycle_recharging = true
 		return true
 	return false
 

@@ -289,7 +289,7 @@ into different tools:
 - **Support** (<kbd>G</kbd>) --- the unit guards a chosen ally, shadowing it and
   intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable
   horse, or a guard onto your archers.
-- **Cycle charge** (<kbd>C</kbd>) --- a caracole for cavalry: the unit charges,
+- **Cycle charge** (<kbd>J</kbd>) --- a caracole for cavalry: the unit charges,
   lands its impact hit, then peels back to a standoff and charges again, instead of
   grinding in a static melee where the charge bonus is already spent. The charge
   bonus scales with closing speed, so each fresh run lands hard --- but don't cycle

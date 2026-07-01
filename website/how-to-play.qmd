@@ -34,7 +34,7 @@ left fighting --- every remaining unit is dead or routing.
 | Attack | **Right-click** an enemy unit |
 | Group attack mode | <kbd>X</kbd> cycles focused ↔ distributed · or **control bar** |
 | Add waypoint | **Shift + Right-click** (chain several move points) |
-| Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>C</kbd> cycle charge · <kbd>Esc</kbd> clear |
+| Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>J</kbd> cycle charge · <kbd>Esc</kbd> clear |
 | Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose) · or **control bar** |
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
@@ -174,7 +174,7 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
   a threat closes instead of standing to fire.
 - **Support** (<kbd>G</kbd>) --- right-click a friendly to guard it: the unit shadows
   that ally and engages anything that threatens it.
-- **Cycle charge** (<kbd>C</kbd>) --- cavalry charge the target, pull back to a
+- **Cycle charge** (<kbd>J</kbd>) --- cavalry charge the target, pull back to a
   standoff, and charge again, so each run lands a fresh momentum hit instead of
   grinding once the charge is spent (see [Tactics](tactics.qmd#order-stances)).
 

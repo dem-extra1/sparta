@@ -2321,3 +2321,42 @@ func test_cycle_charge_ranged_unit_falls_through_to_normal_ranged_fire() -> void
 	u._think(0.1)
 	assert_eq(u.state, Unit.State.FIGHTING, "a ranged cycle-charger just fires at range")
 	assert_false(u._cycle_recharging, "and never enters the melee pull-back loop")
+
+
+func test_cycle_charge_holds_and_fights_when_contact_arrives_mid_cooldown() -> void:
+	# Contact on a cooldown tick lands no hit, so the unit must NOT peel back — it holds
+	# and fights until the cooldown clears, rather than retreating without a charge.
+	var u := _make_unit()
+	u.team = 0
+	u.is_cavalry = true
+	u.order_mode = Unit.ORDER_CYCLE_CHARGE
+	u.position = Vector2.ZERO
+	var enemy := _make_unit()
+	enemy.team = 1
+	enemy.position = Vector2(u.attack_range + Unit.RADIUS + enemy.RADIUS - 2.0, 0)  # in contact
+	u.target_enemy = enemy
+	u._attack_cd = Unit.ATTACK_INTERVAL   # still cooling down: this contact lands no strike
+	var before: int = enemy.soldiers
+	u._think(0.1)
+	assert_eq(enemy.soldiers, before, "no hit lands while the attack is still on cooldown")
+	assert_false(u._cycle_recharging, "so the unit holds and fights instead of peeling back")
+
+
+func test_cycle_charge_cornered_pull_back_fights_in_place() -> void:
+	# Recharging against the field edge: the pull-back clamps onto the unit's own position
+	# (no room to retreat), so it drops the recharge phase and fights the enemy in place.
+	var u := _make_unit()
+	u.team = 0
+	u.is_cavalry = true
+	u.order_mode = Unit.ORDER_CYCLE_CHARGE
+	u.field_bounds = Rect2(0, 0, 1000, 1000)
+	u.position = Vector2(0, 500)                 # against the left edge
+	var enemy := _make_unit()
+	enemy.team = 1
+	# In melee contact, to the +x (so the pull-back would head into the clamped edge).
+	enemy.position = Vector2(u.attack_range + Unit.RADIUS + enemy.RADIUS - 2.0, 500)
+	u.target_enemy = enemy
+	u._cycle_recharging = true
+	u._think(0.1)
+	assert_false(u._cycle_recharging, "a cornered pull-back drops the recharge phase")
+	assert_eq(u.state, Unit.State.FIGHTING, "and the unit fights in place rather than freezing")
