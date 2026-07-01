@@ -72,6 +72,24 @@ func test_bindings_round_trip_through_disk() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 
 
+func test_show_unit_speed_defaults_off_and_round_trips() -> void:
+	# Default off — the speed overlay is opt-in.
+	assert_false(_settings().show_unit_speed, "unit speed labels default off")
+
+	var a = SettingsScript.new()
+	autofree(a)
+	a._loading = true
+	a.show_unit_speed = true
+	a._save(TEST_PATH)
+
+	var b = SettingsScript.new()
+	autofree(b)
+	b._load(TEST_PATH)
+	assert_true(b.show_unit_speed, "the toggle survives save + load")
+
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+
+
 # Spy that counts _save() calls; partial_double() generates an invalid double of
 # SettingsScript under Godot 4.7 (GUT's stub codegen breaks on void-returning methods).
 class _SaveCountingSettings:

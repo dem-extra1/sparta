@@ -34,6 +34,7 @@ const _ROWS: Array = [
 	["Form-up split mode", "Y"],
 	["About-face (180° in place)", "V"],
 	["Quarter-turn left / right (90° in place)", "Q / E"],
+	["Wheel left / right (90° hinge on flank)", "Z / C"],
 	["— Control groups —", ""],
 	["Bind selection to group 0-9", "Ctrl + 0-9"],
 	["Recall group 0-9", "0-9"],

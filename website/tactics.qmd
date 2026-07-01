@@ -327,6 +327,31 @@ it speeds up --- stopping takes no effort, building momentum does. Cavalry is
 symmetric: a galloping horse can't be reined in any faster than it can build
 up speed in the first place.
 
+## Wheeling on a flank
+
+A **wheel** (<kbd>Z</kbd> left / <kbd>C</kbd> right) is the third way to change a line's
+front, and the most useful in the line of battle. One end --- the standing flank file ---
+plants and holds while the rest of the block swings around it like a door on a hinge. The
+line ends up facing 90° across from where it started *and* lying along a new bearing,
+with every man still in his rank and file.
+
+It sits between the two in-place turns and the centre pivot:
+
+- The **quarter-turn** (<kbd>Q</kbd> / <kbd>E</kbd>) changes *facing* but not *place* ---
+  the men turn where they stand and the block stays put.
+- The **centre pivot** (a move order) rotates the whole block about its middle, so both
+  flanks sweep and the line stays centred on the same spot.
+- The **wheel** pins one flank and sweeps the other, so the line **hinges** rather than
+  spinning in place --- the near flank barely moves while the far flank marches a wide arc.
+
+That hinge is what makes it a battle-line maneuver. Wheel a wing forward to take an enemy
+line in the **flank** --- the ×1.5 side bonus (or ×2 in the rear) is the whole point of
+getting around them. Wheel a wing back to **refuse a flank** when the enemy laps around
+your end, presenting a fresh front instead of an exposed side. Because the far flank has
+to march an arc, a wheel takes time and covers ground: order it before contact, not in the
+grinding melee, and give the swinging flank room to travel. A fighting unit ignores the
+order --- you can't hinge a line that's locked in combat.
+
 ## Order stances
 
 Each order can carry a *stance*, armed with a hotkey before you click (a coloured

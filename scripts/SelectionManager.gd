@@ -239,6 +239,12 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_E:
 		_issue_quarter_turn(1)    # quarter-turn right: every soldier pivots 90° CW
 		return true
+	elif event.keycode == KEY_Z:
+		_issue_wheel(-1)   # wheel left: swing 90° about the left flank file
+		return true
+	elif event.keycode == KEY_C:
+		_issue_wheel(1)    # wheel right: swing 90° about the right flank file
+		return true
 	elif event.keycode == KEY_M:
 		_issue_merge()   # merge the selected friendly regiments into one
 		return true
@@ -582,6 +588,24 @@ func _issue_quarter_turn(dir: int) -> void:
 			issued = true
 	if issued:
 		Sfx.play(&"order")
+
+
+## Wheel (circumductio): each selected friendly unit swings 90° about a fixed flank file (`dir`
+## = -1 left / +1 right). UNLIKE the conversio and quarter-turn — which touch only per-soldier
+## facing and stay out of the replay stream — a wheel moves the regiment (position + facing),
+## which the sim reads, so it goes through the recorded order path (Battle.enqueue_wheel).
+## Blocked during replay playback; combat-engaged units ignore it in Unit.wheel().
+func _issue_wheel(dir: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = []
+	for unit in _selected:
+		if is_instance_valid(unit) and unit.team == 0:
+			uids.append(unit.uid)
+	if uids.is_empty():
+		return
+	_battle.enqueue_wheel(uids, dir)
+	Sfx.play(&"order")
 
 
 ## Merge the selected friendly regiments into the first-selected one. Encoded
@@ -1231,6 +1255,7 @@ func _draw_orders() -> void:
 		if u.team != 0 and not show_enemy:
 			continue
 		var origin: Vector2 = u.global_position
+		_draw_unit_speed(u, origin)
 		# Only a player-issued attack (stored in target_enemy) draws a red line. A
 		# unit auto-fighting its nearest foe has no stored target, so it draws no
 		# line — matching order_summary() reporting "Engaged" with no destination.
@@ -1373,3 +1398,29 @@ func _draw_order_distance(a: Vector2, b: Vector2, world_dist: float, color: Colo
 		perp = -perp
 	draw_string(font, mid + perp * 12.0 + Vector2(-tw * 0.5, 0.0), text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, color)
+
+
+## The speed label a unit should show in the overlay, or "" when the toggle is off.
+## The unit's `current_speed` is world units/second; it's converted back to the m/s the
+## loadout declared via Battle.WORLD_UNITS_PER_METER and Battle.SPEED_SCALE so it reads in
+## the same metric units as the distance labels. Opt-in via Settings.show_unit_speed
+## (default off). A halted unit reads "0.0 m/s". Pure (no drawing) so it's unit-testable;
+## _draw_unit_speed just positions and renders whatever this returns.
+func _unit_speed_label(u: UnitRef) -> String:
+	if not Settings.show_unit_speed:
+		return ""
+	var mps: float = DistanceLegend.mps_for_world_speed(
+			u.current_speed, BattleRef.WORLD_UNITS_PER_METER, BattleRef.SPEED_SCALE)
+	return DistanceLegend.speed_label_text(mps)
+
+
+## Draw a unit's current-speed label just above its `origin`, when the toggle is on.
+func _draw_unit_speed(u: UnitRef, origin: Vector2) -> void:
+	var text: String = _unit_speed_label(u)
+	if text == "":
+		return
+	var font := ThemeDB.fallback_font
+	var tw: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	# Sit above the unit marker, clear of the order lines fanning out from origin.
+	draw_string(font, origin + Vector2(-tw * 0.5, -16.0), text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.85, 0.95, 1.0))

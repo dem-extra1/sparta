@@ -32,6 +32,12 @@ const ORDER_FORMATION_ONLY := -3
 # re-applying on the tick is idempotent). Handled like the formation-only order,
 # leaving movement untouched.
 const ORDER_FRONTAGE_ONLY := -4
+# Sentinel for a wheel order (circumductio, hinge pivot): the block swings 90° about a fixed
+# flank file. Carries the direction in the "x" field (-1 wheel-left / +1 wheel-right). UNLIKE
+# the conversio and quarter-turn — which touch only per-soldier facing and so never enter the
+# replay stream — a wheel moves the regiment (position and facing), which the sim reads, so it
+# IS recorded and replayed like a move. Handled before the main move/attack/merge logic.
+const ORDER_WHEEL := -5
 
 ## Order modes: the "stance" an order applies to its units. NORMAL is the
 ## current move/attack behaviour. The smart modes are chosen by the player's armed
@@ -571,6 +577,23 @@ func enqueue_frontage(uids: Array, delta: int) -> void:
 		_apply_order_cmd(cmd)
 
 
+## Wheel (circumductio): each selected unit swings 90° about a fixed flank file (`dir` = -1
+## wheel-left / +1 wheel-right). The direction rides in the "x" field. Recorded so replays
+## reproduce the arc — a wheel moves the regiment, which the sim reads (see ORDER_WHEEL).
+func enqueue_wheel(uids: Array, dir: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var cmd := {
+		"units": uids,
+		"x": float(dir),
+		"y": 0.0,
+		"target": ORDER_WHEEL,
+		"mode": OrderMode.NORMAL,
+	}
+	_pending_orders.append(cmd)
+	_apply_order_cmd(cmd)
+
+
 ## Drag-to-form-up: move a single unit to `center` and deploy it there facing
 ## `face` (radians) with `frontage` files -- the front rank ends up along the
 ## dragged flank line. A plain move order (target -1) carrying the extra face +
@@ -617,6 +640,15 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				var u: Unit = _unit_by_uid(int(uid))
 				if u != null:
 					u.set_frontage(files)
+		return
+	# Wheel: swing each unit 90° about a fixed flank file. The direction rides in "x".
+	# Leaves movement orders and stances untouched, like the other drill sentinels.
+	if target_uid == ORDER_WHEEL:
+		var dir: int = int(round(float(cmd["x"])))
+		for uid in cmd["units"]:
+			var u: Unit = _unit_by_uid(int(uid))
+			if u != null:
+				u.wheel(dir)
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the

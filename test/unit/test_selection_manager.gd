@@ -16,6 +16,7 @@ var _orig_bindings: Dictionary
 var _orig_form_up_default: int
 var _orig_form_up_cycle: Array
 var _orig_reform_before_move: bool
+var _orig_show_unit_speed: bool
 
 
 func before_each() -> void:
@@ -23,6 +24,7 @@ func before_each() -> void:
 	_orig_form_up_default = Settings.form_up_dist_default
 	_orig_form_up_cycle = Settings.form_up_dist_cycle.duplicate()
 	_orig_reform_before_move = Settings.reform_before_move
+	_orig_show_unit_speed = Settings.show_unit_speed
 	# Pin the default cycle; a developer's persisted cfg can deviate and break these tests locally.
 	Settings.form_up_dist_cycle = [EQUAL_DEPTH, EQUAL_WIDTH]
 
@@ -32,6 +34,7 @@ func after_each() -> void:
 	Settings.form_up_dist_default = _orig_form_up_default
 	Settings.form_up_dist_cycle = _orig_form_up_cycle.duplicate()
 	Settings.reform_before_move = _orig_reform_before_move
+	Settings.show_unit_speed = _orig_show_unit_speed
 
 
 func _sm() -> Node2D:
@@ -52,6 +55,33 @@ func test_support_ward_resolves_a_valid_ward() -> void:
 	var ward := _unit()
 	u.support_target = ward
 	assert_eq(sm._support_ward_of(u), ward, "a live ward is returned for the overlay link")
+
+
+# --- order-overlay unit-speed label (#444) -----------------------------------
+
+func test_unit_speed_label_is_empty_when_toggle_off() -> void:
+	var sm := _sm()
+	var u := _unit()
+	Settings.show_unit_speed = false
+	u._current_speed = 52.0
+	assert_eq(sm._unit_speed_label(u), "", "no label when the toggle is off, whatever the speed")
+
+
+func test_unit_speed_label_reports_metres_per_second_when_on() -> void:
+	var sm := _sm()
+	var u := _unit()
+	Settings.show_unit_speed = true
+	# 52 world units/s at 20 u/m, speed_scale 1.0 -> 2.6 m/s.
+	u._current_speed = 52.0
+	assert_eq(sm._unit_speed_label(u), "2.6 m/s", "the live speed converts back to the loadout's m/s")
+
+
+func test_unit_speed_label_reads_zero_for_a_halted_unit() -> void:
+	var sm := _sm()
+	var u := _unit()
+	Settings.show_unit_speed = true
+	u._current_speed = 0.0
+	assert_eq(sm._unit_speed_label(u), "0.0 m/s", "a stationary unit reads 0.0 m/s")
 
 
 # --- order-overlay distance label: route length (#413) -----------------------
