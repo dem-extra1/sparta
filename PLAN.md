@@ -1,7 +1,7 @@
 # Sparta — Project Plan & Handoff
 
 > Self-contained record so any new session (cloud or local) can continue without prior chat context.
-> Last updated: 2026-06-15.
+> Last updated: 2026-07-01.
 
 ## Vision
 A game fusing **dynastic grand-strategy** campaign mechanics with **real-time
