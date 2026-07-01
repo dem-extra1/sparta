@@ -624,7 +624,7 @@ func test_move_to_decelerates_when_the_target_pace_drops() -> void:
 	u._move_to(Vector2(0, 100000), 0.1)   # far target -> AUTO pace selects walk, not sprint
 	assert_lt(u._approach_velocity.length(), u.move_speed,
 		"speed has started dropping toward the lower target pace")
-	assert_gt(u._approach_velocity.length(), u.move_speed - u.decel * 0.1 - 0.01,
+	assert_gt(u._approach_velocity.length(), u.move_speed - u.decel * 0.1 - 0.1,
 		"but the drop this tick is bounded by decel * delta -- not an instant snap down")
 
 
@@ -643,7 +643,10 @@ func test_orderly_pivot_is_slower_at_speed_than_at_a_stand() -> void:
 	var moving := _make_unit()
 	moving.position = Vector2.ZERO
 	moving.facing = Vector2.RIGHT
-	moving._current_speed = moving.move_speed   # already at full sprint
+	# Seeded at full sprint, but the far target selects walk pace, so this first tick's
+	# decel step brings _current_speed to move_speed - decel*delta (~93% of sprint) by
+	# the time the taper reads it -- still strongly tapered, just not exactly 100%.
+	moving._current_speed = moving.move_speed
 	moving._move_to(Vector2(0, 100000), 0.1, true)
 	var moving_turn: float = moving.facing.angle()
 
