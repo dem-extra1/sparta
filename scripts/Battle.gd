@@ -463,7 +463,16 @@ func _physics_process(_delta: float) -> void:
 					float(o.get("face", INF)),
 					int(o.get("group_attack", GroupAttackMode.FOCUSED)),
 					bool(o.get("walk_advance", false)))
-			_apply_order_cmd(o)
+			# Apply each order EXACTLY ONCE. Live input is applied the instant it's
+			# enqueued (zero-latency feedback / paused preview) and tagged; the drain
+			# only records it here, it must not apply it a second time. A second apply
+			# corrupts any order whose effect is relative to the state the first apply
+			# set -- a rear-move about-face (the second apply cancels the conversio
+			# mid-turn) or an arrow nudge (target = position + offset, so the goal
+			# chases the crept body). An order NOT applied live (a waypoint append,
+			# which is tick-authoritative) still drains-applies here, once.
+			if not o.get("applied_live", false):
+				_apply_order_cmd(o)
 		_pending_orders.clear()
 		# Capture the camera each tick so a live recording reproduces what the player saw.
 		Replay.record_camera(_tick, _camera.position, _camera.zoom.x)
@@ -517,13 +526,25 @@ func _on_soldier_tick() -> void:
 		ProjectileField.active.step(delta, self)
 
 
-## Called by SelectionManager when the player issues a right-click order. The
-## order is recorded and re-applied on the next physics tick (live play only),
-## but we also apply it immediately so it takes effect with no input latency and
-## the order overlay reflects the new destination right away — including while
-## paused, when the physics tick that drains _pending_orders isn't running. The
-## tick's re-application is idempotent (same cmd, same _apply_order_cmd), so live
-## and replayed orders stay on the same deterministic code path.
+## Apply a live-input order the instant it's enqueued (zero-latency feedback and
+## paused preview) and tag it so the physics tick that drains _pending_orders
+## records it but does NOT apply it again. Each order thus takes effect EXACTLY
+## once, on the same deterministic _apply_order_cmd path as a replayed order. The
+## tag lives only on the in-memory _pending_orders dict; Replay.record_order copies
+## explicit fields, so it never reaches the recorded stream (and a PLAYBACK order,
+## untagged, still applies once via orders_for_tick).
+func _apply_order_live(cmd: Dictionary) -> void:
+	_apply_order_cmd(cmd)
+	cmd["applied_live"] = true
+
+
+## Called by SelectionManager when the player issues a right-click order. The order
+## is queued for the next physics tick (which records it for replay) and applied
+## immediately so it takes effect with no input latency and the order overlay
+## reflects the new destination right away — including while paused, when the tick
+## that drains _pending_orders isn't running. _apply_order_live tags it so the tick
+## records it without a second apply, keeping live and replayed orders on one
+## deterministic path with exactly-once application.
 func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		order_mode: int = OrderMode.NORMAL,
 		group_attack: int = GroupAttackMode.FOCUSED) -> void:
@@ -540,13 +561,11 @@ func enqueue_order(uids: Array, world_pos: Vector2, target_uid: int,
 		"group_attack": group_attack,
 	}
 	_pending_orders.append(cmd)
-	# Apply immediately for zero-latency feedback and paused preview — EXCEPT a
-	# waypoint append, which is NOT idempotent: the tick re-applies every
-	# pending cmd, and a second u.waypoints.append() would duplicate the leg. An
-	# append is also tick-authoritative anyway (its point is derived from positions
-	# at the tick, matching replay), so it's applied once, on that tick.
+	# A waypoint append is tick-authoritative (its point is derived from positions at
+	# the tick, matching replay), so leave it untagged and let the tick apply it once.
+	# Every other order applies live now and is tagged so the tick won't repeat it.
 	if target_uid != ORDER_APPEND_WAYPOINT:
-		_apply_order_cmd(cmd)
+		_apply_order_live(cmd)
 
 
 ## Change the formation mode for a set of units. Recorded so replays stay exact.
@@ -562,15 +581,14 @@ func enqueue_formation(uids: Array, formation: int) -> void:
 		"formation": formation,
 	}
 	_pending_orders.append(cmd)
-	_apply_order_cmd(cmd)
+	_apply_order_live(cmd)
 
 
 ## Widen (delta > 0) or narrow (delta < 0) the frontage of a set of units by
 ## `delta` files each. Each unit steps from its OWN current frontage to an absolute
 ## target (so a mixed selection keeps its relative widths), emitting one command per
-## unit. Absolute (not delta) keeps the command idempotent — the tick re-applies
-## every pending order, so a delta would double — and it's recorded so replays
-## stay exact.
+## unit. The absolute (not relative) target is recorded so replays stay exact and
+## keeps the command safe to re-derive from any starting frontage.
 func enqueue_frontage(uids: Array, delta: int) -> void:
 	if Replay.mode == Replay.Mode.PLAYBACK:
 		return
@@ -588,7 +606,7 @@ func enqueue_frontage(uids: Array, delta: int) -> void:
 			"frontage": files,
 		}
 		_pending_orders.append(cmd)
-		_apply_order_cmd(cmd)
+		_apply_order_live(cmd)
 
 
 ## Arrow-key nudge: order each unit a small fixed-distance drill step to its own
@@ -609,7 +627,7 @@ func enqueue_nudge(uids: Array, dir: int) -> void:
 		"frontage": dir,
 	}
 	_pending_orders.append(cmd)
-	_apply_order_cmd(cmd)
+	_apply_order_live(cmd)
 
 
 ## File-doubling maneuvers (duplicatio / explicatio): reshape each unit's frontage by
@@ -645,7 +663,7 @@ func enqueue_file_double(uids: Array, direction: int) -> void:
 			"frontage": files,
 		}
 		_pending_orders.append(cmd)
-		_apply_order_cmd(cmd)
+		_apply_order_live(cmd)
 
 
 ## Wheel (circumductio): each selected unit swings 90° about a fixed flank file (`dir` = -1
@@ -662,7 +680,7 @@ func enqueue_wheel(uids: Array, dir: int) -> void:
 		"mode": OrderMode.NORMAL,
 	}
 	_pending_orders.append(cmd)
-	_apply_order_cmd(cmd)
+	_apply_order_live(cmd)
 
 
 ## World-space offset for a nudge of `dir` given a unit's `facing`. LEFT / RIGHT
@@ -702,7 +720,7 @@ func enqueue_form_up(uids: Array, center: Vector2, face: float, frontage: int,
 		"walk_advance": Settings.walk_advance,
 	}
 	_pending_orders.append(cmd)
-	_apply_order_cmd(cmd)
+	_apply_order_live(cmd)
 
 
 ## Apply one order (move or attack) to its units. Shared by live play and
@@ -909,19 +927,8 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 					# _conversio_target unchanged and non-zero. Only enter the about-face path when this
 					# call armed a fresh turn; otherwise fall back to a plain march.
 					var conversio_was_idle: bool = u._conversio_target == Vector2.ZERO
-					# Idempotency: every order is applied twice (immediate feedback + tick-drain),
-					# so this same rear move reaches here a second time while the first apply's
-					# conversio is still turning. On that second apply conversio() no-ops and
-					# conversio_was_idle is false -- but the about-face for this exact destination
-					# is already armed (pending march parked behind a live conversio to this point).
-					# Recognize that and re-enter the parked-march path so about_faced stays true,
-					# skipping both the reform-hold and the has_move_target fallthrough that would
-					# otherwise cancel the conversio mid-turn and centre-pivot the block.
-					var already_armed: bool = not conversio_was_idle \
-							and u._has_pending_march and u._pending_march_target == point
 					u.conversio()
-					if (conversio_was_idle and u._conversio_target != Vector2.ZERO) \
-							or already_armed:
+					if conversio_was_idle and u._conversio_target != Vector2.ZERO:
 						u.has_move_target = false
 						u._pending_march_target = point
 						u._has_pending_march = true

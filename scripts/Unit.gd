@@ -560,12 +560,6 @@ func _think(delta: float) -> void:
 	# Reform phase: unit holds position after the order-response delay expires until
 	# reform timer runs out, then commits the pending move. A fighting unit skips the
 	# hold and commits immediately so combat orders are never gated by a reform pause.
-	# A live conversio takes precedence: never let a reform-hold coexist with an active
-	# about-face, or the hold turns the facing at ordinary TURN_RATE and the conversio
-	# below is cancelled mid-turn, centre-pivoting the block. The conversio block runs
-	# the in-place turn and starts the parked march on its own.
-	if _reform_timer > 0.0 and _conversio_target != Vector2.ZERO:
-		_reform_timer = 0.0
 	if _reform_timer > 0.0:
 		if state == State.FIGHTING:
 			_commit_pending_reform()

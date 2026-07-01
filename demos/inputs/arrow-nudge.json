@@ -10,5 +10,6 @@
     {"tick": 90, "key": "Right"},
     {"tick": 150, "key": "Right"},
     {"tick": 210, "key": "Down"}
-  ]
+  ],
+  "state": [28, 88, 148, 208, 270]
 }
