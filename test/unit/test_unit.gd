@@ -1350,7 +1350,7 @@ func test_narrow_frontage_caps_front_depth_so_melee_still_closes() -> void:
 			"a maximally deep column's separation depth is capped at half the reach")
 	# An auto/normal formation on a small unit stays shallow enough to sit below
 	# the cap, so it's untouched (a big 120-soldier block is deep enough to hit
-	# the same cap at the wider real-world FORMATION_SPACING -- #415).
+	# the same cap at the wider real-world FORMATION_SPACING).
 	var shallow := _make_unit(16)
 	assert_lt(shallow._front_depth(), shallow.attack_range * 0.5,
 			"a normal formation's depth is below the cap (unaffected)")

@@ -1507,7 +1507,7 @@ func _shatter() -> void:
 # block of one small mark per living soldier (cosmetic only — never fed back into the
 # sim), packed roughly within the unit's footprint so the on-field size still matches
 # the collision RADIUS. Wider-than-deep, like a real formation.
-# Historically-grounded metric values (#415): close-order per-man frontage is
+# Historically-grounded metric values: close-order per-man frontage is
 # ~0.45 m (Battle.WORLD_UNITS_PER_METER = 20), and a foot soldier's mark is sized
 # to match — shoulder-to-shoulder at close order, no gap and no overlap. Cavalry
 # marks are sized to a horse's ~1 m body width. World-units, not px.
