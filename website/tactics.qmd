@@ -108,6 +108,14 @@ A wider line is easier to outlast in depth and quicker to crumble once it bends;
 a deeper one trades frontage for staying power. The width holds as casualties thin
 the ranks, so a line you set wide stays wide until you change it.
 
+**How a line reforms after losses.** The front rank takes the hits, but the block loses
+depth from the rear. The front rank keeps its full width, the file behind each fighter feeds
+men forward to hold the contact line, and the depth shrinks rank by rank. When the rearmost rank is left
+short-handed, its survivors close up toward the centre --- the wings shorten first while
+the middle files stay deepest --- rather than leaving a ragged, gap-toothed back rank. So a
+mauled unit still presents a solid front and never bulges wider than the frontage you set;
+you read its losses as a shrinking depth, not a fraying line.
+
 **Deploy a whole battle line at once.** Select several regiments and drag one flank
 line (right-click and drag): the line splits among them. By default it splits to **equal
 depth**, so every regiment forms up the same number of ranks --- a uniform front where
@@ -248,6 +256,18 @@ head forward, turn and march normally. So to reposition laterally in good order,
 make the adjustment small --- a short step keeps the line intact, a long one
 commits the unit to a march.
 
+## Backing up costs time
+
+An in-place maneuver that makes men *back up* takes longer than one where they
+step forward. When a formation reshapes without the block marching --- a frontage
+change, a centre pivot on the spot, an about-face (**conversio**), a quarter-turn
+--- some soldiers have to move backward relative to the way they face to reach
+their new slots. Troops shuffle backward at roughly **half** their forward pace, so
+those men lag, and the whole maneuver settles more slowly than it would if everyone
+were stepping forward. The practical upshot: a reshape that pushes the rear ranks
+backward (deepening the line, an about-face that shifts the block) is the slowest to
+dress. Order it with a margin of time before contact, not at the moment of impact.
+
 ## The centre pivot
 
 A larger turn is a **centre pivot**: the unit rotates about its own centre onto its
@@ -279,6 +299,31 @@ slower than lighter ones (archers), and every foot type slows down faster than
 it speeds up --- stopping takes no effort, building momentum does. Cavalry is
 symmetric: a galloping horse can't be reined in any faster than it can build
 up speed in the first place.
+
+## Wheeling on a flank
+
+A **wheel** (<kbd>Z</kbd> left / <kbd>C</kbd> right) is the third way to change a line's
+front, and the most useful in the line of battle. One end --- the standing flank file ---
+plants and holds while the rest of the block swings around it like a door on a hinge. The
+line ends up facing 90° across from where it started *and* lying along a new bearing,
+with every man still in his rank and file.
+
+It sits between the two in-place turns and the centre pivot:
+
+- The **quarter-turn** (<kbd>Q</kbd> / <kbd>E</kbd>) changes *facing* but not *place* ---
+  the men turn where they stand and the block stays put.
+- The **centre pivot** (a move order) rotates the whole block about its middle, so both
+  flanks sweep and the line stays centred on the same spot.
+- The **wheel** pins one flank and sweeps the other, so the line **hinges** rather than
+  spinning in place --- the near flank barely moves while the far flank marches a wide arc.
+
+That hinge is what makes it a battle-line maneuver. Wheel a wing forward to take an enemy
+line in the **flank** --- the ×1.5 side bonus (or ×2 in the rear) is the whole point of
+getting around them. Wheel a wing back to **refuse a flank** when the enemy laps around
+your end, presenting a fresh front instead of an exposed side. Because the far flank has
+to march an arc, a wheel takes time and covers ground: order it before contact, not in the
+grinding melee, and give the swinging flank room to travel. A fighting unit ignores the
+order --- you can't hinge a line that's locked in combat.
 
 ## Order stances
 

@@ -134,7 +134,8 @@ static func step(unit: Unit, delta: float) -> void:
 		# unit.facing, which would drag bodies to intermediate positions and back. Zero the
 		# restoring force so bodies stay at their current positions; the damping term still
 		# bleeds off any existing velocity, so they settle exactly in place.
-		var turning: bool = unit._conversio_target != Vector2.ZERO or unit._quarter_target != Vector2.ZERO
+		var turning: bool = unit._conversio_target != Vector2.ZERO or unit._quarter_target != Vector2.ZERO \
+				or unit._wheel_target != Vector2.ZERO
 		var to_slot: Vector2 = Vector2.ZERO if turning \
 				else slots[i] - unit._sim_soldier_pos[i]
 		var accel: Vector2 = to_slot * SPRING_STIFFNESS - (unit._sim_body_vel[i] - feed_forward) * SPRING_DAMPING
@@ -145,12 +146,48 @@ static func step(unit: Unit, delta: float) -> void:
 		# exempt — its bodies need to keep up with moving slots — so the cap only
 		# applies when state == IDLE.
 		if unit._reform_timer > 0.0 or unit.state == Unit.State.IDLE:
-			unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(unit.jog_speed)
+			unit._sim_body_vel[i] = _cap_body_speed(unit, i)
 		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
 		# Tell the render a body actually moved this tick, so _process can skip the
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
 			unit._render_dirty = true
+
+
+## Cap a stationary/reforming body's velocity to its unit's jog pace, but to the slower
+## backward pace (jog_speed * back_speed_fraction) when the body is moving BACKWARD
+## relative to its own facing. "Backward" is a negative velocity component along the
+## soldier's facing; a body stepping forward or purely sideways keeps the full jog cap.
+## The backward component along the facing axis is capped to the slower pace while the
+## sideways component stays free, so a rear rank backing into a new slot is slower than a
+## front rank stepping forward -- exactly the maneuver asymmetry the stat models. A final
+## jog_speed limit on the recombined vector keeps total speed within the jog ceiling, so a
+## body moving diagonally backward-and-sideways never exceeds jog overall (the backward
+## axis just eats a bigger share of that budget). Pure function of the body's velocity and
+## facing; no RNG, order-free -- replay-safe.
+static func _cap_body_speed(unit: Unit, i: int) -> Vector2:
+	var vel: Vector2 = unit._sim_body_vel[i]
+	var facing: Vector2 = unit._sim_soldier_facing[i] if i < unit._sim_soldier_facing.size() \
+			else unit.facing
+	# facing is always a unit vector -- every assignment site in Unit.gd normalises it
+	# (dir.normalized(), Vector2.from_angle, rotation ops, the axis constants) -- so the
+	# facing * forward_component projection below is exact. Guard the degenerate zero case.
+	if facing.length_squared() < 0.0001:
+		return vel.limit_length(unit.jog_speed)
+	# A body moving forward or sideways (non-negative facing component) uses the full jog
+	# cap. Only a body whose motion leans backward -- against its facing -- is capped slower.
+	var forward_component: float = vel.dot(facing)
+	if forward_component >= 0.0:
+		return vel.limit_length(unit.jog_speed)
+	# Split the velocity into its along-facing (backward) part and its sideways part, cap the
+	# backward part to the slower pace, then re-limit the sum to jog so total speed stays
+	# within the jog ceiling even for a diagonal backward-and-sideways body.
+	var back_cap: float = unit.jog_speed * unit.back_speed_fraction
+	var along: Vector2 = facing * forward_component            # points backward (component < 0)
+	var side: Vector2 = vel - along
+	if along.length() > back_cap:
+		along = along.normalized() * back_cap
+	return (along + side).limit_length(unit.jog_speed)
 
 
 ## Slide the regiment center toward its soldiers' centroid, at a bounded velocity (phase 5).
@@ -165,6 +202,14 @@ static func step(unit: Unit, delta: float) -> void:
 static func couple(unit: Unit, delta: float) -> void:
 	var n: int = unit._sim_soldier_pos.size()
 	if n == 0:
+		return
+	# During a wheel the maneuver authoritatively slides `position` along the hinge arc while the
+	# bodies spring onto the swinging slots a few frames behind. Their centroid therefore lags the
+	# slot centroid, so coupling would read that lag as off-formation drift and drag the centre
+	# BACKWARD against the arc — pulling the standing flank off its hinge. Skip it; the spring
+	# alone brings the bodies onto the arc, and coupling resumes once the wheel completes.
+	if unit._wheel_target != Vector2.ZERO:
+		unit._body_follow_vel = Vector2.ZERO
 		return
 	var slots: PackedVector2Array = unit.soldier_world_slots(unit.soldiers)
 	if slots.size() != n:
