@@ -1,15 +1,22 @@
 # Design note: individual-level collision
 
-Status: **phases 1-3 implemented and active** (behind `Unit.INDIVIDUAL_COLLISION`,
-now ON). Soldiers are seeded as world-space bodies from their formation slots, the
-engaged front ranks are separated per-soldier **across regiments** on a soldier-sized
-`SoldierSpatialHash`, and — phase 3 — the **flock render follows those positions**, so
-the on-screen soldiers reflect the collision (the debug overlay is retired). The layer
-is still **non-authoritative for the simulation** — combat, movement, and morale read
-the regiment circle, not `_sim_soldier_pos` — so gameplay OUTCOMES are unchanged; only
-the rendered positions reflect the collision. Next: phase 4 (combat per-soldier, the
-first gameplay change), phase 5 (retire the regiment circle). The design decisions are
-settled (see "Decisions" below).
+Status: **phases 1-4 landed; engaged melee is now soldier-authoritative** (behind
+`Unit.INDIVIDUAL_COLLISION`, ON). Soldiers are seeded as world-space bodies from their
+formation slots, separated across regiments on a soldier-sized `SoldierSpatialHash`, and
+the flock render follows those positions. Phase 4 wired the per-soldier combat model
+(`combat-model.md`) into live melee: `UnitCombat.strike` routes engaged, non-ranged
+combat to `SoldierMelee.resolve`, which resolves the opposed land contest and wound
+against per-soldier health, reaps the dead, and drives `unit.soldiers` — so casualties,
+morale, rout, and the HUD now read soldier deaths for the engaged-melee case. Knockback,
+prone, depth bracing, and stamina are wired (#201 slices A-D); friendly soldier collision
+is soldier-level (phase 5 slice 1).
+
+**Still regiment-level (the remaining authority work):** ranged casualties (decrement
+`soldiers` and trim arbitrary rear bodies, not arrow-targeted), morale (a regiment scalar,
+not derived from soldier state), and **enemy** soldier-vs-soldier collision + retiring the
+regiment circle — the last is deferred to **#201** (stopping a charge needs momentum/mass;
+see the phase-5 note below and #296). Posture/graded bracing and the rearward domino
+cascade are also deferred. The design decisions are settled (see "Decisions" below).
 
 Tracks [#164](https://github.com/Lacaedemon/sparta/issues/164) (collision at the
 individual level, not the unit level) and
@@ -208,7 +215,12 @@ states already in the sim, not wall-clock or frame-rate), so replays stay exact.
 The promotion/demotion boundary uses linger hysteresis (`ENGAGED_LINGER`) so soldiers
 don't flap between tiers at the threshold — shipped in phase 2.
 
-Phases 1-3 are live (flagged on, non-authoritative): the soldiers are simulated,
-separated across regiments, and rendered at their simulated positions. The next PR is
-phase 4 — give the soldiers persistent body dynamics and resolve combat per-soldier,
-the first gameplay change (it unblocks #240).
+Phases 1-4 are live: the soldiers are simulated, separated across regiments, rendered at
+their simulated positions, and **engaged melee resolves per-soldier and drives regiment
+strength/morale** (the first gameplay change). The per-soldier reach model gives a longer
+weapon the opening-strike advantage on the approach; the fully *sustained* asymmetric
+standoff of #240 (a spear holding a swordsman at bay while locked) still needs enemy
+soldier-level positioning, which rides with #201 (the regiment circle still collapses
+enemy fronts to the separation floor once locked). The next authority slices are ranged
+casualties (kill soldiers in the health pool) and morale-from-soldier-state; enemy
+collision and retiring the regiment circle move with #201.

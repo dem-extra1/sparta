@@ -1,9 +1,12 @@
 # Design note: per-soldier combat model
 
-Status: **design spec for phase 4** of individual-soldier collision (see
+Status: **phase 4 of individual-soldier collision — largely implemented** (see
 [`individual-collision-design.md`](individual-collision-design.md)). This is the
-probabilistic model that resolves combat between individual soldiers once the
-soldier layer is authoritative. The player-facing version lives at
+probabilistic model that resolves combat between individual soldiers; it is now wired
+into **engaged melee**, which is soldier-authoritative (`SoldierMelee.resolve`). The
+per-slice `> Implemented` notes below track what has landed (the land contest, wound,
+knockback, prone, bracing, and stamina) and what is deferred (posture-graded bracing,
+the domino cascade, and enemy collision → #201). The player-facing version lives at
 [`website/combat.qmd`](../website/combat.qmd) — keep the two in sync.
 
 The guiding principle is **emergence, not modifiers**. We do not bolt a "flanking
