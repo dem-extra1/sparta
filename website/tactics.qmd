@@ -269,8 +269,8 @@ Speed itself isn't instant either: a unit **ramps up** to its target pace
 snapping to a new speed. Heavier-kitted troops (spearmen) build up speed
 slower than lighter ones (archers), and every foot type slows down faster than
 it speeds up --- stopping takes no effort, building momentum does. Cavalry is
-closer to symmetric: a galloping horse can't be reined in much faster than it
-can build up speed in the first place.
+symmetric: a galloping horse can't be reined in any faster than it can build
+up speed in the first place.
 
 ## Order stances
 

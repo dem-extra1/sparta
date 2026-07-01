@@ -249,8 +249,8 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# `accel_mps2`/`decel_mps2` are how fast the unit ramps toward/away from a pace, in
 	# metres/second^2. Same panoply-weight reasoning as the pace speeds above: heavier
 	# kit accelerates slower, and decel > accel for foot troops (stopping needs no
-	# propulsive effort; starting does) -- cavalry is closer to symmetric since a
-	# galloping horse can't be reined in as fast as it can build speed. See
+	# propulsive effort; starting does) -- cavalry is symmetric since a galloping
+	# horse can't be reined in any faster than it can build up speed. See
 	# website/tactics.qmd for the full table.
 	#
 	# `formation` is the type's default density (still just a starting point --

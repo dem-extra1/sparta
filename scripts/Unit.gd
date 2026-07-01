@@ -34,8 +34,8 @@ var uid: int = -1
 # snapping there instantly. Independent per-type values (Battle sets them from the
 # loadout's accel_mps2/decel_mps2), following the same panoply-weight reasoning as
 # walk_speed/jog_speed: heavier kit accelerates slower, and decel > accel for foot
-# troops (stopping needs no propulsive effort; starting does). Cavalry is closer to
-# symmetric -- a galloping horse can't be reined in as fast as it can build speed.
+# troops (stopping needs no propulsive effort; starting does). Cavalry is symmetric --
+# a galloping horse can't be reined in any faster than it can build up speed.
 # Defaults are a middling (infantry-like) value for bare test units without a loadout.
 @export var accel: float = 30.0
 @export var decel: float = 60.0

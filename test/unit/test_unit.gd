@@ -624,8 +624,8 @@ func test_move_to_decelerates_when_the_target_pace_drops() -> void:
 	u._move_to(Vector2(0, 100000), 0.1)   # far target -> AUTO pace selects walk, not sprint
 	assert_lt(u._approach_velocity.length(), u.move_speed,
 		"speed has started dropping toward the lower target pace")
-	assert_gt(u._approach_velocity.length(), u.move_speed - u.decel * 0.1 - 0.1,
-		"but the drop this tick is bounded by decel * delta -- not an instant snap down")
+	assert_almost_eq(u._approach_velocity.length(), u.move_speed - u.decel * 0.1, 0.001,
+		"the drop this tick is exactly decel * delta -- not an instant snap down")
 
 
 # --- turning rate tapers with speed -------------------------------------------
