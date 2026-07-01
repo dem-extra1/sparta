@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "The unit-speed labels are an opt-in overlay that only appears while holding Space with '☰ Menu → Unit speed labels' toggled on (default off). A recorded battle clip can't flip that menu checkbox, so the labels wouldn't render in an unattended recording. The feature is shown by a screenshot in the PR body instead."
+}
