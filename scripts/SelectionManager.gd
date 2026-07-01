@@ -1227,6 +1227,7 @@ func _draw_orders() -> void:
 		if u.team != 0 and not show_enemy:
 			continue
 		var origin: Vector2 = u.global_position
+		_draw_unit_speed(u, origin)
 		# Only a player-issued attack (stored in target_enemy) draws a red line. A
 		# unit auto-fighting its nearest foe has no stored target, so it draws no
 		# line — matching order_summary() reporting "Engaged" with no destination.
@@ -1369,3 +1370,21 @@ func _draw_order_distance(a: Vector2, b: Vector2, world_dist: float, color: Colo
 		perp = -perp
 	draw_string(font, mid + perp * 12.0 + Vector2(-tw * 0.5, 0.0), text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, color)
+
+
+## Label a unit with its current speed in metres/second, drawn just above its `origin`.
+## The unit's `_current_speed` is world units/second; it's converted back to the m/s the
+## loadout declared via Battle.WORLD_UNITS_PER_METER and Battle.SPEED_SCALE so it reads in
+## the same metric units as the distance labels. Opt-in via Settings.show_unit_speed
+## (default off). A halted unit reads "0.0 m/s".
+func _draw_unit_speed(u: UnitRef, origin: Vector2) -> void:
+	if not Settings.show_unit_speed:
+		return
+	var mps: float = DistanceLegend.mps_for_world_speed(
+			u._current_speed, BattleRef.WORLD_UNITS_PER_METER, BattleRef.SPEED_SCALE)
+	var text: String = DistanceLegend.speed_label_text(mps)
+	var font := ThemeDB.fallback_font
+	var tw: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	# Sit above the unit marker, clear of the order lines fanning out from origin.
+	draw_string(font, origin + Vector2(-tw * 0.5, -16.0), text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.85, 0.95, 1.0))
