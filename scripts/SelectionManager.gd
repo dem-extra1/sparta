@@ -507,9 +507,13 @@ func _files_for_mode(units: Array, usable: float, mode: int) -> Array:
 					UnitRef.FORMATION_SPACING * u.spacing_scale))
 		return out
 	# EQUAL_DEPTH: target a total frontage that fills the span (a grid of f files spans
-	# (f-1) gaps of FORMATION_SPACING, so the units together want ~usable/SPACING + N files),
-	# then share one rank depth across the units to hit it.
-	var f_target: int = maxi(units.size(), int(round(usable / UnitRef.FORMATION_SPACING)) + units.size())
+	# (f-1) gaps of spacing, so the units together want ~usable/spacing + N files), then
+	# share one rank depth across the units to hit it. Uses the first unit's spacing_scale
+	# as the shared pitch -- correct for a same-formation group; a genuinely mixed group
+	# (e.g. TIGHT spears + LOOSE archers together) would need a per-unit target, which is
+	# a bigger refactor (tracked separately).
+	var effective_spacing: float = UnitRef.FORMATION_SPACING * units[0].spacing_scale
+	var f_target: int = maxi(units.size(), int(round(usable / effective_spacing)) + units.size())
 	var depth: int = _equal_depth_for_target(units, f_target)
 	for u in units:
 		out.append(clampi(int(ceil(float(maxi(1, u.max_soldiers)) / float(depth))), 1, maxi(1, u.max_soldiers)))
