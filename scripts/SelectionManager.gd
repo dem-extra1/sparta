@@ -969,6 +969,7 @@ func _order_mode_color(mode: int) -> Color:
 		BattleRef.OrderMode.ATTACK_REAR: return Color(1.0, 0.3, 0.25)
 		BattleRef.OrderMode.SKIRMISH: return Color(1.0, 0.9, 0.3)
 		BattleRef.OrderMode.SUPPORT: return Color(0.4, 0.95, 0.7)
+		BattleRef.OrderMode.CYCLE_CHARGE: return Color(0.85, 0.4, 1.0)
 		_: return Color.WHITE
 
 
