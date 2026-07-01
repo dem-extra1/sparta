@@ -73,10 +73,20 @@ static func ranks_for(n: int, files: int) -> int:
 
 
 ## The general grid layout: `n` slots in a centred, wider-than-deep block with `files`
-## columns at `spacing` px, front rank toward -Y. Each rank is centred on its own count so
-## a partial last rank doesn't pull the centroid off the unit. `slots()` is the wrapper
-## that feeds it the unit's frontage and the default spacing; grid-ops feed it reshaped
-## (files, spacing) for the transposed / widened / opened block.
+## columns at `spacing` px, front rank toward -Y. Full ranks span the whole frontage; a
+## partial rear rank closes up onto the CENTRE files of that same frontage, so its survivors
+## stay centred within the frontage -- the men step up toward the middle rather than fanning
+## out to the wings. This mirrors how a phalanx or
+## legion closed after casualties: the file (column), led at the front and closed at the
+## rear by the ouragos/file-closer, was the unit of cohesion; the outer files shortened as
+## the wings closed toward the standard while the centre files stayed deepest.
+##
+## The partial rank stays laterally centred to the half-file: when its count and the frontage
+## have opposite parity it straddles the centre line on HALF-columns (offset by half a
+## spacing), so it is both symmetric about the unit centre (centroid on the axis) and still a
+## regular grid -- each survivor sits half a file off the men ahead, closed toward the centre.
+## `slots()` is the wrapper that feeds it the unit's frontage and the default spacing; grid-ops
+## feed it reshaped (files, spacing) for the transposed / widened / opened block.
 static func block_slots(n: int, files: int, spacing: float) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	if n <= 0 or files <= 0:
@@ -87,6 +97,10 @@ static func block_slots(n: int, files: int, spacing: float) -> PackedVector2Arra
 		var file: int = i % files
 		var rank: int = i / files
 		var rank_count: int = mini(files, n - rank * files)
+		# Close the rank onto the centre files of the full frontage: the survivors span a
+		# contiguous, laterally-centred run of columns (rx0 = -(rank_count-1)/2), so a short
+		# rear rank clusters on the middle files while the wings shorten -- and it stays exactly
+		# symmetric about the unit centre, keeping the block's centroid on the axis.
 		var rx0: float = -(rank_count - 1) * 0.5 * spacing
 		out.push_back(Vector2(rx0 + file * spacing, y0 + rank * spacing))
 	return out

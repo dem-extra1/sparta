@@ -29,6 +29,14 @@ var uid: int = -1
 # never get a loadout.
 @export var walk_speed: float = 45.0
 @export var jog_speed: float = 67.5
+# Backward-walk speed factor: a soldier repositioning BACKWARD relative to his own
+# facing (a common motion during a maneuver -- conversio, quarter-turn, frontage
+# reshape -- where the rear ranks back up into new slots) is capped slower than one
+# moving forward. Real troops shuffle backward at roughly half their forward pace,
+# so a maneuver where men must back up takes longer than one where they step forward.
+# This is a single tunable, not a full per-type stat; a per-loadout backward-speed
+# value is a deferred follow-up.
+@export var back_speed_fraction: float = 0.5
 # Acceleration/deceleration, in world units/s^2 -- how fast this unit's actual speed
 # ramps toward whichever pace it's targeting (see _current_speed below), instead of
 # snapping there instantly. Independent per-type values (Battle sets them from the
