@@ -1,0 +1,14 @@
+{
+  "_comment": "CI-RUNNER baseline for .github/workflows/benchmark.yml's relative regression check. This is NOT the 60fps/reference-hardware target from PLAN.md (a 2022 MacBook Air M2 24GB and the developer's PC) -- GitHub Actions runners are different, variable-speed hardware; see tools/benchmark/README.md. Established from Performance benchmark workflow run https://github.com/Lacaedemon/sparta/actions/runs/28554525773 on PR #551 (feat/performance-benchmark-549), ubuntu-latest, benchmarks/scenarios/large-battle.json at scale 1x, warmup_ticks=60 measure_ticks=300 (the CI-tuned window in benchmark.yml, not BenchmarkRunner's local 120/600 defaults). To refresh: run the workflow, read the mean_ms/p95_ms it reports (workflow log or the PR comment it posts), and update the stats block below with a new _comment noting the new source run.",
+  "scenario": "res://benchmarks/scenarios/large-battle.json",
+  "scale": 1.0,
+  "soldier_count": 1720,
+  "warmup_ticks": 60,
+  "requested_measure_ticks": 300,
+  "samples_collected": 300,
+  "stats": {
+    "mean_ms": 18.295,
+    "p95_ms": 22.025,
+    "max_ms": 27.577
+  }
+}

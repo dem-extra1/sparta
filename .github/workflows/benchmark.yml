@@ -1,0 +1,187 @@
+# Performance regression check for the sim hot path (see #549, tools/benchmark/README.md).
+#
+# This is a RELATIVE check against a CI-runner-specific baseline (tools/benchmark/baseline.json)
+# -- it answers "did this PR make the reference battle measurably slower on THIS runner," not
+# "is the game fast enough." GitHub Actions runners are not the reference hardware named in
+# PLAN.md (a 2022 MacBook Air M2 24GB and the developer's PC), and absolute numbers here have
+# no defined relationship to that 60fps target -- CI runner speed varies run to run and across
+# GitHub's fleet. See tools/benchmark/README.md for the local protocol that checks the real
+# target on real hardware; this workflow is only the early-warning between those manual runs.
+#
+# Why a WARNING comment, not a hard merge block: a single CI run's timing is noisy (shared
+# runner, no guaranteed CPU affinity/frequency scaling control), so a hard fail on a threshold
+# crossing risks false-positive blocks on an unrelated PR that just landed on a slower runner.
+# A visible before/after comment lets a human judge a borderline result, while a clear
+# regression (well past the threshold) is still impossible to miss.
+name: Performance benchmark
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    # Sim-hot-path files (per #549: Unit.gd, SoldierBodies.gd, Battle.gd, combat/formation
+    # scripts) plus the benchmark tooling and scenario itself. Mirrors demo-video.yml's
+    # path-filter pattern -- most PRs (UI, campaign, docs) never touch these files and this
+    # workflow simply doesn't run for them.
+    paths:
+      - 'scripts/Unit*.gd'
+      - 'scripts/Soldier*.gd'
+      - 'scripts/Battle.gd'
+      - 'scripts/Projectile*.gd'
+      - 'scripts/SpatialHash.gd'
+      - 'benchmarks/**'
+      - 'tools/benchmark/**'
+
+concurrency:
+  group: benchmark-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write   # post the before/after comment
+
+env:
+  GODOT_VERSION: 4.7.0
+  GUT_VERSION: v9.7.0
+  # CI-tuned measurement window: shorter than BenchmarkRunner's local defaults (120/600 ticks)
+  # so this job stays quick; still long enough (5s of measured ticks after a 1s warmup) for a
+  # stable mean/p95 on a fixed reference scenario. See tools/benchmark/README.md for the local,
+  # more thorough defaults used for the real hardware-target check.
+  WARMUP_TICKS: 60
+  MEASURE_TICKS: 300
+  REGRESSION_THRESHOLD_PCT: 20
+
+jobs:
+  benchmark:
+    # Same-repo only: on a fork PR, GITHUB_TOKEN is forced read-only regardless of the
+    # `pull-requests: write` requested above, so the "Post benchmark comment" step would fail
+    # after a full (wasted) benchmark run -- a red X unrelated to the contributor's actual
+    # change. Mirrors demo-video.yml's identical guard for the same write+comment pattern.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }}
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+
+      - name: Install GUT ${{ env.GUT_VERSION }}
+        # The project's test files extend GutTest, so GUT must be present before --import
+        # resolves the whole project (same requirement as godot-ci.yml / demo-video.yml).
+        run: |
+          git clone --depth 1 --branch "$GUT_VERSION" https://github.com/bitwes/Gut.git /tmp/gut
+          mkdir -p addons
+          rm -rf addons/gut
+          cp -r /tmp/gut/addons/gut addons/gut
+
+      - name: Import & validate project
+        run: |
+          set -o pipefail
+          godot --headless --import --verbose 2>&1 | tee import.log
+          if grep -E "SCRIPT ERROR|Failed to load script|Parse Error|Compile Error" import.log; then
+            echo "::error::Godot reported script/resource errors during import"
+            exit 1
+          fi
+
+      - name: Run benchmark
+        id: run
+        timeout-minutes: 5
+        env:
+          SPARTA_BENCHMARK_WARMUP_TICKS: ${{ env.WARMUP_TICKS }}
+          SPARTA_BENCHMARK_TICKS: ${{ env.MEASURE_TICKS }}
+          SPARTA_BENCHMARK_OUT: /tmp/benchmark-current.json
+        run: |
+          set -euo pipefail
+          tools/benchmark/run-benchmark.sh
+          # Per CLAUDE.md: a headless Godot run's exit code is not a reliable success signal
+          # (push_error() doesn't set one), so verify the report file directly rather than
+          # trusting run-benchmark.sh's own exit status.
+          if [ ! -s /tmp/benchmark-current.json ]; then
+            echo "::error::benchmark produced no report file"
+            exit 1
+          fi
+          EARLY_STOP=$(jq -r '.early_stop' /tmp/benchmark-current.json)
+          if [ "$EARLY_STOP" = "true" ]; then
+            echo "::warning::benchmark run ended early (see the run's own warnings above); results may be partial."
+          fi
+
+      - name: Compare against baseline and build comment
+        id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          CUR_MEAN=$(jq -r '.stats.mean_ms' /tmp/benchmark-current.json)
+          CUR_P95=$(jq -r '.stats.p95_ms' /tmp/benchmark-current.json)
+          SOLDIERS=$(jq -r '.soldier_count' /tmp/benchmark-current.json)
+          SAMPLES=$(jq -r '.samples_collected' /tmp/benchmark-current.json)
+          # Full-precision CUR_MEAN/CUR_P95 feed the awk percent-change math below; separate
+          # 3-decimal display versions go in the comment (jq/awk float rounding on the raw
+          # value would risk 18.627999999999997-style noise -- printf %.3f avoids that).
+          CUR_MEAN_FMT=$(awk -v v="$CUR_MEAN" 'BEGIN { printf "%.3f", v }')
+          CUR_P95_FMT=$(awk -v v="$CUR_P95" 'BEGIN { printf "%.3f", v }')
+
+          VERDICT="info"
+          BASELINE_LINE="No baseline committed yet at \`tools/benchmark/baseline.json\` -- nothing to compare against. See that file's header for how to establish one."
+          if [ -f tools/benchmark/baseline.json ]; then
+            VERDICT="ok"   # a baseline exists and was compared; overwritten to "regression" below if it crossed the threshold
+            BASE_MEAN=$(jq -r '.stats.mean_ms' tools/benchmark/baseline.json)
+            BASE_P95=$(jq -r '.stats.p95_ms' tools/benchmark/baseline.json)
+            # Percent change vs baseline, computed in awk (portable, no bc dependency).
+            MEAN_PCT=$(awk -v c="$CUR_MEAN" -v b="$BASE_MEAN" 'BEGIN { printf "%.1f", (c - b) / b * 100 }')
+            P95_PCT=$(awk -v c="$CUR_P95" -v b="$BASE_P95" 'BEGIN { printf "%.1f", (c - b) / b * 100 }')
+            REGRESSED=$(awk -v p="$MEAN_PCT" -v t="$REGRESSION_THRESHOLD_PCT" 'BEGIN { print (p > t) ? "1" : "0" }')
+            REGRESSED_P95=$(awk -v p="$P95_PCT" -v t="$REGRESSION_THRESHOLD_PCT" 'BEGIN { print (p > t) ? "1" : "0" }')
+            if [ "$REGRESSED" = "1" ] || [ "$REGRESSED_P95" = "1" ]; then
+              VERDICT="regression"
+              echo "::warning::mean tick time regressed ${MEAN_PCT}% (p95 ${P95_PCT}%) vs the CI baseline -- see the PR comment."
+            fi
+            BASELINE_LINE=$(printf '| mean tick time | %.3f ms | %.3f ms | %s%% |\n| p95 tick time | %.3f ms | %.3f ms | %s%% |' \
+              "$BASE_MEAN" "$CUR_MEAN" "$MEAN_PCT" "$BASE_P95" "$CUR_P95" "$P95_PCT")
+            BASELINE_LINE="| metric | baseline | this PR | change |\n| --- | --- | --- | --- |\n${BASELINE_LINE}"
+          fi
+
+          {
+            echo "verdict=$VERDICT"
+            echo "cur_mean=$CUR_MEAN_FMT"
+            echo "cur_p95=$CUR_P95_FMT"
+            echo "soldiers=$SOLDIERS"
+            echo "samples=$SAMPLES"
+            echo "baseline_table<<BASELINE_EOF"
+            printf '%b\n' "$BASELINE_LINE"
+            echo "BASELINE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post benchmark comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Every value that could carry markdown (backticks, etc.) is passed via env, not
+          # spliced with ${{ }} directly into a quoted bash string below -- ${{ }} substitution
+          # happens BEFORE bash parses the script, so an unescaped backtick in an interpolated
+          # value would re-enter bash as live command-substitution syntax (this bit us during
+          # development: the baseline_table's `tools/benchmark/baseline.json` code span silently
+          # vanished because bash tried to run it as a command). Referencing "$VAR" instead is
+          # the same safe pattern demo-video.yml uses for author-controlled text.
+          VERDICT: ${{ steps.compare.outputs.verdict }}
+          SOLDIERS: ${{ steps.compare.outputs.soldiers }}
+          SAMPLES: ${{ steps.compare.outputs.samples }}
+          CUR_MEAN: ${{ steps.compare.outputs.cur_mean }}
+          CUR_P95: ${{ steps.compare.outputs.cur_p95 }}
+          BASELINE_TABLE: ${{ steps.compare.outputs.baseline_table }}
+        run: |
+          set -euo pipefail
+          PR=${{ github.event.pull_request.number }}
+          MARKER="<!-- sparta-benchmark -->"
+          case "$VERDICT" in
+            regression) HEADLINE="Regressed beyond the ${REGRESSION_THRESHOLD_PCT}% threshold vs. the CI baseline (CI-runner-noisy -- a human call, not an auto-block)."; EMOJI=":warning:" ;;
+            info)       HEADLINE="No CI baseline yet to compare against."; EMOJI=":bar_chart:" ;;
+            *)          HEADLINE="Within the ${REGRESSION_THRESHOLD_PCT}% threshold vs. the CI baseline."; EMOJI=":chart_with_upwards_trend:" ;;
+          esac
+          BODY=$(printf '%s\n### %s Performance benchmark\n\n%s\n\nCurrent run: **%s soldiers**, %s ticks sampled, mean **%s ms**/tick, p95 **%s ms**/tick.\n\n%s\n\n<sub>This is a CI-runner-relative check, NOT the 60fps/reference-hardware target in PLAN.md -- see tools/benchmark/README.md. Run tools/benchmark/run-benchmark.sh locally on real hardware to check that target.</sub>' \
+            "$MARKER" "$EMOJI" "$HEADLINE" \
+            "$SOLDIERS" "$SAMPLES" "$CUR_MEAN" "$CUR_P95" "$BASELINE_TABLE")
+          tools/ci/upsert-pr-comment.sh \
+            "${{ github.repository }}" "$PR" "$MARKER" "$BODY" "benchmark comment"

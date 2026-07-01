@@ -1,0 +1,23 @@
+{
+  "_comment": "Reference large-battle scenario for tools/benchmark (see tools/benchmark/README.md). Two 8-unit armies (~860 soldiers/side, ~1720 total) deployed nose-to-nose so melee/ranged combat starts on tick 0 -- no scripted orders needed. This is meant to represent the biggest battle the game should support, not a toy case. Loaded directly by BenchmarkRunner.gd via Battle.scenario (the same mechanism demos/inputs/*.json 'scenario' staging uses; see demos/README.md), NOT via DemoInputRecorder, so there is no 'steps'/'camera' input track here.",
+  "seed": "549001",
+  "scenario": [
+    {"team": 0, "type": "Spearmen", "x": 275,  "y": 490, "count": 140},
+    {"team": 0, "type": "Spearmen", "x": 425,  "y": 490, "count": 140},
+    {"team": 0, "type": "Infantry", "x": 575,  "y": 490, "count": 120},
+    {"team": 0, "type": "Infantry", "x": 725,  "y": 490, "count": 120},
+    {"team": 0, "type": "Archers",  "x": 875,  "y": 490, "count": 90},
+    {"team": 0, "type": "Archers",  "x": 1025, "y": 490, "count": 90},
+    {"team": 0, "type": "Cavalry",  "x": 1175, "y": 490, "count": 80},
+    {"team": 0, "type": "Cavalry",  "x": 1325, "y": 490, "count": 80},
+
+    {"team": 1, "type": "Spearmen", "x": 275,  "y": 510, "count": 140},
+    {"team": 1, "type": "Spearmen", "x": 425,  "y": 510, "count": 140},
+    {"team": 1, "type": "Infantry", "x": 575,  "y": 510, "count": 120},
+    {"team": 1, "type": "Infantry", "x": 725,  "y": 510, "count": 120},
+    {"team": 1, "type": "Archers",  "x": 875,  "y": 510, "count": 90},
+    {"team": 1, "type": "Archers",  "x": 1025, "y": 510, "count": 90},
+    {"team": 1, "type": "Cavalry",  "x": 1175, "y": 510, "count": 80},
+    {"team": 1, "type": "Cavalry",  "x": 1325, "y": 510, "count": 80}
+  ]
+}

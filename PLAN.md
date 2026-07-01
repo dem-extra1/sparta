@@ -15,6 +15,17 @@ then grow outward.
 - **Art:** **CC0 only** — Kenney, OpenGameArt (Toen's Medieval Strategy pack). See `ASSETS.md`.
   - ⚠️ **Not** commercial-game mod assets — they are copyrighted, not public domain.
 - **First milestone:** one self-contained tactical battle. No campaign map yet.
+- **Performance target (#549):** **60fps at a representative large-battle scale** (several
+  hundred soldiers across multiple regiments, actively engaged in melee and ranged combat --
+  the biggest battle the game is expected to support), on named reference hardware: a **2022
+  MacBook Air (Apple M2, 24GB)** and the developer's usual PC. This is the standing budget
+  future per-entity-granularity decisions (per-soldier speed, weapon/shield objects,
+  individual slot orders -- see the bottom-up-emergence direction below) get measured against,
+  not a guess. GitHub Actions CI runners are not this hardware, so CI can only run a
+  *relative* regression check (did a PR measurably slow the sim down on the runner, not "is it
+  fast enough"); the real target is checked by hand on the reference hardware. See
+  `tools/benchmark/README.md` for the reference large-battle scenario, the benchmark runner,
+  and both checks.
 
 ## Design pillars
 1. **Collision is core — treat it as a first-class system, not polish.** In a large-scale tactical
