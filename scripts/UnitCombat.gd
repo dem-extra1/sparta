@@ -200,10 +200,16 @@ static func take_casualties(u: Unit, amount: int, attacker: Unit) -> void:
 ## body count, not a double-counted multiplier. Callers pass their flank (1.0 = frontal/melee).
 static func register_casualties(u: Unit, total: int, attacker: Unit, morale_flank: float) -> void:
 	var morale_scale: float = 1.0 + REAR_MORALE_EXTRA * (morale_flank - 1.0)
-	u.morale -= float(total) * 0.12 * morale_scale
+	# Fraction-of-force scaled, not a flat per-head amount -- see Unit.MORALE_LOSS_PER_FULL_LOSS.
+	var casualty_frac: float = float(total) / float(u.max_soldiers) if u.max_soldiers > 0 else 0.0
+	var base_erosion: float = casualty_frac * Unit.MORALE_LOSS_PER_FULL_LOSS * morale_scale
+	u.morale -= base_erosion
 	var ratio: float = float(u.soldiers) / float(u.max_soldiers)
-	if ratio < 0.4:
-		u.morale -= (0.4 - ratio) * 6.0   # crumble as a regiment thins out
+	if ratio < Unit.MORALE_CRUMBLE_RATIO_THRESHOLD:
+		# Crumble as a regiment thins out: each casualty's own base erosion is boosted, ramping
+		# from x1 at the threshold to x(1 + MORALE_CRUMBLE_BOOST) as strength bottoms out.
+		var crumble_depth: float = (Unit.MORALE_CRUMBLE_RATIO_THRESHOLD - ratio) / Unit.MORALE_CRUMBLE_RATIO_THRESHOLD
+		u.morale -= base_erosion * Unit.MORALE_CRUMBLE_BOOST * crumble_depth
 
 	if u.soldiers <= 0:
 		u.soldiers = 0

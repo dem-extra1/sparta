@@ -1,8 +1,8 @@
 {
-  "_comment": "A team's LAST unit routs, then RALLIES instead of instantly losing. Stages team 0's ONLY unit -- a full-strength (120) but jittery (morale 15) player infantry -- meeting a single enemy infantry head-on. Contact shatters its brittle morale and it breaks and flees up (faded) while barely bloodied, so it stays well above the shatter threshold. It used to trigger instant defeat + a paused freeze the moment its last fightable unit left the line; now the battle stays live while it might rally. Once it routs it leaves the fightable group, so the enemy AI (which only advances on fightable player units) halts -- the fugitive breaks contact, and when its rout times out it rallies back under control at low morale. max_frames spans past ROUT_TIME (~6s at 30fps) so the clip captures the whole rout->rally arc. Deterministic from the seed + scenario; no player input needed.",
+  "_comment": "A team's LAST unit routs, then RALLIES instead of instantly losing. Stages team 0's ONLY unit -- a full-strength (120) but jittery (morale 15) player infantry -- meeting a single enemy infantry head-on. Sustained frontal casualties erode its morale to 0 (the discipline-scaled rout retune, #529, made this actually reachable -- it used to sit near-immune to routing and simply grind to a stalemate), and it breaks and flees up (faded) while barely bloodied, so it stays well above the shatter threshold. It used to trigger instant defeat + a paused freeze the moment its last fightable unit left the line; now the battle stays live while it might rally. Once it routs it leaves the fightable group, so the enemy AI (which only advances on fightable player units) halts -- the fugitive breaks contact, and when its rout times out it rallies back under control at low morale. Deterministic from the seed + scenario (state-dump verified: routs ~tick 785, rallies by ~tick 1150); max_frames spans well past that so the clip captures the whole rout->rally arc. No player input needed.",
   "seed": "12345",
   "fixed_fps": 30,
-  "max_frames": 420,
+  "max_frames": 650,
   "fps": 15,
   "width": 640,
   "scenario": [
@@ -13,5 +13,5 @@
     {"tick": 0, "x": 800.0, "y": 360.0, "zoom": 1.0}
   ],
   "steps": [],
-  "frames": [60, 200, 400]
+  "frames": [60, 785, 1150]
 }
