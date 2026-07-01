@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/formation-geometry-530.json",
+  "caption": "Real per-formation block geometry (#530): formations now restructure the actual soldier grid, not just combat multipliers. Four lone Infantry regiments sit side by side -- NORMAL (the 2:1 line), SQUARE, SHIELD_WALL, TESTUDO. Watch the footprint: SQUARE reshapes into a genuine square (bbox aspect ~1.0, was 2:1) with its perimeter ring facing outward on every side (zoom in and you can see the top/bottom/side ranks point away from the block, not one uniform facing); SHIELD_WALL and TESTUDO visibly tighten their grid spacing below NORMAL's floor (measured: 0.75x and 0.6x respectively), so the turtle is noticeably the smallest, densest block of the four.",
+  "fixed_fps": 30,
+  "max_frames": 200,
+  "fps": 12,
+  "width": 720
+}

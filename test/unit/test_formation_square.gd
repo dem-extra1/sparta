@@ -276,3 +276,104 @@ func test_t_key_dispatches_to_the_formation_cycle() -> void:
 	assert_true(handled, "T is a known hotkey")
 	assert_eq(pair[1].last_formation, Unit.FORMATION_TIGHT,
 		"pressing T cycles Normal -> Tight")
+
+
+# --- real block geometry (#530): the square is an actual square footprint, with its
+# --- perimeter facing outward -- not just a combat-multiplier flag on the same 2:1
+# --- line-frontage rectangle every other formation uses.
+
+func _bbox(positions: PackedVector2Array) -> Vector2:
+	var min_p: Vector2 = positions[0]
+	var max_p: Vector2 = positions[0]
+	for p in positions:
+		min_p.x = minf(min_p.x, p.x)
+		min_p.y = minf(min_p.y, p.y)
+		max_p.x = maxf(max_p.x, p.x)
+		max_p.y = maxf(max_p.y, p.y)
+	return Vector2(max_p.x - min_p.x, max_p.y - min_p.y)
+
+
+func test_square_slot_bbox_is_roughly_square_not_two_to_one() -> void:
+	var normal := _make_unit()
+	var normal_bbox := _bbox(normal.soldier_world_slots(normal.soldiers))
+
+	var squared := _make_unit()
+	squared.set_formation(Unit.FORMATION_SQUARE)
+	var square_bbox := _bbox(squared.soldier_world_slots(squared.soldiers))
+
+	# #530's verification sweep measured the line frontage at a 2.00 bbox aspect (126x63)
+	# for a 120-man regiment; check the same shape here, not the raw FORMATION_ASPECT
+	# tunable (which drives file COUNT, not the realized bbox ratio after rank rounding).
+	assert_almost_eq(normal_bbox.x / normal_bbox.y, 2.0, 0.05,
+		"the normal line stays a wide 2:1-ish rectangle")
+	assert_almost_eq(square_bbox.x / square_bbox.y, 1.0, 0.15,
+		"the square's own footprint is close to square, not the wide line's aspect")
+
+
+func test_square_perimeter_soldiers_face_outward_from_the_block_centre() -> void:
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var n: int = u.soldiers
+	var positions := u.soldier_world_slots(n)
+	var facings := u.soldier_world_facings(n)
+	var files: int = UnitFormation.square_files(n)
+	var centroid := Vector2.ZERO
+	for p in positions:
+		centroid += p
+	centroid /= float(n)
+	var checked := 0
+	for i in range(n):
+		if not UnitFormation.square_is_perimeter(i, n, files):
+			continue
+		var outward: Vector2 = (positions[i] - centroid)
+		if outward.length() < 0.5:
+			continue   # degenerate: essentially at the centre, no meaningful outward dir
+		checked += 1
+		assert_gt(facings[i].dot(outward.normalized()), 0.5,
+			"perimeter soldier %d faces away from the block centre" % i)
+	assert_gt(checked, 20, "spot-checked a meaningful number of perimeter soldiers")
+
+
+func test_square_perimeter_facings_are_not_all_the_same() -> void:
+	# The bug this fixes: previously every soldier (perimeter included) shared ONE
+	# uniform facing. A real ring shows soldiers facing many different directions.
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_SQUARE)
+	var facings := u.soldier_world_facings(u.soldiers)
+	var distinct := {}
+	for f in facings:
+		distinct[Vector2(round(f.x * 100.0), round(f.y * 100.0))] = true
+	assert_gt(distinct.size(), 4, "the ring shows soldiers facing several distinct directions")
+
+
+func test_normal_formation_still_faces_uniformly() -> void:
+	# Regression guard: every non-square formation keeps the prior uniform-facing behaviour.
+	var u := _make_unit()
+	u.facing = Vector2.RIGHT
+	var facings := u.soldier_world_facings(u.soldiers)
+	for f in facings:
+		assert_true(f.is_equal_approx(Vector2.RIGHT), "non-square formations face the unit heading")
+
+
+func test_square_bodies_seed_with_outward_perimeter_facing() -> void:
+	# End-to-end through the sim layer (SoldierBodies), not just the pure helper.
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_SQUARE)
+	u.seed_sim_soldiers()
+	var n: int = u._sim_soldier_pos.size()
+	var files: int = UnitFormation.square_files(n)
+	var centroid := Vector2.ZERO
+	for p in u._sim_soldier_pos:
+		centroid += p
+	centroid /= float(n)
+	var saw_outward := false
+	for i in range(n):
+		if not UnitFormation.square_is_perimeter(i, n, files):
+			continue
+		var outward: Vector2 = u._sim_soldier_pos[i] - centroid
+		if outward.length() < 0.5:
+			continue
+		if u._sim_soldier_facing[i].dot(outward.normalized()) > 0.5:
+			saw_outward = true
+			break
+	assert_true(saw_outward, "seeded square bodies carry outward-facing perimeter directions")
