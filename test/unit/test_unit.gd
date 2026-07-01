@@ -1747,6 +1747,73 @@ func test_shielded_stances_use_tight_close_order_density() -> void:
 		"testudo packs to the tight close-order footprint")
 
 
+## Mean nearest-neighbor spacing across a regiment's soldier slots, in world units --
+## the same measure the #530 verification sweep used to show every close-order
+## formation sat at the identical 9.0 wu floor. A direct O(n^2) nearest-neighbor scan
+## is fine at test-sized soldier counts.
+func _mean_nn_spacing(positions: PackedVector2Array) -> float:
+	var total: float = 0.0
+	var n: int = positions.size()
+	for i in range(n):
+		var nearest: float = INF
+		for j in range(n):
+			if i == j:
+				continue
+			nearest = minf(nearest, positions[i].distance_to(positions[j]))
+		total += nearest
+	return total / float(n)
+
+
+func test_shield_wall_and_testudo_pack_tighter_than_normal() -> void:
+	# The #530 fix: shield wall / testudo must genuinely tighten the soldier GRID (not
+	# just their combat multipliers), so their measured spacing drops below the 9.0 wu
+	# TIGHT/NORMAL close-order floor documented in #452.
+	var normal := _make_unit()
+	var normal_spacing := _mean_nn_spacing(normal.soldier_world_slots(normal.soldiers))
+	assert_almost_eq(normal_spacing, Unit.FORMATION_SPACING, 0.1,
+		"sanity: normal spacing sits at the documented 9.0 wu floor")
+
+	for mode: int in [Unit.FORMATION_SHIELD_WALL, Unit.FORMATION_TESTUDO]:
+		var u := _make_unit()
+		u.set_formation(mode)
+		var tight_spacing := _mean_nn_spacing(u.soldier_world_slots(u.soldiers))
+		assert_lt(tight_spacing, normal_spacing,
+			"formation %d spacing (%.2f) is measurably tighter than normal (%.2f)" \
+				% [mode, tight_spacing, normal_spacing])
+
+
+func test_testudo_packs_tighter_than_shield_wall() -> void:
+	# The overhead-locked roof needs the men closer than a single-rank wall.
+	var wall := _make_unit()
+	wall.set_formation(Unit.FORMATION_SHIELD_WALL)
+	var wall_spacing := _mean_nn_spacing(wall.soldier_world_slots(wall.soldiers))
+
+	var turtle := _make_unit()
+	turtle.set_formation(Unit.FORMATION_TESTUDO)
+	var turtle_spacing := _mean_nn_spacing(turtle.soldier_world_slots(turtle.soldiers))
+
+	assert_lt(turtle_spacing, wall_spacing,
+		"testudo packs tighter than shield wall")
+
+
+func test_tight_and_normal_spacing_is_unchanged_from_the_historical_floor() -> void:
+	# Regression guard (#452): TIGHT/NORMAL keep the historical close-order floor --
+	# only SHIELD_WALL/TESTUDO squeeze the grid below it.
+	for mode: int in [Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT]:
+		var u := _make_unit()
+		u.set_formation(mode)
+		assert_almost_eq(u.spacing_scale, 1.0, 0.001,
+			"formation %d keeps the close-order floor" % mode)
+
+
+func test_loose_spacing_still_widens_the_grid() -> void:
+	# Regression guard: LOOSE must keep working exactly as before (2x spacing).
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_LOOSE)
+	assert_almost_eq(u.spacing_scale, Unit.LOOSE_SPACING_SCALE, 0.001,
+		"loose still doubles the grid spacing")
+
+
 func test_shielded_stances_absorb_cavalry_charge() -> void:
 	var cav := _cavalry()
 	cav.position = Vector2.ZERO

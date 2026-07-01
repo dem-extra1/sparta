@@ -152,3 +152,72 @@ func test_widened_files_tracks_the_live_count() -> void:
 	# single rank -- the target adapts to however many men remain.
 	assert_eq(UnitFormation.widened_files(40, 8), 16, "full strength widens to 16 files")
 	assert_eq(UnitFormation.widened_files(12, 8), 12, "depleted: capped at the live count")
+
+
+# --- square grid (#530: a real square footprint, not the wide-line frontage) -------
+
+func test_square_files_is_roughly_sqrt_n() -> void:
+	assert_eq(UnitFormation.square_files(120), 11, "ceil(sqrt(120)) = 11")
+	assert_eq(UnitFormation.square_files(100), 10, "a perfect square: ceil(sqrt(100)) = 10")
+	assert_eq(UnitFormation.square_files(0), 1, "never fewer than one file")
+
+
+func test_square_files_is_narrower_than_the_wide_line_frontage() -> void:
+	# The whole point: the line frontage (_files, via UnitFormation.frontage) is
+	# deliberately wider-than-deep (FORMATION_ASPECT > 1); the square is not.
+	var u := Unit.new()
+	u.max_soldiers = 120
+	add_child_autofree(u)
+	assert_lt(UnitFormation.square_files(120), UnitFormation.frontage(u),
+		"the square packs narrower than the line's wide frontage")
+
+
+func test_square_slots_bbox_aspect_is_about_one() -> void:
+	# The defining geometric property (#530): a real square footprint, not the 2:1
+	# rectangle the wide-line frontage produces for the same count.
+	var n := 120
+	var files := UnitFormation.square_files(n)
+	var ranks := UnitFormation.ranks_for(n, files)
+	var slots := UnitFormation.square_slots(n, 9.0)
+	var min_p: Vector2 = slots[0]
+	var max_p: Vector2 = slots[0]
+	for s in slots:
+		min_p.x = minf(min_p.x, s.x)
+		min_p.y = minf(min_p.y, s.y)
+		max_p.x = maxf(max_p.x, s.x)
+		max_p.y = maxf(max_p.y, s.y)
+	var w: float = max_p.x - min_p.x
+	var h: float = max_p.y - min_p.y
+	assert_almost_eq(w / h, 1.0, 0.15,
+		"bbox aspect (w/h=%.2f, files=%d, ranks=%d) is close to square" % [w / h, files, ranks])
+
+
+func test_square_slots_has_one_slot_per_soldier() -> void:
+	assert_eq(UnitFormation.square_slots(120, 9.0).size(), 120, "one slot per soldier")
+
+
+func test_square_is_perimeter_flags_the_outer_ring_only() -> void:
+	# A 3x3 full square (9 soldiers, 3 files): index layout is
+	#   0 1 2
+	#   3 4 5
+	#   6 7 8
+	# every slot except the dead centre (index 4) sits on the outer ring.
+	for i in range(9):
+		var expected: bool = i != 4
+		assert_eq(UnitFormation.square_is_perimeter(i, 9, 3), expected,
+			"slot %d perimeter membership" % i)
+
+
+func test_square_is_perimeter_handles_a_partial_last_rank() -> void:
+	# 10 soldiers at 4 files -> ranks of 4, 4, 2 (a 2-man partial last rank). The last
+	# rank's two survivors are both edges of their own (2-wide) rank, so both flag as
+	# perimeter; the full middle rank's inner two slots (indices 5, 6) do not.
+	assert_false(UnitFormation.square_is_perimeter(5, 10, 4), "middle rank, inner-left: not perimeter")
+	assert_false(UnitFormation.square_is_perimeter(6, 10, 4), "middle rank, inner-right: not perimeter")
+	assert_true(UnitFormation.square_is_perimeter(8, 10, 4), "last (partial) rank: both slots perimeter")
+	assert_true(UnitFormation.square_is_perimeter(9, 10, 4), "last (partial) rank: both slots perimeter")
+
+
+func test_square_is_perimeter_out_of_range_is_false() -> void:
+	assert_false(UnitFormation.square_is_perimeter(-1, 9, 3), "negative index")
+	assert_false(UnitFormation.square_is_perimeter(9, 9, 3), "index == n is out of range")

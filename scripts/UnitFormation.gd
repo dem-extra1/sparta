@@ -106,6 +106,40 @@ static func block_slots(n: int, files: int, spacing: float) -> PackedVector2Arra
 	return out
 
 
+# --- Square / orbis grid (real hollow/solid square footprint) ---------------
+# The anti-cavalry square is a genuine square block, not the standard wide-line
+# frontage: it uses its own file count (files ~= ranks, so the bbox aspect is ~1)
+# and marks which slots sit on the outer ring, so the perimeter can face outward
+# (Unit.soldier_world_facings) while the interior keeps the unit's heading.
+
+
+## File count for a roughly-square grid of `n` soldiers: files ~= ranks ~= sqrt(n),
+## unlike `_files` (which deliberately widens past sqrt for the line frontage). Pure.
+static func square_files(n: int) -> int:
+	return maxi(1, int(ceil(sqrt(float(n)))))
+
+
+## Local-space slot offsets for `n` soldiers laid out as a square block (reuses
+## block_slots' centred rank-major grid, just with a square file count instead of
+## the wide-line frontage). Pure and deterministic like `slots()`.
+static func square_slots(n: int, spacing: float) -> PackedVector2Array:
+	return block_slots(n, square_files(n), spacing)
+
+
+## True when slot index `i` (of `n` total soldiers laid out at `files` columns via
+## block_slots) sits on the block's outer ring: the first or last rank, or the
+## first/last column of its own (possibly partial) rank. Mirrors block_slots' exact
+## rank/file indexing so it always agrees with what square_slots laid out. Pure.
+static func square_is_perimeter(i: int, n: int, files: int) -> bool:
+	if files <= 0 or i < 0 or i >= n:
+		return false
+	var ranks: int = ranks_for(n, files)
+	var rank: int = i / files
+	var rank_count: int = mini(files, n - rank * files)
+	var file: int = i % files
+	return rank == 0 or rank == ranks - 1 or file == 0 or file == rank_count - 1
+
+
 ## File count after a 90° in-place turn (quarter-turn, #371): frontage and depth swap,
 ## so the new file count is the old rank count. Transposing twice returns to the original
 ## frontage for a full grid (a partial last rank can shift it by one -- the caller reforms).

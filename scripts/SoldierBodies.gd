@@ -49,10 +49,10 @@ static func seed(unit: Unit) -> void:
 	unit._sim_soldier_stamina = PackedFloat32Array()
 	unit._sim_soldier_stamina.resize(unit._sim_soldier_pos.size())
 	unit._sim_soldier_stamina.fill(unit.combat_profile()["max_stamina"])
-	# Per-soldier facing starts pointed at the unit heading, with no maneuver active.
-	unit._sim_soldier_facing = PackedVector2Array()
-	unit._sim_soldier_facing.resize(unit._sim_soldier_pos.size())
-	unit._sim_soldier_facing.fill(unit.facing)
+	# Per-soldier facing starts from the formation's own layout (#530: SQUARE's perimeter
+	# ring faces outward; every other formation is uniform at the unit heading, the prior
+	# behaviour), with no maneuver active.
+	unit._sim_soldier_facing = unit.soldier_world_facings(unit._sim_soldier_pos.size())
 	unit._per_soldier_facing = false
 	unit._render_dirty = true   # fresh bodies need an initial draw
 
@@ -105,10 +105,11 @@ static func step(unit: Unit, delta: float) -> void:
 		if unit._per_soldier_facing:
 			for j in range(face_old, n):
 				unit._sim_soldier_facing[j] = unit.facing
-	# Default: bodies track the unit heading. A maneuver that owns the facings
-	# (_per_soldier_facing) keeps its own values until it releases them.
+	# Default: bodies track the formation's own facing layout (#530: SQUARE's perimeter
+	# ring outward, everything else the uniform unit heading). A maneuver that owns the
+	# facings (_per_soldier_facing) keeps its own values until it releases them.
 	if not unit._per_soldier_facing:
-		unit._sim_soldier_facing.fill(unit.facing)
+		unit._sim_soldier_facing = unit.soldier_world_facings(n)
 	# A felled body rises on its own: decay its prone timer toward 0 each tick. Stamina
 	# regens during the same pass; rising from prone costs KAPPA_P on the tick it happens.
 	# The body still arrives at its slot below (it's down, not removed).

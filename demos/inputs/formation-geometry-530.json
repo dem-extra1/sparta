@@ -1,0 +1,16 @@
+{
+  "_comment": "Real per-formation block geometry (#530): four lone player Infantry regiments, one per close-order stance, staged side by side and left to sit (drill mode, no opponent). NORMAL is the baseline 2:1 line; SQUARE restructures into a genuine square footprint with its perimeter facing outward on every side; SHIELD_WALL and TESTUDO tighten their grid spacing below the NORMAL/TIGHT floor. State-dumped (SPARTA_DEMO_STATE_FULL=1) at rest to verify the measured bbox aspect and per-soldier facings/spacing directly, per the #530 verification-sweep methodology.",
+  "seed": "12345",
+  "drill": true,
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 300, "y": 480, "count": 120, "formation": 0, "facing": [0, -1]},
+    {"team": 0, "type": "Infantry", "x": 620, "y": 480, "count": 120, "formation": 3, "facing": [0, -1]},
+    {"team": 0, "type": "Infantry", "x": 940, "y": 480, "count": 120, "formation": 4, "facing": [0, -1]},
+    {"team": 0, "type": "Infantry", "x": 1260, "y": 480, "count": 120, "formation": 5, "facing": [0, -1]}
+  ],
+  "camera": [
+    {"tick": 0, "x": 780.0, "y": 480.0, "zoom": 0.55}
+  ],
+  "steps": [],
+  "frames": [20, 90]
+}
