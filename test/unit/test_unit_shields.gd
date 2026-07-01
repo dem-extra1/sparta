@@ -69,10 +69,14 @@ func test_testudo_shields_tile_the_whole_block() -> void:
 			min_y = minf(min_y, p.y)
 			max_y = maxf(max_y, p.y)
 	# Within the per-tile inset tolerance, the roof spans the full block, centred.
-	assert_almost_eq(min_x, -span_x * 0.5, span_x * 0.1, "roof reaches the left edge")
-	assert_almost_eq(max_x, span_x * 0.5, span_x * 0.1, "roof reaches the right edge")
-	assert_almost_eq(min_y, -span_y * 0.5, span_y * 0.1, "roof reaches the front edge")
-	assert_almost_eq(max_y, span_y * 0.5, span_y * 0.1, "roof reaches the rear edge")
+	# Tolerance just above the actual per-tile inset: 8% of a tile, and here the
+	# coarsest axis is rows=2 (tile = half the span), so the inset is 0.08 * 0.5 =
+	# 4% of span. Use 4.5% -- comfortably above that yet ~2x tighter than a lax 10%,
+	# so a regression that grew the inset constant would trip it.
+	assert_almost_eq(min_x, -span_x * 0.5, span_x * 0.045, "roof reaches the left edge")
+	assert_almost_eq(max_x, span_x * 0.5, span_x * 0.045, "roof reaches the right edge")
+	assert_almost_eq(min_y, -span_y * 0.5, span_y * 0.045, "roof reaches the front edge")
+	assert_almost_eq(max_y, span_y * 0.5, span_y * 0.045, "roof reaches the rear edge")
 
 
 func test_shield_counts_clamp_to_at_least_one() -> void:
@@ -80,3 +84,47 @@ func test_shield_counts_clamp_to_at_least_one() -> void:
 		"a zero count still yields one shield")
 	assert_eq(UnitShields.testudo_shields(0, 0, 10.0, 10.0, 2.0).size(), 1,
 		"zero cols/rows still yields one tile")
+
+
+# --- render smoke: the draw path runs for each stance without erroring ---------
+# UnitShields.draw() dispatches on formation_mode and issues draw_* calls, which
+# are only valid inside a CanvasItem's _draw(). Drive it the way the engine does:
+# add a live unit to the tree, put it in the stance, request a redraw, and let a
+# frame pass so _draw() (and through it UnitShields.draw) actually runs under the
+# draw notification. Smoke only (no pixel assertions -- the geometry is asserted
+# above): it proves the overlay renders for each stance and is a no-op otherwise.
+
+func _live_unit(mode: int) -> Unit:
+	var u: Unit = Unit.new()
+	u.max_soldiers = 120
+	add_child_autofree(u)
+	u.facing = Vector2.DOWN
+	u.set_formation(mode)
+	return u
+
+
+func test_shield_wall_stance_draws_without_error() -> void:
+	var u := _live_unit(Unit.FORMATION_SHIELD_WALL)   # -> _draw -> _draw_shield_wall
+	u.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_eq(u.formation_mode, Unit.FORMATION_SHIELD_WALL, "still in shield wall after draw")
+
+
+func test_testudo_stance_draws_without_error() -> void:
+	var u := _live_unit(Unit.FORMATION_TESTUDO)   # -> _draw -> _draw_testudo
+	u.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_eq(u.formation_mode, Unit.FORMATION_TESTUDO, "still in testudo after draw")
+
+
+func test_normal_stance_draws_no_shield_overlay() -> void:
+	# The overlay is a no-op outside the two shielded stances (the guard in _draw
+	# and the else-fall-through in UnitShields.draw both hold), so a Normal unit
+	# still draws cleanly with no shield geometry.
+	var u := _live_unit(Unit.FORMATION_NORMAL)
+	u.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_eq(u.formation_mode, Unit.FORMATION_NORMAL, "normal stance unchanged")

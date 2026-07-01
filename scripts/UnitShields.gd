@@ -140,7 +140,7 @@ static func _draw_testudo(u: Unit, body: Color, dark: Color, lite: Color) -> voi
 	var shields: Array = testudo_shields(cols, rows, half_width, half_depth, mark_r)
 	# Semi-transparent so the individual soldiers/marks beneath still read through the roof.
 	var roof := Color(body.r, body.g, body.b, body.a * 0.8)
-	var edge := Color(dark.r, dark.g, dark.b, dark.a)
+	var edge := dark
 	for poly in shields:
 		u.draw_colored_polygon(poly, roof)
 		u.draw_polyline(_closed(poly), edge, 1.0)
