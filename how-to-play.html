@@ -564,38 +564,42 @@ ul.task-list li input[type="checkbox"] {
 <td><kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right</td>
 </tr>
 <tr class="even">
+<td>Wheel (hinge on a flank)</td>
+<td><kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file)</td>
+</tr>
+<tr class="odd">
 <td>Merge selected units</td>
 <td><kbd>M</kbd></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Control groups</td>
 <td><kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Distance legend</td>
 <td><strong>☰ Menu → Distance legend</strong> toggles the map-scale bar (bottom-right, on by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Order distance labels</td>
 <td><strong>☰ Menu → Order distance labels</strong> toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Pan camera</td>
 <td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Zoom</td>
 <td><strong>Mouse wheel</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Show all orders + formation preview</td>
 <td>hold <kbd>Space</kbd></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Active pause</td>
 <td><kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>All shortcuts (this list, in-game)</td>
 <td><kbd>?</kbd> (Shift + <kbd>/</kbd>) or <strong>☰ Menu → Shortcuts</strong></td>
 </tr>
@@ -633,6 +637,15 @@ ul.task-list li input[type="checkbox"] {
 </figure>
 <p><strong>About-face in place (conversio, <kbd>V</kbd>).</strong> Press <kbd>V</kbd> with a unit selected to issue the <em>conversio</em>: every soldier reverses 180° where they stand — the file/rank grid stays put, the front rank becomes the rear rank man-for-man, and the unit is now facing the other way. Unlike the gradual <strong>centre pivot</strong> that accompanies a move order (which rotates the whole block around its centre as it marches), the conversio is a standing drill command: no one takes a step. Use it to face a threat behind the line without marching first, or to quickly reorient a reserve before it moves up.</p>
 <p><strong>Quarter-turn in place (<kbd>Q</kbd> / <kbd>E</kbd>).</strong> Press <kbd>Q</kbd> to turn the selected unit a quarter-turn left, or <kbd>E</kbd> to turn it right: every soldier pivots 90° where they stand. No one marches and the grid of men does not reorganize — they simply face the new way, so the block now presents its <strong>short edge</strong> as its frontage (its frontage and depth swap relative to the facing, without anyone moving). Like the conversio, it is a standing facing change. Use it to throw a fresh face toward a flank, or as the first step of marching off to the side in good order.</p>
+<p><strong>Wheel on a flank (circumductio, <kbd>Z</kbd> / <kbd>C</kbd>).</strong> Press <kbd>Z</kbd> to wheel the selected unit left, or <kbd>C</kbd> to wheel it right. One end of the line — the standing flank file — holds its ground while the rest of the block swings around it like a door on a hinge, reorienting the whole line 90° while every man keeps his place in the ranks. Unlike the quarter-turn, this is not a standing facing change: the far flank actually marches an arc, so the line ends up facing a new direction <em>and</em> lying along a new line. Use it to refuse a flank, to swing a wing forward and take an enemy line in the side, or to change the front an entire wing presents without breaking its order.</p>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/wheel.jpg">
+    <source src="media/wheel.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Wheel (circumductio): the line swings 90° about its standing flank file --- the near flank holds while the far flank marches a wide arc --- reorienting the whole block without breaking its ranks. Wheeled right (C), then back left (Z).</figcaption>
+</figure>
 <p><strong>Zoom in to see the soldiers.</strong> From the usual overview each regiment is a block of small marks. Zoom in far enough and those marks become individual figures, and each type carries its own gear — spearmen shoulder a spear, archers carry a bow, other foot raise a shield, and cavalry ride a mount that faces the regiment’s march. So you can watch the ranks as people, not dots, and still read who is who. A small white facing pip on each figure shows its exact facing — the figure itself only mirrors left/right, so the pip is what lets a maneuver’s precise turn (a quarter-turn, say) read correctly even at this zoom, not just a coarse left/right flip. Zoom back out and they collapse to the legible marks again — each mark points the way its soldier faces, so you can read a regiment’s facing at a glance even from the overview. The mark shape tells you the type, too: a dart for spearmen, a kite for archers, and an arrow-pointer for other foot and cavalry. All three are compact directional glyphs, so a rank reads as arrows whichever way it faces rather than smearing into bars.</p>
 <p><strong>Reading distances.</strong> A small semi-translucent scale bar sits in the bottom-right corner, labelled with the real metre distance it spans (e.g.&nbsp;“50 m”) — it rescales as you zoom, so you can always judge range and reach at a glance. Toggle it off in <strong>☰ Menu → Distance legend</strong> if you’d rather not see it.</p>
 <p><strong>Order stances.</strong> Beyond plain move/attack you can arm a <em>stance</em> with a hotkey before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> clears it.</p>
