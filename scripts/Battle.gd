@@ -937,6 +937,19 @@ func _team_units(team: int) -> Array:
 	return out
 
 
+## Count units still on the field for a team, including those currently routing.
+## Routing units leave "units" and join "routers" but are still alive, so both
+## groups must be unioned to avoid under-counting survivors at battle end.
+func _team_survivor_count(team: int) -> int:
+	var count: int = 0
+	for group in ["units", "routers"]:
+		for node in get_tree().get_nodes_in_group(group):
+			var u := node as UnitRef
+			if u != null and u.team == team:
+				count += 1
+	return count
+
+
 func _check_victory() -> void:
 	# Drill mode has no opponent, so "no enemies" is never a win — the rehearsal runs on.
 	if drill_mode:
@@ -978,13 +991,13 @@ func _report_campaign_result(text: String) -> void:
 		CampaignBattle.result = {
 			"attacker_won": true,
 			"survivors": CampaignBattle.survivors_strength(
-					int(pending.get("attacker_strength", 1)), _camp_atk_spawned, _team_units(0).size()),
+					int(pending.get("attacker_strength", 1)), _camp_atk_spawned, _team_survivor_count(0)),
 		}
 	elif text == "Defeat":
 		CampaignBattle.result = {
 			"attacker_won": false,
 			"survivors": CampaignBattle.survivors_strength(
-					int(pending.get("defender_strength", 1)), _camp_dfn_spawned, _team_units(1).size()),
+					int(pending.get("defender_strength", 1)), _camp_dfn_spawned, _team_survivor_count(1)),
 		}
 	else:
 		# Mutual destruction: the assault fails and the province holds with a token
