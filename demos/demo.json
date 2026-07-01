@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/wheel.json",
-  "caption": "Wheeling (circumductio): a new orderable maneuver. Press C (wheel right) or Z (wheel left) with a unit selected and one flank file plants and holds while the rest of the block swings around it like a door on a hinge — the line ends up facing a new bearing and lying along a new line, every man still in his rank and file. Distinct from the quarter-turn (facing changes in place, block stays put) and the centre pivot (both flanks sweep about the middle). Watch the near flank hold while the far flank marches a wide arc.",
+  "input": "demos/inputs/last-unit-rally.json",
+  "caption": "A team's last unit can now rally instead of instantly losing. A lone player infantry (team 0's only unit) is charged by two cavalry, breaks, and flees up (faded). Before this fix, losing its last fightable unit ended the battle and paused the sim, freezing the unit mid-rout so it could never recover. Now a routing unit keeps its team in the fight while it might still rally: the enemy AI halts once no fightable player unit remains, the fugitive breaks contact, and when its rout times out it reforms back under control at low, fragile morale. The battle ends only once a team's units are truly gone (dead, shattered, or off the field).",
   "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 12,
+  "max_frames": 360,
+  "fps": 15,
   "width": 640
 }

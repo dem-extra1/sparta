@@ -5,7 +5,9 @@ description: "Controls, the objective, and the moment-to-moment battle loop."
 
 You command the [**blue army**]{.army-blue} (top of the field). Your objective:
 defeat the [**red army**]{.army-red} (bottom). A side loses when it has no units
-left fighting --- every remaining unit is dead or routing.
+left on the field --- every one dead or shattered. A unit that is merely
+**routing** still counts: it is off fighting for now, but it may break contact
+and rally back into the line, so the battle stays live while it might recover.
 
 ```{=html}
 <figure class="demo">
@@ -324,10 +326,13 @@ Here is the cycle in practice, shown with a cavalry charge:
    (slows movement to 60%) on the left flank, and a **tan hill** (impassable) on the
    right. Units route around the hill automatically. See [Tactics → Terrain](tactics.qmd#terrain).
 5. **Exploit the break** --- when a unit **routs**, it flees (shown faded) and stops
-   counting toward the battle. Routs spread to nearby allies, so a single break can
-   cascade.
-6. **Win** --- eliminate or rout the entire enemy army and a **Victory** overlay
-   appears, with **Fight Again** to restart.
+   fighting for now. Routs spread to nearby allies, so a single break can cascade. A
+   fugitive that breaks contact can **rally** and reform back under your control at low
+   morale, so chase down a broken enemy to finish it before it recovers --- and give
+   your own routers room to escape and rally.
+6. **Win** --- destroy the entire enemy army (every unit dead or shattered for good)
+   and a **Victory** overlay appears, with **Fight Again** to restart. A routing enemy
+   isn't beaten yet: run it down or it may rally.
 
 ## Campaign Map
 

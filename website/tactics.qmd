@@ -24,13 +24,34 @@ your cavalry hits its rear will melt --- and start a rout that spreads.
 ## Morale & routing
 
 Units don't fight to the last soldier. When a unit loses enough soldiers or takes
-flank/rear hits, it **routs** --- it flees (shown faded) and stops counting toward the
-battle.
+flank/rear hits, it **routs** --- it flees (shown faded) and stops fighting for now.
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.
 - This makes morale a *weapon*: you can win by breaking the enemy's will before
   you've killed even half their soldiers.
+- **A rout isn't a kill.** A fugitive that **breaks contact** --- gets clear of any
+  enemy and still fields enough men --- **rallies**: it reforms back under control at
+  low, fragile morale and can fight (or break) again. So a broken enemy left alone can
+  come back. Run it down, or pen it against your line, to shatter it for good. A unit
+  still in contact when its nerve gives out, or gutted past reforming, shatters instead
+  --- destroyed for good.
+- **The battle isn't over while a side is only routing.** A team is beaten only once
+  its last unit is truly gone (dead or shattered), not while its final unit is merely
+  routing. Even a lone survivor that breaks can flee, rally, and fight on --- so press a
+  rout home rather than assuming a broken last unit is a win.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/last_unit_rally.jpg">
+    <source src="media/last_unit_rally.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>A team's last unit routs, then rallies. A lone player infantry is broken and flees (faded); with no fightable unit left the enemy AI halts, so the fugitive breaks contact and reforms back under control at low morale &mdash; the battle stays live instead of ending the instant the last unit broke.</figcaption>
+</figure>
+```
 
 ## Rank cycling (trained units)
 

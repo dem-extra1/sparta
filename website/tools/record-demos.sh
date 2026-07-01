@@ -39,6 +39,7 @@ DEMOS=(
   "square|demos/inputs/anti-cav-square.json|30|300|640|input"
   "order_distance|demos/inputs/order-distance.json|30|120|640|input"
   "cycle_charge|demos/inputs/cycle-charge.json|30|600|640|input"
+  "last_unit_rally|demos/inputs/last-unit-rally.json|30|420|640|input"
 )
 
 # Wrap Godot in a virtual framebuffer on a headless host (CI). Movie Maker needs a
