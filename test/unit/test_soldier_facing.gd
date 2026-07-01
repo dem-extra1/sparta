@@ -167,35 +167,72 @@ func test_conversio_reverses_any_starting_heading() -> void:
 		"unit.facing is unchanged at call time; the turn starts on the next tick")
 
 
-# --- About-face completion: relabel, don't march -----------------------------
+# --- About-face completion: every soldier holds its own position -----------------------
+# (#541: a prior implementation relabelled -- reversed -- the index-aligned body arrays on
+# completion, which silently swapped each soldier with its mirror-index counterpart. That
+# is NOT a true conversio: a real about-face holds every soldier's world position exactly
+# fixed for the whole turn and changes nothing but facing. The fix reuses the quarter-turn's
+# _formation_angle-absorb mechanism instead of touching the body arrays at all.)
 
-func test_about_face_relabel_preserves_world_positions() -> void:
-	# The completion relabel is a pure reversal of the body arrays: the SET of world
-	# positions is unchanged (nobody walks), each body just takes the reversed body's spot.
+func test_about_face_settle_holds_every_soldier_at_its_own_position() -> void:
+	# The completion settle must NOT move or relabel any body: the SET of positions AND
+	# the per-index assignment are both unchanged -- nobody walks, nobody swaps with anybody.
 	var u := _make_unit()
 	u.seed_sim_soldiers()
 	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
 	var n: int = before.size()
-	u._reverse_soldier_bodies()
-	assert_eq(u._sim_soldier_pos.size(), n, "body count is unchanged by the relabel")
+	u._conversio_start_facing = u.facing
+	u.facing = Vector2(-u.facing.x, -u.facing.y)   # the about-face end state
+	u._settle_conversio()
+	assert_eq(u._sim_soldier_pos.size(), n, "body count is unchanged by the settle")
 	for i in range(n):
-		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[n - 1 - i]),
-			"body %d takes the reversed body's position (pure relabel, no movement)" % i)
+		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
+			"body %d holds its OWN position -- no identity swap with its mirror index" % i)
 
 
 func test_about_face_leaves_bodies_on_their_slots() -> void:
-	# On a full (centrosymmetric) grid, flipping facing 180° and relabelling the bodies
-	# lands every body exactly on its new-facing slot, so the arrival term has ~zero
-	# error and the block does not surge across itself after the turn.
+	# On a full (centrosymmetric) grid, flipping facing 180° and settling the formation
+	# angle lands every body exactly on its own reversed-facing slot, so the arrival term
+	# has ~zero error and the block does not surge across itself after the turn.
 	var u := _make_unit()
 	u.frontage_override = 8        # 8 files x 5 ranks = 40: a full, centrosymmetric grid
 	u.seed_sim_soldiers()
+	u._conversio_start_facing = u.facing
 	u.facing = Vector2(-u.facing.x, -u.facing.y)   # the about-face end state
-	u._reverse_soldier_bodies()
+	u._settle_conversio()
 	var slots: PackedVector2Array = u.soldier_world_slots(u.soldiers)
 	for i in range(u._sim_soldier_pos.size()):
 		assert_lt(u._sim_soldier_pos[i].distance_to(slots[i]), 0.01,
-			"body %d sits on its reversed-facing slot (no post-turn surge)" % i)
+			"body %d sits on its own reversed-facing slot (no post-turn surge)" % i)
+
+
+func test_about_face_partial_grid_holds_every_soldier_at_its_own_position() -> void:
+	# Mirrors the quarter-turn's partial-grid regression guard: a depleted (partial last
+	# rank) unit must not swap identities either -- the settle doesn't depend on grid shape.
+	var u := _make_unit()   # 40 men, default frontage -> partial last rank
+	u.seed_sim_soldiers()
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	u._conversio_start_facing = u.facing
+	u.facing = Vector2(-u.facing.x, -u.facing.y)
+	u._settle_conversio()
+	for i in range(before.size()):
+		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
+			"partial-grid body %d holds its own position, no identity swap" % i)
+
+
+func test_about_face_interrupt_settles_partial_rotation_with_no_identity_swap() -> void:
+	# An interrupt mid-turn (facing only part way through the 180°) still settles to the
+	# partial angle and still holds every body at its own position -- same interrupt
+	# handling the quarter-turn gets.
+	var u := _make_unit()
+	u.seed_sim_soldiers()
+	var before: PackedVector2Array = u._sim_soldier_pos.duplicate()
+	u._conversio_start_facing = u.facing
+	u.facing = u.facing.rotated(deg_to_rad(70.0))   # partway through the 180° reversal
+	u._settle_conversio()
+	for i in range(before.size()):
+		assert_true(u._sim_soldier_pos[i].is_equal_approx(before[i]),
+			"interrupted about-face body %d still holds its own position" % i)
 
 
 # --- Quarter-turn (90° in place) --------------------------------------------

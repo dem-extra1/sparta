@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/arrival-knockback.json",
-  "caption": "Real, non-springy soldier motion. Soldier bodies no longer ease toward their formation slots on a damped spring; they now ARRIVE under bounded force -- each body accelerates toward its slot at the unit's own acceleration and decelerates to land there with ~zero velocity (classic arrive steering). Watch the contact line: a cavalry charge slams the infantry front rank, the melee knockback shoves those bodies back, and each one decelerates and returns to its slot under real force -- a knockback-and-recover with no spring rebound, no wobble, no oscillation. Determinism is preserved (pure function of positions/velocities/mass/delta, no RNG), but outcomes differ from pre-change replays -- expected for a physics change.",
+  "input": "demos/inputs/about-face.json",
+  "caption": "About-face is now a TRUE conversio (#541): every soldier turns in place and holds its OWN world position for the whole turn -- only facing flips. A prior fix (#519) stopped the block from pivoting 180 deg about its centre, but a state dump proved it still relabelled bodies on completion, so soldiers silently traded places with their formation-mirror counterpart (front rank <-> rear rank) even though the aggregate footprint looked unchanged. That relabel is gone: the turn now folds its rotation into the same formation-angle offset the quarter-turn uses, so soldier_world_slots reproduces each body's own pre-turn slot under the new facing. Verified with a per-soldier-index state dump (not just aggregate bbox/centroid) at tick 0 and after the turn completes: 40/40 soldiers now hold their own position, 0/40 swap.",
   "fixed_fps": 30,
-  "max_frames": 300,
+  "max_frames": 200,
   "fps": 12,
   "width": 640
 }
