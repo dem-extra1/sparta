@@ -21,8 +21,13 @@ func test_scenario_spawns_exactly_its_units_with_types_positions_and_overrides()
 		# team default rather than crash, and its label must read "Cavalry 2" (per-type index).
 		{"team": 1, "type": "Cavalry", "x": 700, "y": 750, "facing": [1]},
 	]
+	# add_child runs Battle._ready() synchronously, which spawns the scenario and sets each
+	# unit's spawn-time morale and facing. Read those values NOW, before awaiting any physics
+	# frame -- one tick of morale recovery / facing rotation would drift them off the exact
+	# spawn value. (Under coverage instrumentation the interpreter runs slower per wall-clock
+	# second, so more ticks elapse before an assert reads the value; reading pre-tick removes
+	# that dependency on how fast the interpreter runs.)
 	add_child_autofree(battle)
-	await get_tree().physics_frame
 
 	var team0: Array = []
 	var team1: Array = []
