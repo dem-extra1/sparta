@@ -1,4 +1,8 @@
 {
-  "skip": true,
-  "reason": "Routing units now stay on the field (clamped to the battle bounds instead of fleeing off-map), recover morale asymptotically toward a baseline while they flee, and RALLY back under control the moment their steadying morale crosses the rally threshold with contact broken -- otherwise they still shatter. The whole arc is emergent: it needs a full morale collapse driven by a lopsided melee grind, then the router left alone long enough to recover, which no fixed-length scripted clip at a fixed camera can stage deterministically. Covered tick-by-tick by test_unit.gd: test_routing_morale_recovers_asymptotically, test_routing_unit_stays_within_field_bounds, and test_routing_unit_rallies_when_morale_crosses_threshold (plus the existing rally/shatter timeout tests)."
+  "input": "demos/inputs/rout-rally-recover.json",
+  "caption": "Routing units stay on the field and can RALLY. A lone low-morale infantry block is charged by cavalry and breaks -- it flees (drawn faded) toward its own back edge, clamped to the map so it stays visible instead of running off. The cavalry lose it (routers are untargetable) and stop, so it breaks contact; its morale recovers asymptotically, and once it crosses the rally threshold it reforms under control and rejoins the fight. Deterministic: with this build it routs ~tick 100 and rallies ~tick 461.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
 }

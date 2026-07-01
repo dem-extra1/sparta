@@ -40,6 +40,18 @@ the back line where you can still see it, rather than vanishing off the map.
 - A unit still in contact, or gutted past reforming, **shatters** instead --- it leaves
   play for good.
 
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/rout_rally.jpg">
+    <source src="media/rout_rally.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Rout and rally: a low-morale infantry block is charged by cavalry and breaks &mdash; it flees faded toward its own edge, staying on the field rather than running off. The cavalry lose the router and stop; its morale recovers as it flees, and it reforms under control, back in the fight.</figcaption>
+</figure>
+```
+
 ## Rank cycling (trained units)
 
 A **well-trained** melee unit periodically rotates its ranks --- the tired front

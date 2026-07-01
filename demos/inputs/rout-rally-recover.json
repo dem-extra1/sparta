@@ -1,0 +1,18 @@
+{
+  "_comment": "Scenario-staged rout-THEN-RALLY demo: a lone low-morale (1) player infantry block of 140 is charged head-on by two 80-man cavalry and BREAKS -- it enters routing (drawn faded) and flees toward its own back edge. Because routing units are untargetable, the cavalry lose it and stop pursuing, so it breaks contact; its morale then recovers asymptotically toward the baseline, and once it crosses the rally threshold it RALLIES back under control (state returns to IDLE, rejoins the fightable units) -- still on the field, clamped to the map's top edge rather than running off it. A second, safe player unit (spearmen at 300,300, full morale, out of detection range) stays in the fight so the battle doesn't declare defeat and freeze the instant the infantry routs. Deterministic via the seed: with this build the infantry routs around tick 100 and rallies around tick 461 (~7.7 s at 60 tps), well inside the 300-frame clip. Camera frames the clash and the flee lane above it. No player input needed.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 430, "count": 140, "morale": 1.0},
+    {"team": 0, "type": "Spearmen", "x": 300, "y": 300, "count": 140, "morale": 100.0},
+    {"team": 1, "type": "Cavalry", "x": 740, "y": 560},
+    {"team": 1, "type": "Cavalry", "x": 860, "y": 560}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 430.0, "zoom": 1.2},
+    {"tick": 100, "x": 800.0, "y": 400.0, "zoom": 1.2},
+    {"tick": 300, "x": 780.0, "y": 250.0, "zoom": 1.25},
+    {"tick": 470, "x": 760.0, "y": 90.0, "zoom": 1.25},
+    {"tick": 600, "x": 760.0, "y": 80.0, "zoom": 1.25}
+  ],
+  "steps": []
+}
