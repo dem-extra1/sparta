@@ -214,6 +214,7 @@ func test_support_unit_engages_a_threat_near_its_ward() -> void:
 	u.team = 0
 	u.order_mode = Unit.ORDER_SUPPORT
 	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT   # already fronting the threat: this tests fighting, not the re-face turn
 	var ward := _make_unit()
 	ward.team = 0
 	ward.position = Vector2(60, 0)
@@ -250,6 +251,7 @@ func test_support_ranged_unit_fires_at_a_threat_near_its_ward() -> void:
 	u.is_ranged = true
 	u.order_mode = Unit.ORDER_SUPPORT
 	u.position = Vector2.ZERO
+	u.facing = Vector2.RIGHT   # already fronting the threat: this tests firing, not the re-face turn
 	var ward := _make_unit()
 	ward.team = 0
 	ward.position = Vector2(120, 0)
@@ -1010,6 +1012,7 @@ func _archer() -> Unit:
 
 func test_archer_shoots_enemy_within_range() -> void:
 	var archer := _archer()
+	archer.facing = Vector2.RIGHT   # already fronting the enemy: this tests firing, not the re-face turn
 	var enemy := _make_unit()
 	enemy.team = 1
 	# Derived from the constant so the test tracks RANGED_RANGE tuning: 40px inside
@@ -1037,6 +1040,7 @@ func test_archer_advances_toward_enemy_beyond_range() -> void:
 
 func test_archer_melees_when_enemy_in_contact() -> void:
 	var archer := _archer()
+	archer.facing = Vector2.RIGHT   # already fronting the enemy: this tests meleeing, not the re-face turn
 	var enemy := _make_unit()
 	enemy.team = 1
 	# Inside melee contact (attack_range + both radii), derived so the test tracks
@@ -1619,6 +1623,144 @@ func test_formation_summary_returns_correct_names() -> void:
 	assert_eq(u.formation_summary(), "Tight")
 	u.set_formation(Unit.FORMATION_LOOSE)
 	assert_eq(u.formation_summary(), "Loose")
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	assert_eq(u.formation_summary(), "Shield Wall")
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	assert_eq(u.formation_summary(), "Testudo")
+
+
+# --- shielded close-order stances: shield wall & testudo ------------------
+
+func test_testudo_reduces_missile_damage_from_all_directions() -> void:
+	var u := _make_unit()   # faces DOWN
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	var expected: float = 1.0 - Unit.TESTUDO_MISSILE_DEFENSE
+	# Front, flank, and rear shooters all meet the same all-around overhead cover.
+	var front := _attacker_at(Vector2(0, 100))    # ahead (facing DOWN)
+	var flank := _attacker_at(Vector2(100, 0))    # to the side
+	var rear := _attacker_at(Vector2(0, -100))    # behind
+	assert_almost_eq(u.missile_defense_factor(front), expected, 0.001,
+		"testudo blunts a frontal volley")
+	assert_almost_eq(u.missile_defense_factor(flank), expected, 0.001,
+		"testudo blunts a flank volley just as much")
+	assert_almost_eq(u.missile_defense_factor(rear), expected, 0.001,
+		"testudo blunts a rear volley just as much")
+
+
+func test_testudo_missile_defense_is_stronger_than_tight() -> void:
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_TIGHT)
+	var tight: float = u.missile_defense_factor()
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	var testudo: float = u.missile_defense_factor()
+	assert_lt(testudo, tight,
+		"testudo (overhead shields) stops more missile damage than plain tight order")
+
+
+func test_shield_wall_blunts_frontal_missiles_only() -> void:
+	var u := _make_unit()   # faces DOWN
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	var front := _attacker_at(Vector2(0, 100))    # ahead
+	var rear := _attacker_at(Vector2(0, -100))    # behind
+	assert_almost_eq(u.missile_defense_factor(front), 1.0 - Unit.SHIELD_WALL_MISSILE_DEFENSE,
+		0.001, "a shield wall stops a frontal volley")
+	assert_almost_eq(u.missile_defense_factor(rear), 1.0, 0.001,
+		"a volley into the rear bypasses the wall and lands full")
+
+
+func test_shield_wall_missile_defense_null_attacker_is_frontal() -> void:
+	# A plain query with no attacker (no direction) grants the frontal value, per the
+	# docstring -- so a caller that doesn't pass a shooter still sees the wall's cover.
+	var u := _make_unit()
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	assert_almost_eq(u.missile_defense_factor(), 1.0 - Unit.SHIELD_WALL_MISSILE_DEFENSE,
+		0.001, "a directionless query returns the shield wall's frontal cover")
+
+
+func test_shield_wall_frontal_missile_defense_is_strongest() -> void:
+	var u := _make_unit()
+	var front := _attacker_at(Vector2(0, 100))
+	u.set_formation(Unit.FORMATION_TIGHT)
+	var tight: float = u.missile_defense_factor(front)
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	var wall: float = u.missile_defense_factor(front)
+	assert_lt(wall, tight,
+		"a locked shield wall stops more frontal missile damage than tight order")
+
+
+func test_shield_wall_blunts_frontal_melee_only() -> void:
+	var u := _make_unit()   # defender, faces DOWN
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	var front := _attacker_at(Vector2(0, 100))    # ahead
+	var flank := _attacker_at(Vector2(100, 0))    # to the side
+	assert_almost_eq(u.melee_defense_factor(front), 1.0 - Unit.SHIELD_WALL_MELEE_DEFENSE,
+		0.001, "a shield wall blunts a frontal melee assault")
+	assert_almost_eq(u.melee_defense_factor(flank), 1.0, 0.001,
+		"a flank melee blow slips past the wall and lands full")
+
+
+func test_other_formations_have_no_melee_defense() -> void:
+	var u := _make_unit()
+	var front := _attacker_at(Vector2(0, 100))
+	for mode: int in [Unit.FORMATION_NORMAL, Unit.FORMATION_TIGHT, Unit.FORMATION_LOOSE,
+			Unit.FORMATION_TESTUDO]:
+		u.set_formation(mode)
+		assert_almost_eq(u.melee_defense_factor(front), 1.0, 0.001,
+			"only shield wall grants a melee-defense bonus")
+
+
+func test_testudo_weakens_melee_output() -> void:
+	var u := _make_unit()
+	assert_almost_eq(u.formation_melee_attack_factor(), 1.0, 0.001,
+		"a normal unit swings at full melee strength")
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	assert_almost_eq(u.formation_melee_attack_factor(), 1.0 - Unit.TESTUDO_MELEE_PENALTY,
+		0.001, "a testudo fights head-down and hits softer")
+
+
+func test_shielded_stances_cap_movement_speed() -> void:
+	var u := _make_unit()
+	assert_almost_eq(u.formation_speed_factor(), 1.0, 0.001,
+		"a normal unit marches at full pace")
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	assert_almost_eq(u.formation_speed_factor(), Unit.SHIELD_WALL_SPEED_SCALE, 0.001,
+		"a shield wall only creeps")
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	assert_almost_eq(u.formation_speed_factor(), Unit.TESTUDO_SPEED_SCALE, 0.001,
+		"a testudo shuffles slowest of all")
+	assert_lt(Unit.TESTUDO_SPEED_SCALE, Unit.SHIELD_WALL_SPEED_SCALE,
+		"the testudo is the slowest stance")
+
+
+func test_shielded_stances_use_tight_close_order_density() -> void:
+	# Both stances build on TIGHT's locked-shield footprint: same shrunk separation radius.
+	var u := _make_unit()
+	var base := u.separation_radius
+	u.set_formation(Unit.FORMATION_SHIELD_WALL)
+	assert_almost_eq(u.separation_radius, base * Unit.TIGHT_SEPARATION_SCALE, 0.001,
+		"shield wall packs to the tight close-order footprint")
+	u.set_formation(Unit.FORMATION_TESTUDO)
+	assert_almost_eq(u.separation_radius, base * Unit.TIGHT_SEPARATION_SCALE, 0.001,
+		"testudo packs to the tight close-order footprint")
+
+
+func test_shielded_stances_absorb_cavalry_charge() -> void:
+	var cav := _cavalry()
+	cav.position = Vector2.ZERO
+	cav._approach_velocity = Vector2(cav.move_speed, 0)
+	var normal_target := _make_unit()
+	normal_target.team = 1
+	normal_target.position = Vector2(100, 0)
+	var full_charge: float = UnitCombat.charge_multiplier(cav, normal_target)
+	for mode: int in [Unit.FORMATION_SHIELD_WALL, Unit.FORMATION_TESTUDO]:
+		var target := _make_unit()
+		target.team = 1
+		target.position = Vector2(100, 0)
+		target.set_formation(mode)
+		var reduced: float = UnitCombat.charge_multiplier(cav, target)
+		assert_gt(full_charge, reduced,
+			"a shielded stance braces and absorbs part of the charge")
+		assert_gt(reduced, 1.0, "but the charge still lands bonus damage (not reversed)")
 
 
 func test_absorb_reapplies_formation_scale() -> void:

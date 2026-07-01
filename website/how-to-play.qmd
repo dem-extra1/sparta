@@ -39,6 +39,7 @@ and rally back into the line, so the battle stays live while it might recover.
 | Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>J</kbd> cycle charge · <kbd>Esc</kbd> clear |
 | Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose / Square) · or **control bar** |
 | Anti-cavalry square | <kbd>O</kbd> jumps straight to Square (press again to drop back to Normal) · or click **Square** in the control bar |
+| Shielded stances | <kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or the **control bar** menu |
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
 | File-doubling | <kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper) |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
@@ -62,7 +63,10 @@ under pressure.
 the screen with clickable buttons for the most-used unit toggles.
 Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking to typing.
 
-- **Formation** --- click Normal, Tight, Loose, or Square directly (same as <kbd>T</kbd>).
+- **Formation** --- click Normal, Tight, Loose, or Square directly (same as <kbd>T</kbd>),
+  or pick one of the two shielded close-order stances, **Shield Wall** (<kbd>L</kbd>) or
+  **Testudo** (<kbd>U</kbd>). <kbd>T</kbd> cycles only the density set plus Square; the two
+  shielded stances are set from the menu or their direct keys.
 - **Stance** --- click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).
 - **Reform** --- toggle Reform before move (same as ☰ Menu → Reform before move).
 - **Focused atk / Spread atk** --- cycle the group-attack mode (same as <kbd>X</kbd>).
@@ -246,6 +250,19 @@ gone. Because it's a reaction you want to trigger fast, <kbd>O</kbd> (for *orbis
 jumps a unit straight to Square without cycling through Tight and Loose --- press it
 again to drop back to Normal --- and the control bar's **Square** button does the
 same with one click.
+
+**Shielded close-order stances.** Two heavier stances build on Tight's locked-shield
+density, chosen from the control-bar Formation menu:
+
+- **Shield Wall** --- shields locked edge-to-edge in a static line. It sharply cuts
+  *frontal* missile and melee damage, but only to the front: a shot or blow into the
+  flank or rear bypasses the wall entirely. The wall barely moves, so it is a holding
+  stance --- plant it to anchor a line, not to advance.
+- **Testudo** --- shields locked front, sides, *and* overhead. It blunts missile fire
+  from **every** direction, the strongest arrow cover in the game, but the men are
+  packed head-down under their shields and fight weakly, and it is the slowest stance
+  of all. Use it to walk a unit across open ground under heavy archery, then drop back
+  to a fighting formation before you close.
 
 **Resize the line.** A regiment normally forms up at a sensible width, but you can
 reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more men

@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/engage-refacing.json",
+  "caption": "Engage/attack re-facing now turns the men IN PLACE instead of snapping (#402). The player Archers are formed up facing sideways; when the enemy advances into range below them, the block used to snap its facing 90 degrees in a single tick, spinning the slot grid and surging the men (collapse-and-re-expand). Now the whole line turns in place to bring its front to bear, the men holding their ground as it pivots, and holds its volley until it has come about. Watch the archer block on the right wheel smoothly onto the enemy rather than snapping.",
+  "fixed_fps": 30,
+  "max_frames": 330,
+  "fps": 12,
+  "width": 640
+}
