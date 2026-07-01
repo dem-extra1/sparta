@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/cycle-charge.json",
+  "caption": "New Cycle charge stance (J): cavalry charge the enemy infantry, land the momentum hit, then peel back to a standoff and charge again -- a caracole -- instead of grinding where the charge bonus is already spent.",
+  "fixed_fps": 30,
+  "max_frames": 600,
+  "fps": 12,
+  "width": 640
+}
