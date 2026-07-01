@@ -1,0 +1,5 @@
+{
+  "_comment": "Test-infra-only change: fixes coverage-instrumentation timing flake in two scenario unit tests. Touches only test/ files, no scenes/scripts/assets/project.godot, so nothing player-visible changed and a recorded battle can't show it.",
+  "skip": true,
+  "reason": "Test-only change (#508): makes the scenario unit tests robust to coverage-instrumentation timing. No player-visible game behaviour changed, so a recorded battle can't show it."
+}
