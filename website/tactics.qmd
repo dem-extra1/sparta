@@ -165,6 +165,42 @@ shorter weapons, landing the first blows as lines close (see below).
 your cavalry can get *around* to those flanks. Read the enemy's screen before you
 commit your horse.
 
+## Formation stances
+
+Press <kbd>T</kbd> to cycle a unit's density --- **Normal**, **Tight** (closed ranks:
+better missile and charge defence), **Loose** (open order: room to fire), and **Square**
+(the anti-cavalry ring, covered below). Two heavier **shielded close-order stances**
+build on Tight's locked-shield density and are set from the control-bar Formation menu or
+their own direct keys.
+
+- **Shield Wall** (<kbd>L</kbd>) --- shields locked edge-to-edge, a static line. It
+  sharply cuts the missile and melee damage a unit takes **from the front**, but only
+  from the front: a shot or blow into the flank or rear ignores the wall. The wall barely
+  moves, so it is a **holding** stance. Anchor a flank or a chokepoint with it and let the
+  enemy break on the front --- but keep its flanks screened, because that is where it is soft.
+- **Testudo** (<kbd>U</kbd>) --- shields locked front, sides, and overhead: the strongest
+  missile cover in the game, and it works **from every direction**. The cost is that the
+  men fight weakly (packed head-down under their shields) and move slowest of all. It is an
+  **arrow-crossing** stance, not a fighting one: walk a unit through a beaten zone of
+  archery in testudo, then drop to Tight or Normal before it reaches melee.
+
+Both shielded stances still **brace against a cavalry charge** the way Tight does, so
+neither is helpless if horse reaches them --- but only spearmen actually turn a charge
+back. Because both are slow, commit them deliberately: a testudo caught in the open by
+melee, or a shield wall taken in the flank, is in trouble.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/testudo_under_fire.jpg">
+    <source src="media/testudo_under_fire.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.</figcaption>
+</figure>
+```
+
 ## Form square against cavalry
 
 When horse threatens a unit's flank or rear and you have no spear screen to spare,

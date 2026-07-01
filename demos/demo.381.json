@@ -1,0 +1,7 @@
+{
+  "input": "demos/inputs/testudo-under-fire.json",
+  "caption": "New shielded close-order stances: a player infantry unit locked in TESTUDO (shields front, sides, and overhead) is ringed by enemy archers firing from all four directions. Its all-around overhead cover blunts the incoming volleys, so the turtle holds under fire that would shred an open line. The companion SHIELD WALL stance stops even more frontal fire and blunts a frontal melee assault, but only to the front.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12
+}

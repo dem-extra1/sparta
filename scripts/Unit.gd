@@ -120,7 +120,8 @@ const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
 const ORDER_CYCLE_CHARGE := 6
 
-# Formation modes: how tightly the regiment is packed.
+# Formation modes: how tightly the regiment is packed, plus the two shielded
+# close-order stances built on TIGHT's locked-shield density.
 # TIGHT: soldiers close ranks — better missile defense (shields raised) and
 #        better charge resistance, at the cost of a smaller footprint.
 # NORMAL: default spacing.
@@ -130,15 +131,35 @@ const ORDER_CYCLE_CHARGE := 6
 #         presents no weak flank or rear to cavalry: the flank/rear damage multiplier
 #         no longer applies against it, and it braces a charge coming from ANY
 #         direction. The price is mobility (it crawls) and reduced offensive output.
+# SHIELD_WALL: shields locked edge-to-edge in a static line. Strong FRONTAL missile
+#        and melee defense, but slow and immobile — a holding stance.
+# TESTUDO: shields locked front, sides, and overhead. Very strong missile defense
+#        from ALL directions, but very slow and weak in melee — a turtle vs arrows.
 const FORMATION_NORMAL := 0
 const FORMATION_TIGHT := 1
 const FORMATION_LOOSE := 2
 const FORMATION_SQUARE := 3
+const FORMATION_SHIELD_WALL := 4
+const FORMATION_TESTUDO := 5
 # In tight formation, shields reduce incoming missile damage by this fraction.
 const TIGHT_MISSILE_DEFENSE: float = 0.25
 # In tight formation, this fraction of a cavalry charge bonus is absorbed
 # (braced soldiers brace against the impact — not a full reversal like anti-cav).
 const TIGHT_CHARGE_ABSORPTION: float = 0.55
+# Shield wall: shields locked edge-to-edge cut incoming FRONTAL missile damage by this
+# fraction (a flank/rear shot bypasses the wall and lands full). A braced wall also
+# blunts frontal melee, cutting frontal melee damage taken by SHIELD_WALL_MELEE_DEFENSE.
+const SHIELD_WALL_MISSILE_DEFENSE: float = 0.55
+const SHIELD_WALL_MELEE_DEFENSE: float = 0.35
+# Testudo: shields lock overhead too, so missile fire is blunted from EVERY direction
+# by this fraction. But the men are packed head-down under cover and can barely fight,
+# so their melee output is cut by TESTUDO_MELEE_PENALTY.
+const TESTUDO_MISSILE_DEFENSE: float = 0.7
+const TESTUDO_MELEE_PENALTY: float = 0.5
+# The two shielded stances plant and barely move; their top pace is capped to this
+# fraction of normal (shield wall creeps, testudo shuffles). NORMAL/TIGHT/LOOSE = 1.0.
+const SHIELD_WALL_SPEED_SCALE: float = 0.4
+const TESTUDO_SPEED_SCALE: float = 0.3
 # Separation-radius scale factors per formation mode.
 const TIGHT_SEPARATION_SCALE: float = 0.75
 const LOOSE_SEPARATION_SCALE: float = 1.35
@@ -831,10 +852,10 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		pace_speed = jog_speed
 	else:
 		pace_speed = walk_speed
-	# Anti-cavalry square: the ring shuffles as one hunkered body, so it crawls
-	# regardless of the pace picked above (no charging out of the square).
-	if formation_mode == FORMATION_SQUARE:
-		pace_speed *= SQUARE_MOVE_FACTOR
+	# A planted close-order stance (shield wall, testudo, or the anti-cav square) caps
+	# its top pace: the men hold a locked ring/wall and only creep, so the target pace
+	# is scaled down before the ramp.
+	pace_speed *= formation_speed_factor()
 	# Ramp toward the selected pace instead of snapping there -- a unit takes real time
 	# to build up to a pace (accel) and slows down rather than instantly stopping/downshifting
 	# (decel), per-type rates set from the loadout's panoply-weight-scaled accel_mps2/decel_mps2.
@@ -939,7 +960,11 @@ func _front_depth() -> float:
 func set_formation(mode: int) -> void:
 	formation_mode = mode
 	var base := _base_separation_radius
-	if mode == FORMATION_TIGHT or mode == FORMATION_SQUARE:
+	# The close-order stances all build on TIGHT's locked-shield density -- same
+	# footprint and grid, with their own extra effects on top. SQUARE is the anti-cav
+	# ring; SHIELD_WALL and TESTUDO are the shielded holding/arrow-cover stances.
+	if mode == FORMATION_TIGHT or mode == FORMATION_SQUARE \
+			or mode == FORMATION_SHIELD_WALL or mode == FORMATION_TESTUDO:
 		separation_radius = base * TIGHT_SEPARATION_SCALE
 		spacing_scale = 1.0   # already at the historical close-order/locked-shield floor
 	elif mode == FORMATION_LOOSE:
@@ -957,14 +982,81 @@ func set_frontage(files: int) -> void:
 	frontage_override = clampi(files, 1, maxi(1, max_soldiers))
 
 
-## Multiplier applied to incoming ranged damage. Tight formation: shields raised
-## overhead / to the front, reducing missile casualties. Square is deliberately NOT
-## given this bonus: its shields face outward at the horizon to meet a charge on every
-## side, not angled up against plunging arrows, so an orbis is no better against missiles
-## than an open line (arguably worse) -- its all-around bonus is against melee/charge, not
-## shot. Normal/loose: no modifier.
-func missile_defense_factor() -> float:
-	return 1.0 - TIGHT_MISSILE_DEFENSE if formation_mode == FORMATION_TIGHT else 1.0
+## Multiplier applied to incoming ranged damage. Shielded stances raise shields to
+## cut missile casualties:
+##   TIGHT       — shields raised, all directions.
+##   TESTUDO     — shields locked overhead too, stronger, all directions.
+##   SHIELD_WALL — a locked wall, strongest of all, but only to the FRONT; a shot
+##                 into the flank or rear bypasses the wall and lands full.
+## SQUARE is deliberately NOT given a missile bonus: its shields face outward at the
+## horizon to meet a charge on every side, not angled up against plunging arrows, so an
+## orbis is no better against shot than an open line -- its all-around bonus is against
+## melee/charge, not missiles. When `attacker` is given, SHIELD_WALL checks the incoming
+## direction against the unit's facing; with no attacker (a plain query) it grants its
+## frontal value. Normal/loose: no modifier.
+func missile_defense_factor(attacker: Unit = null) -> float:
+	match formation_mode:
+		FORMATION_TIGHT:
+			return 1.0 - TIGHT_MISSILE_DEFENSE
+		FORMATION_TESTUDO:
+			return 1.0 - TESTUDO_MISSILE_DEFENSE
+		FORMATION_SHIELD_WALL:
+			if _is_frontal_attack(attacker):
+				return 1.0 - SHIELD_WALL_MISSILE_DEFENSE
+			return 1.0
+		_:
+			return 1.0
+
+
+## Multiplier applied to incoming MELEE damage. A locked SHIELD_WALL blunts a frontal
+## melee assault (flank/rear blows slip past the wall and land full). Other stances: none.
+func melee_defense_factor(attacker: Unit = null) -> float:
+	if formation_mode == FORMATION_SHIELD_WALL and _is_frontal_attack(attacker):
+		return 1.0 - SHIELD_WALL_MELEE_DEFENSE
+	return 1.0
+
+
+## Multiplier applied to this unit's OWN melee output for shielded stances. A TESTUDO's
+## men are packed head-down under overhead cover and can barely swing, so they hit softer.
+## (The anti-cav SQUARE has its own offence penalty in formation_attack_factor, which
+## covers both melee and ranged.) Other stances: full.
+func formation_melee_attack_factor() -> float:
+	return 1.0 - TESTUDO_MELEE_PENALTY if formation_mode == FORMATION_TESTUDO else 1.0
+
+
+## Cap on this unit's top pace, as a fraction of normal. The planted close-order stances
+## (shield wall, testudo, and the anti-cav square) barely move; others march at full speed.
+func formation_speed_factor() -> float:
+	match formation_mode:
+		FORMATION_SHIELD_WALL:
+			return SHIELD_WALL_SPEED_SCALE
+		FORMATION_TESTUDO:
+			return TESTUDO_SPEED_SCALE
+		FORMATION_SQUARE:
+			return SQUARE_MOVE_FACTOR
+		_:
+			return 1.0
+
+
+## Whether an attack from `attacker` lands on this unit's frontal arc (in the forward
+## hemisphere -- strictly ahead of the line abreast, so a pure side/rear blow is not
+## frontal). A null attacker counts as frontal (a plain defensive query, no direction).
+##
+## The frontal arc here (full forward hemisphere, dot > 0) is deliberately WIDER than
+## the flank-bonus threshold in UnitCombat.flank_multiplier (which starts the 1.5x flank
+## bonus once the attacker is more than ~70 deg off-front). A locked shield wall faces a
+## whole hemisphere with its shields, so it earns its frontal cover across that arc; the
+## flank casualty bonus is a separate, narrower geometric effect. So an attack in the
+## ~70-90 deg band both gets the flank casualty bonus AND meets a shield-wall's front --
+## a glancing hit on the shoulder of the wall that is neither a clean frontal push nor a
+## clean flank envelopment. That overlap is intended, not a mismatch to reconcile.
+func _is_frontal_attack(attacker: Unit) -> bool:
+	if attacker == null or not is_instance_valid(attacker):
+		return true
+	var to_attacker: Vector2 = attacker.position - position
+	if to_attacker.length() < 0.001:
+		return true
+	return facing.dot(to_attacker.normalized()) > 0.0
 
 
 ## True when the unit is holding the anti-cavalry square (orbis / schiltron): the
@@ -1572,6 +1664,10 @@ func formation_summary() -> String:
 			return "Loose"
 		FORMATION_SQUARE:
 			return "Square"
+		FORMATION_SHIELD_WALL:
+			return "Shield Wall"
+		FORMATION_TESTUDO:
+			return "Testudo"
 		_:
 			return "Normal"
 

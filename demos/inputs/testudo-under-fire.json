@@ -1,0 +1,15 @@
+{
+  "_comment": "Shielded close-order stances demo (shield wall & testudo): stage a player infantry unit locked in TESTUDO (formation 5 -- shields front, sides, and overhead) and ring it with enemy archers to the front, both flanks, and rear. The archers loose volleys from every direction, but the testudo's overhead cover blunts the missile damage all around, so the turtle holds far longer than an unshielded line would under the same fire. No player input -- the scenario + seed make it deterministic; the camera frames the surrounded unit.",
+  "seed": "12345",
+  "scenario": [
+    {"team": 0, "type": "Infantry", "x": 800, "y": 480, "count": 120, "formation": 5},
+    {"team": 1, "type": "Archers", "x": 800, "y": 320},
+    {"team": 1, "type": "Archers", "x": 800, "y": 640},
+    {"team": 1, "type": "Archers", "x": 640, "y": 480},
+    {"team": 1, "type": "Archers", "x": 960, "y": 480}
+  ],
+  "camera": [
+    {"tick": 0, "x": 800.0, "y": 480.0, "zoom": 1.4}
+  ],
+  "steps": []
+}
