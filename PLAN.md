@@ -78,6 +78,42 @@ then grow outward.
      soldier-count scale this game targets. The #497/#535 resolution is the general pattern —
      concrete shared `Type` objects plus per-soldier array state, not per-soldier heap-allocated
      objects — so bottom-up realism doesn't cost bottom-up performance.
+3. **Compositionality — small units that combine, not monoliths.** We build lots of small,
+   focused, single-responsibility units — functions, classes, order primitives, behaviors — and
+   combine them into larger structures, rather than building large monolithic units that directly
+   encode complex behavior wholesale. A big capability should be assembled from small composable
+   pieces, not authored as one big piece.
+   - **Order composability (#516, design merged as `docs/orders-queue-design.md` via PR #527):**
+     the unified orders-queue model is explicitly composable via two disciplined mechanisms —
+     intra-order **phasing** (a single order like move-to-rear carries internal phases: turn-in-place
+     then march) and macro **expansion** (a higher-level command expands into a flat sequence of
+     primitive orders) — and explicitly rejects a deep nested order-tree/behavior-tree in favor of
+     this flat composition, for both legibility and determinism.
+   - **Individual-soldier orders (#547, design, just filed):** replacing block-level monolithic
+     layout recomputation with small, individually-addressed per-soldier orders (one-shot reshaping
+     instructions, bounded standing orders) that compose into unit-level and formation-level
+     emergent behavior — a direct instance of both this pillar and pillar 2 (bottom-up emergence) at
+     once; the two pillars reinforce each other here.
+   - **Reform as a separate composable phase, not baked into conversio (#552, just scoped):** the
+     about-face (`conversio`) primitive stays narrow and single-purpose; a "reform to fill the new
+     front rank" step is a separate phase that composite orders combine alongside `conversio`
+     (before or after a march phase, depending on order intent) rather than logic bolted onto the
+     `conversio` primitive itself — a concrete example of keeping primitives small and composing
+     them, rather than growing one primitive to do more.
+   - **Weapon/Shield as small composable objects (#535, design, in flight):** concrete, focused
+     `Weapon`/`Shield` type objects (each responsible for its own reach/defense/behavior) referenced
+     by soldiers, rather than a single monolithic combat-multiplier lookup table encoding every
+     equipment interaction directly.
+   - **Going forward:** when designing a new system or extending an existing one, prefer decomposing
+     into several small, focused, independently-testable units (a pure function, a narrow class, an
+     order primitive) that compose via a clear, disciplined composition mechanism — phasing,
+     macro-expansion, references/ids — over building one large unit that directly encodes the whole
+     behavior wholesale. Avoid deep inheritance trees and sprawling god-objects/god-functions; those
+     are monoliths by another name. This pillar and pillar 2 (bottom-up emergence) are complementary,
+     not identical: bottom-up emergence is about *where* behavior should live (the right
+     organizational level, letting system behavior emerge from local rules), while compositionality
+     is about *how* units at any level should be structured (small and combinable, not monolithic).
+     #547 is the clearest example of both principles operating together.
 
 ## Prioritized roadmap (synced with GitHub issues)
 Tracked as issues on `Lacaedemon/sparta` with `P0`–`P3` labels (a GitHub Project board groups them).
