@@ -1,0 +1,384 @@
+{
+  "ticks": [
+    {
+      "tick": 0,
+      "units": [
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_mode": "Normal",
+          "position": [
+            500.0,
+            430.0
+          ],
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "centroid": [
+              500.0,
+              432.25
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        }
+      ]
+    },
+    {
+      "tick": 24,
+      "units": [
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_mode": "Normal",
+          "position": [
+            500.0,
+            430.0
+          ],
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "centroid": [
+              500.0,
+              432.25
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        }
+      ]
+    },
+    {
+      "tick": 40,
+      "units": [
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            1.0
+          ],
+          "formation": "TIGHT",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_mode": "Normal",
+          "position": [
+            500.0,
+            430.0
+          ],
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "centroid": [
+              500.0,
+              432.25
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        }
+      ]
+    },
+    {
+      "tick": 56,
+      "units": [
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            -0.21,
+            0.98
+          ],
+          "formation": "TIGHT",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_mode": "Normal",
+          "position": [
+            500.07,
+            430.01
+          ],
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "centroid": [
+              500.0,
+              432.25
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        }
+      ]
+    },
+    {
+      "tick": 72,
+      "units": [
+        {
+          "current_speed": 0.0,
+          "engaged": false,
+          "facing": [
+            -0.95,
+            -0.31
+          ],
+          "formation": "TIGHT",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_mode": "Normal",
+          "position": [
+            501.62,
+            431.44
+          ],
+          "soldier_summary": {
+            "bbox": [
+              72.0,
+              36.0
+            ],
+            "centroid": [
+              500.0,
+              432.25
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldiers": 40,
+          "state": "IDLE",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        }
+      ]
+    },
+    {
+      "tick": 88,
+      "units": [
+        {
+          "current_speed": 1.3,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_mode": "Normal",
+          "position": [
+            500.73,
+            433.75
+          ],
+          "soldier_summary": {
+            "bbox": [
+              71.75,
+              36.0
+            ],
+            "centroid": [
+              500.0,
+              432.25
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldiers": 40,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        }
+      ]
+    },
+    {
+      "tick": 104,
+      "units": [
+        {
+          "current_speed": 6.7,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_mode": "Normal",
+          "position": [
+            500.13,
+            433.96
+          ],
+          "soldier_summary": {
+            "bbox": [
+              68.2,
+              36.0
+            ],
+            "centroid": [
+              499.99,
+              432.15
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldiers": 40,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        }
+      ]
+    },
+    {
+      "tick": 130,
+      "units": [
+        {
+          "current_speed": 15.3,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_mode": "Normal",
+          "position": [
+            499.93,
+            432.73
+          ],
+          "soldier_summary": {
+            "bbox": [
+              53.58,
+              36.01
+            ],
+            "centroid": [
+              499.87,
+              431.17
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldiers": 40,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        }
+      ]
+    },
+    {
+      "tick": 180,
+      "units": [
+        {
+          "current_speed": 32.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_mode": "Normal",
+          "position": [
+            500.37,
+            423.14
+          ],
+          "soldier_summary": {
+            "bbox": [
+              68.53,
+              36.02
+            ],
+            "centroid": [
+              500.52,
+              420.99
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldiers": 40,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        }
+      ]
+    },
+    {
+      "tick": 240,
+      "units": [
+        {
+          "current_speed": 52.0,
+          "engaged": false,
+          "facing": [
+            0.0,
+            -1.0
+          ],
+          "formation": "TIGHT",
+          "morale": 100.0,
+          "name": "Spearmen 1",
+          "order_mode": "Normal",
+          "position": [
+            500.21,
+            398.88
+          ],
+          "soldier_summary": {
+            "bbox": [
+              76.14,
+              36.31
+            ],
+            "centroid": [
+              499.86,
+              396.76
+            ],
+            "count": 40,
+            "prone_count": 0
+          },
+          "soldiers": 40,
+          "state": "MOVING",
+          "target_enemy_uid": null,
+          "team": 0,
+          "uid": 0
+        }
+      ]
+    }
+  ]
+}
