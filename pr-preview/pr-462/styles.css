@@ -1,0 +1,90 @@
+/* Sparta documentation site — custom theme on top of cosmo (light) / darkly (dark).
+   Palette echoes the in-game placeholder tokens: blue army (#4a7fd6), red army
+   (#d65a4a), parchment (#e8e2c8), slate panel (#2b2f3a). */
+
+:root {
+  --sparta-blue: #4a7fd6;
+  --sparta-red: #d65a4a;
+  --sparta-parchment: #e8e2c8;
+  --sparta-slate: #2b2f3a;
+}
+
+/* Brand the navbar with the slate panel colour used for the in-game HUD. */
+.navbar {
+  background-color: var(--sparta-slate) !important;
+}
+.navbar .navbar-brand,
+.navbar .nav-link,
+.navbar .navbar-title {
+  color: var(--sparta-parchment) !important;
+}
+.navbar .nav-link:hover {
+  color: #ffffff !important;
+}
+
+/* Landing hero ------------------------------------------------------------- */
+.hero {
+  text-align: center;
+  padding: 2.5rem 1rem 1.5rem;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(74, 127, 214, 0.18), transparent 60%),
+    radial-gradient(circle at 70% 70%, rgba(214, 90, 74, 0.18), transparent 60%),
+    var(--sparta-slate);
+  color: var(--sparta-parchment);
+  margin-bottom: 2rem;
+}
+.hero h1 {
+  font-size: clamp(2.2rem, 6vw, 3.4rem);
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.04em;
+}
+.hero .tagline {
+  font-size: 1.15rem;
+  opacity: 0.92;
+  max-width: 40rem;
+  margin: 0.25rem auto 1.25rem;
+}
+.hero .btn {
+  margin: 0.25rem;
+}
+.btn-sparta {
+  background-color: var(--sparta-blue);
+  border-color: var(--sparta-blue);
+  color: #fff;
+}
+.btn-sparta:hover {
+  background-color: #3a6cc0;
+  border-color: #3a6cc0;
+  color: #fff;
+}
+
+/* Demo videos -------------------------------------------------------------- */
+.demo-video {
+  width: 100%;
+  max-width: 820px;
+  display: block;
+  margin: 1.25rem auto;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+  background: var(--sparta-slate);
+}
+figure.demo > figcaption {
+  text-align: center;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-top: 0.4rem;
+}
+
+/* Two-army accent for the rock-paper-scissors / tactics callouts. */
+.army-blue { color: var(--sparta-blue); font-weight: 600; }
+.army-red  { color: var(--sparta-red);  font-weight: 600; }
+
+/* Tighten the controls table that appears on several pages. */
+table kbd {
+  background: var(--sparta-slate);
+  color: var(--sparta-parchment);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.85em;
+}
