@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "docs/config-only: migrates local AI memories into the repo and wires CLAUDE.md to load them; no gameplay change to show"
+}
