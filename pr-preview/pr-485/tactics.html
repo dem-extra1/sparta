@@ -447,6 +447,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#line-width-frontage" id="toc-line-width-frontage" class="nav-link" data-scroll-target="#line-width-frontage">Line width (frontage)</a></li>
   <li><a href="#the-unit-triangle-rock-paper-scissors" id="toc-the-unit-triangle-rock-paper-scissors" class="nav-link" data-scroll-target="#the-unit-triangle-rock-paper-scissors">The unit triangle (rock-paper-scissors)</a></li>
   <li><a href="#formation-stances" id="toc-formation-stances" class="nav-link" data-scroll-target="#formation-stances">Formation stances</a></li>
+  <li><a href="#form-square-against-cavalry" id="toc-form-square-against-cavalry" class="nav-link" data-scroll-target="#form-square-against-cavalry">Form square against cavalry</a></li>
   <li><a href="#weapon-reach" id="toc-weapon-reach" class="nav-link" data-scroll-target="#weapon-reach">Weapon reach</a></li>
   <li><a href="#movement-speed" id="toc-movement-speed" class="nav-link" data-scroll-target="#movement-speed">Movement speed</a></li>
   <li><a href="#pace-modes" id="toc-pace-modes" class="nav-link" data-scroll-target="#pace-modes">Pace modes</a></li>
@@ -562,6 +563,7 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Narrow and deep</strong> stacks more ranks behind a thinner front. Fewer fight at any moment, but the column has more bodies to feed forward as the front falls — it holds a chokepoint or punches through one spot rather than spreading thin.</li>
 </ul>
 <p>A wider line is easier to outlast in depth and quicker to crumble once it bends; a deeper one trades frontage for staying power. The width holds as casualties thin the ranks, so a line you set wide stays wide until you change it.</p>
+<p><strong>File-doubling for a fast reshape.</strong> The <kbd>[</kbd> / <kbd>]</kbd> steps are fine for fine-tuning, but two drill maneuvers swap the whole shape in one press. <kbd>B</kbd> (<strong>explicatio</strong>) doubles the frontage and halves the depth — a column unfolds into a wide line to overlap a flank or plug a gap. <kbd>N</kbd> (<strong>duplicatio</strong>) does the reverse: it halves the frontage and doubles the depth, folding a broad line into a deep column so you can squeeze down a lane or mass depth to punch through one point. The men walk to their new slots rather than snapping, so there’s a beat of disorder while the block reshapes — don’t start the maneuver in contact, and give it room before the enemy arrives. A natural rhythm is duplicatio to march a column through a chokepoint, then explicatio to deploy back into line on the far side.</p>
 <p><strong>How a line reforms after losses.</strong> The front rank takes the hits, but the block loses depth from the rear. The front rank keeps its full width, the file behind each fighter feeds men forward to hold the contact line, and the depth shrinks rank by rank. When the rearmost rank is left short-handed, its survivors close up toward the centre — the wings shorten first while the middle files stay deepest — rather than leaving a ragged, gap-toothed back rank. So a mauled unit still presents a solid front and never bulges wider than the frontage you set; you read its losses as a shrinking depth, not a fraying line.</p>
 <p><strong>Deploy a whole battle line at once.</strong> Select several regiments and drag one flank line (right-click and drag): the line splits among them. By default it splits to <strong>equal depth</strong>, so every regiment forms up the same number of ranks — a uniform front where bigger units just take a wider slice. That keeps your whole line’s staying power even, with no thin spot for the enemy to punch through. Press <kbd>Y</kbd> to cycle to <strong>equal width</strong> when you’d rather every unit cover the same frontage (small units stack deeper). They sort left-to-right by where they already stand, so nobody crosses the field to reach a slot — a fast way to dress a ragged group into one clean front before the enemy closes. Hold Shift to place them in selection order instead when you want a specific regiment on a specific flank.</p>
 <p>Use <strong>☰ Menu → Form-up</strong> to configure the split: the upper radio buttons set the mode each battle starts in; the lower checkboxes (“Y-key cycles through…”) control which modes <kbd>Y</kbd> steps between mid-battle. Uncheck a mode to skip it entirely from the cycle.</p>
@@ -587,10 +589,10 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="formation-stances" class="level2">
 <h2 class="anchored" data-anchor-id="formation-stances">Formation stances</h2>
-<p>Press <kbd>T</kbd> to cycle a unit’s density — <strong>Normal</strong>, <strong>Tight</strong> (closed ranks: better missile and charge defence), <strong>Loose</strong> (open order: room to fire). Two heavier <strong>shielded close-order stances</strong> build on Tight’s locked-shield density and are chosen from the control-bar Formation menu.</p>
+<p>Press <kbd>T</kbd> to cycle a unit’s density — <strong>Normal</strong>, <strong>Tight</strong> (closed ranks: better missile and charge defence), <strong>Loose</strong> (open order: room to fire), and <strong>Square</strong> (the anti-cavalry ring, covered below). Two heavier <strong>shielded close-order stances</strong> build on Tight’s locked-shield density and are set from the control-bar Formation menu or their own direct keys.</p>
 <ul>
-<li><strong>Shield Wall</strong> — shields locked edge-to-edge, a static line. It sharply cuts the missile and melee damage a unit takes <strong>from the front</strong>, but only from the front: a shot or blow into the flank or rear ignores the wall. The wall barely moves, so it is a <strong>holding</strong> stance. Anchor a flank or a chokepoint with it and let the enemy break on the front — but keep its flanks screened, because that is where it is soft.</li>
-<li><strong>Testudo</strong> — shields locked front, sides, and overhead: the strongest missile cover in the game, and it works <strong>from every direction</strong>. The cost is that the men fight weakly (packed head-down under their shields) and move slowest of all. It is an <strong>arrow-crossing</strong> stance, not a fighting one: walk a unit through a beaten zone of archery in testudo, then drop to Tight or Normal before it reaches melee.</li>
+<li><strong>Shield Wall</strong> (<kbd>L</kbd>) — shields locked edge-to-edge, a static line. It sharply cuts the missile and melee damage a unit takes <strong>from the front</strong>, but only from the front: a shot or blow into the flank or rear ignores the wall. The wall barely moves, so it is a <strong>holding</strong> stance. Anchor a flank or a chokepoint with it and let the enemy break on the front — but keep its flanks screened, because that is where it is soft.</li>
+<li><strong>Testudo</strong> (<kbd>U</kbd>) — shields locked front, sides, and overhead: the strongest missile cover in the game, and it works <strong>from every direction</strong>. The cost is that the men fight weakly (packed head-down under their shields) and move slowest of all. It is an <strong>arrow-crossing</strong> stance, not a fighting one: walk a unit through a beaten zone of archery in testudo, then drop to Tight or Normal before it reaches melee.</li>
 </ul>
 <p>Both shielded stances still <strong>brace against a cavalry charge</strong> the way Tight does, so neither is helpless if horse reaches them — but only spearmen actually turn a charge back. Because both are slow, commit them deliberately: a testudo caught in the open by melee, or a shield wall taken in the flank, is in trouble.</p>
 <figure class="demo figure">
@@ -600,6 +602,24 @@ ul.task-list li input[type="checkbox"] {
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
   <figcaption>Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.</figcaption>
+</figure>
+</section>
+<section id="form-square-against-cavalry" class="level2">
+<h2 class="anchored" data-anchor-id="form-square-against-cavalry">Form square against cavalry</h2>
+<p>When horse threatens a unit’s flank or rear and you have no spear screen to spare, press <kbd>O</kbd> (for <em>orbis</em>) to form <strong>Square</strong> at once — the hollow square / orbis / schiltron. (<kbd>O</kbd> jumps straight there, and the control bar’s Square button does too; <kbd>T</kbd> also reaches it by cycling through Tight and Loose.) The soldiers face outward on every side, so the unit presents <strong>no weak facing</strong>: an attack from any direction lands as if it were frontal (the usual ×1.5 flank / ×2 rear bonus is gone), and a cavalry charge into the ring is braced and <strong>backfires</strong> whether it hits the front, a flank, or the rear. There is no open side for the horse to exploit.</p>
+<p>Square is a defensive commitment, not a free upgrade. While it holds, the unit <strong>crawls</strong> (it can’t charge out) and <strong>hits softer</strong> (reduced offensive output). So:</p>
+<ul>
+<li><strong>Square up early</strong> — before the charge lands, not as it connects. The mobility penalty means a late square may not finish forming in time.</li>
+<li><strong>Drop back to Normal</strong> the moment the horse is beaten off or pulls away, or the offence and mobility penalties will cost you against enemy foot.</li>
+<li><strong>It’s a fallback, not a replacement for spearmen.</strong> A spear screen still blunts the charge <em>and</em> keeps your line mobile and hitting hard; square is what you reach for when a unit is caught in the open with cavalry on a bad angle.</li>
+</ul>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/square.jpg">
+    <source src="media/square.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind — the unit holds where a rear-charged line would break.</figcaption>
 </figure>
 </section>
 <section id="weapon-reach" class="level2">
@@ -703,6 +723,7 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Attack flank</strong> (<kbd>F</kbd>) / <strong>Attack rear</strong> (<kbd>R</kbd>) — the unit maneuvers for the side or back rather than the front, cashing in the ×1.5 / ×2 multipliers above. Pair it with a frontal pin.</li>
 <li><strong>Skirmish</strong> (<kbd>K</kbd>) — a ranged unit kites: it backs off when a threat closes inside its firing range, trading ground to keep shooting rather than being caught in melee.</li>
 <li><strong>Support</strong> (<kbd>G</kbd>) — the unit guards a chosen ally, shadowing it and intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable horse, or a guard onto your archers.</li>
+<li><strong>Cycle charge</strong> (<kbd>J</kbd>) — a caracole for cavalry: the unit charges, lands its impact hit, then peels back to a standoff and charges again, instead of grinding in a static melee where the charge bonus is already spent. The charge bonus scales with closing speed, so each fresh run lands hard — but don’t cycle into braced spears, where a fast charge backfires.</li>
 </ul>
 <p>A volley is not instant: the arrows fly a real arc and <strong>land where they were aimed a moment later</strong>, so a fast unit can partly outrun a shot loosed at long range, and casualties arrive on the beat the arrows come down rather than the instant they leave the bow.</p>
 </section>

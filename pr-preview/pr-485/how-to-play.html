@@ -549,61 +549,73 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td>Order stance</td>
-<td><kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear</td>
+<td><kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>J</kbd> cycle charge · <kbd>Esc</kbd> clear</td>
 </tr>
 <tr class="odd">
 <td>Formation</td>
-<td><kbd>T</kbd> (cycles Normal / Tight / Loose) · Shield Wall &amp; Testudo from the <strong>control bar</strong></td>
+<td><kbd>T</kbd> (cycles Normal / Tight / Loose / Square) · or <strong>control bar</strong></td>
+</tr>
+<tr class="even">
+<td>Anti-cavalry square</td>
+<td><kbd>O</kbd> jumps straight to Square (press again to drop back to Normal) · or click <strong>Square</strong> in the control bar</td>
+</tr>
+<tr class="odd">
+<td>Shielded stances</td>
+<td><kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or the <strong>control bar</strong> menu</td>
 </tr>
 <tr class="even">
 <td>Line width</td>
 <td><kbd>[</kbd> narrower · <kbd>]</kbd> wider, or <strong>drag a flank grip</strong></td>
 </tr>
 <tr class="odd">
+<td>File-doubling</td>
+<td><kbd>B</kbd> explicatio (broader + shallower) · <kbd>N</kbd> duplicatio (narrower + deeper)</td>
+</tr>
+<tr class="even">
 <td>Drill turn in place</td>
 <td><kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Wheel (hinge on a flank)</td>
 <td><kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Merge selected units</td>
 <td><kbd>M</kbd></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Control groups</td>
 <td><kbd>Ctrl</kbd> + <kbd>0</kbd>-<kbd>9</kbd> bind · <kbd>0</kbd>-<kbd>9</kbd> recall</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Distance legend</td>
 <td><strong>☰ Menu → Distance legend</strong> toggles the map-scale bar (bottom-right, on by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Order distance labels</td>
 <td><strong>☰ Menu → Order distance labels</strong> toggles the metric distance shown on each order line in the hold-<kbd>Space</kbd> survey (on by default)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Unit speed labels</td>
 <td><strong>☰ Menu → Unit speed labels</strong> shows each unit’s current speed in metres/second above it in the hold-<kbd>Space</kbd> survey (off by default)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Pan camera</td>
 <td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys / screen edges</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Zoom</td>
 <td><strong>Mouse wheel</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Show all orders + formation preview</td>
 <td>hold <kbd>Space</kbd></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Active pause</td>
 <td><kbd>P</kbd> (or <kbd>Shift</kbd> + <kbd>Space</kbd>)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>All shortcuts (this list, in-game)</td>
 <td><kbd>?</kbd> (Shift + <kbd>/</kbd>) or <strong>☰ Menu → Shortcuts</strong></td>
 </tr>
@@ -612,7 +624,7 @@ ul.task-list li input[type="checkbox"] {
 <p>A right-click on empty ground is a <strong>move</strong> order; a right-click on an enemy is an <strong>attack</strong> order. Selection and camera stay live even while paused, so you can plan under pressure.</p>
 <p><strong>Control bar.</strong> When you have units selected, a control bar appears at the bottom of the screen with clickable buttons for the most-used unit toggles. Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking to typing.</p>
 <ul>
-<li><strong>Formation</strong> — click Normal, Tight, or Loose directly (same as <kbd>T</kbd>), or pick one of the two shielded close-order stances, <strong>Shield Wall</strong> or <strong>Testudo</strong> (menu only — <kbd>T</kbd> still cycles just the three base densities).</li>
+<li><strong>Formation</strong> — click Normal, Tight, Loose, or Square directly (same as <kbd>T</kbd>), or pick one of the two shielded close-order stances, <strong>Shield Wall</strong> (<kbd>L</kbd>) or <strong>Testudo</strong> (<kbd>U</kbd>). <kbd>T</kbd> cycles only the density set plus Square; the two shielded stances are set from the menu or their direct keys.</li>
 <li><strong>Stance</strong> — click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).</li>
 <li><strong>Reform</strong> — toggle Reform before move (same as ☰ Menu → Reform before move).</li>
 <li><strong>Focused atk / Spread atk</strong> — cycle the group-attack mode (same as <kbd>X</kbd>).</li>
@@ -658,6 +670,7 @@ ul.task-list li input[type="checkbox"] {
 <li><strong>Attack flank</strong> (<kbd>F</kbd>) / <strong>Attack rear</strong> (<kbd>R</kbd>) — maneuver to strike the enemy’s side or back, where hits land far harder (see <a href="./tactics.html#order-stances">Tactics</a>).</li>
 <li><strong>Skirmish</strong> (<kbd>K</kbd>) — a ranged unit keeps its distance, backing off when a threat closes instead of standing to fire.</li>
 <li><strong>Support</strong> (<kbd>G</kbd>) — right-click a friendly to guard it: the unit shadows that ally and engages anything that threatens it.</li>
+<li><strong>Cycle charge</strong> (<kbd>J</kbd>) — cavalry charge the target, pull back to a standoff, and charge again, so each run lands a fresh momentum hit instead of grinding once the charge is spent (see <a href="./tactics.html#order-stances">Tactics</a>).</li>
 </ul>
 <figure class="demo figure">
   <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/support.jpg">
@@ -667,13 +680,31 @@ ul.task-list li input[type="checkbox"] {
   </video>
   <figcaption>Support stance: a unit guards an ally, shadowing it and engaging any threat.</figcaption>
 </figure>
-<p>Press <kbd>T</kbd> to cycle a selected unit’s <strong>formation</strong> — <em>Tight</em> closes ranks for better missile and charge defence, <em>Loose</em> spreads out. Every unit can cycle through all three; each type just starts at a different one — spearmen deploy Tight (locked shields against a charge), archers deploy Loose (room to fire), and sword-armed infantry and cavalry deploy at the plain Normal combat order.</p>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/cycle_charge.jpg">
+    <source src="media/cycle_charge.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Cycle charge stance: cavalry charge, land the impact hit, peel back to a standoff, then charge again.</figcaption>
+</figure>
+<p>Press <kbd>T</kbd> to cycle a selected unit’s <strong>formation</strong> — <em>Tight</em> closes ranks for better missile and charge defence, <em>Loose</em> spreads out, and <em>Square</em> forms the anti-cavalry ring described below. Every unit can cycle through all four; each type just starts at a different one — spearmen deploy Tight (locked shields against a charge), archers deploy Loose (room to fire), and sword-armed infantry and cavalry deploy at the plain Normal combat order.</p>
+<p><strong>Square (anti-cavalry ring).</strong> <em>Square</em> forms a hollow square / orbis / schiltron: the soldiers face spears and shields outward on every side, so the unit has <strong>no weak flank or rear</strong> — an attack from any direction lands as if it were frontal, and a cavalry charge into the ring is braced (and backfires) no matter which side it hits. The price is mobility (the ring crawls) and offence (it hits softer while hunkered), so square up <em>before</em> the horse arrives and drop back to Normal once the threat is gone. Because it’s a reaction you want to trigger fast, <kbd>O</kbd> (for <em>orbis</em>) jumps a unit straight to Square without cycling through Tight and Loose — press it again to drop back to Normal — and the control bar’s <strong>Square</strong> button does the same with one click.</p>
 <p><strong>Shielded close-order stances.</strong> Two heavier stances build on Tight’s locked-shield density, chosen from the control-bar Formation menu:</p>
 <ul>
 <li><strong>Shield Wall</strong> — shields locked edge-to-edge in a static line. It sharply cuts <em>frontal</em> missile and melee damage, but only to the front: a shot or blow into the flank or rear bypasses the wall entirely. The wall barely moves, so it is a holding stance — plant it to anchor a line, not to advance.</li>
 <li><strong>Testudo</strong> — shields locked front, sides, <em>and</em> overhead. It blunts missile fire from <strong>every</strong> direction, the strongest arrow cover in the game, but the men are packed head-down under their shields and fight weakly, and it is the slowest stance of all. Use it to walk a unit across open ground under heavy archery, then drop back to a fighting formation before you close.</li>
 </ul>
 <p><strong>Resize the line.</strong> A regiment normally forms up at a sensible width, but you can reshape it: press <kbd>]</kbd> to widen the line by one file (shallower, more men fighting at the front) or <kbd>[</kbd> to narrow it (deeper, fewer up front but more staying power). With a single unit selected, two small grips appear on its flanks — <strong>drag</strong> a grip in or out to set the width directly, with a live preview of the new file count. The width holds as the unit takes casualties, and shows in the info panel.</p>
+<p><strong>File-doubling (explicatio and duplicatio).</strong> Where <kbd>[</kbd> / <kbd>]</kbd> nudge the width one file at a time, these two drill maneuvers reshape it by a whole factor at once. Press <kbd>B</kbd> for <strong>explicatio</strong>: each file splits and the rear half steps out to the side, so the frontage doubles and the depth halves — a column unfolds into a broad line that brings more men to the front, good for overlapping a flank. Press <kbd>N</kbd> for <strong>duplicatio</strong>: alternate files tuck in behind their neighbours, so the frontage halves and the depth doubles — a wide line folds into a deep, narrow column, good for punching through or squeezing down a lane. Nobody teleports: the soldiers walk to their new slots, so the reshape takes a moment to settle. Explicatio can’t widen past a single rank, and duplicatio bottoms out at one file.</p>
+<figure class="demo figure">
+  <video class="demo-video" controls="" muted="" loop="" playsinline="" preload="metadata" poster="media/file_doubling.jpg">
+    <source src="media/file_doubling.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>File-doubling: duplicatio (N) folds the line into a deep column; explicatio (B) unfolds it back into a broad line.</figcaption>
+</figure>
 <p><strong>Deploy with a drag (form up).</strong> With a single unit selected, <strong>right-click and drag across open ground</strong> to lay out where it should stand: the start of the drag is the unit’s <strong>left flank</strong>, the end is its <strong>right flank</strong>. The unit marches over and pivots to face the line — the drag sets its position, width, and facing in one gesture, with a live preview of the front line and a forward arrow. A short right-click (no drag) is still a plain move.</p>
 <p><strong>Deploy several units at once.</strong> Select multiple units first, then drag the same flank line: it’s split into one contiguous slice per unit, with a small gap between them. By default the line splits to <strong>equal depth</strong> — every regiment forms up the same number of ranks, so a bigger unit simply takes a wider slice and the whole front is a uniform wall. Press <kbd>Y</kbd> to switch to <strong>equal width</strong> (every unit the same frontage, so a small unit just stacks deeper) and back; the choice you make in <strong>☰ Menu → Form-up</strong> is the default each battle starts with. By default the units fill the line <strong>left-to-right by where they already stand</strong>, so each marches to the nearest slice without crossing a neighbour; hold <strong>Shift</strong> while you drag to place them in <strong>selection order</strong> instead (the first unit you picked takes the left flank). The preview shows every unit’s slice, file count, and the active split mode before you release.</p>
 <p><strong>Survey all orders (hold Space).</strong> Holding <kbd>Space</kbd> overlays every unit’s current order on the battlefield: a dashed green line to each move destination, a red line to each attack target, and a teal link for support duties. At the end of each move line, a <strong>ghost formation</strong> (faint green dots) shows exactly where each individual soldier will stand when the regiment finishes its march — so you can check whether units will fit, overlap, or leave a gap before they arrive.</p>
