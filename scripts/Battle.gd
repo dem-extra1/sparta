@@ -247,12 +247,18 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# rider's kit is a small fraction of what the horse itself carries (tack, barding, and
 	# rider together are still well inside a war-horse's load capacity at these speeds).
 	# See website/tactics.qmd for the full table.
+	#
+	# `formation` is the type's default density (still just a starting point --
+	# every unit can cycle Tight/Normal/Loose live with the T hotkey). Anti-cavalry
+	# spearmen brace tight by default (locked shields against a charge); ranged
+	# skirmishers start loose (room to fire, less to lose from spreading out);
+	# sword-armed foot and cavalry start at the plain combat-order default.
 	var loadout := [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "reach_m": 2.4, "training": 0.75},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "reach_m": 1.3, "training": 0.5},
-		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "reach_m": 0.6, "training": 0.3},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "reach_m": 1.5, "training": 0.6},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "reach_m": 1.5, "training": 0.6},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "reach_m": 2.4, "training": 0.75, "formation": Unit.FORMATION_TIGHT},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "reach_m": 1.3, "training": 0.5, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "reach_m": 0.6, "training": 0.3, "formation": Unit.FORMATION_LOOSE},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "reach_m": 1.5, "training": 0.6, "formation": Unit.FORMATION_NORMAL},
 	]
 	# Tighten spacing as the line grows so even a max stack stays on the field.
 	var spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
@@ -288,6 +294,9 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 		u.position = Vector2(start_x + i * spacing, y)
 		u.field_bounds = FIELD   # so a skirmisher kites without backing off the map
 		_units.add_child(u)
+		# Set after add_child() so _ready() has already established the type's base
+		# separation_radius for set_formation() to scale from.
+		u.set_formation(d.get("formation", Unit.FORMATION_NORMAL))
 
 
 func _physics_process(_delta: float) -> void:

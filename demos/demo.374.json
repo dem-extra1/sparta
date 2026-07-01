@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/formation-density.json",
+  "caption": "Formation modes (Normal/Tight/Loose, cycled with T) now actually change the soldier grid spacing, not just an abstract collision footprint. Watch the Spearmen's marks: Tight leaves them at the same spacing as Normal (there's no historically grounded room to pack them tighter than the close-order/locked-shield floor already in place), then Loose visibly spreads them out to open marching order.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

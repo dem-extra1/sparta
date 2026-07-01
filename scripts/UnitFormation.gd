@@ -31,11 +31,15 @@ static func frontage(u: Unit) -> int:
 
 ## File count for a drag-resize handle pulled to `half_width` world units from the
 ## regiment's centre along its file axis. A grid of f files spans (f-1) gaps of
-## FORMATION_SPACING, so its half-width is (f-1)/2 * SPACING; invert that and round
-## to the nearest file. Clamped to [1, max_soldiers]. Pure -- unit-testable, and the
-## drag preview and the committed value read the same mapping.
-static func files_for_halfwidth(half_width: float, max_soldiers: int) -> int:
-	var f: int = int(round(2.0 * half_width / Unit.FORMATION_SPACING)) + 1
+## `spacing`, so its half-width is (f-1)/2 * spacing; invert that and round to the
+## nearest file. `spacing` defaults to the plain FORMATION_SPACING constant, but a
+## live unit's actual grid may be density-scaled (LOOSE order) -- callers with a unit
+## on hand should pass `Unit.FORMATION_SPACING * u.spacing_scale` so the inverse
+## mapping matches what slots() actually laid out. Clamped to [1, max_soldiers]. Pure
+## -- unit-testable, and the drag preview and the committed value read the same mapping.
+static func files_for_halfwidth(half_width: float, max_soldiers: int,
+		spacing: float = Unit.FORMATION_SPACING) -> int:
+	var f: int = int(round(2.0 * half_width / spacing)) + 1
 	return clampi(f, 1, maxi(1, max_soldiers))
 
 
@@ -45,10 +49,12 @@ static func files_label(n: int) -> String:
 
 
 ## Local-space slot offsets for `n` soldier marks: a centred, wider-than-deep grid (front
-## rank toward -Y, the rotated "forward"). Pure and deterministic -- a function of `n` and
-## the unit's frontage -- so it's unit-testable; the render adds stable jitter on top.
+## rank toward -Y, the rotated "forward"). Pure and deterministic -- a function of `n`,
+## the unit's frontage, and its density (TIGHT/NORMAL/LOOSE scales spacing without
+## changing the file/rank count) -- so it's unit-testable; the render adds stable jitter
+## on top.
 static func slots(u: Unit, n: int) -> PackedVector2Array:
-	return block_slots(n, frontage(u), Unit.FORMATION_SPACING)
+	return block_slots(n, frontage(u), Unit.FORMATION_SPACING * u.spacing_scale)
 
 
 # --- Grid operations (#367) --------------------------------------------------

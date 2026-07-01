@@ -1473,6 +1473,51 @@ func test_set_formation_normal_restores_base_radius() -> void:
 		"resetting to NORMAL restores the base type radius")
 
 
+# --- open/close order: grid-spacing density (not just the collision footprint) ------
+
+func test_set_formation_loose_widens_the_grid_spacing() -> void:
+	# LOOSE (open marching order) actually spreads the soldier marks out, not just the
+	# abstract collision footprint -- UnitFormation.slots() reads spacing_scale.
+	var u := _make_unit()
+	# slots[0] and slots[1] are both in the front rank (rank-major layout, block_slots),
+	# so they're adjacent within a single file -- holds for the default 120-soldier
+	# unit's frontage (> 1 file), which is the case exercised here.
+	var normal_slots: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
+	u.set_formation(Unit.FORMATION_LOOSE)
+	var loose_slots: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
+	assert_gt(loose_slots[1].distance_to(loose_slots[0]),
+		normal_slots[1].distance_to(normal_slots[0]),
+		"adjacent marks sit further apart at LOOSE than at NORMAL")
+
+
+func test_set_formation_tight_does_not_shrink_the_grid_spacing() -> void:
+	# FORMATION_SPACING already sits at the historically attested close-order/
+	# locked-shield floor -- there's no realistic room to pack marks tighter than
+	# that, so TIGHT's bonuses come from separation_radius/missile-defense/charge-
+	# absorption, not from squeezing the visual grid past any real formation's density.
+	var u := _make_unit()
+	var normal_slots: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
+	u.set_formation(Unit.FORMATION_TIGHT)
+	var tight_slots: PackedVector2Array = UnitFormation.slots(u, u.soldiers)
+	assert_almost_eq(tight_slots[1].distance_to(tight_slots[0]),
+		normal_slots[1].distance_to(normal_slots[0]), 0.001,
+		"TIGHT leaves the grid spacing at the same historical floor as NORMAL")
+
+
+func test_loose_formation_widens_the_engaged_front_depth() -> void:
+	# _front_depth (the engaged-enemy separation floor) scales with the same density,
+	# so a LOOSE-order unit's ranks are realistically further apart front-to-back too.
+	# A small, shallow unit so neither depth hits the reach cap -- this isolates the
+	# spacing_scale effect from that separate capping behavior.
+	var u := _make_unit(2)
+	u.set_frontage(1)   # one file: two ranks deep
+	var normal_depth: float = u._front_depth()
+	u.set_formation(Unit.FORMATION_LOOSE)
+	var loose_depth: float = u._front_depth()
+	assert_almost_eq(loose_depth, normal_depth * Unit.LOOSE_SPACING_SCALE, 0.001,
+		"LOOSE order's rank depth scales by the same density factor as the grid spacing")
+
+
 func test_tight_formation_reduces_cavalry_charge_bonus() -> void:
 	var cav := _cavalry()
 	cav.position = Vector2.ZERO
