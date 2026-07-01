@@ -207,9 +207,9 @@ in the loadout in **metres/second** (`sprint_mps`); effective px/s is
 
 | Unit | sprint speed (m/s) | effective px/s |
 | --- | --- | --- |
-| Spearmen | 2.2 | 44 |
-| Infantry | 2.6 | 52 |
-| Archers | 3.0 | 60 |
+| Spearmen | 2.8 | 56 |
+| Infantry | 4.0 | 80 |
+| Archers | 4.5 | 90 |
 | Cavalry | 8.5 | 170 |
 
 **Only team 1 advances on its own.** The enemy AI (`Battle.gd` →
@@ -220,8 +220,8 @@ order in `demos/scenarios/line-relief.json` and `charge_demo.json`. Forget it an
 the clip records the player line standing still while only the enemy closes.
 
 With both sides closing over the 400 px gap, a head-on meet takes roughly
-`400 / (sum of the two effective speeds)` seconds: about 4.5 s for
-spearmen-vs-spearmen (`44 + 44`), about 1.2 s for cavalry-vs-cavalry (`170 + 170`).
+`400 / (sum of the two effective speeds)` seconds: about 3.6 s for
+spearmen-vs-spearmen (`56 + 56`), about 1.2 s for cavalry-vs-cavalry (`170 + 170`).
 These are approximations — the enemy AI re-targets only every `AI_PERIOD` (1 s),
 and cavalry carry a 0.3 s order-response delay — so work the timing out on paper
 **before** spending a CI run on it; a mistimed scenario silently records the
