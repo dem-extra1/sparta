@@ -1,6 +1,6 @@
 {
-  "input": "demos/inputs/arrival-knockback.json",
-  "caption": "Real, non-springy soldier motion. Soldier bodies no longer ease toward their formation slots on a damped spring; they now ARRIVE under bounded force -- each body accelerates toward its slot at the unit's own acceleration and decelerates to land there with ~zero velocity (classic arrive steering). Watch the contact line: a cavalry charge slams the infantry front rank, the melee knockback shoves those bodies back, and each one decelerates and returns to its slot under real force -- a knockback-and-recover with no spring rebound, no wobble, no oscillation. Determinism is preserved (pure function of positions/velocities/mass/delta, no RNG), but outcomes differ from pre-change replays -- expected for a physics change.",
+  "input": "demos/inputs/arrow-nudge.json",
+  "caption": "Rapid re-orders now carry momentum through instead of restarting from a standstill (#521). Each arrow-key nudge froze the unit for its order-response delay, and that freeze was being misread as genuine idle, so speed hard-reset to zero on every nudge -- a unit tapped four times never got past a few pixels of net travel. Now a nudge that arrives while the unit is still cruising keeps its speed through the freeze and the next leg picks up where the last left off, so the four side-steps and the back-step accumulate real distance instead of each restarting the accel ramp from zero.",
   "fixed_fps": 30,
   "max_frames": 300,
   "fps": 12,

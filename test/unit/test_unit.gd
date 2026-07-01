@@ -630,6 +630,55 @@ func test_move_to_decelerates_when_the_target_pace_drops() -> void:
 		"the drop this tick is exactly decel * delta -- not an instant snap down")
 
 
+# --- speed preserved across a re-order while actively moving -----------------
+
+func test_current_speed_survives_a_reorder_while_cruising() -> void:
+	# A unit that's already cruising and gets re-ordered is frozen by
+	# start_order_response() for order_response_delay seconds -- _move_to() doesn't run
+	# during the freeze, so _moved_last_frame reads false even though the unit had
+	# momentum a moment ago. The end-of-frame idle-clear must not mistake that freeze
+	# for genuine idleness and hard-reset speed to zero (that forced every rapid
+	# re-order, e.g. arrow-key nudges, to restart the accel ramp from a standstill).
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.walk_speed   # as if it was already cruising
+	u.has_move_target = true
+	u.move_target = Vector2(0, 100000)   # far target, doesn't matter -- frozen this frame
+	u.start_order_response()             # simulates a fresh re-order arriving
+	assert_gt(u._order_response_timer, 0.0, "the re-order starts the response-delay freeze")
+	u._physics_process(0.016)
+	assert_false(u._moved_last_frame, "frozen by the response delay -- _move_to did not run")
+	assert_almost_eq(u._current_speed, u.walk_speed, 0.001,
+		"speed carries over through the freeze instead of hard-resetting to zero")
+
+
+func test_current_speed_still_ramps_from_zero_for_a_fresh_order_from_idle() -> void:
+	# Regression guard (#454): a genuinely idle unit (never moving, speed already zero)
+	# given a brand-new order must still ramp up from zero, not snap or inherit some
+	# stale nonzero speed -- the fix above only skips the reset while frozen, it must
+	# not grant free speed during the freeze itself.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	assert_eq(u._current_speed, 0.0, "starts genuinely idle")
+	u.start_order_response()
+	u.has_move_target = true
+	u.move_target = Vector2(0, 100000)
+	# Drain the response-delay freeze. On every tick but the last, _think() returns
+	# early (still frozen) so _current_speed cannot have grown at all; on the tick the
+	# timer expires, _think() falls through to the first step of the march itself.
+	while u._order_response_timer > 0.0:
+		u._physics_process(0.016)
+		assert_le(u._current_speed, u.accel * 0.016 + 0.001,
+			"no speed accrues beyond a single ramp step while draining the freeze")
+	assert_gt(u._current_speed, 0.0, "the march has started by the time the freeze drains")
+	# Continue ticking and confirm a normal, unbroken ramp up to the walk pace -- proof
+	# the fix didn't disturb the ordinary from-a-standstill accel ramp.
+	for _i in range(30):
+		u._physics_process(0.016)
+	assert_almost_eq(u._current_speed, u.walk_speed, 0.001,
+		"converges cleanly onto the walk pace, same as an ordinary fresh order")
+
+
 # --- turning rate tapers with speed -------------------------------------------
 
 func test_orderly_pivot_is_slower_at_speed_than_at_a_stand() -> void:
