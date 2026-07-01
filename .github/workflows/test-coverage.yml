@@ -61,6 +61,17 @@ jobs:
             -gpre_run_script=res://test/pre_run_hook.gd \
             -gpost_run_script=res://test/post_run_hook.gd
 
+      - name: Verify coverage report was written
+        # The post-run hook reports a failed lcov write with push_error(), which
+        # does not make Godot exit non-zero, so the step above can pass without
+        # producing a report. Fail here if it is missing -- a missing report is a
+        # real breakage (distinct from a coverage dip, which never gates).
+        run: |
+          if [ ! -s coverage/lcov.info ]; then
+            echo "::error::coverage/lcov.info was not written by the coverage run"
+            exit 1
+          fi
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
