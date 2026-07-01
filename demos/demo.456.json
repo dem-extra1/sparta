@@ -1,0 +1,4 @@
+{
+  "skip": true,
+  "reason": "This change caps a soldier body's speed slower when he backs up (opposite his facing) during an in-place maneuver, so reshapes where the rear ranks reverse settle a fraction slower. The effect is a sub-second difference in how quickly ranks dress -- below what a short recorded clip can distinguish from normal spring-arrival motion. It's covered by unit tests (test_soldier_follow.gd: backward bodies capped to jog_speed * back_speed_fraction, forward and sideways bodies keep the full jog cap) and documented in website/tactics.qmd ('Backing up costs time')."
+}
