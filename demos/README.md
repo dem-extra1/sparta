@@ -128,9 +128,90 @@ script under `demos/inputs/`:
 
   Example — stage a lone, low-morale infantry unit against a strong cavalry force so it routs
   (then rallies, if the build has that): `demos/inputs/rout-rally.json`.
+- `frames` (optional) — a list of physics ticks to save a viewport PNG at, for visual
+  verification (see [Verifying a demo visually](#verifying-a-demo-visually-frame-capture)). The
+  `SPARTA_DEMO_FRAMES` env var adds to this list, so a reviewer can capture frames from any demo
+  without editing its script. Ignored during a normal movie recording (capture only runs when a
+  frame is armed).
 
 The standard 5v5 (`seed "12345"`) unit positions are in [Hand-authoring a scenario](#hand-authoring-a-scenario)
 below — clicks target those world coordinates.
+
+## Verifying a demo visually (frame capture)
+
+A demo that *runs* clean isn't proof it *shows the right thing* — the camera can frame the
+wrong spot, the intended unit can sit off-screen, an effect can fail to appear. To catch
+that, render the demo to **PNG frames at chosen ticks** and look at them.
+
+The scripted-input recorder (`tools/demo/DemoInputRecorder.gd`) captures frames when the
+`SPARTA_DEMO_FRAMES` env var is **set** (to a comma-separated tick list like `10,60,120`). At
+each listed physics tick it saves the drawn viewport to `SPARTA_DEMO_FRAME_DIR/frame_<tick>.png`
+(a temp dir by default), then quits once the last frame is saved. A demo's input script can also
+carry a `"frames": [10, 60, 120]` array; when the env var is set, the two lists are merged (an
+empty env value falls back to the script's list). Capture is **env-gated**: with the env var
+unset — the CI movie-recording path — it never arms, so a demo's own `frames` array never
+truncates the recording and normal recording is unchanged.
+
+**A real renderer is required.** `--headless` uses the dummy renderer and produces null/blank
+textures, so capture must run **without `--headless`** using `--rendering-driver opengl3` (a
+window may open locally — that's fine). The viewport texture is only valid after the frame is
+drawn, so the recorder waits for `RenderingServer.frame_post_draw` before `save_png` — the
+saved PNGs are real 1280×720 frames, not black.
+
+### The wrapper
+
+`tools/demo/capture-frames.sh` wraps it:
+
+```sh
+tools/demo/capture-frames.sh <input-script> <ticks> [out-dir]
+```
+
+Concrete command that works on **Windows** (Git Bash), from the repo root:
+
+```sh
+GODOT_BIN="C:\Users\you\Documents\apps\Godot_v4.7-stable_win64_console.exe" \
+  tools/demo/capture-frames.sh demos/inputs/rout-rally.json 10,20,40 /tmp/frames
+```
+
+On Linux/CI, drop `GODOT_BIN` if `godot` is on `PATH`; the render still runs windowed
+(`--rendering-driver opengl3`), so wrap it in `xvfb-run -a` on a headless box.
+
+Or invoke Godot directly (no wrapper):
+
+```sh
+SPARTA_DEMO_INPUT="res://demos/inputs/wheel.json" \
+  SPARTA_DEMO_FRAMES="10,80,150" \
+  SPARTA_DEMO_FRAME_DIR="/tmp/frames" \
+  "$GODOT_BIN" --rendering-driver opengl3 --path . res://tools/demo/DemoInputRecorder.tscn
+```
+
+Then `Read` each `/tmp/frames/frame_<tick>.png` and confirm the intended units/behaviour are
+on-screen. The filenames are zero-padded (`frame_00010.png`) so a directory listing sorts in
+tick order.
+
+**Pick ticks the demo actually reaches.** A battle freezes its physics tick the moment it ends
+(a rout resolves, one side is wiped), so a frame armed past that tick never fires. For a
+staged rout (`rout-rally.json`) capture *early* ticks (the clash, then the break); for a
+no-opponent `drill` demo (`wheel.json`, `quarter-turn.json`) the sim never auto-ends, so any
+tick up to the script's length works. The recorder also quits after a wall-clock timeout, so
+an over-long tick can't hang the run — it just won't produce that frame.
+
+### Required demo self-check (do this before opening a PR)
+
+**Every demo PR must render a couple of frames at key ticks and confirm the change is visible
+before the PR is opened.** "It runs clean" is not enough, and "can't verify visually" is no
+longer a valid skip — with scenario staging (a custom matchup) and frame capture, a demo can
+always be staged *and seen*. Concretely, for the demo your PR adds or changes:
+
+1. Render 2–3 frames at the ticks where the behaviour should be on-screen (the command above).
+2. Open each PNG and confirm the intended units/effect are framed and doing the intended thing.
+3. If a frame shows the wrong thing (off-camera, wrong unit, no effect), fix the script
+   (camera keyframes, tick timing, scenario placement) and re-render until it's right.
+
+Only after the frames confirm the behaviour is on-screen is the demo ready. If a change
+genuinely can't be shown in a battle frame at all (a paused-overlay interaction, an editor-only
+tool), use the `skip` manifest ([No clip applies](#no-clip-applies)) with an honest reason —
+don't use the self-check's difficulty as the excuse.
 
 ## Getting a replay that shows your change
 
