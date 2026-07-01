@@ -1,0 +1,8 @@
+{
+  "replay": "demos/showcase.json",
+  "caption": "Movement is no longer an instant pace snap: units ramp up to (and slow down from) their walk/jog/sprint speed at a per-type acceleration/deceleration rate, and an orderly centre pivot now turns fastest from a stand and tapers as speed rises (#446), instead of a fixed turn rate regardless of how fast the unit is already moving.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

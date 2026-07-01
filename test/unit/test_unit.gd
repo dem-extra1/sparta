@@ -553,9 +553,13 @@ func test_cavalry_does_not_charge_cavalry() -> void:
 func test_move_to_records_approach_velocity() -> void:
 	var u := _cavalry()
 	u.position = Vector2.ZERO
-	u._move_to(Vector2(100, 0), 0.1)
+	# Speed ramps toward the pace (accel) rather than snapping there -- loop enough ticks
+	# to converge (default accel 30 wu/s^2, move_speed 90 wu/s -> 3s). Re-aim 150 units
+	# ahead each tick (inside SPRINT_START_DISTANCE) so the unit never arrives and stops.
+	for _i in range(40):
+		u._move_to(u.position + Vector2(150, 0), 0.1)
 	assert_almost_eq(u._approach_velocity.x, u.move_speed, 0.001,
-		"moving toward a point records the closing speed for the charge model")
+		"moving toward a point records the closing speed for the charge model, once ramped up to it")
 	assert_almost_eq(u._approach_velocity.y, 0.0, 0.001, "in the direction of travel")
 
 
@@ -566,11 +570,14 @@ func test_move_to_holds_ordered_facing_and_walks() -> void:
 	u.position = Vector2.ZERO
 	u.facing = Vector2.RIGHT
 	u.ordered_facing = Vector2.RIGHT
-	u._move_to(Vector2(0, 100), 0.1)   # destination straight down -- lateral to facing
+	# Loop enough ticks to ramp up to the walk pace (default accel 30 wu/s^2, walk_speed
+	# 45 wu/s -> 1.5s). Re-aim ahead each tick so the unit never arrives and stops.
+	for _i in range(30):
+		u._move_to(u.position + Vector2(0, 150), 0.1)   # straight down -- lateral to facing
 	assert_almost_eq(u.facing.x, 1.0, 0.001, "the held facing is kept, not turned toward travel")
 	assert_almost_eq(u.facing.y, 0.0, 0.001, "...so the unit faces the same way while side-stepping")
 	assert_almost_eq(u._approach_velocity.length(), u.walk_speed, 0.001,
-		"a side-step moves at the measured walk pace")
+		"a side-step moves at the measured walk pace, once ramped up to it")
 
 
 func test_move_to_without_ordered_facing_turns_to_travel() -> void:
@@ -579,6 +586,70 @@ func test_move_to_without_ordered_facing_turns_to_travel() -> void:
 	u.facing = Vector2.RIGHT
 	u._move_to(Vector2(0, 100), 0.1)   # straight down
 	assert_almost_eq(u.facing.y, 1.0, 0.001, "with no held facing the unit turns to face travel")
+
+
+# --- accel/decel ramp (no instant pace snap) ---------------------------------
+
+func test_move_to_ramps_up_from_rest_instead_of_snapping() -> void:
+	# A single tick from a standing start must not reach the full pace speed -- the
+	# unit accelerates toward it (accel wu/s^2), it doesn't teleport there.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._move_to(Vector2(0, 100000), 0.1)   # far target so the unit never arrives
+	assert_gt(u._approach_velocity.length(), 0.0, "the unit has started moving")
+	assert_lt(u._approach_velocity.length(), u.walk_speed - 0.01,
+		"but hasn't reached the target walk pace in a single tick -- it's still ramping up")
+	assert_almost_eq(u._approach_velocity.length(), u.accel * 0.1, 0.001,
+		"the first tick's speed is exactly accel * delta")
+
+
+func test_move_to_ramp_converges_to_the_target_pace() -> void:
+	# Enough ticks to fully ramp up (accel wu/s^2 toward walk_speed) converges exactly,
+	# with no overshoot -- move_toward clamps at the target. Re-aim beyond
+	# SPRINT_START_DISTANCE each tick so AUTO pace stays at walk, not sprint.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	for _i in range(30):    # walk_speed / accel = 45 / 30 = 1.5 s; 30 * 0.1 s covers it
+		u._move_to(u.position + Vector2(0, 300), 0.1)
+	assert_almost_eq(u._approach_velocity.length(), u.walk_speed, 0.001,
+		"speed converges onto the target pace with no overshoot")
+
+
+func test_move_to_decelerates_when_the_target_pace_drops() -> void:
+	# A unit sprinting (close to its destination) that suddenly needs a lower pace (e.g.
+	# it's no longer within SPRINT_START_DISTANCE) slows down at decel, not an instant drop.
+	var u := _make_unit()
+	u.position = Vector2.ZERO
+	u._current_speed = u.move_speed   # already at full sprint
+	u._move_to(Vector2(0, 100000), 0.1)   # far target -> AUTO pace selects walk, not sprint
+	assert_lt(u._approach_velocity.length(), u.move_speed,
+		"speed has started dropping toward the lower target pace")
+	assert_gt(u._approach_velocity.length(), u.move_speed - u.decel * 0.1 - 0.01,
+		"but the drop this tick is bounded by decel * delta -- not an instant snap down")
+
+
+# --- turning rate tapers with speed -------------------------------------------
+
+func test_orderly_pivot_is_slower_at_speed_than_at_a_stand() -> void:
+	# The centre-pivot rate tapers down as the unit's current speed rises (real turning
+	# capacity is bounded by the lateral force a moving body can exert). Compare a pivot
+	# from a stand against an identical pivot already at full speed.
+	var standing := _make_unit()
+	standing.position = Vector2.ZERO
+	standing.facing = Vector2.RIGHT
+	standing._move_to(Vector2(0, 100000), 0.1, true)   # orderly, far target, starts at rest
+	var standing_turn: float = standing.facing.angle()
+
+	var moving := _make_unit()
+	moving.position = Vector2.ZERO
+	moving.facing = Vector2.RIGHT
+	moving._current_speed = moving.move_speed   # already at full sprint
+	moving._move_to(Vector2(0, 100000), 0.1, true)
+	var moving_turn: float = moving.facing.angle()
+
+	assert_gt(standing_turn, moving_turn,
+		"a pivot from a stand turns further in one tick than the same pivot at full speed")
+	assert_gt(moving_turn, 0.0, "the fast-moving unit still turns, just more slowly")
 
 
 # --- gradual centre pivot (orderly move orders) ------------------------------

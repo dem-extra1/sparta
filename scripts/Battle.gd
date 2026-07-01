@@ -246,13 +246,18 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 	# real gaits (walk / trot / gallop) rather than a rider-weight-scaled fraction, since a
 	# rider's kit is a small fraction of what the horse itself carries (tack, barding, and
 	# rider together are still well inside a war-horse's load capacity at these speeds).
-	# See website/tactics.qmd for the full table.
+	# `accel_mps2`/`decel_mps2` are how fast the unit ramps toward/away from a pace, in
+	# metres/second^2. Same panoply-weight reasoning as the pace speeds above: heavier
+	# kit accelerates slower, and decel > accel for foot troops (stopping needs no
+	# propulsive effort; starting does) -- cavalry is closer to symmetric since a
+	# galloping horse can't be reined in as fast as it can build speed. See
+	# website/tactics.qmd for the full table.
 	var loadout := [
-		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "reach_m": 2.4, "training": 0.75},
-		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "reach_m": 1.3, "training": 0.5},
-		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "reach_m": 0.6, "training": 0.3},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "reach_m": 1.5, "training": 0.6},
-		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "reach_m": 1.5, "training": 0.6},
+		{"name": "Spearmen", "anti_cav": true, "cav": false, "soldiers": 140, "atk": 11, "def": 8, "walk_mps": 1.1, "jog_mps": 1.8, "sprint_mps": 2.8, "accel_mps2": 1.0, "decel_mps2": 2.5, "reach_m": 2.4, "training": 0.75},
+		{"name": "Infantry", "anti_cav": false, "cav": false, "soldiers": 120, "atk": 13, "def": 6, "walk_mps": 1.3, "jog_mps": 2.5, "sprint_mps": 4.0, "accel_mps2": 1.5, "decel_mps2": 3.0, "reach_m": 1.3, "training": 0.5},
+		{"name": "Archers", "anti_cav": false, "cav": false, "ranged": true, "soldiers": 90, "atk": 10, "def": 4, "walk_mps": 1.5, "jog_mps": 3.0, "sprint_mps": 4.5, "accel_mps2": 2.0, "decel_mps2": 3.5, "reach_m": 0.6, "training": 0.3},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "reach_m": 1.5, "training": 0.6},
+		{"name": "Cavalry", "anti_cav": false, "cav": true, "soldiers": 80, "atk": 16, "def": 5, "walk_mps": 1.7, "jog_mps": 3.5, "sprint_mps": 8.5, "accel_mps2": 2.0, "decel_mps2": 2.0, "reach_m": 1.5, "training": 0.6},
 	]
 	# Tighten spacing as the line grows so even a max stack stays on the field.
 	var spacing: float = minf(150.0, (FIELD.size.x - 200.0) / maxf(1.0, count - 1))
@@ -276,6 +281,8 @@ func _spawn_line(team: int, facing: Vector2, y: float, count: int = 5) -> void:
 		u.walk_speed = d["walk_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 		u.jog_speed = d["jog_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 		u.move_speed = d["sprint_mps"] * WORLD_UNITS_PER_METER * SPEED_SCALE
+		u.accel = d["accel_mps2"] * WORLD_UNITS_PER_METER * SPEED_SCALE
+		u.decel = d["decel_mps2"] * WORLD_UNITS_PER_METER * SPEED_SCALE
 		# Weapon reach (metres) -> world units. Falls back to the unit default if a
 		# loadout entry omits it.
 		if d.has("reach_m"):

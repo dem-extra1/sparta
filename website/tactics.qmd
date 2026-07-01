@@ -257,6 +257,21 @@ wrong way. Note that a **chasing or charging** unit turns instantly instead, so 
 attack order never pays the pivot tax; the orderly centre pivot is reserved for your
 own move orders, where keeping the ranks dressed is worth the beat.
 
+The pivot itself also **slows as the unit picks up speed** --- a unit turns
+fastest from a stand and tightens its turn rate the faster it's already moving
+(down to 40% of the stationary rate at a full sprint), reflecting the real
+lateral force a moving body or formation can exert without losing footing or
+cohesion. So a turn ordered from a standstill snaps around quickest; one
+ordered mid-charge takes noticeably longer to come about.
+
+Speed itself isn't instant either: a unit **ramps up** to its target pace
+(walk, jog, or sprint) and **ramps down** when slowing or stopping, rather than
+snapping to a new speed. Heavier-kitted troops (spearmen) build up speed
+slower than lighter ones (archers), and every foot type slows down faster than
+it speeds up --- stopping takes no effort, building momentum does. Cavalry is
+closer to symmetric: a galloping horse can't be reined in much faster than it
+can build up speed in the first place.
+
 ## Order stances
 
 Each order can carry a *stance*, armed with a hotkey before you click (a coloured

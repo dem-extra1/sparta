@@ -29,6 +29,16 @@ var uid: int = -1
 # never get a loadout.
 @export var walk_speed: float = 45.0
 @export var jog_speed: float = 67.5
+# Acceleration/deceleration, in world units/s^2 -- how fast this unit's actual speed
+# ramps toward whichever pace it's targeting (see _current_speed below), instead of
+# snapping there instantly. Independent per-type values (Battle sets them from the
+# loadout's accel_mps2/decel_mps2), following the same panoply-weight reasoning as
+# walk_speed/jog_speed: heavier kit accelerates slower, and decel > accel for foot
+# troops (stopping needs no propulsive effort; starting does). Cavalry is closer to
+# symmetric -- a galloping horse can't be reined in as fast as it can build speed.
+# Defaults are a middling (infantry-like) value for bare test units without a loadout.
+@export var accel: float = 30.0
+@export var decel: float = 60.0
 # Effective melee reach, in world units (Battle sets it per weapon from reach_m;
 # the 26 default is the infantry/sword baseline). A unit counts as in melee
 # contact when the gap to its target closes within attack_range + both RADII, so a
@@ -136,8 +146,14 @@ const SPRINT_START_DISTANCE: float = 200.0   # px from target: start full-speed 
 # Orderly move orders pivot the block about its centre toward their travel direction at
 # this angular rate (rad/s) rather than snapping, so the ranks turn in good order. A
 # half-circle (180°) centre pivot takes ~PI / TURN_RATE seconds. Combat chases still snap
-# (they pass orderly = false to _move_to).
+# (they pass orderly = false to _move_to). TURN_RATE is the rate at a stand -- an orderly
+# march pivot tapers this down as the unit's current speed rises (real turning capacity is
+# bounded by the lateral force a moving body/formation can exert without losing footing or
+# cohesion), never dropping below TURN_RATE_TAPER_FLOOR of the stationary rate. A first-cut
+# linear taper; the deeper pivot-radius/cohesion mechanics of an actual wheel maneuver are
+# a dedicated maneuver (circumductio, #372), not this general movement taper.
 const TURN_RATE: float = PI
+const TURN_RATE_TAPER_FLOOR: float = 0.4
 # Conversio (drill about-face): every soldier turns in place to reverse, so unit.facing
 # rotates toward the opposite heading at this rate (rad/s), taking ~0.5 s for a full 180°.
 # This is NOT a pivot of the block — neither a centre pivot (move orders) nor a flank wheel
@@ -296,6 +312,11 @@ var _moved_last_frame: bool = false
 # strikes after) and cleared when the unit goes idle/holds (a stationary unit carries no
 # momentum); kept while FIGHTING so a strike delayed by attack cooldown still lands it.
 var _approach_velocity: Vector2 = Vector2.ZERO
+# This unit's actual current speed (world units/s, unsigned), ramping toward whichever
+# pace _move_to selects via accel/decel rather than snapping there. Reset alongside
+# _approach_velocity below (a stationary unit carries no momentum, so the next march
+# always ramps up from zero, never resumes at a stale carried-over speed).
+var _current_speed: float = 0.0
 # Velocity the regiment center followed its soldiers' centroid at this tick (phase 5):
 # the soldier->regiment coupling slides the center toward where its bodies actually are,
 # so friendly collision (and later all collision) emerges from the soldier layer. Stored
@@ -390,8 +411,10 @@ func _physics_process(delta: float) -> void:
 	# velocity so a later standing strike can't charge off it. While FIGHTING we
 	# keep it — a strike held back by attack cooldown on the contact frame still charges
 	# on the next — and _strike spends it, so grinding strikes after the first don't.
+	# _current_speed resets alongside it so the next march always ramps up from zero.
 	if not _moved_last_frame and state != State.FIGHTING:
 		_approach_velocity = Vector2.ZERO
+		_current_speed = 0.0
 
 	# The parallel soldier-body layer (seeding + the global engaged-soldier
 	# separation) is orchestrated once per tick by Battle, AFTER every unit has
@@ -642,16 +665,7 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 	if to.length() < 1.0:
 		return
 	var dir: Vector2 = to.normalized()
-	# Facing. A side-step holds its commanded heading and shuffles sideways. An
-	# orderly move order centre-pivots gradually toward its travel direction (the ranks
-	# turn in good order). A combat chase faces travel instantly (it must stay responsive).
 	var maneuvering: bool = ordered_facing != Vector2.ZERO
-	if maneuvering:
-		_face_dir(ordered_facing)
-	elif orderly:
-		_rotate_facing_toward(dir, delta)
-	else:
-		_face_dir(dir)
 	# Pace: a maneuver or walk-advance holds walk speed throughout. AUTO otherwise
 	# walks by default, jogs under missile fire, and sprints at full speed once
 	# close to the target. Each pace is this unit's own gait speed, not a fraction
@@ -665,7 +679,25 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		pace_speed = jog_speed
 	else:
 		pace_speed = walk_speed
-	var effective_speed: float = pace_speed * terrain_speed
+	# Ramp toward the selected pace instead of snapping there -- a unit takes real time
+	# to build up to a pace (accel) and slows down rather than instantly stopping/downshifting
+	# (decel), per-type rates set from the loadout's panoply-weight-scaled accel_mps2/decel_mps2.
+	var rate: float = accel if pace_speed > _current_speed else decel
+	_current_speed = move_toward(_current_speed, pace_speed, rate * delta)
+	# Facing. A side-step holds its commanded heading and shuffles sideways. An orderly
+	# move order centre-pivots gradually toward its travel direction (the ranks turn in
+	# good order), tapering the pivot rate down as current speed rises -- real turning
+	# capacity is bounded by the lateral force a moving body/formation can exert without
+	# losing footing or cohesion. A combat chase faces travel instantly (must stay responsive).
+	if maneuvering:
+		_face_dir(ordered_facing)
+	elif orderly:
+		var speed_frac: float = clampf(_current_speed / move_speed, 0.0, 1.0)
+		var pivot_rate: float = TURN_RATE * lerpf(1.0, TURN_RATE_TAPER_FLOOR, speed_frac)
+		_rotate_facing_toward(dir, delta, pivot_rate)
+	else:
+		_face_dir(dir)
+	var effective_speed: float = _current_speed * terrain_speed
 	# Turn-before-march: while centre-pivoting an orderly move, scale the advance by how
 	# far the unit has come onto its heading. A sharp turn (e.g. a 180° pivot to a rear
 	# destination) nearly halts and pivots, then accelerates as it aligns -- so it
