@@ -175,3 +175,62 @@ func test_moving_soldier_bodies_not_speed_capped() -> void:
 		if u._sim_body_vel[i].length() > u.jog_speed + 1.0:
 			any_above_cap = true
 	assert_true(any_above_cap, "marching bodies can exceed jog speed — no cap while MOVING")
+
+
+# --- backward-walk speed cap during a maneuver --------------------------------
+
+## Set up an idle unit whose bodies are displaced so the spring pulls every body
+## ALONG the given displacement direction, then step once and return the peak body
+## speed along the facing axis (component of velocity in the direction of travel).
+func _peak_speed_along_travel(u: Unit, displace: Vector2) -> float:
+	for i in range(u._sim_soldier_pos.size()):
+		u._sim_soldier_pos[i] += displace
+	SoldierBodies.step(u, DELTA)
+	var travel: Vector2 = (-displace).normalized()   # slot is opposite the displacement
+	var peak := 0.0
+	for i in range(u._sim_body_vel.size()):
+		peak = maxf(peak, u._sim_body_vel[i].dot(travel))
+	return peak
+
+
+func test_backward_moving_body_capped_slower_than_forward() -> void:
+	# facing = DOWN. A body whose slot lies BEHIND it (above, -y) must back up against
+	# its facing, and the cap slows that to jog_speed * back_speed_fraction. A body whose
+	# slot lies AHEAD (below, +y) steps forward and keeps the full jog cap. Same offset
+	# magnitude both ways, so the spring force is identical -- only the cap differs.
+	var back_u := _make_unit()
+	back_u.state = Unit.State.IDLE
+	# Displace bodies DOWN so their slots sit behind (above) them -> they back up.
+	var back_peak: float = _peak_speed_along_travel(back_u, Vector2(0.0, 200.0))
+
+	var fwd_u := _make_unit()
+	fwd_u.state = Unit.State.IDLE
+	# Displace bodies UP so their slots sit ahead (below) them -> they step forward.
+	var fwd_peak: float = _peak_speed_along_travel(fwd_u, Vector2(0.0, -200.0))
+
+	assert_almost_eq(fwd_peak, fwd_u.jog_speed, 1e-3,
+			"a body stepping forward is capped at the full jog speed")
+	assert_almost_eq(back_peak, back_u.jog_speed * back_u.back_speed_fraction, 1e-3,
+			"a body backing up is capped to the slower backward pace")
+	assert_lt(back_peak, fwd_peak - 1.0,
+			"backward motion is meaningfully slower than forward motion")
+
+
+func test_sideways_body_keeps_full_jog_cap() -> void:
+	# facing = DOWN. A body displaced purely sideways (x) moves perpendicular to its
+	# facing -- neither forward nor backward -- so it keeps the full jog cap, unslowed.
+	var u := _make_unit()
+	u.state = Unit.State.IDLE
+	var peak: float = _peak_speed_along_travel(u, Vector2(200.0, 0.0))
+	assert_almost_eq(peak, u.jog_speed, 1e-3,
+			"purely sideways motion keeps the full jog cap (no backward penalty)")
+
+
+func test_backward_cap_is_deterministic() -> void:
+	var a := _make_unit()
+	a.state = Unit.State.IDLE
+	var b := _make_unit()
+	b.state = Unit.State.IDLE
+	var pa: float = _peak_speed_along_travel(a, Vector2(0.0, 200.0))
+	var pb: float = _peak_speed_along_travel(b, Vector2(0.0, 200.0))
+	assert_almost_eq(pa, pb, 1e-9, "identical setups cap identically -- replay-safe")

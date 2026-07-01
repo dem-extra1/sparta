@@ -145,12 +145,40 @@ static func step(unit: Unit, delta: float) -> void:
 		# exempt — its bodies need to keep up with moving slots — so the cap only
 		# applies when state == IDLE.
 		if unit._reform_timer > 0.0 or unit.state == Unit.State.IDLE:
-			unit._sim_body_vel[i] = unit._sim_body_vel[i].limit_length(unit.jog_speed)
+			unit._sim_body_vel[i] = _cap_body_speed(unit, i)
 		unit._sim_soldier_pos[i] += unit._sim_body_vel[i] * delta
 		# Tell the render a body actually moved this tick, so _process can skip the
 		# MultiMesh rewrite while a block sits at rest (REST_SPEED is well below visible).
 		if unit._sim_body_vel[i].length_squared() > REST_SPEED * REST_SPEED:
 			unit._render_dirty = true
+
+
+## Cap a stationary/reforming body's velocity to its unit's jog pace, but to the slower
+## backward pace (jog_speed * back_speed_fraction) when the body is moving BACKWARD
+## relative to its own facing. "Backward" is a negative velocity component along the
+## soldier's facing; a body stepping forward or purely sideways keeps the full jog cap.
+## The cap is applied against the facing axis so a body backing up is slowed only on that
+## axis -- its sideways drift stays free -- which keeps a rear rank backing into a new slot
+## slower than a front rank stepping forward, exactly the maneuver asymmetry the stat models.
+## Pure function of the body's velocity and facing; no RNG, order-free -- replay-safe.
+static func _cap_body_speed(unit: Unit, i: int) -> Vector2:
+	var vel: Vector2 = unit._sim_body_vel[i]
+	var facing: Vector2 = unit._sim_soldier_facing[i] if i < unit._sim_soldier_facing.size() \
+			else unit.facing
+	# A body moving forward or sideways (non-negative facing component) uses the full jog
+	# cap. Only a body whose motion leans backward -- against its facing -- is capped slower.
+	var forward_component: float = vel.dot(facing)
+	if forward_component >= 0.0 or facing.length_squared() < 0.0001:
+		return vel.limit_length(unit.jog_speed)
+	# Split the velocity into its along-facing (backward) part and its sideways part, cap the
+	# backward part to the slower pace, and leave the sideways part free (up to the jog cap).
+	var back_cap: float = unit.jog_speed * unit.back_speed_fraction
+	var along: Vector2 = facing * forward_component            # points backward (component < 0)
+	var side: Vector2 = vel - along
+	if along.length() > back_cap:
+		along = along.normalized() * back_cap
+	side = side.limit_length(unit.jog_speed)
+	return along + side
 
 
 ## Slide the regiment center toward its soldiers' centroid, at a bounded velocity (phase 5).
