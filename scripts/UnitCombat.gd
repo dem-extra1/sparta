@@ -145,9 +145,9 @@ static func take_casualties(u: Unit, amount: int, attacker: Unit) -> void:
 	var flank: float = flank_multiplier(u, attacker)
 	var total: int = max(1, int(round(amount * flank)))
 	u.soldiers -= total
-	# The flank multiplier scales the morale hit too (a rout from being taken in the rear).
-	# The per-soldier melee path passes flank 1.0 -- it models facing in the strike contest
-	# instead, so the directional penalty isn't applied twice.
+	# `flank` wires through so REAR_MORALE_EXTRA can add an optional extra rear/flank morale
+	# debuff later; at the default (0.0) morale tracks the casualty count alone (which already
+	# rose with the flank). The per-soldier melee path passes 1.0 -- facing is in the strike rolls.
 	register_casualties(u, total, attacker, flank)
 
 
