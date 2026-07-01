@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/about-face.json",
+  "caption": "Move-to-rear now executes as an about-face (conversio), not a 180 centre pivot (#394). The lone Spearmen faces south; right-clicking a destination directly behind it (north) makes every soldier reverse 180 where they stand -- the block keeps its footprint, front rank becoming rear rank -- and then it marches north facing its destination, instead of swinging the whole line round about its centre.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}

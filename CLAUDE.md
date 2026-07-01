@@ -23,6 +23,13 @@ git submodule update --init
 Memories live in `.ai-config/memories/` (e.g. `@.ai-config/memories/preferences.md`).
 Skills live in `.ai-config/skills/`.
 
+## Project memories
+
+Sparta-specific working notes and gotchas, imported so they load with this file:
+
+@.claude/memories/sparta.md
+@.claude/memories/sparta-demos.md
+
 ## Project at a glance
 - Godot **4.7.x Standard** (GDScript, not C#/.NET). 2D top-down tactical battle.
 - Main scene: `scenes/Battle.tscn`. Core scripts live in `scripts/`.

@@ -585,10 +585,19 @@ func _think(delta: float) -> void:
 	if _conversio_target != Vector2.ZERO:
 		if state == State.FIGHTING or has_move_target:
 			_conversio_target = Vector2.ZERO
+			_has_pending_march = false   # a new order / combat pre-empts the parked rear march
+			_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
 		else:
 			if _advance_turn(_conversio_target, delta):
 				_conversio_target = Vector2.ZERO
 				_reverse_soldier_bodies()
+				# Rear-sector move: the about-face is done, so start marching to the parked
+				# destination. The block now faces travel, so it advances forward, not backward.
+				if _has_pending_march:
+					_has_pending_march = false
+					move_target = _pending_march_target
+					_pending_march_target = Vector2.ZERO   # consumed -- clear it alongside its gate, as the interrupt path and _rout() do
+					has_move_target = true
 			state = State.IDLE
 			return
 
@@ -718,7 +727,7 @@ func _think(delta: float) -> void:
 			# A flank/rear stance closes on the enemy's side or back instead of
 			# head-on, so the strike on arrival lands with the flank/rear bonus.
 			# If the enemy broke contact mid-turn, settle the re-face first — the unit is
-			# marching after it now, so the frozen spring must release (the turn resumes on
+			# marching after it now, so the frozen arrival must release (the turn resumes on
 			# the next contact when _face_for_action runs again).
 			if _engage_turn_target != Vector2.ZERO:
 				_settle_engage_turn()
@@ -753,7 +762,7 @@ func _think(delta: float) -> void:
 	elif enemy != null and order_mode != ORDER_HOLD:
 		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
 		# range/contact). If a re-face turn was in progress, settle it first: the unit is
-		# marching now, so the frozen spring must release (folding the partial rotation into
+		# marching now, so the frozen arrival must release (folding the partial rotation into
 		# _formation_angle) or the bodies would stay pinned and never keep up with the march.
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
@@ -762,8 +771,8 @@ func _think(delta: float) -> void:
 		# Idle: no enemy, or a HOLD stance that won't chase — the paths above
 		# still fight/fire whatever reaches a held unit. If the engaged enemy vanished
 		# (died/routed/left range) while a re-face turn was still running, settle it here so
-		# the soldier-body spring doesn't stay frozen indefinitely (folding the partial
-		# rotation into _formation_angle so the bodies don't surge when the spring re-enables).
+		# the soldier-body arrival doesn't stay frozen indefinitely (folding the partial
+		# rotation into _formation_angle so the bodies don't surge when the arrival re-enables).
 		if _engage_turn_target != Vector2.ZERO:
 			_settle_engage_turn()
 		state = State.IDLE
@@ -846,7 +855,7 @@ func _support_tick(delta: float) -> void:
 				UnitCombat.strike(self, threat)
 		else:
 			# Threat out of range: chase it. Settle a dangling re-face first so the frozen
-			# body spring releases before the march (the turn re-arms on the next contact).
+			# body arrival releases before the march (the turn re-arms on the next contact).
 			if _engage_turn_target != Vector2.ZERO:
 				_settle_engage_turn()
 			_move_to(threat.position, delta)
@@ -854,7 +863,7 @@ func _support_tick(delta: float) -> void:
 	# No threat near the ward: shadow it, holding station a short distance off so
 	# the supporter doesn't crowd the unit it's guarding. If a re-face turn was still
 	# running when the threat left (died/routed/cleared the guard radius), settle it here
-	# so the body spring isn't left frozen indefinitely.
+	# so the body arrival isn't left frozen indefinitely.
 	if _engage_turn_target != Vector2.ZERO:
 		_settle_engage_turn()
 	if position.distance_to(ward.position) > SUPPORT_FOLLOW_DISTANCE:
@@ -951,7 +960,7 @@ func _face(point: Vector2) -> void:
 ## without the grid collapsing and re-expanding. Returns whether the unit is faced enough to
 ## fight this tick (true when snapping, or once a turn has closed to within
 ## ENGAGE_TURN_FIGHT_TOLERANCE); the caller withholds the strike while still turning. Reuses
-## the drill turns' spring-freeze + _formation_angle-absorb, so the bodies hold their ground.
+## the drill turns' arrival-freeze + _formation_angle-absorb, so the bodies hold their ground.
 func _face_for_action(point: Vector2, delta: float) -> bool:
 	var dir: Vector2 = point - position
 	if dir.length() < 0.01:
@@ -967,7 +976,7 @@ func _face_for_action(point: Vector2, delta: float) -> bool:
 	if offset <= ENGAGE_TURN_THRESHOLD:
 		_face_dir(dir)
 		return true
-	# Large offset: begin a turn-in-place. Men hold their positions (spring frozen) while
+	# Large offset: begin a turn-in-place. Men hold their positions (arrival frozen) while
 	# facing rotates; the strike is withheld until the front comes to bear.
 	_engage_turn_start_facing = facing
 	_engage_turn_target = dir.normalized()
@@ -1353,7 +1362,7 @@ var _wheel_target: Vector2 = Vector2.ZERO
 var _wheel_pivot: Vector2 = Vector2.ZERO
 # Non-zero while a unit is turning in place to bring its front to bear on an enemy it is
 # engaging (an attack order or auto-engage that arrives ~>75° off the current fronting). The
-# target facing (toward the enemy); unit.facing rotates toward it each tick with the spring
+# target facing (toward the enemy); unit.facing rotates toward it each tick with the arrival
 # frozen, exactly like the drill turns, so the men hold their ground and the block does not
 # collapse-and-re-expand. The start heading is kept so _formation_angle absorbs however far it
 # turned when the turn finishes (or is interrupted), leaving the men where they stood — the
@@ -1370,6 +1379,15 @@ const ENGAGE_TURN_THRESHOLD: float = deg_to_rad(75.0)
 # the line to bear before it fights, but it need not be dead-on. Slightly under a flank
 # boundary so a re-faced unit lands frontal blows.
 const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
+
+# Destination a rear-sector move order parked while an about-face (conversio) turns the
+# block around. _think reads it on conversio arrival, commits it as the move target, and
+# clears it. Held separately from move_target so has_move_target stays false during the
+# turn (otherwise _think would cancel the conversio). _has_pending_march is the
+# authoritative gate rather than checking != Vector2.ZERO, because the world origin is a
+# valid move destination -- ZERO can't reliably mean "nothing pending".
+var _pending_march_target: Vector2 = Vector2.ZERO
+var _has_pending_march: bool = false
 
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
@@ -1442,7 +1460,8 @@ func release_soldier_facing() -> void:
 ## while another in-place turn (conversio or quarter-turn) is already running.
 func conversio() -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty() \
-			or _conversio_target != Vector2.ZERO or _quarter_target != Vector2.ZERO:
+			or _conversio_target != Vector2.ZERO or _quarter_target != Vector2.ZERO \
+			or _wheel_target != Vector2.ZERO:
 		return
 	_conversio_target = Vector2(-facing.x, -facing.y)
 
@@ -1457,7 +1476,8 @@ func conversio() -> void:
 ## re-arming mid-turn would reset the start heading and corrupt the settled offset.
 func quarter_turn(dir: int) -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty() or dir == 0 \
-			or _quarter_target != Vector2.ZERO or _conversio_target != Vector2.ZERO:
+			or _quarter_target != Vector2.ZERO or _conversio_target != Vector2.ZERO \
+			or _wheel_target != Vector2.ZERO:
 		return
 	_quarter_start_facing = facing
 	_quarter_target = facing.rotated(signf(dir) * PI * 0.5)
@@ -1926,6 +1946,8 @@ func _rout() -> void:
 	has_move_target = false
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
+	_has_pending_march = false         # drop any rear-move march parked behind the conversio
+	_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
 	_quarter_target = Vector2.ZERO     # cancel any quarter-turn likewise
 	_wheel_target = Vector2.ZERO       # and any in-progress wheel (partial swing left as-is)
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn

@@ -874,9 +874,18 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# Choose the drill maneuver for a plain move (a form-up commands its own
 				# facing, so it never side-steps). A small lateral shift holds facing and
 				# shuffles sideways instead of centre-pivoting to face travel and back.
-				if not cmd.has("face") \
-						and UnitManeuver.is_sidestep(u.facing, point - u.position):
+				var move_vec: Vector2 = point - u.position
+				var side_step: bool = not cmd.has("face") \
+						and UnitManeuver.is_sidestep(u.facing, move_vec)
+				if side_step:
 					u.ordered_facing = u.facing
+				# A move into the rear sector about-faces (conversio) in place, then marches
+				# to the destination facing it -- rather than pivoting the whole block 180°
+				# about its centre. A form-up, a side-step, and a fighting unit (conversio is
+				# blocked in melee) all keep the normal march.
+				var rear_move: bool = not cmd.has("face") and not side_step \
+						and u.state != UnitRef.State.FIGHTING \
+						and UnitManeuver.is_rear_move(u.facing, move_vec)
 				# Drag-to-form-up: apply frontage/facing immediately so soldiers begin
 				# adjusting during the reform phase rather than after the march starts.
 				if cmd.has("face"):
@@ -891,11 +900,28 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# (in Unit._think) commit it once the unit's ranks have had time to
 				# settle. Baked into the command so replays reproduce this as recorded.
 				# Fighting units bypass the hold in _think and commit immediately.
-				if bool(cmd.get("reform", false)):
+				var about_faced: bool = false
+				if rear_move:
+					# Park the destination and about-face; _think starts the march once the
+					# conversio completes. has_move_target stays false so the turn isn't cancelled.
+					# Snapshot before the call: conversio() no-ops before the bodies seed OR while
+					# another in-place turn is already running (a standing V-key about-face), leaving
+					# _conversio_target unchanged and non-zero. Only enter the about-face path when this
+					# call armed a fresh turn; otherwise fall back to a plain march.
+					var conversio_was_idle: bool = u._conversio_target == Vector2.ZERO
+					u.conversio()
+					if conversio_was_idle and u._conversio_target != Vector2.ZERO:
+						u.has_move_target = false
+						u._pending_march_target = point
+						u._has_pending_march = true
+						about_faced = true
+				# A rear move that armed the about-face parks its march for _think to commit
+				# on completion; every other move commits here (reform-hold or immediate).
+				if not about_faced and bool(cmd.get("reform", false)):
 					u._reform_target = point
 					u._reform_timer = UnitRef.REFORM_DURATION
 					u.has_move_target = false   # stop any prior march while reforming
-				else:
+				elif not about_faced:
 					u.move_target = point
 					u.has_move_target = true
 		if not append:

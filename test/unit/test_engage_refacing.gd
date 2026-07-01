@@ -159,7 +159,7 @@ func test_small_offset_snaps_and_fights() -> void:
 func test_enemy_killed_mid_turn_clears_the_turn() -> void:
 	# A large-offset engage starts a turn-in-place; the target is then removed while the
 	# turn is still running. The unit must settle and clear the turn, or the soldier-body
-	# spring stays frozen forever and the men are stuck in place.
+	# arrival stays frozen forever and the men are stuck in place.
 	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
 	var enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
 
@@ -176,14 +176,14 @@ func test_enemy_killed_mid_turn_clears_the_turn() -> void:
 		"the engage turn is cleared once the enemy is gone")
 	assert_eq(a.state, Unit.State.IDLE, "the unit goes idle with no enemy")
 	# The partial rotation is preserved (facing did not snap back); it was folded into
-	# _formation_angle by the settle, so the bodies won't surge when the spring re-enables.
+	# _formation_angle by the settle, so the bodies won't surge when the arrival re-enables.
 	assert_true(a.facing.is_equal_approx(partial_facing),
 		"the partial turn is preserved — facing stays where the interrupted turn left it")
 
-	# The spring is no longer frozen. A clean settle folded the rotation into
+	# The arrival is no longer frozen. A clean settle folded the rotation into
 	# _formation_angle, so the slots already match the men (zero error, no surge). To prove
-	# the restoring force is live again, nudge one body off its slot and confirm it springs
-	# back — while the turn was frozen the restoring force was zeroed and it would not.
+	# the arrival is live again, nudge one body off its slot and confirm it returns —
+	# while the turn was frozen the arrival term was dropped and it would not.
 	var slots: PackedVector2Array = a.soldier_world_slots(a.soldiers)
 	a._sim_soldier_pos[0] = slots[0] + Vector2(20.0, 0.0)   # displace one man 20 px off-slot
 	var err_before: float = a._sim_soldier_pos[0].distance_to(slots[0])
@@ -191,12 +191,12 @@ func test_enemy_killed_mid_turn_clears_the_turn() -> void:
 		a.step_sim_soldiers(0.05)
 	var err_after: float = a._sim_soldier_pos[0].distance_to(a.soldier_world_slots(a.soldiers)[0])
 	assert_lt(err_after, err_before,
-		"with the turn cleared the restoring force is live again — a displaced body springs back")
+		"with the turn cleared the arrival is live again — a displaced body returns to its slot")
 
 
 func test_enemy_leaves_range_mid_turn_settles_the_turn() -> void:
 	# The enemy breaks contact (still alive and targeted) while the unit is mid-turn: the
-	# unit chases via _move_to, so the frozen spring must release or the marching bodies
+	# unit chases via _move_to, so the frozen arrival must release or the marching bodies
 	# can't keep up. The turn is settled and resumes on the next contact.
 	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
 	var enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
@@ -216,7 +216,7 @@ func test_enemy_leaves_range_mid_turn_settles_the_turn() -> void:
 func test_support_threat_killed_mid_turn_clears_the_turn() -> void:
 	# A supporting unit engages a threat near its ward with a large-offset re-face, then the
 	# threat vanishes mid-turn. The support tick has its own combat exits (chase / shadow /
-	# idle) that must settle the dangling turn too, or the body spring stays frozen forever.
+	# idle) that must settle the dangling turn too, or the body arrival stays frozen forever.
 	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
 	var ward := _unit(3, 0, Vector2(60, 0), Vector2.RIGHT)   # friendly ward this unit guards
 	var threat := _unit(2, 1, Vector2(0, 40), Vector2.UP)    # in contact, a quarter-turn off
