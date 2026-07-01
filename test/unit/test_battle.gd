@@ -77,6 +77,11 @@ func _soldier_bbox(u: Unit) -> Vector2:
 ## only if it wasn't already applied live (tagged by _apply_order_live). This is the
 ## exactly-once contract; the test drives it directly since the harness doesn't run
 ## the physics tick. Clears the queue like the real drain.
+##
+## Keep the "applied_live" key and the skip condition in lockstep with Battle.gd's drain
+## (the `if not o.get("applied_live", false): _apply_order_cmd(o)` branch) and its
+## _apply_order_live tag. If the key or gate changes there, change it here too, or these
+## tests silently stop exercising the real path.
 func _drain_pending(b) -> void:
 	for o in b._pending_orders:
 		if not o.get("applied_live", false):
@@ -107,11 +112,10 @@ func test_enqueue_order_applies_exactly_once_across_the_tick_drain() -> void:
 
 
 func test_order_once_vs_twice_yields_identical_unit_state() -> void:
-	# The #518 acceptance property, at the apply level: applying an order a second time
-	# must NOT change the unit state the first apply set. (The exactly-once drain relies
-	# on this never happening, but the guard is the whole point -- assert the second
-	# apply would have diverged, proving the dedup matters, then that enqueue+drain
-	# avoids it.) Here we confirm a single apply and an enqueue+drain reach the same state.
+	# The order-idempotency acceptance property: an order's observable effect is identical
+	# whether or not the live immediate-apply fires. Confirm a single apply (the replay
+	# path) and an enqueue + exactly-once drain (the live path) reach the same unit state,
+	# so the two paths never diverge.
 	var single := _unit(1, Vector2.ZERO)
 	single.facing = Vector2.DOWN
 	single.seed_sim_soldiers()
@@ -295,17 +299,16 @@ func test_append_to_idle_unit_starts_it_marching() -> void:
 
 
 func test_append_via_enqueue_is_not_double_applied() -> void:
-	# enqueue_order applies non-append orders immediately AND _physics_process
-	# re-applies every pending cmd on the next tick. An append must run only on the
-	# tick or the queue would grow a duplicate leg. Simulate a live append on a unit
-	# already marching, then drain _pending_orders exactly as the next tick does.
+	# An append is the one order enqueue_order does NOT apply live: it leaves the cmd
+	# untagged so the tick drain applies it once (applying it live too would queue the
+	# leg twice). Simulate a live append on a unit already marching, then drain exactly
+	# as the tick does -- the untagged append applies, and only once.
 	var u := _unit(1, Vector2.ZERO)
 	u.move_target = Vector2(200, 0)
 	u.has_move_target = true   # already en route
 	var b := _battle([u])
 	b.enqueue_order([1], Vector2(400, 0), BattleScript.ORDER_APPEND_WAYPOINT)
-	for o in b._pending_orders:
-		b._apply_order_cmd(o)
+	_drain_pending(b)
 	assert_eq(u.waypoints.size(), 1, "an appended waypoint is queued exactly once, not doubled")
 	assert_eq(u.waypoints[0], Vector2(400, 0), "and holds the appended point")
 
@@ -607,18 +610,20 @@ func test_enqueue_frontage_sets_an_absolute_target_from_the_current_width() -> v
 		"tagged as a frontage-only command")
 
 
-func test_frontage_apply_is_idempotent_under_tick_reapplication() -> void:
-	# enqueue applies immediately; the physics tick re-applies every pending order.
-	# An absolute target makes that second application a no-op (a delta would double).
+func test_frontage_apply_is_idempotent_under_reapplication() -> void:
+	# Orders apply exactly once now, but a frontage command carries an ABSOLUTE target
+	# so it stays safe to apply more than once (a delta would double). Apply the same
+	# command a second time directly and confirm the width is unchanged -- the property
+	# that lets the absolute encoding survive any accidental re-application.
 	var u := _unit(1, Vector2.ZERO)
 	u.max_soldiers = 80
 	var start: int = UnitFormation.frontage(u)
 	var b := _battle([u])
-	b.enqueue_frontage([1], 4)
+	b.enqueue_frontage([1], 4)   # applies live (once)
 	for o in b._pending_orders:
-		b._apply_order_cmd(o)   # the tick drains and re-applies
+		b._apply_order_cmd(o)     # apply the identical command again: must be a no-op
 	assert_eq(UnitFormation.frontage(u), start + 4,
-		"re-applying the recorded order leaves the width unchanged (idempotent)")
+		"re-applying the absolute-frontage command leaves the width unchanged (idempotent)")
 
 
 func test_enqueue_frontage_clamps_at_the_extremes() -> void:
@@ -706,18 +711,19 @@ func test_duplicatio_floors_at_one_file() -> void:
 	assert_eq(UnitFormation.frontage(u), 1, "narrowing can't go below a single column")
 
 
-func test_file_double_apply_is_idempotent_under_tick_reapplication() -> void:
-	# The physics tick re-applies every pending order; an absolute target makes the
-	# second application a no-op (a delta would double again).
+func test_file_double_apply_is_idempotent_under_reapplication() -> void:
+	# Like the frontage command, a file-double carries an ABSOLUTE reshaped width, so it
+	# stays safe to apply more than once even though orders now apply exactly once. Apply
+	# the same command a second time directly and confirm the width holds.
 	var u := _unit(1, Vector2.ZERO)
 	u.max_soldiers = 120
 	var b := _battle([u])
 	var start: int = UnitFormation.frontage(u)
-	b.enqueue_file_double([1], 1)
+	b.enqueue_file_double([1], 1)   # applies live (once)
 	for o in b._pending_orders:
-		b._apply_order_cmd(o)   # the tick drains and re-applies
+		b._apply_order_cmd(o)        # apply the identical command again: must be a no-op
 	assert_eq(UnitFormation.frontage(u), start * 2,
-		"re-applying the recorded order leaves the width unchanged (idempotent)")
+		"re-applying the absolute file-double command leaves the width unchanged (idempotent)")
 
 
 # --- drag-to-form-up ------------------------------------
