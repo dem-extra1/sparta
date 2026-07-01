@@ -45,7 +45,7 @@ const ORDER_WHEEL := -5
 ## Unit.order_mode; the per-unit behaviour for each is added in the sibling issues.
 ## Until then a non-NORMAL stance is stored but behaves as
 ## NORMAL. NORMAL is 0 so it matches Unit.order_mode's default.
-enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT }
+enum OrderMode { NORMAL, HOLD, ATTACK_FLANK, ATTACK_REAR, SKIRMISH, SUPPORT, CYCLE_CHARGE }
 
 ## How a multi-unit attack order distributes its target among the ordered units.
 ## Focused (default): every unit attacks the same enemy.
@@ -66,6 +66,7 @@ const ORDER_MODE_NAMES := {
 	OrderMode.ATTACK_REAR: "Attack rear",
 	OrderMode.SKIRMISH: "Skirmish",
 	OrderMode.SUPPORT: "Support",
+	OrderMode.CYCLE_CHARGE: "Cycle charge",
 }
 
 ## Rebindable order-mode hotkeys, in menu/HUD order. Each entry pairs the
@@ -79,6 +80,7 @@ const ORDER_MODE_HOTKEYS := [
 	{"mode": OrderMode.ATTACK_REAR, "slug": "attack_rear"},
 	{"mode": OrderMode.SKIRMISH, "slug": "skirmish"},
 	{"mode": OrderMode.SUPPORT, "slug": "support"},
+	{"mode": OrderMode.CYCLE_CHARGE, "slug": "cycle_charge"},
 ]
 
 # Global movement multiplier applied on top of each unit's real-world speed (which
@@ -148,7 +150,8 @@ func _ready() -> void:
 			and UnitRef.ORDER_ATTACK_FLANK == OrderMode.ATTACK_FLANK \
 			and UnitRef.ORDER_ATTACK_REAR == OrderMode.ATTACK_REAR \
 			and UnitRef.ORDER_SKIRMISH == OrderMode.SKIRMISH \
-			and UnitRef.ORDER_SUPPORT == OrderMode.SUPPORT,
+			and UnitRef.ORDER_SUPPORT == OrderMode.SUPPORT \
+			and UnitRef.ORDER_CYCLE_CHARGE == OrderMode.CYCLE_CHARGE,
 			"Unit order-mode mirror constants are out of sync with Battle.OrderMode")
 
 	# Start a fresh recording for every live battle (so any battle can be
@@ -708,6 +711,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.order_mode = mode
 			u.walk_advance = bool(cmd.get("walk_advance", false))
 			u.support_target = null
+			# A fresh order restarts the cycle-charge loop in its charging phase, so a
+			# newly-ordered unit drives in rather than resuming a stale pull-back.
+			u._cycle_recharging = false
 			# Any fresh order drops a deploy facing a prior form-up parked; the form-up
 			# move branch below re-sets it. So attack / support / relief / plain move all
 			# clear it, and a unit can't pivot to a stale heading on arrival.
