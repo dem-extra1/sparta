@@ -53,6 +53,42 @@ then grow outward.
         form chokepoints. This is where collision and the rock-paper-scissors design meet.
      5. Scale: replace the O(n²) neighbor scan with a spatial grid (and/or move to Godot
         `CharacterBody2D`/`move_and_slide`) before unit counts grow past a few dozen.
+2. **Bottom-up emergence over top-down heuristics.** As we move away from control-theory/springs/
+   heuristics, we add more realistic behaviors at each organizational level — soldier, file/rank,
+   unit/regiment, army — and let system-level phenomena (formation shape, morale/routing,
+   rank-closing, combat outcomes) *emerge* from the aggregate interaction of those local rules,
+   rather than approximating the desired system-level outcome directly with a top-down formula or
+   magic-number lookup. We're building the game model bottom-up, not top-down.
+   - **Soldier body motion (#448/#497, merged):** replaced a damped spring/control-theory heuristic
+     (stiffness/damping constants steering each body toward a target slot) with bounded-force
+     "arrive" physics per soldier. The block looking solid is now a side effect of every body
+     independently obeying real kinematics, not a shared control law.
+   - **Combat resolution (#535, design, in flight):** replacing abstract combat-multiplier
+     heuristics (`flank_multiplier()`, `charge_multiplier()` as magic-number lookups) with concrete
+     per-soldier `Weapon`/`Shield` objects whose properties (reach, defense) directly drive outcomes.
+   - **Formation shape (#530, in flight as PR #534):** replacing "formation = a combat-multiplier
+     flag" with real soldier-by-soldier geometric restructuring — a square is actually square, a
+     shield wall is actually tighter — so the formation's tactical effect emerges from its real
+     geometry, not an abstracted flag.
+   - **Slot ownership and reshaping (#547, design, just filed):** replacing the block-level
+     "recompute the whole formation and reassign soldiers by array index" heuristic (the source of
+     #541's identity-swap bug) with individual soldiers receiving explicit orders — one-shot
+     reshaping instructions plus bounded standing orders like "advance if your file-mate dies" —
+     from their unit commander. Formation-level behavior (rank-closing, reshaping) emerges from
+     individually-ordered soldiers, not a centralized recompute.
+   - **Rout/discipline (#529, in flight as PR #533):** stays at the current unit-level morale-scalar
+     architecture for now — a candidate for later, not scoped now. Individual soldier morale/fear
+     (nearby casualties, whether neighbors are routing, commander proximity) aggregating into
+     unit-level rout/rally is the natural next step in this direction, but nothing is decided or
+     in progress on it yet.
+   - **Going forward:** when a system-level behavior needs modeling — or an existing one needs
+     revisiting — prefer defining realistic local rules at the right organizational level (soldier /
+     file/rank / unit / army) and letting the system-level outcome emerge, over directly encoding
+     the system-level outcome as a heuristic/formula/multiplier at the top. Weigh this against the
+     standing performance constraint: per-entity realism must stay array-based/SoA at the
+     soldier-count scale this game targets. The #497/#535 resolution is the general pattern —
+     concrete shared `Type` objects plus per-soldier array state, not per-soldier heap-allocated
+     objects — so bottom-up realism doesn't cost bottom-up performance.
 
 ## Prioritized roadmap (synced with GitHub issues)
 Tracked as issues on `Lacaedemon/sparta` with `P0`–`P3` labels (a GitHub Project board groups them).
