@@ -22,13 +22,14 @@ static func resolve(attacker: Unit, defender: Unit) -> void:
 	var my_maxstam: float = my_prof["max_stamina"]
 	var en_maxstam: float = en_prof["max_stamina"]
 	var reach: float = attacker.soldier_reach()
-	# Formation melee scaling, applied to the wound this cadence lands: a TESTUDO
-	# attacker fights head-down and hits softer; a SHIELD_WALL defender's braced,
-	# locked shields blunt a frontal assault. Both are regiment-level (constant across
-	# the cadence, from the units' formation and relative facing), so compute once.
-	# Scales only the wound magnitude, never the seeded land/fall rolls -- the RNG
-	# stream (draw count and order) is untouched, so replays stay bit-identical.
-	var wound_scale: float = attacker.formation_melee_attack_factor() \
+	# Formation melee scaling, applied to the wound this cadence lands: a hunkered SQUARE
+	# or a head-down TESTUDO attacker hits softer (their offence penalties), and a braced
+	# SHIELD_WALL defender's locked shields blunt a frontal assault. All are regiment-level
+	# (constant across the cadence, from the units' formation and relative facing), so
+	# compute once. Scales only the wound magnitude, never the seeded land/fall rolls --
+	# the RNG stream (draw count and order) is untouched, so replays stay bit-identical.
+	var wound_scale: float = attacker.formation_attack_factor() \
+			* attacker.formation_melee_attack_factor() \
 			* defender.melee_defense_factor(attacker)
 
 	for ai in attackers:

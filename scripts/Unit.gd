@@ -118,6 +118,7 @@ const ORDER_ATTACK_FLANK := 2
 const ORDER_ATTACK_REAR := 3
 const ORDER_SKIRMISH := 4
 const ORDER_SUPPORT := 5
+const ORDER_CYCLE_CHARGE := 6
 
 # Formation modes: how tightly the regiment is packed, plus the two shielded
 # close-order stances built on TIGHT's locked-shield density.
@@ -125,6 +126,11 @@ const ORDER_SUPPORT := 5
 #        better charge resistance, at the cost of a smaller footprint.
 # NORMAL: default spacing.
 # LOOSE: soldiers spread out — wider area coverage.
+# SQUARE: an anti-cavalry all-around stance (the hollow square / orbis / spear-ring
+#         schiltron). Soldiers face spears/shields outward on every side, so the unit
+#         presents no weak flank or rear to cavalry: the flank/rear damage multiplier
+#         no longer applies against it, and it braces a charge coming from ANY
+#         direction. The price is mobility (it crawls) and reduced offensive output.
 # SHIELD_WALL: shields locked edge-to-edge in a static line. Strong FRONTAL missile
 #        and melee defense, but slow and immobile — a holding stance.
 # TESTUDO: shields locked front, sides, and overhead. Very strong missile defense
@@ -132,8 +138,9 @@ const ORDER_SUPPORT := 5
 const FORMATION_NORMAL := 0
 const FORMATION_TIGHT := 1
 const FORMATION_LOOSE := 2
-const FORMATION_SHIELD_WALL := 3
-const FORMATION_TESTUDO := 4
+const FORMATION_SQUARE := 3
+const FORMATION_SHIELD_WALL := 4
+const FORMATION_TESTUDO := 5
 # In tight formation, shields reduce incoming missile damage by this fraction.
 const TIGHT_MISSILE_DEFENSE: float = 0.25
 # In tight formation, this fraction of a cavalry charge bonus is absorbed
@@ -156,6 +163,22 @@ const TESTUDO_SPEED_SCALE: float = 0.3
 # Separation-radius scale factors per formation mode.
 const TIGHT_SEPARATION_SCALE: float = 0.75
 const LOOSE_SEPARATION_SCALE: float = 1.35
+# Anti-cavalry square (orbis / schiltron). Its defining trait is all-around defence:
+# no weak flank/rear facing vs cavalry. UnitCombat reads these (gated on in_square()):
+#   * a squared unit takes NO flank/rear damage multiplier -- an attack from any
+#     direction is treated as frontal (flank_multiplier returns 1.0). The ring
+#     presents spears/shields on every side.
+#   * a charge into the square backfires like set anti-cav spears from any direction --
+#     the same speed-scaled reversal, floored at SQUARE_CHARGE_FLOOR, so cavalry can't
+#     find an open side to hit at full impact.
+# The stance's cost: mobility (SQUARE_MOVE_FACTOR of pace) and offence
+# (SQUARE_ATTACK_FACTOR of melee/ranged damage) — a hunkered ring is slow and hits softer.
+const SQUARE_CHARGE_BACKFIRE: float = 0.5
+const SQUARE_CHARGE_FLOOR: float = 0.6
+const SQUARE_MOVE_FACTOR: float = 0.4
+const SQUARE_ATTACK_FACTOR: float = 0.7
+# The square packs to the same close-order floor as TIGHT (shields locked outward), so
+# it reuses TIGHT_SEPARATION_SCALE and keeps spacing_scale at 1.0.
 # Open-order grid-spacing scale. FORMATION_SPACING already sits at the historically
 # attested close-order / locked-shield floor (~0.45 m per man) -- there's no
 # historically grounded room to pack soldiers tighter than that, so TIGHT reuses the
@@ -211,6 +234,17 @@ const MELEE_PRESS_FRACTION: float = 0.6
 # distance, instead of standing to fire. Above melee contact (~62) and below
 # RANGED_RANGE (160) so there's room to fire before being caught.
 const SKIRMISH_KITE_DISTANCE: float = 100.0
+# Cycle charge (caracole): a melee unit charges its target, lands the impact strike,
+# then peels back to CYCLE_CHARGE_STANDOFF away to re-form before charging again — so
+# it keeps trading momentum-scaled charge hits instead of grinding in a static melee
+# where the charge bonus is spent. The unit switches from "recharging" (pulling back)
+# to "charging" once it has opened at least this far, and back to recharging on the tick
+# it makes contact and strikes. Set beyond SPRINT_START_DISTANCE (200) by enough runway
+# that the next run reaches full sprint before contact: the charge bonus scales with the
+# closing speed carried into the strike, and _move_to only sprints inside
+# SPRINT_START_DISTANCE, so a standoff at (or just past) that line would land each cycle
+# at a walk. 280 leaves ~80px of sprint build-up ahead of the ~62px contact.
+const CYCLE_CHARGE_STANDOFF: float = 280.0
 # Support: a unit ordered to guard a friendly "ward" engages any enemy that
 # closes within SUPPORT_GUARD_RADIUS of the ward, otherwise shadows the ward,
 # holding station SUPPORT_FOLLOW_DISTANCE off so it doesn't pile onto it. The guard
@@ -373,6 +407,11 @@ var current_speed: float:
 # never teleports.
 var _body_follow_vel: Vector2 = Vector2.ZERO
 var _relief_partner: Unit = null   # unit we're swapping with mid-relief
+# Cycle-charge phase: true while the unit is peeling back to its standoff after a
+# charge, false while it's driving in for the next charge. Flipped by
+# _cycle_charge_tick — set on the contact strike, cleared once the unit has opened
+# to CYCLE_CHARGE_STANDOFF. Meaningful only while order_mode == ORDER_CYCLE_CHARGE.
+var _cycle_recharging: bool = false
 var team_color: Color = Color.WHITE
 # Collision footprint for _separate(); assigned per type in _ready().
 var separation_radius: float = SEPARATION_RADIUS_INFANTRY
@@ -602,6 +641,14 @@ func _think(delta: float) -> void:
 	if enemy != null:
 		var dist: float = position.distance_to(enemy.position)
 		var in_contact: bool = dist <= attack_range + RADIUS + enemy.RADIUS
+		# Cycle charge: a melee unit lands a charge, then peels back to a standoff and
+		# re-charges, rather than grinding in a spent-bonus melee. Handled up front (like
+		# skirmish) so it overrides the press-and-grind melee below. Ranged units and a
+		# plain disengage move order fall through to the normal paths.
+		if not is_ranged and order_mode == ORDER_CYCLE_CHARGE \
+				and (target_enemy != null or not has_move_target):
+			if _cycle_charge_tick(enemy, dist, in_contact, delta):
+				return
 		# Skirmish: a ranged unit kites — if a threat is inside the kite
 		# distance it backs off (away from the threat, clamped to the field) rather
 		# than standing to fire or being caught in melee; beyond it, it falls through
@@ -689,6 +736,53 @@ func _think(delta: float) -> void:
 		state = State.IDLE
 
 
+## Cycle-charge stance: one tick of the caracole loop against `enemy`. A melee unit
+## drives in for a charge, lands the momentum-scaled impact strike, then peels back to
+## CYCLE_CHARGE_STANDOFF to rebuild closing speed before charging again — so it keeps
+## landing high-impact charge hits instead of grinding where the bonus is already spent.
+## Returns true when it fully handled the tick (caller should return); false to fall
+## through to the normal chase/melee paths (e.g. still closing on a distant target, so
+## the ordinary approach builds _approach_velocity for the charge). Deterministic — pure
+## geometry plus the shared strike cadence, so live play and replay stay in lockstep.
+func _cycle_charge_tick(enemy: Unit, dist: float, in_contact: bool, delta: float) -> bool:
+	# Recharging: peel back to the standoff so the next run rebuilds closing speed.
+	if _cycle_recharging:
+		if dist < CYCLE_CHARGE_STANDOFF:
+			var away: Vector2 = position - enemy.position
+			if away.length() < 0.001:
+				away = Vector2.UP if team == 0 else Vector2.DOWN   # degenerate: own back edge
+			var goal: Vector2 = position + away.normalized() * (CYCLE_CHARGE_STANDOFF - dist)
+			_move_to(UnitTargeting.clamp_to_field(self, goal), delta)
+			# Cornered against the field edge with no room to peel off: give up the
+			# retreat and fight in place so the unit isn't frozen.
+			if not _moved_last_frame:
+				_cycle_recharging = false
+				return false
+			return true
+		# Opened past the standoff: end the pull-back and let the normal approach below
+		# drive the next charge run (return false so the caller falls through to it).
+		_cycle_recharging = false
+		return false
+
+	# Charging: on contact, land the (charge-scaled) strike, then flip to recharging so
+	# the unit pulls back next tick instead of pressing into a grind. Otherwise fall
+	# through so the normal approach closes on the enemy and carries a charge velocity.
+	if in_contact:
+		state = State.FIGHTING
+		_face(enemy.position)
+		# Only peel back once a hit actually lands: flipping to recharging is gated on the
+		# strike so a contact that arrives mid-cooldown holds and fights until the cooldown
+		# clears, rather than retreating without having landed the charge. (For current
+		# cavalry speeds the cycle period exceeds ATTACK_INTERVAL, so this rarely bites —
+		# but the gate keeps it correct if speed or the interval is later retuned.)
+		if _attack_cd <= 0.0:
+			_attack_cd = ATTACK_INTERVAL
+			UnitCombat.strike(self, enemy)
+			_cycle_recharging = true
+		return true
+	return false
+
+
 # --- Targeting & support order ----------------------------------------------
 # The target-acquisition QUERIES (current target, nearest threat, ward validity, approach
 # point, field clamp) live in UnitTargeting; the order EXECUTION that consumes them stays
@@ -758,8 +852,9 @@ func _move_to(point: Vector2, delta: float, orderly: bool = false) -> void:
 		pace_speed = jog_speed
 	else:
 		pace_speed = walk_speed
-	# A planted shielded stance (shield wall / testudo) caps its top pace: the men hold
-	# a locked wall and only creep, so the target pace is scaled down before the ramp.
+	# A planted close-order stance (shield wall, testudo, or the anti-cav square) caps
+	# its top pace: the men hold a locked ring/wall and only creep, so the target pace
+	# is scaled down before the ramp.
 	pace_speed *= formation_speed_factor()
 	# Ramp toward the selected pace instead of snapping there -- a unit takes real time
 	# to build up to a pace (accel) and slows down rather than instantly stopping/downshifting
@@ -865,9 +960,11 @@ func _front_depth() -> float:
 func set_formation(mode: int) -> void:
 	formation_mode = mode
 	var base := _base_separation_radius
-	# SHIELD_WALL and TESTUDO are shielded stances built on TIGHT's locked-shield
-	# density: same close-order footprint and grid, extra defensive effects on top.
-	if mode == FORMATION_TIGHT or mode == FORMATION_SHIELD_WALL or mode == FORMATION_TESTUDO:
+	# The close-order stances all build on TIGHT's locked-shield density -- same
+	# footprint and grid, with their own extra effects on top. SQUARE is the anti-cav
+	# ring; SHIELD_WALL and TESTUDO are the shielded holding/arrow-cover stances.
+	if mode == FORMATION_TIGHT or mode == FORMATION_SQUARE \
+			or mode == FORMATION_SHIELD_WALL or mode == FORMATION_TESTUDO:
 		separation_radius = base * TIGHT_SEPARATION_SCALE
 		spacing_scale = 1.0   # already at the historical close-order/locked-shield floor
 	elif mode == FORMATION_LOOSE:
@@ -891,9 +988,12 @@ func set_frontage(files: int) -> void:
 ##   TESTUDO     — shields locked overhead too, stronger, all directions.
 ##   SHIELD_WALL — a locked wall, strongest of all, but only to the FRONT; a shot
 ##                 into the flank or rear bypasses the wall and lands full.
-## When `attacker` is given, SHIELD_WALL checks the incoming direction against the
-## unit's facing; with no attacker (a plain query) it grants its frontal value.
-## Normal/loose: no modifier.
+## SQUARE is deliberately NOT given a missile bonus: its shields face outward at the
+## horizon to meet a charge on every side, not angled up against plunging arrows, so an
+## orbis is no better against shot than an open line -- its all-around bonus is against
+## melee/charge, not missiles. When `attacker` is given, SHIELD_WALL checks the incoming
+## direction against the unit's facing; with no attacker (a plain query) it grants its
+## frontal value. Normal/loose: no modifier.
 func missile_defense_factor(attacker: Unit = null) -> float:
 	match formation_mode:
 		FORMATION_TIGHT:
@@ -916,20 +1016,24 @@ func melee_defense_factor(attacker: Unit = null) -> float:
 	return 1.0
 
 
-## Multiplier applied to this unit's OWN melee output. TESTUDO men are packed head-down
-## under overhead cover and can barely swing, so they hit softer. Other stances: full.
+## Multiplier applied to this unit's OWN melee output for shielded stances. A TESTUDO's
+## men are packed head-down under overhead cover and can barely swing, so they hit softer.
+## (The anti-cav SQUARE has its own offence penalty in formation_attack_factor, which
+## covers both melee and ranged.) Other stances: full.
 func formation_melee_attack_factor() -> float:
 	return 1.0 - TESTUDO_MELEE_PENALTY if formation_mode == FORMATION_TESTUDO else 1.0
 
 
-## Cap on this unit's top pace, as a fraction of normal. The planted shielded stances
-## barely move; other formations march at full speed.
+## Cap on this unit's top pace, as a fraction of normal. The planted close-order stances
+## (shield wall, testudo, and the anti-cav square) barely move; others march at full speed.
 func formation_speed_factor() -> float:
 	match formation_mode:
 		FORMATION_SHIELD_WALL:
 			return SHIELD_WALL_SPEED_SCALE
 		FORMATION_TESTUDO:
 			return TESTUDO_SPEED_SCALE
+		FORMATION_SQUARE:
+			return SQUARE_MOVE_FACTOR
 		_:
 			return 1.0
 
@@ -953,6 +1057,19 @@ func _is_frontal_attack(attacker: Unit) -> bool:
 	if to_attacker.length() < 0.001:
 		return true
 	return facing.dot(to_attacker.normalized()) > 0.0
+
+
+## True when the unit is holding the anti-cavalry square (orbis / schiltron): the
+## all-around defensive ring. Combat reads this to negate the flank/rear multiplier
+## and brace a charge from any direction; movement reads it for the mobility penalty.
+func in_square() -> bool:
+	return formation_mode == FORMATION_SQUARE
+
+
+## Offensive-output scale from the formation stance. The square hunkers to defend on
+## every side, so it hits softer (SQUARE_ATTACK_FACTOR); every other stance is 1.0.
+func formation_attack_factor() -> float:
+	return SQUARE_ATTACK_FACTOR if formation_mode == FORMATION_SQUARE else 1.0
 
 
 ## Push out of any overlapping unit so regiments form a solid line instead of
@@ -1544,6 +1661,8 @@ func formation_summary() -> String:
 			return "Tight"
 		FORMATION_LOOSE:
 			return "Loose"
+		FORMATION_SQUARE:
+			return "Square"
 		FORMATION_SHIELD_WALL:
 			return "Shield Wall"
 		FORMATION_TESTUDO:

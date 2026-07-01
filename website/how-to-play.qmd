@@ -34,8 +34,10 @@ left fighting --- every remaining unit is dead or routing.
 | Attack | **Right-click** an enemy unit |
 | Group attack mode | <kbd>X</kbd> cycles focused ↔ distributed · or **control bar** |
 | Add waypoint | **Shift + Right-click** (chain several move points) |
-| Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>Esc</kbd> clear |
-| Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose) · Shield Wall & Testudo from the **control bar** |
+| Order stance | <kbd>H</kbd> hold · <kbd>F</kbd> flank · <kbd>R</kbd> rear · <kbd>K</kbd> skirmish · <kbd>G</kbd> support · <kbd>J</kbd> cycle charge · <kbd>Esc</kbd> clear |
+| Formation | <kbd>T</kbd> (cycles Normal / Tight / Loose / Square) · or **control bar** |
+| Anti-cavalry square | <kbd>O</kbd> jumps straight to Square (press again to drop back to Normal) · or click **Square** in the control bar |
+| Shielded stances | <kbd>L</kbd> shield wall · <kbd>U</kbd> testudo (each toggles back to Normal) · or the **control bar** menu |
 | Line width | <kbd>[</kbd> narrower · <kbd>]</kbd> wider, or **drag a flank grip** |
 | Drill turn in place | <kbd>V</kbd> about-face (180°) · <kbd>Q</kbd> quarter-turn left · <kbd>E</kbd> quarter-turn right |
 | Wheel (hinge on a flank) | <kbd>Z</kbd> wheel left · <kbd>C</kbd> wheel right (swings 90° about the standing flank file) |
@@ -58,9 +60,10 @@ under pressure.
 the screen with clickable buttons for the most-used unit toggles.
 Use it as a mouse-driven alternative to the hotkeys whenever you prefer clicking to typing.
 
-- **Formation** --- click Normal, Tight, or Loose directly (same as <kbd>T</kbd>), or
-  pick one of the two shielded close-order stances, **Shield Wall** or **Testudo**
-  (menu only --- <kbd>T</kbd> still cycles just the three base densities).
+- **Formation** --- click Normal, Tight, Loose, or Square directly (same as <kbd>T</kbd>),
+  or pick one of the two shielded close-order stances, **Shield Wall** (<kbd>L</kbd>) or
+  **Testudo** (<kbd>U</kbd>). <kbd>T</kbd> cycles only the density set plus Square; the two
+  shielded stances are set from the menu or their direct keys.
 - **Stance** --- click any order stance to arm it for your next right-click order (same as the stance hotkeys; <kbd>Esc</kbd> / the Normal button clears it).
 - **Reform** --- toggle Reform before move (same as ☰ Menu → Reform before move).
 - **Focused atk / Spread atk** --- cycle the group-attack mode (same as <kbd>X</kbd>).
@@ -199,6 +202,9 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
   a threat closes instead of standing to fire.
 - **Support** (<kbd>G</kbd>) --- right-click a friendly to guard it: the unit shadows
   that ally and engages anything that threatens it.
+- **Cycle charge** (<kbd>J</kbd>) --- cavalry charge the target, pull back to a
+  standoff, and charge again, so each run lands a fresh momentum hit instead of
+  grinding once the charge is spent (see [Tactics](tactics.qmd#order-stances)).
 
 ```{=html}
 <figure class="demo">
@@ -212,11 +218,35 @@ before you click; a coloured cursor shows which is active, and <kbd>Esc</kbd> cl
 </figure>
 ```
 
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/cycle_charge.jpg">
+    <source src="media/cycle_charge.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Cycle charge stance: cavalry charge, land the impact hit, peel back to a standoff, then charge again.</figcaption>
+</figure>
+```
+
 Press <kbd>T</kbd> to cycle a selected unit's **formation** --- *Tight* closes ranks
-for better missile and charge defence, *Loose* spreads out. Every unit can cycle
-through all three; each type just starts at a different one --- spearmen deploy
-Tight (locked shields against a charge), archers deploy Loose (room to fire),
-and sword-armed infantry and cavalry deploy at the plain Normal combat order.
+for better missile and charge defence, *Loose* spreads out, and *Square* forms the
+anti-cavalry ring described below. Every unit can cycle through all four; each type
+just starts at a different one --- spearmen deploy Tight (locked shields against a
+charge), archers deploy Loose (room to fire), and sword-armed infantry and cavalry
+deploy at the plain Normal combat order.
+
+**Square (anti-cavalry ring).** *Square* forms a hollow square / orbis / schiltron:
+the soldiers face spears and shields outward on every side, so the unit has **no weak
+flank or rear** --- an attack from any direction lands as if it were frontal, and a
+cavalry charge into the ring is braced (and backfires) no matter which side it hits.
+The price is mobility (the ring crawls) and offence (it hits softer while hunkered),
+so square up *before* the horse arrives and drop back to Normal once the threat is
+gone. Because it's a reaction you want to trigger fast, <kbd>O</kbd> (for *orbis*)
+jumps a unit straight to Square without cycling through Tight and Loose --- press it
+again to drop back to Normal --- and the control bar's **Square** button does the
+same with one click.
 
 **Shielded close-order stances.** Two heavier stances build on Tight's locked-shield
 density, chosen from the control-bar Formation menu:

@@ -157,18 +157,19 @@ commit your horse.
 ## Formation stances
 
 Press <kbd>T</kbd> to cycle a unit's density --- **Normal**, **Tight** (closed ranks:
-better missile and charge defence), **Loose** (open order: room to fire).
-Two heavier **shielded close-order stances** build on Tight's locked-shield density
-and are chosen from the control-bar Formation menu.
+better missile and charge defence), **Loose** (open order: room to fire), and **Square**
+(the anti-cavalry ring, covered below). Two heavier **shielded close-order stances**
+build on Tight's locked-shield density and are set from the control-bar Formation menu or
+their own direct keys.
 
-- **Shield Wall** --- shields locked edge-to-edge, a static line. It sharply cuts the
-  missile and melee damage a unit takes **from the front**, but only from the front:
-  a shot or blow into the flank or rear ignores the wall. The wall barely moves, so it
-  is a **holding** stance. Anchor a flank or a chokepoint with it and let the enemy
-  break on the front --- but keep its flanks screened, because that is where it is soft.
-- **Testudo** --- shields locked front, sides, and overhead: the strongest missile
-  cover in the game, and it works **from every direction**. The cost is that the men
-  fight weakly (packed head-down under their shields) and move slowest of all. It is an
+- **Shield Wall** (<kbd>L</kbd>) --- shields locked edge-to-edge, a static line. It
+  sharply cuts the missile and melee damage a unit takes **from the front**, but only
+  from the front: a shot or blow into the flank or rear ignores the wall. The wall barely
+  moves, so it is a **holding** stance. Anchor a flank or a chokepoint with it and let the
+  enemy break on the front --- but keep its flanks screened, because that is where it is soft.
+- **Testudo** (<kbd>U</kbd>) --- shields locked front, sides, and overhead: the strongest
+  missile cover in the game, and it works **from every direction**. The cost is that the
+  men fight weakly (packed head-down under their shields) and move slowest of all. It is an
   **arrow-crossing** stance, not a fighting one: walk a unit through a beaten zone of
   archery in testudo, then drop to Tight or Normal before it reaches melee.
 
@@ -186,6 +187,41 @@ melee, or a shield wall taken in the flank, is in trouble.
     <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
   </video>
   <figcaption>Testudo under fire: an infantry unit locked in testudo, ringed by archers firing from all four sides, weathers the volleys that its overhead shields blunt from every direction.</figcaption>
+</figure>
+```
+
+## Form square against cavalry
+
+When horse threatens a unit's flank or rear and you have no spear screen to spare,
+press <kbd>O</kbd> (for *orbis*) to form **Square** at once --- the hollow square /
+orbis / schiltron. (<kbd>O</kbd> jumps straight there, and the control bar's Square
+button does too; <kbd>T</kbd> also reaches it by cycling through Tight and Loose.) The
+soldiers face outward on every side, so the unit presents **no weak facing**: an
+attack from any direction lands as if it were frontal (the usual ×1.5 flank / ×2 rear
+bonus is gone), and a cavalry charge into the ring is braced and **backfires** whether
+it hits the front, a flank, or the rear. There is no open side for the horse to
+exploit.
+
+Square is a defensive commitment, not a free upgrade. While it holds, the unit
+**crawls** (it can't charge out) and **hits softer** (reduced offensive output). So:
+
+- **Square up early** --- before the charge lands, not as it connects. The mobility
+  penalty means a late square may not finish forming in time.
+- **Drop back to Normal** the moment the horse is beaten off or pulls away, or the
+  offence and mobility penalties will cost you against enemy foot.
+- **It's a fallback, not a replacement for spearmen.** A spear screen still blunts the
+  charge *and* keeps your line mobile and hitting hard; square is what you reach for
+  when a unit is caught in the open with cavalry on a bad angle.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/square.jpg">
+    <source src="media/square.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Anti-cavalry square: an infantry unit is charged in the rear by two cavalry, then cycled to Square (T). The hollow ring faces outward on every side, so the rear charge finds no weak facing and is braced from behind &mdash; the unit holds where a rear-charged line would break.</figcaption>
 </figure>
 ```
 
@@ -369,6 +405,11 @@ into different tools:
 - **Support** (<kbd>G</kbd>) --- the unit guards a chosen ally, shadowing it and
   intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable
   horse, or a guard onto your archers.
+- **Cycle charge** (<kbd>J</kbd>) --- a caracole for cavalry: the unit charges,
+  lands its impact hit, then peels back to a standoff and charges again, instead of
+  grinding in a static melee where the charge bonus is already spent. The charge
+  bonus scales with closing speed, so each fresh run lands hard --- but don't cycle
+  into braced spears, where a fast charge backfires.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and

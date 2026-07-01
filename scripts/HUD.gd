@@ -52,6 +52,7 @@ const _STANCE_ENTRIES := [
 	{"id": 3, "mode": BattleRef.OrderMode.ATTACK_REAR, "label": "Rear", "slug": "attack_rear"},
 	{"id": 4, "mode": BattleRef.OrderMode.SKIRMISH, "label": "Skirmish", "slug": "skirmish"},
 	{"id": 5, "mode": BattleRef.OrderMode.SUPPORT, "label": "Support", "slug": "support"},
+	{"id": 6, "mode": BattleRef.OrderMode.CYCLE_CHARGE, "label": "Cycle charge", "slug": "cycle_charge"},
 ]
 
 # Display names and menu order for every formation mode, shared by the button
@@ -60,6 +61,7 @@ const _FORMATION_NAMES := {
 	UnitRef.FORMATION_NORMAL: "Normal",
 	UnitRef.FORMATION_TIGHT: "Tight",
 	UnitRef.FORMATION_LOOSE: "Loose",
+	UnitRef.FORMATION_SQUARE: "Square",
 	UnitRef.FORMATION_SHIELD_WALL: "Shield Wall",
 	UnitRef.FORMATION_TESTUDO: "Testudo",
 }
@@ -67,6 +69,7 @@ const _FORMATION_MENU_ORDER := [
 	UnitRef.FORMATION_NORMAL,
 	UnitRef.FORMATION_TIGHT,
 	UnitRef.FORMATION_LOOSE,
+	UnitRef.FORMATION_SQUARE,
 	UnitRef.FORMATION_SHIELD_WALL,
 	UnitRef.FORMATION_TESTUDO,
 ]
@@ -382,7 +385,7 @@ func _refresh_hint() -> void:
 		if keys != "":
 			keys += "/"
 		keys += OS.get_keycode_string(Settings.order_binding(entry["slug"]))
-	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Normal)   •   WASD / two-finger pan   •   wheel / pinch zoom   •   P pause   •   hold Space show orders" % keys
+	_hint.text = "LMB select / drag-box   •   RMB move or attack   •   Shift+RMB add waypoint   •   %s order mode (Esc clear)   •   T formation (Tight/Loose/Square/Normal)   •   O square   •   WASD / two-finger pan   •   wheel / pinch zoom   •   P pause   •   hold Space show orders" % keys
 
 
 ## Dispatch a Menu popup selection by its stable item id.
