@@ -102,6 +102,20 @@ func test_target_that_dies_in_flight_is_skipped() -> void:
 	assert_eq(target.soldiers, 20, "but a routing target takes no casualties (matches take_casualties)")
 
 
+func test_fallback_applies_the_flanked_count_without_re_flanking() -> void:
+	# A target with no soldier layer (e.g. an archer regiment) takes the volley through the
+	# regiment fallback. `casualties` already has the flank baked in, so soldiers must drop by
+	# exactly that count -- not flank x it (the double-flank the review caught).
+	var shooter := _unit(1, 0, 10, Vector2(0, 0), Vector2.DOWN, true)
+	var target := _unit(2, 1, 20, Vector2(400, 0), Vector2.UP, true)   # ranged -> no soldier layer
+	var fb: Array = _field_and_battle(shooter, target)
+	var field: ProjectileField = fb[0]
+	assert_true(target._sim_soldier_hp.is_empty(), "precondition: the target has no soldier layer")
+	field.launch(shooter.position, target.position, shooter.uid, target.uid, 5, 2.0, true)
+	field.step(10.0, fb[1])
+	assert_eq(target.soldiers, 15, "drops by exactly the pre-flanked count (5), not 5x2")
+
+
 func test_zero_distance_shot_still_lands() -> void:
 	var shooter := _unit(1, 0, 10, Vector2(100, 100), Vector2.DOWN, true)
 	var target := _unit(2, 1, 20, Vector2(100, 100), Vector2.UP, false)

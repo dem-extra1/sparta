@@ -260,14 +260,14 @@ into different tools:
 - **Skirmish** (<kbd>K</kbd>) --- a ranged unit kites: it backs off when a threat
   closes inside its firing range, trading ground to keep shooting rather than being
   caught in melee.
+- **Support** (<kbd>G</kbd>) --- the unit guards a chosen ally, shadowing it and
+  intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable
+  horse, or a guard onto your archers.
 
 A volley is not instant: the arrows fly a real arc and **land where they were aimed
 a moment later**, so a fast unit can partly outrun a shot loosed at long range, and
 casualties arrive on the beat the arrows come down rather than the instant they leave
 the bow.
-- **Support** (<kbd>G</kbd>) --- the unit guards a chosen ally, shadowing it and
-  intercepting any enemy that closes on it. Good for gluing spearmen to vulnerable
-  horse, or a guard onto your archers.
 
 ## Group attack distribution
 

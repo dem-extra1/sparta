@@ -3,7 +3,8 @@ class_name ProjectileField
 ## once per physics frame by Battle after the soldier passes settle. A ranged volley enqueues
 ## a projectile carrying its already-rolled casualty count (UnitCombat.shoot); the projectile
 ## flies a real ProjectilePhysics height arc, and when it lands (elapsed >= flight_time) it
-## delivers those casualties to the target at the launch point via the per-soldier path.
+## delivers those casualties to the target via the per-soldier path, using the launch point as
+## the near-side selection origin (the men the arrows reach first).
 ##
 ## Determinism (replays depend on it): projectiles are appended in launch order and resolved
 ## in that order; the field draws NO RNG — the volley's single roll already happened at launch
@@ -102,7 +103,11 @@ func _resolve(i: int, battle: Node) -> void:
 	if not target._sim_soldier_hp.is_empty():
 		SoldierMelee.apply_ranged_casualties(target, _from[i], killer, _casualties[i], _flank[i])
 	elif killer != null:
-		UnitCombat.take_casualties(target, _casualties[i], killer)
+		# Fallback for a target with no soldier layer. `_casualties[i]` ALREADY has the flank
+		# folded in (in shoot), so apply it directly -- routing it through take_casualties would
+		# re-apply flank_multiplier and double it. register_casualties handles morale/rout.
+		target.soldiers = maxi(0, target.soldiers - _casualties[i])
+		UnitCombat.register_casualties(target, _casualties[i], killer, _flank[i])
 
 
 ## Remove projectile `index` from every parallel array (swap-free, order-preserving).
