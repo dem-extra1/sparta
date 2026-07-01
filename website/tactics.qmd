@@ -24,13 +24,33 @@ your cavalry hits its rear will melt --- and start a rout that spreads.
 ## Morale & routing
 
 Units don't fight to the last soldier. When a unit loses enough soldiers or takes
-flank/rear hits, it **routs** --- it flees (shown faded) and stops counting toward the
-battle.
+flank/rear hits, it **routs** --- it flees (shown faded) toward its own back edge and
+stops counting toward the battle. A routing unit **stays on the field**: it huddles at
+the back line where you can still see it, rather than vanishing off the map.
 
 - **Routs are contagious.** A nearby ally watching a unit break is more likely to
   break too. One collapse can cascade down a line.
 - This makes morale a *weapon*: you can win by breaking the enemy's will before
   you've killed even half their soldiers.
+- **A routing unit can rally.** As it flees, its nerve steadies --- morale climbs back
+  toward a baseline, fast at first and levelling off. If it **breaks contact** (no enemy
+  close on its heels) and still fields enough men, its recovering morale carries it over
+  the rally threshold and it **returns to your control**, ready to fight again. So chase
+  a broken enemy down to finish it: a router you leave alone will reform and come back.
+- A unit still in contact, or gutted past reforming, **shatters** instead --- it leaves
+  play for good.
+
+```{=html}
+<figure class="demo">
+  <video class="demo-video" controls muted loop playsinline preload="metadata"
+         poster="media/rout_rally.jpg">
+    <source src="media/rout_rally.mp4" type="video/mp4">
+    Your browser can't play this clip --- see the
+    <a href="https://github.com/Lacaedemon/sparta">repository</a> to run the game.
+  </video>
+  <figcaption>Rout and rally: a low-morale infantry block is charged by cavalry and breaks &mdash; it flees faded toward its own edge, staying on the field rather than running off. The cavalry lose the router and stop; its morale recovers as it flees, and it reforms under control, back in the fight.</figcaption>
+</figure>
+```
 
 ## Rank cycling (trained units)
 
@@ -356,8 +376,19 @@ The cost is time: a sharp reorientation spends a beat pivoting before the unit
 makes ground, and a 180° pivot spends the most. Plan turns ahead of contact ---
 a unit told to reverse at the moment of impact will spend its pivot facing the
 wrong way. Note that a **chasing or charging** unit turns instantly instead, so an
-attack order never pays the pivot tax; the orderly centre pivot is reserved for your
-own move orders, where keeping the ranks dressed is worth the beat.
+attack order never pays the pivot tax on the *approach*; the orderly centre pivot is
+reserved for your own move orders, where keeping the ranks dressed is worth the beat.
+
+**Re-facing to fight** has a cost of its own. When a unit engages an enemy that is
+roughly a quarter-turn or more off its current front --- attacked in the flank, or
+sent to hit a foe off to one side --- it does **not** snap its facing round.
+Instead the whole line **turns in place** to bring its front to bear, the men
+holding their ground as the block pivots, and it withholds its blows until it
+has come about. A small correction still snaps and fights at once, so a unit
+already roughly fronting its target loses no time. The upshot: catching a unit on
+the flank buys you a genuine window --- it must turn to answer you before it can
+strike back --- so a flank attack rewards you both with the flank casualty bonus
+*and* the beat the enemy spends coming about.
 
 The pivot itself also **slows as the unit picks up speed** --- a unit turns
 fastest from a stand and tightens its turn rate the faster it's already moving

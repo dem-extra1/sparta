@@ -1,0 +1,8 @@
+{
+  "input": "demos/inputs/rout-rally-recover.json",
+  "caption": "Routing units stay on the field and can RALLY. A lone low-morale infantry block is charged by cavalry and breaks -- it flees (drawn faded) toward its own back edge, clamped to the map so it stays visible instead of running off. The cavalry lose it (routers are untargetable) and stop, so it breaks contact; its morale recovers asymptotically, and once it crosses the rally threshold it reforms under control and rejoins the fight. Deterministic: with this build it routs ~tick 100 and rallies ~tick 461.",
+  "fixed_fps": 30,
+  "max_frames": 300,
+  "fps": 12,
+  "width": 640
+}
