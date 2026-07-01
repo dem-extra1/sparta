@@ -248,6 +248,15 @@ func _dispatch_key(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_M:
 		_issue_merge()   # merge the selected friendly regiments into one
 		return true
+	elif event.keycode == KEY_LEFT and has_selection():
+		_issue_nudge(BattleRef.NudgeDir.LEFT)    # side-step left (holds facing)
+		return true
+	elif event.keycode == KEY_RIGHT and has_selection():
+		_issue_nudge(BattleRef.NudgeDir.RIGHT)   # side-step right (holds facing)
+		return true
+	elif event.keycode == KEY_DOWN and has_selection():
+		_issue_nudge(BattleRef.NudgeDir.BACK)    # back-step (holds facing)
+		return true
 	elif event.keycode == KEY_T:
 		_cycle_formation()   # cycle normal → tight → loose → square for selected units
 		return true
@@ -644,6 +653,29 @@ func _issue_merge() -> void:
 		return   # need at least two regiments to merge
 	_battle.enqueue_order(uids, Vector2.ZERO, uids[0])
 	Sfx.play(&"order")
+
+
+## Arrow-key nudge: order the selected friendly units a small fixed-distance drill
+## step to `dir` (LEFT / RIGHT side-step, or BACK back-step), holding facing. Routed
+## through Battle so it's recorded and replays exactly, like every other order.
+func _issue_nudge(dir: int) -> void:
+	if Replay.mode == Replay.Mode.PLAYBACK:
+		return
+	var uids: Array = _selected_uids()
+	if uids.is_empty():
+		return
+	_battle.enqueue_nudge(uids, dir)
+	Sfx.play(&"order")
+
+
+## Whether any friendly unit is currently selected. The camera reads this so the
+## arrow keys nudge the selection instead of panning while a unit is selected
+## (WASD always pans regardless).
+func has_selection() -> bool:
+	for u in _selected:
+		if is_instance_valid(u) and u.state != UnitRef.State.DEAD:
+			return true
+	return false
 
 
 ## The order the T-key steps through. Kept as an explicit list (not `(mode + 1) % N`)

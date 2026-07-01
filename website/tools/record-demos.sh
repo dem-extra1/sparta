@@ -34,6 +34,7 @@ DEMOS=(
   "group_attack|demos/inputs/group-attack-distributed.json|30|240|640|input"
   "pace_modes|demos/inputs/pace-modes.json|30|420|640|input"
   "sidestep|demos/inputs/sidestep.json|30|150|640|input"
+  "arrow_nudge|demos/inputs/arrow-nudge.json|30|270|640|input"
   "about_face|demos/inputs/about-face.json|30|180|640|input"
   "wheel|demos/inputs/wheel.json|30|300|640|input"
   "square|demos/inputs/anti-cav-square.json|30|300|640|input"
@@ -41,6 +42,7 @@ DEMOS=(
   "file_doubling|demos/inputs/file-doubling.json|30|300|640|input"
   "cycle_charge|demos/inputs/cycle-charge.json|30|600|640|input"
   "rout_rally|demos/inputs/rout-rally-recover.json|30|300|640|input"
+  "last_unit_rally|demos/inputs/last-unit-rally.json|30|420|640|input"
   "testudo_under_fire|demos/inputs/testudo-under-fire.json|30|300|640|input"
   "shielded_stances|demos/inputs/shielded-stance-visuals.json|30|180|640|input"
 )
