@@ -82,7 +82,12 @@ So relief is a deliberate decision for a prolonged fight, not a frantic
 every-few-seconds chore.
 
 Training therefore pays off in a long grind: a drilled regiment wears down a green
-one of equal numbers, because the green unit tires and wavers first.
+one of equal numbers, because the green unit tires and wavers first. Rank cycling
+buys TIME, not immunity: the recovery it grants fades as the regiment thins out
+(fewer fresh files left to rotate to the front) and stops once it's badly
+bloodied. So a veteran unit facing the same sustained pressure still routs
+eventually --- it just takes noticeably longer and costs the attacker more losses
+to break it than a green unit under the same attack.
 
 ## Stamina
 

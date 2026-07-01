@@ -327,9 +327,38 @@ const FATIGUE_MAX_ATTACK_PENALTY: float = 0.4
 const RANK_CYCLE_FATIGUE_REDUCTION: float = 0.5
 # A well-trained unit also sustains its morale while fighting — the visible discipline
 # of rotation keeps the formation steady. Threshold is the minimum training for any
-# morale recovery to kick in; at threshold it's minimal, scaling up to full at 1.0.
+# morale recovery to kick in; at threshold it's minimal, scaling up to full at 1.0. This
+# is a RATE lever, not immunity: UnitMorale.tick_morale additionally scales the recovery
+# by the regiment's remaining strength ratio, so it shrinks toward 0 as the unit bleeds —
+# a disciplined unit holds out longer under sustained casualties, but every unit still has
+# a reachable rout threshold; higher training just costs the attacker more losses/time.
 const RANK_CYCLE_MORALE_THRESHOLD: float = 0.5
 const RANK_CYCLE_MORALE_PER_SEC: float = 1.2
+# Once a regiment has thinned past this remaining-strength ratio it is CRUMBLING
+# (UnitCombat.register_casualties adds an extra morale penalty below it): too few files
+# left to rotate fresh men to the front, so rank-cycling can no longer sustain morale
+# either -- tick_morale gates its in-fight recovery off at the same ratio. Shared so the
+# two effects switch on/off together instead of drifting out of sync.
+const MORALE_CRUMBLE_RATIO_THRESHOLD: float = 0.4
+# Base per-casualty morale erosion (UnitCombat.register_casualties) is FRACTION-of-force
+# scaled, not a flat per-head amount: losing `total` soldiers costs
+# `(total / max_soldiers) * MORALE_LOSS_PER_FULL_LOSS` morale, so a percentage loss costs
+# the same morale regardless of the regiment's roster size. A flat per-head cost (the old
+# design) let a big-roster elite unit rack up hundreds of casualties for a trivial total
+# morale hit -- mathematically incapable of reaching 0 morale before the regiment was wiped
+# out. Set below 100 so erosion alone, even at total wipeout, doesn't quite force a
+# rout on its own -- the thin-regiment crumble (below) and the in-fight recovery cutoff at
+# the same ratio finish the job before the last man falls.
+const MORALE_LOSS_PER_FULL_LOSS: float = 90.0
+# The crumble penalty is ALSO fraction-of-force + casualty-count scaled (not a flat
+# per-event amount): once ratio < MORALE_CRUMBLE_RATIO_THRESHOLD, each casualty's base
+# erosion (above) is multiplied by up to (1 + MORALE_CRUMBLE_BOOST) as the regiment
+# bottoms out, ramping linearly from x1 at the threshold to the full boost at ratio 0. A
+# flat per-event crumble bonus (the old design) rewarded FREQUENT SMALL casualty batches
+# with more total crumble erosion than a few large ones for the same total losses --
+# fraction-scaling it ties the crumble effect to how much of the regiment is actually gone,
+# independent of how casualties happen to be batched per tick.
+const MORALE_CRUMBLE_BOOST: float = 4.0
 
 # Morale recovers slowly when a unit is not engaged in combat, rewarding
 # players who pull battered regiments back from the line to rest.

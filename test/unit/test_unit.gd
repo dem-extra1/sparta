@@ -2208,6 +2208,71 @@ func test_ranged_unit_does_not_recover_morale_while_fighting() -> void:
 			"ranged units don't cycle ranks; no morale recovery while fighting")
 
 
+## Drives `u` through repeated 1-tick (casualties, then recovery) cycles under a fixed
+## casualty pressure until it routs or dies. Returns the tick count to ROUTING, or -1 if it
+## dies/survives without routing within the tick budget -- covers #529: sustained casualties
+## must eventually cross the rout threshold, not settle at a permanent in-fight equilibrium.
+func _ticks_to_rout(u: Unit, attacker: Unit, casualties_per_tick: int, max_ticks: int = 2000) -> int:
+	for tick in range(max_ticks):
+		if u.state == Unit.State.DEAD:
+			return -1
+		UnitCombat.take_casualties(u, casualties_per_tick, attacker)
+		if u.state == Unit.State.ROUTING:
+			return tick + 1
+		UnitMorale.tick_morale(u, 1.0)
+	return -1
+
+
+func test_sustained_casualties_eventually_rout_a_maxed_training_unit() -> void:
+	# Owner decision on #529: discipline should slow a rout, not grant near-immunity. Even
+	# a maxed-training (1.0) melee unit must have a reachable rout threshold under sustained
+	# casualty pressure -- it must not settle into a permanent in-fight morale equilibrium.
+	var u := _make_unit(300)
+	u.training = 1.0
+	u.state = Unit.State.FIGHTING
+	var attacker := _attacker_at(FRONT)
+	var ticks := _ticks_to_rout(u, attacker, 2)
+	assert_true(ticks > 0, "a maxed-training unit still routs eventually under sustained casualties")
+
+
+func test_discipline_slows_but_does_not_prevent_rout() -> void:
+	# Same sustained casualty pressure on two units differing only in training: the
+	# higher-discipline unit should take longer (more ticks) to rout, never fail to rout.
+	var low := _make_unit(300)
+	low.training = Unit.RANK_CYCLE_MORALE_THRESHOLD   # at threshold: no in-fight recovery at all
+	low.state = Unit.State.FIGHTING
+	var high := _make_unit(300)
+	high.training = 1.0
+	high.state = Unit.State.FIGHTING
+	var low_attacker := _attacker_at(FRONT)
+	var high_attacker := _attacker_at(FRONT)
+	var low_ticks := _ticks_to_rout(low, low_attacker, 2)
+	var high_ticks := _ticks_to_rout(high, high_attacker, 2)
+	assert_true(low_ticks > 0, "low-discipline unit routs under sustained casualties")
+	assert_true(high_ticks > 0, "high-discipline unit also routs eventually -- not immune")
+	assert_gt(high_ticks, low_ticks,
+			"higher discipline takes longer (more losses) to rout under the same pressure")
+
+
+func test_discipline_scales_time_to_rout_across_training_tiers_at_a_realistic_roster_size() -> void:
+	# Regression guard against the #529 near-immunity bug at realistic roster sizes/casualty
+	# batching (not just the wide-margin 300-soldier case above): every training tier from the
+	# in-fight-recovery threshold up to fully veteran must still reach the rout threshold, and
+	# strictly later than the tier below it, under the same sustained casualty pressure.
+	var trainings: Array[float] = [0.5, 0.6, 0.75, 1.0]
+	var prev_ticks := 0
+	for training_val in trainings:
+		var u := _make_unit(120)
+		u.training = training_val
+		u.state = Unit.State.FIGHTING
+		var attacker := _attacker_at(FRONT)
+		var ticks := _ticks_to_rout(u, attacker, 2)
+		assert_true(ticks > 0, "training=%s routs under sustained casualties" % training_val)
+		assert_gt(ticks, prev_ticks,
+				"training=%s takes longer to rout than the tier below it" % training_val)
+		prev_ticks = ticks
+
+
 # --- zoom level-of-detail (figure silhouettes) ------------------
 
 func test_lod_hysteresis_latches_on_above_zoom_in() -> void:

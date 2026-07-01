@@ -1,8 +1,8 @@
 {
-  "input": "demos/inputs/arrival-knockback.json",
-  "caption": "Real, non-springy soldier motion. Soldier bodies no longer ease toward their formation slots on a damped spring; they now ARRIVE under bounded force -- each body accelerates toward its slot at the unit's own acceleration and decelerates to land there with ~zero velocity (classic arrive steering). Watch the contact line: a cavalry charge slams the infantry front rank, the melee knockback shoves those bodies back, and each one decelerates and returns to its slot under real force -- a knockback-and-recover with no spring rebound, no wobble, no oscillation. Determinism is preserved (pure function of positions/velocities/mass/delta, no RNG), but outcomes differ from pre-change replays -- expected for a physics change.",
+  "input": "demos/inputs/last-unit-rally.json",
+  "caption": "Discipline scales how long a rout takes -- it no longer grants near-immunity (#529). Team 0's lone, jittery infantry (morale 15) trades blows head-on with an equal enemy infantry; sustained frontal casualties erode its morale to 0 and it breaks and flees (drawn faded). Before this fix, in-fight morale recovery (well-trained melee units rotate fresh files to the front) could outpace casualty erosion indefinitely, so a disciplined unit basically never routed from attrition alone -- it just ground on until wiped out. Now recovery fades as the regiment thins (fewer fresh files left to rotate) and cuts off once it's badly bloodied, so erosion always wins eventually: every unit has a reachable rout threshold, higher discipline just costs the attacker more time/losses to reach it. The unit breaks contact once routing (untargetable), then rallies back under control at low morale once its nerve steadies -- still in the fight, not an instant loss.",
   "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 12,
+  "max_frames": 650,
+  "fps": 15,
   "width": 640
 }
