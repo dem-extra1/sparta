@@ -152,3 +152,60 @@ func test_small_offset_snaps_and_fights() -> void:
 		"a small offset does not start a turn-in-place")
 	assert_lt(enemy.soldiers, start_soldiers,
 		"a small correction snaps and the unit fights on the same tick")
+
+
+# --- the turn state is cleared when the enemy vanishes mid-turn ---------------
+
+func test_enemy_killed_mid_turn_clears_the_turn() -> void:
+	# A large-offset engage starts a turn-in-place; the target is then removed while the
+	# turn is still running. The unit must settle and clear the turn, or the soldier-body
+	# spring stays frozen forever and the men are stuck in place.
+	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
+	var enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
+
+	a._think(0.05)   # begins the engage turn
+	assert_true(a._engage_turn_target != Vector2.ZERO, "the turn is in progress")
+	var partial_facing: Vector2 = a.facing   # it has turned part-way, not all the way
+	assert_gt(absf(angle_difference(a.facing.angle(), Vector2.DOWN.angle())), deg_to_rad(2.0),
+		"the turn has NOT completed yet (still mid-swing)")
+
+	enemy._remove_from_play()   # target dies while the unit is still turning
+	a._think(0.05)              # no enemy now: the unit goes idle and must settle the turn
+
+	assert_eq(a._engage_turn_target, Vector2.ZERO,
+		"the engage turn is cleared once the enemy is gone")
+	assert_eq(a.state, Unit.State.IDLE, "the unit goes idle with no enemy")
+	# The partial rotation is preserved (facing did not snap back); it was folded into
+	# _formation_angle by the settle, so the bodies won't surge when the spring re-enables.
+	assert_true(a.facing.is_equal_approx(partial_facing),
+		"the partial turn is preserved — facing stays where the interrupted turn left it")
+
+	# The spring is no longer frozen. A clean settle folded the rotation into
+	# _formation_angle, so the slots already match the men (zero error, no surge). To prove
+	# the restoring force is live again, nudge one body off its slot and confirm it springs
+	# back — while the turn was frozen the restoring force was zeroed and it would not.
+	var slots: PackedVector2Array = a.soldier_world_slots(a.soldiers)
+	a._sim_soldier_pos[0] = slots[0] + Vector2(20.0, 0.0)   # displace one man 20 px off-slot
+	var err_before: float = a._sim_soldier_pos[0].distance_to(slots[0])
+	for _i in range(20):
+		a.step_sim_soldiers(0.05)
+	var err_after: float = a._sim_soldier_pos[0].distance_to(a.soldier_world_slots(a.soldiers)[0])
+	assert_lt(err_after, err_before,
+		"with the turn cleared the restoring force is live again — a displaced body springs back")
+
+
+func test_enemy_leaves_range_mid_turn_settles_the_turn() -> void:
+	# The enemy breaks contact (still alive and targeted) while the unit is mid-turn: the
+	# unit chases via _move_to, so the frozen spring must release or the marching bodies
+	# can't keep up. The turn is settled and resumes on the next contact.
+	var a := _unit(1, 0, Vector2(0, 0), Vector2.RIGHT)
+	var enemy := _unit(2, 1, Vector2(0, 40), Vector2.UP)
+
+	a._think(0.05)   # begins the engage turn (in contact, large offset)
+	assert_true(a._engage_turn_target != Vector2.ZERO, "the turn is in progress")
+
+	enemy.position = Vector2(0, 400)   # break contact — far out of melee reach
+	a._think(0.05)                     # the unit chases; the turn must settle
+
+	assert_eq(a._engage_turn_target, Vector2.ZERO,
+		"the engage turn is settled when the enemy breaks contact and the unit chases")

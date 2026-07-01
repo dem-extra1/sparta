@@ -605,6 +605,11 @@ func _think(delta: float) -> void:
 			# Explicit attack order, not yet in contact: chase past any move target.
 			# A flank/rear stance closes on the enemy's side or back instead of
 			# head-on, so the strike on arrival lands with the flank/rear bonus.
+			# If the enemy broke contact mid-turn, settle the re-face first — the unit is
+			# marching after it now, so the frozen spring must release (the turn resumes on
+			# the next contact when _face_for_action runs again).
+			if _engage_turn_target != Vector2.ZERO:
+				_settle_engage_turn()
 			var goal: Vector2 = enemy.position
 			if order_mode == ORDER_ATTACK_FLANK or order_mode == ORDER_ATTACK_REAR:
 				goal = UnitTargeting.attack_approach_point(self, enemy)
@@ -634,10 +639,21 @@ func _think(delta: float) -> void:
 				facing = deploy_facing
 				deploy_facing = Vector2.ZERO
 	elif enemy != null and order_mode != ORDER_HOLD:
+		# Auto-advance on a near enemy the combat branches didn't engage this tick (out of
+		# range/contact). If a re-face turn was in progress, settle it first: the unit is
+		# marching now, so the frozen spring must release (folding the partial rotation into
+		# _formation_angle) or the bodies would stay pinned and never keep up with the march.
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
 		_move_to(enemy.position, delta)
 	else:
 		# Idle: no enemy, or a HOLD stance that won't chase — the paths above
-		# still fight/fire whatever reaches a held unit.
+		# still fight/fire whatever reaches a held unit. If the engaged enemy vanished
+		# (died/routed/left range) while a re-face turn was still running, settle it here so
+		# the soldier-body spring doesn't stay frozen indefinitely (folding the partial
+		# rotation into _formation_angle so the bodies don't surge when the spring re-enables).
+		if _engage_turn_target != Vector2.ZERO:
+			_settle_engage_turn()
 		state = State.IDLE
 
 
