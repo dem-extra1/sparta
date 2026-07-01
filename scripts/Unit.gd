@@ -585,10 +585,19 @@ func _think(delta: float) -> void:
 	if _conversio_target != Vector2.ZERO:
 		if state == State.FIGHTING or has_move_target:
 			_conversio_target = Vector2.ZERO
+			_has_pending_march = false   # a new order / combat pre-empts the parked rear march
+			_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
 		else:
 			if _advance_turn(_conversio_target, delta):
 				_conversio_target = Vector2.ZERO
 				_reverse_soldier_bodies()
+				# Rear-sector move: the about-face is done, so start marching to the parked
+				# destination. The block now faces travel, so it advances forward, not backward.
+				if _has_pending_march:
+					_has_pending_march = false
+					move_target = _pending_march_target
+					_pending_march_target = Vector2.ZERO   # consumed -- clear it alongside its gate, as the interrupt path and _rout() do
+					has_move_target = true
 			state = State.IDLE
 			return
 
@@ -1370,6 +1379,15 @@ const ENGAGE_TURN_THRESHOLD: float = deg_to_rad(75.0)
 # boundary so a re-faced unit lands frontal blows.
 const ENGAGE_TURN_FIGHT_TOLERANCE: float = deg_to_rad(50.0)
 
+# Destination a rear-sector move order parked while an about-face (conversio) turns the
+# block around. _think reads it on conversio arrival, commits it as the move target, and
+# clears it. Held separately from move_target so has_move_target stays false during the
+# turn (otherwise _think would cancel the conversio). _has_pending_march is the
+# authoritative gate rather than checking != Vector2.ZERO, because the world origin is a
+# valid move destination -- ZERO can't reliably mean "nothing pending".
+var _pending_march_target: Vector2 = Vector2.ZERO
+var _has_pending_march: bool = false
+
 ## Stable, globally-unique id for soldier `index` in this regiment. Pure — a
 ## function of the regiment uid and the index — so it survives across ticks and
 ## reproduces exactly on replay. Keys off `uid`, not `get_instance_id()`, for the
@@ -1441,7 +1459,8 @@ func release_soldier_facing() -> void:
 ## while another in-place turn (conversio or quarter-turn) is already running.
 func conversio() -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty() \
-			or _conversio_target != Vector2.ZERO or _quarter_target != Vector2.ZERO:
+			or _conversio_target != Vector2.ZERO or _quarter_target != Vector2.ZERO \
+			or _wheel_target != Vector2.ZERO:
 		return
 	_conversio_target = Vector2(-facing.x, -facing.y)
 
@@ -1456,7 +1475,8 @@ func conversio() -> void:
 ## re-arming mid-turn would reset the start heading and corrupt the settled offset.
 func quarter_turn(dir: int) -> void:
 	if state == State.FIGHTING or _sim_soldier_facing.is_empty() or dir == 0 \
-			or _quarter_target != Vector2.ZERO or _conversio_target != Vector2.ZERO:
+			or _quarter_target != Vector2.ZERO or _conversio_target != Vector2.ZERO \
+			or _wheel_target != Vector2.ZERO:
 		return
 	_quarter_start_facing = facing
 	_quarter_target = facing.rotated(signf(dir) * PI * 0.5)
@@ -1925,6 +1945,8 @@ func _rout() -> void:
 	has_move_target = false
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
+	_has_pending_march = false         # drop any rear-move march parked behind the conversio
+	_pending_march_target = Vector2.ZERO   # clear the stale destination alongside its gate
 	_quarter_target = Vector2.ZERO     # cancel any quarter-turn likewise
 	_wheel_target = Vector2.ZERO       # and any in-progress wheel (partial swing left as-is)
 	_engage_turn_target = Vector2.ZERO # cancel any engage re-face turn
