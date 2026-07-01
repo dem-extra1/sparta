@@ -52,6 +52,11 @@ env:
 
 jobs:
   benchmark:
+    # Same-repo only: on a fork PR, GITHUB_TOKEN is forced read-only regardless of the
+    # `pull-requests: write` requested above, so the "Post benchmark comment" step would fail
+    # after a full (wasted) benchmark run -- a red X unrelated to the contributor's actual
+    # change. Mirrors demo-video.yml's identical guard for the same write+comment pattern.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -132,7 +137,7 @@ jobs:
             REGRESSED_P95=$(awk -v p="$P95_PCT" -v t="$REGRESSION_THRESHOLD_PCT" 'BEGIN { print (p > t) ? "1" : "0" }')
             if [ "$REGRESSED" = "1" ] || [ "$REGRESSED_P95" = "1" ]; then
               VERDICT="regression"
-              echo "::warning::mean tick time regressed ${MEAN_PCT}%% (p95 ${P95_PCT}%%) vs the CI baseline -- see the PR comment."
+              echo "::warning::mean tick time regressed ${MEAN_PCT}% (p95 ${P95_PCT}%) vs the CI baseline -- see the PR comment."
             fi
             BASELINE_LINE=$(printf '| mean tick time | %.3f ms | %.3f ms | %s%% |\n| p95 tick time | %.3f ms | %.3f ms | %s%% |' \
               "$BASE_MEAN" "$CUR_MEAN" "$MEAN_PCT" "$BASE_P95" "$CUR_P95" "$P95_PCT")
