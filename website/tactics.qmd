@@ -100,9 +100,9 @@ A wider line is easier to outlast in depth and quicker to crumble once it bends;
 a deeper one trades frontage for staying power. The width holds as casualties thin
 the ranks, so a line you set wide stays wide until you change it.
 
-**How a line reforms after losses.** Casualties eat the block from the back. The front
-rank keeps its full width, the file behind each fighter feeds men forward to hold the
-contact line, and the depth shrinks rank by rank. When the rearmost rank is left
+**How a line reforms after losses.** The front rank takes the hits, but the block loses
+depth from the rear. The front rank keeps its full width, the file behind each fighter feeds
+men forward to hold the contact line, and the depth shrinks rank by rank. When the rearmost rank is left
 short-handed, its survivors close up toward the centre --- the wings shorten first while
 the middle files stay deepest --- rather than leaving a ragged, gap-toothed back rank. So a
 mauled unit still presents a solid front and never bulges wider than the frontage you set;

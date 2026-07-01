@@ -74,9 +74,9 @@ static func ranks_for(n: int, files: int) -> int:
 
 ## The general grid layout: `n` slots in a centred, wider-than-deep block with `files`
 ## columns at `spacing` px, front rank toward -Y. Full ranks span the whole frontage; a
-## partial rear rank closes up onto the CENTRE file columns of that same frontage, so its
-## survivors stay aligned under the files ahead of them -- the men step up WITHIN their
-## files rather than shuffling into the gaps between them. This mirrors how a phalanx or
+## partial rear rank closes up onto the CENTRE files of that same frontage, so its survivors
+## stay centred within the frontage -- the men step up toward the middle rather than fanning
+## out to the wings. This mirrors how a phalanx or
 ## legion closed after casualties: the file (column), led at the front and closed at the
 ## rear by the ouragos/file-closer, was the unit of cohesion; the outer files shortened as
 ## the wings closed toward the standard while the centre files stayed deepest.

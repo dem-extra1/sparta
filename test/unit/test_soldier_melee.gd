@@ -473,7 +473,7 @@ func test_reformed_block_holds_frontage_and_closes_up_after_casualties() -> void
 	SoldierMelee.reap(u, u)
 	assert_eq(u.soldiers, 9, "three men fell")
 	assert_eq(UnitFormation.frontage(u), files, "frontage holds as the block thins")
-	var slots := UnitFormation.slots(u, u.soldiers)
+	var slots := UnitFormation.slots(u, u.soldiers)  # target layout for survivors, not current world positions
 	# Front rank still spans the full frontage (the width the line holds).
 	var reformed_front: float = 0.0
 	for i in range(files):
