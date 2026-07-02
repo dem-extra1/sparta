@@ -269,6 +269,12 @@ func _unit_record(u: Node) -> Dictionary:
 		"order_mode": DemoState.order_mode_name(_battle.ORDER_MODE_NAMES, u.order_mode),
 		"target_enemy_uid": target_uid,
 		"engaged": u.is_engaged(),
+		# Phase 1 of the unified orders-queue design (#516): the head of the orders queue -- the
+		# single, transcript-visible source of truth for "what is this unit doing right now,"
+		# including its active phase for a phased order (e.g. a move-to-rear about-face vs its
+		# march). null when the unit is idle (no current order).
+		"current_order": Order.type_name(u.current_order.type) if u.current_order != null else null,
+		"order_phase": Order.phase_name(u.current_order.phase) if u.current_order != null else null,
 		"soldier_summary": DemoState.soldier_summary(u._sim_soldier_pos, u._sim_prone),
 	}
 	if _state_full:

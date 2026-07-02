@@ -735,6 +735,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
 				u.set_formation(fm)
+				u.set_current_order(Order.new_formation(fm))
 		return
 	# Frontage-resize-only: set each unit's file count to the absolute target,
 	# leaving movement and order-mode state untouched. Absolute so re-applying the
@@ -746,6 +747,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				var u: Unit = _unit_by_uid(int(uid))
 				if u != null:
 					u.set_frontage(files)
+					u.set_current_order(Order.new_frontage(files))
 		return
 	# Arrow-key nudge: each unit steps a small fixed distance to its own side/rear,
 	# holding facing (ordered_facing set), leaving stance and formation untouched. A
@@ -770,6 +772,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			u.ordered_facing = u.facing   # hold facing: side-step / back-step, no pivot
 			u.move_target = u.position + offset
 			u.has_move_target = true
+			u.set_current_order(Order.new_nudge(dir))
 			u.start_order_response()
 		return
 	# Wheel: swing each unit 90° about a fixed flank file. The direction rides in "x".
@@ -780,6 +783,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 			var u: Unit = _unit_by_uid(int(uid))
 			if u != null:
 				u.wheel(wheel_dir)
+				u.set_current_order(Order.new_wheel(wheel_dir))
 		return
 	# Merge: the target is the primary and is itself one of the ordered units
 	# (a relief's target is a friendly OUTSIDE the selection — that's the
@@ -858,6 +862,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				var slot: int = cmd["units"].find(uid)
 				u.target_enemy = attack_targets[slot % attack_targets.size()]
 			u.has_move_target = false
+			u.set_current_order(Order.new_attack(u.target_enemy.uid, mode))
 		elif target_unit != null and target_unit != u and target_unit.team == u.team:
 			if mode == OrderMode.SUPPORT:
 				# Support: guard the targeted friendly. Every ordered unit shadows
@@ -865,6 +870,7 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				u.support_target = target_unit
 				u.target_enemy = null
 				u.has_move_target = false
+				u.set_current_order(Order.new_support(target_unit.uid))
 			elif not relieved:
 				# Relief: the first reliever swaps with the tired unit; any others
 				# just advance on the same fight so they don't shove the retreating unit.
@@ -873,18 +879,22 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				# unit's target_enemy, so later relievers can't read it from there).
 				relief_foe = u.target_enemy
 				relieved = true
+				u.set_current_order(Order.new_relief(target_unit.uid))
 				# Skip the order-response delay for the primary reliever — it needs
 				# to advance immediately or the tired unit retreats into an uncovered gap.
 				continue
 			else:
 				u.target_enemy = relief_foe
 				u.has_move_target = false
+				if relief_foe != null:
+					u.set_current_order(Order.new_attack(relief_foe.uid, mode))
 		else:
 			var point: Vector2 = dest + (u.position - centroid)   # formation move
 			u.target_enemy = null
 			if append:
 				# Queue the point; start marching it now if the unit was idle.
 				u.waypoints.append(point)
+				u.append_order(Order.new_move(point, mode))
 				if not u.has_move_target:
 					u.move_target = u.waypoints.pop_front()
 					u.has_move_target = true
@@ -942,6 +952,9 @@ func _apply_order_cmd(cmd: Dictionary) -> void:
 				elif not about_faced:
 					u.move_target = point
 					u.has_move_target = true
+				# A rear move parked its Order in the TURN phase (about-face first); every
+				# other move -- reform-hold or immediate -- starts life in phase NONE.
+				u.set_current_order(Order.new_move(point, mode, about_faced))
 		if not append:
 			u.start_order_response()
 

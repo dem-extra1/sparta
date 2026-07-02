@@ -82,6 +82,16 @@ var has_move_target: bool = false
 var waypoints: Array[Vector2] = []
 var target_enemy: Unit = null
 var selected: bool = false
+# Phase 1 of the unified orders-queue design (docs/orders-queue-design.md, #516): the general
+# orders queue. `current_order` (orders[0], or null when idle) is the single, transcript-visible
+# source of truth for "what is this unit doing right now" -- including its active phase, for a
+# phased order like the move-to-rear about-face. Phase 1 is additive: Battle._apply_order_cmd (the
+# exactly-once apply site fixed by #519) constructs and pushes the Order alongside its existing
+# legacy mutation (move_target/waypoints/target_enemy/_wheel_target/...), and
+# _update_current_order retires it by reading that same legacy state -- nothing in the sim reads
+# these fields back, so they cannot affect gameplay or replay determinism this phase.
+var orders: Array[Order] = []
+var current_order: Order = null
 # Order stance, set by Battle._apply_order_cmd from the order's mode.
 # Int rather than Battle.OrderMode to keep Unit decoupled; 0 == OrderMode.NORMAL.
 # The smart-order behaviours read this; NORMAL is current behaviour.
@@ -537,8 +547,83 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 
+## Replace the orders queue with a single fresh order (a plain, non-append order): clears any
+## queued continuation and makes `order` current immediately. Mirrors the legacy "a fresh order
+## discards the queued route" rule (see Battle._apply_order_cmd) for the new queue in parallel.
+func set_current_order(order: Order) -> void:
+	var q: Array[Order] = []
+	if order != null:
+		q.append(order)
+	orders = q
+	current_order = order
+
+
+## Append `order` to the queue tail (a shift-click waypoint leg). If the unit is currently idle
+## (no current order), the appended order becomes current right away -- mirrors the legacy
+## "start marching now if idle" waypoint-append behaviour.
+func append_order(order: Order) -> void:
+	orders.append(order)
+	if current_order == null:
+		current_order = orders[0]
+
+
+## Drop the queue head (it finished, or was interrupted) and promote the next queued order, if
+## any, to current.
+func retire_current_order() -> void:
+	if not orders.is_empty():
+		orders.pop_front()
+	current_order = orders[0] if not orders.is_empty() else null
+
+
+## Clear the queue and current order outright (death, a merge, or a rout dropping every
+## in-progress maneuver -- see _rout()).
+func clear_orders() -> void:
+	orders.clear()
+	current_order = null
+
+
+## Advance current_order's bookkeeping for this tick: transition its phase, or retire it, by
+## reading the SAME legacy state (has_move_target, waypoints, target_enemy, _wheel_target, ...)
+## the rest of _think() already reads and mutates. Purely additive read-of-existing-state: it
+## writes only Order/queue fields, which nothing else in the sim consumes this phase, so it
+## cannot change movement/combat/replay behaviour -- only current_order's transcript value.
+func _update_current_order() -> void:
+	if current_order == null:
+		return
+	match current_order.type:
+		Order.Type.MOVE, Order.Type.NUDGE:
+			# Move-to-rear phasing: the conversio (about-face) runs first; once it hands off to
+			# the parked march (has_move_target flips true, no conversio and no march left
+			# parked), the order enters its march phase. Every non-rear move stays NONE (never
+			# entered TURN in the first place -- see Battle._apply_order_cmd's about_faced flag).
+			if current_order.phase == Order.Phase.TURN \
+					and _conversio_target == Vector2.ZERO and not _has_pending_march \
+					and has_move_target:
+				current_order.phase = Order.Phase.MARCH
+			# Retire on arrival (has_move_target cleared, no queued waypoint leg) once any
+			# in-place turn phase has resolved one way or the other (completed into a march, or
+			# was interrupted before ever starting one).
+			if not has_move_target and waypoints.is_empty() \
+					and _conversio_target == Vector2.ZERO and not _has_pending_march:
+				retire_current_order()
+		Order.Type.ATTACK, Order.Type.RELIEF:
+			if target_enemy == null:
+				retire_current_order()
+		Order.Type.SUPPORT:
+			if support_target == null:
+				retire_current_order()
+		Order.Type.WHEEL:
+			if _wheel_target == Vector2.ZERO:
+				retire_current_order()
+		Order.Type.FORMATION, Order.Type.FRONTAGE:
+			# Instantaneous: applied and complete in the same tick Battle issues them, so they
+			# never accumulate here -- retire defensively in case one is ever observed live.
+			retire_current_order()
+
+
 ## Decide what to do this frame: fight if in contact, otherwise move.
 func _think(delta: float) -> void:
+	_update_current_order()
 	# Order-response delay: tick down on every frame. Non-fighting units are frozen
 	# until the timer expires; fighting units are not gated — they keep executing
 	# _think() normally, so a disengage or retarget order issued mid-combat takes
@@ -1932,6 +2017,7 @@ func _die() -> void:
 func _remove_from_play() -> void:
 	state = State.DEAD
 	selected = false
+	clear_orders()
 	remove_from_group("units")
 	remove_from_group("routers")   # no-op unless removing a routing unit
 	queue_free()
@@ -1944,6 +2030,7 @@ func _rout() -> void:
 	selected = false
 	target_enemy = null
 	has_move_target = false
+	clear_orders()   # a rout drops every in-progress maneuver -- the queue mirrors that
 	_reform_timer = 0.0   # cancel any pending reform so a rallied unit doesn't resume a stale destination
 	_conversio_target = Vector2.ZERO   # cancel any conversio; unit.facing stays at its current angle
 	_has_pending_march = false         # drop any rear-move march parked behind the conversio

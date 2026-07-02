@@ -1,8 +1,4 @@
 {
-  "input": "demos/inputs/arrival-knockback.json",
-  "caption": "Real, non-springy soldier motion. Soldier bodies no longer ease toward their formation slots on a damped spring; they now ARRIVE under bounded force -- each body accelerates toward its slot at the unit's own acceleration and decelerates to land there with ~zero velocity (classic arrive steering). Watch the contact line: a cavalry charge slams the infantry front rank, the melee knockback shoves those bodies back, and each one decelerates and returns to its slot under real force -- a knockback-and-recover with no spring rebound, no wobble, no oscillation. Determinism is preserved (pure function of positions/velocities/mass/delta, no RNG), but outcomes differ from pre-change replays -- expected for a physics change.",
-  "fixed_fps": 30,
-  "max_frames": 300,
-  "fps": 12,
-  "width": 640
+  "skip": true,
+  "reason": "Phase 1 of the orders-queue refactor (#522) is a non-visual, additive bookkeeping change: it introduces the Order value type and the orders queue as a parallel mirror of the existing legacy per-order-kind state, driven from the same single apply-once dispatch site, and adds current_order/order_phase to the machine-readable state transcript. It changes no movement/combat math -- verified tick-by-tick that about-face, wheel, file-doubling, and arrow-nudge demos produce byte-identical positions/facings before and after. A recorded battle would look pixel-identical to the pre-change clip, so a clip would show nothing about this change; the transcript diff is the evidence instead."
 }
